@@ -41,14 +41,16 @@ const server=await createServer({configFile:"./vite.config.ts",
    if(req.url==="/api/v1/auth/me"){res.end(JSON.stringify(studioUser));return;}
    res.end("[]");
   });
- }}]:[],
+ }}]:[{name:"qa-release-board-fixture-only",transform(code,id){
+  if(id.endsWith("/src/App.tsx"))return code.replace('import("./PublicDemoBoard")','import("../scripts/qa-release-board-fixture")');
+ }}],
  server:{host:"127.0.0.1",port:0,strictPort:false}});
 let profile,chrome,socket;
 const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly||interfaceOnly||keyboardOnly||landscapeOnly?"/app":"/demo/board?scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||keyboardOnly||landscapeOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -544,7 +546,40 @@ try{
   console.log('✓ Desktop tiles, schedule controls, progress tabs, board-only AI routing, billing, notifications dialog, command search and mobile More');
  }else{
 
- // Initial lesson must actually render the board with math, text and table objects.
+ // Public demo: verify absence of seed content, no persisted board, no double outline.
+ const demoUrl=new URL("/demo/board?scene=geometry&capture=1",url).href;
+ const demoRequests=[];
+ const observeDemo=event=>{const data=JSON.parse(event.data);if(data.method==="Network.requestWillBeSent"||data.method==="Network.webSocketCreated"){const requestUrl=data.params.request?.url??data.params.url??"";if(/(?:\/api\/v1\/|\/rest\/v1\/|\/auth\/v1\/|\/storage\/v1\/|\/realtime\/v1\/)/.test(requestUrl))demoRequests.push(requestUrl)}};
+ socket.addEventListener("message",observeDemo);
+ await call("Network.enable");
+ await call("Page.navigate",{url:demoUrl});
+ await wait('document.querySelector(".board-title")?.value==="Демо-версия доски"',"Fresh demo did not open",45000);
+ assert.equal(await evaluate('document.querySelectorAll(".board-object[data-object]").length'),0);
+ await evaluate('document.querySelector(".board-title").focus()');
+ assert.deepEqual(await evaluate('(()=>{const s=getComputedStyle(document.querySelector(".board-title"));return [s.outlineStyle,s.boxShadow]})()'),["none","none"],"Duplicate focus ring");
+ await click('.toolbar-pinned button[aria-label^="Карандаш"]');
+ const demoCanvas=await rect("section.board");
+ await mouse("mousePressed",demoCanvas.x,demoCanvas.y,{pressed:true});
+ for(let dx=12;dx<=84;dx+=12)await mouse("mouseMoved",demoCanvas.x+dx,demoCanvas.y+20,{pressed:true});
+ await mouse("mouseReleased",demoCanvas.x+84,demoCanvas.y+20);
+ await wait('!!document.querySelector(".viewer-ink-canvas")',"Demo pencil did not render");
+ await delay(550);
+ assert.equal(await evaluate('Object.keys(localStorage).some(k=>k.includes("lektrus-demo-"))'),false,"Demo content persisted");
+ await call("Page.navigate",{url:new URL("/demo/board?scene=math",url).href});
+ await wait('document.querySelector(".board-title")?.value==="Демо-версия доски"',"Demo did not reopen",45000);
+ assert.equal(await evaluate('document.querySelectorAll(".board-object[data-object]").length'),0);
+ assert.equal(await evaluate('!!document.querySelector(".viewer-ink-canvas")'),false,"Demo ink survived reload");
+ await click(".lektrus-desktop-subject-trigger");
+ await wait('!!document.querySelector("#lektrus-subject-tools-panel select")',"Demo subject tools unavailable");
+ await evaluate(`(()=>{const s=document.querySelector("#lektrus-subject-tools-panel select");Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(s,"История");s.dispatchEvent(new Event("change",{bubbles:true}))})()`);
+ await wait('document.querySelectorAll("#lektrus-subject-tools-panel .lektrus-subject-tools-list button").length===1',"Demo should offer only the subject board");
+ assert.equal(await evaluate('document.querySelector("#lektrus-subject-tools-panel .lektrus-subject-tools-list button")?.getAttribute("aria-label")'),"Задания на доске");
+ assert.deepEqual(demoRequests,[],"Demo made backend requests");
+ socket.removeEventListener("message",observeDemo);
+ await call("Page.navigate",{url});
+ console.log("✓ Empty public demo, ephemeral ink, subject tools and text input focus");
+
+ // Test-only fixture: the initial lesson must actually render the board with math, text and table objects.
  await wait('document.querySelectorAll(".board-object[data-object]").length>=8',
   "Mathematics demo did not render its objects");
  for(const type of ["text","sticky","formula","table","graph"])

@@ -41,7 +41,7 @@ assert.doesNotMatch(site,/marketing-showcase-window|marketing-showcase-caption|m
 
 assert.doesNotMatch(site,/id:"subjects"/,"the marketing menu must not add a subjects page");
 assert.ok(site.includes('href="/tools/atlas"')&&site.includes('href="/tools/laboratory"'),"both standalone public tools must remain directly in the sidebar");
-assert.ok(site.includes('"/demo/board?scene="'),"example links must lead to the actual demo board");
+assert.ok(site.includes('"/demo/board"'),"demo link must lead to the blank demo board");
 assert.ok(site.includes('<LektrusFeedbackForm compact source="site"/>'),"feedback must use the existing submission service");
 const feedbackComponent=read("src/LektrusFeedbackForm.tsx");
 assert.ok(feedbackComponent.includes("Email нужен, только если хотите получить ответ."),"feedback email hint must be punctuated correctly");

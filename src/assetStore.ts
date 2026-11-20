@@ -5,6 +5,15 @@ import type { DocumentData } from "./boardModel";
 const DB_NAME = "lesson-board.assets.v1";
 const STORE = "assets";
 
+// Public demo attachments exist only until the sandbox is closed. Never
+// fall through to IndexedDB, Supabase or the self-hosted asset endpoints.
+const isDemoBoard = (boardId:string) => boardId.startsWith("lektrus-demo-");
+const demoAssets = new Map<string,Blob>();
+export function clearDemoBoardAssets(boardId:string) {
+  if(!isDemoBoard(boardId))return;
+  for(const key of demoAssets.keys())if(key.startsWith(boardId+"/"))demoAssets.delete(key);
+}
+
 let databasePromise: Promise<IDBDatabase> | null = null;
 
 function db(): Promise<IDBDatabase> {
@@ -136,6 +145,11 @@ async function optimizeImage(blob: Blob): Promise<Blob> {
 }
 
 export async function putAsset(id: string, blob: Blob, boardId: string, localOnly = false) {
+  if(isDemoBoard(boardId)) {
+    if(blob.size>50*1024*1024||!(blob.type.startsWith("image/")||blob.type==="application/pdf"))throw new Error("Нужно изображение или PDF размером до 50 МБ");
+    demoAssets.set(assetPath(boardId,id),blob);
+    return;
+  }
   blob = await optimizeImage(blob);
   if (localOnly) return putLocalAsset(assetPath(boardId, id), blob);
   if (blob.size > 50 * 1024 * 1024 || !(blob.type.startsWith("image/") || blob.type === "application/pdf")) {
@@ -153,6 +167,7 @@ export async function putAsset(id: string, blob: Blob, boardId: string, localOnl
 
 export async function getAsset(id: string, boardId: string): Promise<Blob | null> {
   const path = assetPath(boardId, id);
+  if(isDemoBoard(boardId))return demoAssets.get(path)??null;
   const inMemory = memoryAssets.get(path) ?? memoryAssets.get(id);
   if (inMemory) {
     rememberAsset(path, inMemory);
@@ -188,6 +203,7 @@ export async function getAsset(id: string, boardId: string): Promise<Blob | null
 
 // Upload legacy local attachments before publishing a document referencing them.
 export async function ensureBoardAssets(boardId: string, document: DocumentData) {
+  if(isDemoBoard(boardId))return;
   const selfhost=usesSelfhostAssets(boardId);
   if (!isRemoteBackendEnabled()&&!selfhost) return;
   const ids = [...new Set(
@@ -231,6 +247,7 @@ const displayPreviews = new Map<string, Promise<Blob | null>>();
 const DISPLAY_PREVIEW_LIMIT = 12;
 const DISPLAY_PREVIEW_ITEM_BYTES = 2 * 1024 * 1024;
 export function getDisplayAsset(id: string, boardId: string): Promise<Blob | null> {
+  if(isDemoBoard(boardId))return getAsset(id,boardId);
   const key = boardId + "/" + id;
   const existing = displayPreviews.get(key);
   if (existing) return existing;

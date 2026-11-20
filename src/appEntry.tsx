@@ -1,11 +1,12 @@
 import "./cryptoUuidCompatibility";
-import { Component, useState, type FormEvent, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, useState, type FormEvent, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import BillingLimitNotice from "./BillingLimitNotice";
 import { Capacitor } from "@capacitor/core";
 import "./index.css";
 import "./nextTheme.css";
 import App from "./App";
+import {parseRoute} from "./routes";
 import {BrowserBoardFrameEntry,isBrowserBoardFrame} from "./BrowserBoardLandscape";
 import "./interactiveCursor.css";
 import "./settingsCursorFix.css";
@@ -160,11 +161,22 @@ if (!root) {
   throw new Error("Не найден корневой элемент #root");
 }
 
-createRoot(root).render(
-  isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:
-  Capacitor.isNativePlatform() && !LEKTRUS_LOCAL_TEST_MODE && !isSelfhostBackendEnabled() && !isRemoteBackendEnabled()
-    ? <NativeConnectionSetup />
-    : <ErrorBoundary><AndroidUpdateGate><MaintenanceGate><App /><BillingLimitNotice/></MaintenanceGate></AndroidUpdateGate></ErrorBoundary>
-);
+function AppRoot(){
+  const [demo,setDemo]=useState(()=>parseRoute(window.location.pathname).kind==="demo");
+  useEffect(()=>{
+    const update=()=>setDemo(parseRoute(window.location.pathname).kind==="demo");
+    window.addEventListener("popstate",update);
+    window.addEventListener("lektrus:workspace-route",update);
+    return()=>{window.removeEventListener("popstate",update);window.removeEventListener("lektrus:workspace-route",update)};
+  },[]);
+  // The public sandbox has no server resources, even during maintenance.
+  // All protected routes continue through the existing gates.
+  if(demo)return <ErrorBoundary><App/></ErrorBoundary>;
+  if(Capacitor.isNativePlatform()&&!LEKTRUS_LOCAL_TEST_MODE&&!isSelfhostBackendEnabled()&&!isRemoteBackendEnabled())
+    return <NativeConnectionSetup/>;
+  return <ErrorBoundary><AndroidUpdateGate><MaintenanceGate><App/><BillingLimitNotice/></MaintenanceGate></AndroidUpdateGate></ErrorBoundary>;
+}
 
-if(!isBrowserBoardFrame())registerLektrusServiceWorker();
+createRoot(root).render(isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:<AppRoot/>);
+
+if(!isBrowserBoardFrame()&&parseRoute(window.location.pathname).kind!=="demo")registerLektrusServiceWorker();

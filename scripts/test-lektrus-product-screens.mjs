@@ -7,10 +7,25 @@ const shell=read("src/LectrisWorkspaceShell.tsx");
 const styles=read("src/lektrusProductScreens.css");
 const templates=read("src/TemplatesScreen.tsx");
 const demo=read("src/PublicDemoBoard.tsx");
-assert.ok(demo.includes("const existing=localStorage.getItem(key)")&&
- demo.includes("if(capture||!existing)")&&
- demo.includes("demoInitialDocument={useMemorySeed?seed:undefined}"),
- "Reopening a demo must restore saved board changes unless the capture flag explicitly resets it");
+const board=read("src/BoardApp.tsx"), assets=read("src/assetStore.ts"), themes=read("src/lektrusThemes.css");
+assert.match(demo,/items:\[\]/,"Every demo starts with an empty document");
+assert.match(demo,/const \[session\]=useState\(/,"Demo identity is stable only for this mount");
+assert.doesNotMatch(demo,/localStorage|sessionStorage|URLSearchParams/,"No seeded or saved public demo");
+assert.match(demo,/clearDemoBoardAssets\(session\.board\.id\)/);
+assert.match(board,/if \(!canEdit \|\| layoutEditing \|\| demoMode\) return;/,"No demo autosave");
+assert.match(board,/if \(!canEdit\|\|demoMode\) return;/,"No demo save scheduling");
+assert.match(board,/!demoMode\|\|id!=="linkmedia"/,"Video unavailable in demo");
+assert.match(board,/!demoMode\|\|entry\.id\.startsWith\("subject-task-"\)/,"Only subject board tasks are offered");
+for(const connection of ["connectAttachmentApprovalChannel","subscribeBoardDocument","connectBoardCursorChannel","connectBoardViewControl","connectBoardWorkChannel"]){
+ const call=board.lastIndexOf(connection+"(");
+ const effect=board.lastIndexOf("useEffect(",call);
+ assert.ok(call>effect&&board.slice(effect,call).includes("if(demoMode||layoutEditing)return;"),connection+" must never start in demo");
+}
+assert.match(board,/demoMode\|\|layoutEditing\?\(\)=>\{\}:subscribeBoardPresence/);
+assert.match(board,/if\(!demoMode\)queueLectrisBoardOrganization/);
+assert.match(assets,/if\(isDemoBoard\(boardId\)\)return demoAssets\.get\(path\)\?\?null/);
+assert.match(assets,/if\(isDemoBoard\(boardId\)\)return;\s*const selfhost/);
+assert.match(themes,/textarea,select\):focus\s*\{\s*outline:none!important;\s*box-shadow:none!important;/,"Focused fields must not have a duplicate outer ring");
 
 assert.ok(app.includes("Управление и интерфейс"),"the settings entry must show its full label");
 assert.ok(app.includes('const effectiveAccountRole=appRolePreview==="actual"?accountRole:appRolePreview')&&app.includes("changeAppRolePreview"),"administrator role preview must affect app-wide menus");
