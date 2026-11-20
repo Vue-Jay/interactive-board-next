@@ -591,7 +591,18 @@ try{
   return p.left>=r.left-1&&p.right<=r.right+1&&p.top>=r.top-1&&p.bottom<=r.bottom+1&&
    [...el.children].every(child=>{const c=child.getBoundingClientRect();return !c.width||(c.left>=p.left-1&&c.right<=p.right+1&&c.top>=p.top-1&&c.bottom<=p.bottom+1)});
  })()`;
- await wait(panelFits,"Sticker action panel extends outside its background or board");
+ const waitPanelFits=async message=>{
+  try{await wait(panelFits,message)}catch(error){
+   console.error("Selection geometry:",JSON.stringify(await evaluate(`(()=>{
+    const el=document.querySelector(".selection-toolbar-screen"),board=document.querySelector("section.board");
+    const bounds=node=>node?.getBoundingClientRect().toJSON();
+    return {board:bounds(board),panel:bounds(el),editor:!!document.querySelector(".text-editor"),
+     selected:[...document.querySelectorAll(".board-object.selected")].map(node=>node.dataset.object),
+     children:el?[...el.children].map(node=>({className:node.className,title:node.title,bounds:bounds(node)})):[]};
+   })()`)));throw error;
+  }
+ };
+ await waitPanelFits("Sticker action panel extends outside its background or board");
  await click('.lektrus-desktop-sections button[aria-label="Текст"]');
  await wait('!!document.querySelector(".lektrus-tool-overflow-group--create")',"Text tool catalogue did not open");
  assert.ok(await evaluate('(()=>{const b=[...document.querySelectorAll(".lektrus-tool-overflow-group--create button")].find(b=>b.textContent.trim()==="Текст");b?.click();return !!b})()'),"Text tool missing");
@@ -599,9 +610,13 @@ try{
  await mouse("mousePressed",demoCanvas.x+190,demoCanvas.y-100,{pressed:true});
  await mouse("mouseReleased",demoCanvas.x+190,demoCanvas.y-100);
  await wait('!!document.querySelector(".object-text textarea.text-editor")',"Text editor did not open");
+ await wait('document.activeElement===document.querySelector(".object-text textarea.text-editor")',"New text editor did not receive keyboard focus");
+ await call("Input.insertText",{text:"Проверка текста"});
+ await wait('document.querySelector(".object-text textarea.text-editor")?.value==="Проверка текста"',"Text input was not received");
  assert.deepEqual(await evaluate('(()=>{const s=getComputedStyle(document.querySelector(".object-text textarea.text-editor"));return [s.outlineStyle,s.boxShadow]})()'),["none","none"],"Text editor has an unnecessary focus ring");
  await evaluate('document.querySelector(".object-text textarea.text-editor").blur()');
- await wait(panelFits,"Text action panel extends outside its background or board");
+ await wait('!document.querySelector(".object-text textarea.text-editor")&&document.querySelector(".object-text .text-display")?.textContent==="Проверка текста"',"Text editor did not save and close after losing focus");
+ await waitPanelFits("Text action panel extends outside its background or board");
  await click('.selection-toolbar-screen summary[aria-label="Ещё действия"]');
  await wait('!!document.querySelector(".selection-more[open] .selection-text-format-section")',"Text formatting was not moved into More");
  await click('.selection-toolbar-screen summary[aria-label="Ещё действия"]');
@@ -645,7 +660,7 @@ try{
   assert.ok(point,"No visible selection surface for "+id);
   await mouse("mousePressed",point.x,point.y,{pressed:true});await mouse("mouseReleased",point.x,point.y);
   await wait(`document.querySelector('[data-object="${id}"]')?.classList.contains("selected")`,"Could not select "+id);
-  await wait(panelFits,"Action toolbar overflow for "+id);
+  await waitPanelFits("Action toolbar overflow for "+id);
  }
  await call("Page.navigate",{url});
  await wait('document.querySelectorAll(".board-object[data-object]").length>=8',"Math fixture did not restore after selection layout checks");

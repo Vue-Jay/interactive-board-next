@@ -10367,6 +10367,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     <textarea
                       ref={editor}
                       key={item.id}
+                      autoFocus
                       aria-label="Текст объекта"
                       className={item.kind === "frame" ? "text-editor frame-editor" : item.kind === "comment" ? "text-editor comment-editor" : "text-editor"}
                       style={item.kind === "text" ? { fontSize: item.fontSize ?? 20, color:item.color??"#202124", lineHeight:item.lineHeight??1.45, textAlign: item.textAlign ?? "left", fontWeight: item.fontWeight ?? "normal", fontStyle: item.fontStyle ?? "normal", textDecoration: item.textDecoration ?? "none" } : undefined}
