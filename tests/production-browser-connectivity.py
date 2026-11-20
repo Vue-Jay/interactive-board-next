@@ -62,9 +62,15 @@ with sync_playwright() as p:
     assert result["origin"]==ORIGIN, result
     assert result["health"].get("status")==200 and result["health"].get("apiOK"), result
     verify_protected_boards(result["maintenance"], result["boards"])
+    if result["maintenance"]["maintenanceState"] == "active":
+        expect(page.get_by_role("status", name="Технические работы")).to_be_visible(timeout=45000)
     # The synthetic UUID is used only to verify SPA routing while signed out.
     deep=page.goto(ORIGIN+"/board/00000000-0000-4000-8000-000000000000",wait_until="domcontentloaded",timeout=45000)
     assert deep and deep.status==200, ("deep link HTTP",deep.status if deep else None)
-    expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=45000)
-    print("Live Chrome: application shell, API health, protected boards endpoint (including verified maintenance) and direct-link sign-in are reachable")
+    if result["maintenance"]["maintenanceState"] == "active":
+        expect(page.get_by_role("heading", name="Скоро вернёмся", exact=True)).to_be_visible(timeout=45000)
+        expect(page.get_by_label("Email", exact=True)).not_to_be_visible()
+    else:
+        expect(page.get_by_label("Email", exact=True)).to_be_visible(timeout=45000)
+    print("Live Chrome: application shell, API health, protected boards endpoint (including verified maintenance) and the expected direct-link screen are reachable")
     browser.close()
