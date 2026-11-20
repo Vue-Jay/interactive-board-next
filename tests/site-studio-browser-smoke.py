@@ -257,7 +257,9 @@ with sync_playwright() as p:
     visitor.screenshot(path=str(root / "07-features-prose.png"), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#pricing", wait_until="domcontentloaded")
-    assert visitor.locator(".marketing-plan").count() == 3
+    assert visitor.locator(".marketing-plan").count() == 2
+    assert visitor.locator(".marketing-plan").nth(1).get_by_text("Скоро",exact=True).is_visible()
+    assert "299 ₽" in visitor.locator(".marketing-plan").nth(1).inner_text()
     assert visitor.locator(".marketing-pricing-note").count() == 0, "Pricing disclaimer must not be shown"
     visitor.screenshot(path=str(root / "08-pricing-compact.png"), full_page=True)
     visitor.goto("http://127.0.0.1:5173/#help", wait_until="domcontentloaded")

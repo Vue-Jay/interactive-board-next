@@ -61,7 +61,7 @@ assert.ok(!helpPage.includes("VITE_TELEGRAM_URL")&&helpPage.includes("marketing-
 const helpStyles=read("src/lektrusMarketingTypography.css");
 assert.ok(helpStyles.includes(".marketing-site .marketing-help-layout:has(> .site-canvas-slot)")&&helpStyles.includes("grid-template-columns:minmax(0,1fr)"),"Site Studio inserted content must preserve correct help section order");
 assert.ok(helpStyles.includes(".marketing-site .marketing-help-layout .marketing-faq details")&&helpStyles.includes(".marketing-site .marketing-help-layout .marketing-form-card"),"Help needs restrained FAQ and form styles");
-assert.ok(site.includes("plans.map(")&&billing.includes('id:"free"')&&billing.includes('id:"teacher"')&&billing.includes('id:"pro"'),"marketing pricing should derive current app plan definitions");
+assert.ok(site.includes("plans.map(")&&billing.includes('id:"free"')&&!billing.includes('id:"teacher"')&&billing.includes('id:"pro"'),"marketing pricing should derive current app plan definitions");
 assert.ok(!site.includes("Купить подписку"),"test subscriptions must not be advertised as purchasable");
 for(const shot of ["board-showcase.png","app-home.png","board-math.png","board-chemistry.png","board-geometry.png","board-physics.png","board-contour.png","board-history.png","board-russian.png"]){
  assert.ok(existsSync(new URL("../public/site/"+shot,import.meta.url)),"missing actual screenshot: "+shot);

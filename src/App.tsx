@@ -759,10 +759,10 @@ export default function App() {
   }
 
   return (
-    <Suspense fallback={<BoardLoadingScreen/>}><BoardApp
+    <Suspense fallback={<BoardLoadingScreen/>}>{activeBoard.planReadOnly&&<div className="billing-board-readonly" role="status">Только просмотр · выберите эту доску в разделе «Тарифы»</div>}<BoardApp
       key={`${activeBoard.id}:${boardMountKey}`}
       authUser={authUser}
-      boardSummary={activeBoard}
+      boardSummary={activeBoard.planReadOnly?{...activeBoard,role:"viewer",participantRole:"observer"}:activeBoard}
       accountRole={accountRole}
       isAppAdmin={isAppAdmin}
       globalRolePreview={appRolePreview}

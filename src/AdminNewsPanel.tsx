@@ -1,11 +1,13 @@
 import {useEffect,useState} from "react";
 import {EMPTY_NEWS_DRAFT,loadAdminNews,NEWS_CATEGORIES,newsDate,saveAdminNews,type NewsArticle,type NewsCategory,type NewsDraft} from "./siteNews";
 import "./lektrusAdminNews.css";
+import AdminTelegramPanel from "./AdminTelegramPanel";
 
 const PAGE_SIZE=30;
 const fromArticle=(article:NewsArticle):NewsDraft=>({category:article.category,title:article.title,summary:article.summary,body:article.body,version:article.version,published:Boolean(article.published_at)});
 
 export default function AdminNewsPanel(){
+  const [mode,setMode]=useState<"site"|"telegram">("site");
   const [articles,setArticles]=useState<NewsArticle[]>([]),[offset,setOffset]=useState(0),[revision,setRevision]=useState(0);
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
   const [editing,setEditing]=useState<string|undefined>(),[draft,setDraft]=useState<NewsDraft>({...EMPTY_NEWS_DRAFT});
@@ -21,7 +23,8 @@ export default function AdminNewsPanel(){
   };
   return <section className="admin-news-panel" aria-label="Управление новостями">
     <header className="admin-news-heading"><div><h2>Новости и обновления</h2><p>Пишите новости, сообщайте о новых функциях и анонсируйте будущие изменения.</p></div><a href="https://lektrus.ru/#news" target="_blank" rel="noopener noreferrer" className="boards-secondary">На сайт ↗</a></header>
-    <div className="admin-news-layout"><div className="admin-news-list">
+    <div className="telegram-tabs"><button type="button" className={mode==="site"?"students-primary":"boards-secondary"} onClick={()=>setMode("site")}>Новости сайта</button><button type="button" className={mode==="telegram"?"students-primary":"boards-secondary"} onClick={()=>setMode("telegram")}>Telegram · @lektrus</button></div>
+    {mode==="telegram"?<AdminTelegramPanel/>:<div className="admin-news-layout"><div className="admin-news-list">
       <div className="admin-news-list-head"><strong>Публикации</strong><button type="button" className="students-primary" disabled={busy} onClick={fresh}>+ Новая запись</button></div>
       {loading?<p className="admin-news-placeholder">Загружаем публикации…</p>:articles.length===0?<p className="admin-news-placeholder">Записей пока нет.</p>:articles.slice(0,PAGE_SIZE).map(article=><button key={article.id} type="button" disabled={busy} aria-pressed={editing===article.id} className="admin-news-list-item" onClick={()=>open(article)}><span className="admin-news-list-meta"><span>{NEWS_CATEGORIES[article.category]}</span><span className={article.published_at?"is-published":"is-draft"}>{article.published_at?"Опубликовано":"Черновик"}</span></span><strong>{article.title}</strong><small>{newsDate(article.published_at||article.updated_at||null)}</small></button>)}
       {!loading&&(offset>0||articles.length>PAGE_SIZE)&&<div className="admin-news-pager"><button type="button" className="boards-secondary" disabled={!offset||busy} onClick={()=>setOffset(v=>v-PAGE_SIZE)}>←</button><span>{offset/PAGE_SIZE+1}</span><button type="button" className="boards-secondary" disabled={articles.length<=PAGE_SIZE||busy} onClick={()=>setOffset(v=>v+PAGE_SIZE)}>→</button></div>}
@@ -34,6 +37,6 @@ export default function AdminNewsPanel(){
       <label>Полный текст<textarea rows={9} maxLength={12000} disabled={busy} value={draft.body} onChange={e=>patch({body:e.target.value})} placeholder="Расскажите подробнее о возможности или обновлении…"/></label>
       <div className="admin-news-actions"><button type="button" disabled={busy||!draft.title.trim()} className="boards-secondary" onClick={()=>void save(false)}>{draft.published?"Снять с публикации":"Сохранить черновик"}</button><button type="button" disabled={busy||!draft.title.trim()||!draft.summary.trim()||!draft.body.trim()} className="students-primary" onClick={()=>void save(true)}>{busy?"Сохраняем…":draft.published?"Сохранить изменения":"Опубликовать"}</button></div>
       <small className="admin-news-editor-hint">Черновики не видны посетителям. Опубликованные записи появляются на сайте, без пересборки приложения.</small>
-    </div></div>
+    </div></div>}
   </section>;
 }

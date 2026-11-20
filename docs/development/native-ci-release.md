@@ -1,0 +1,7 @@
+# Native CI: release login gate
+
+Ordinary feature PRs verify the actual permanently signed APK on Android API 24, 30 and 36 (auth UI, cold launches, portrait layout, registration and recovery navigation, form entry). The isolated native API/realtime and self-hosted integration workflows still perform server login/permissions tests on disposable PostgreSQL. TLS certificate/hostname, APK signature and iOS build remain mandatory.
+
+A PR with a head branch named release/... runs the real HTTPS login on all three devices before merge. Pushes/dispatches on main also run the real HTTPS login. Release runs share a global GitHub Actions concurrency queue; the three device tests run one after another. The same reserved invalid address is kept; each test waits at least 80 seconds between its final request and the next possible device submit (server limit: 8 attempts in 600 seconds). HTTP 429 still triggers the existing 610-second cooldown and just one retry, then fails. Do not rotate test addresses, change production rate limits or publish an unverified APK.
+
+The main Android publish job still requires all three real HTTPS 401 results, the iOS build and the original release signing check. A superseded main run cannot publish. For ordinary development, choose feature branches; consolidate related changes on a release/... branch before shipping so full live checks happen once for the candidate, then once for the exact main APK before publication.

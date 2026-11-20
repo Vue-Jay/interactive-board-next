@@ -19,12 +19,12 @@ export type SelfhostUser = {
   is_admin: boolean;
   requested_at?: string | null;
   reviewed_at?: string | null;
-  subscription_plan?: "free" | "teacher" | "pro";
+  subscription_plan?: "free" | "pro";
   subscription_until?: string | null;
 };
 export type SelfhostSession = {access_token:string;refresh_token:string;expires_at:number;user:SelfhostUser};
 export type SelfhostBoard = {
-  id:string;owner_id:string;title:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;
+  id:string;owner_id:string;title:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;plan_read_only?:boolean;
   created_at:string;updated_at:string;
 };
 export type SelfhostDocument = {
@@ -74,8 +74,9 @@ let refreshInFlight:Promise<SelfhostSession|null>|null=null;
 
 export class SelfhostHttpError extends Error {
   readonly status:number;
-  constructor(status:number,message:string){
-    super(message);this.name="SelfhostHttpError";this.status=status;
+  readonly code?:string;
+  constructor(status:number,message:string,code?:string){
+    super(message);this.name="SelfhostHttpError";this.status=status;this.code=code;
   }
 }
 export function selfhostOrigin():string{
@@ -110,14 +111,16 @@ function saveSession(session:SelfhostSession|null){
 }
 export const cachedSelfhostSession=()=>loadSession();
 export function clearSelfhostSession(){refreshInFlight=null;saveSession(null);}
+export function notifyPlanLimit(detail:{resource?:string;message?:string}){if(typeof window!=="undefined")window.dispatchEvent(new CustomEvent("lektrus:plan-limit",{detail}));}
 async function responseError(response:Response):Promise<SelfhostHttpError>{
-  let detail="";
+  let detail="",code:string|undefined;
   try{
-    const data=await response.json() as {detail?:string|Array<{msg:string}>;message?:string};
+    const data=await response.json() as {detail?:string|Array<{msg:string}>|{code?:string;resource?:string;message?:string};message?:string};
     detail=typeof data.detail==="string"?data.detail:
-      Array.isArray(data.detail)?data.detail.map(x=>x.msg).join("; "):data.message||"";
+      Array.isArray(data.detail)?data.detail.map(x=>x.msg).join("; "):data.detail?.message||data.message||"";
+    if(typeof data.detail==="object"&&!Array.isArray(data.detail)&&data.detail?.code==="plan_limit"){code=data.detail.code;notifyPlanLimit(data.detail);}
   }catch{/* Do not display unsafe arbitrary response bodies. */}
-  return new SelfhostHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status));
+  return new SelfhostHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status),code);
 }
 // Android's native HTTPS transport avoids the WebView's cross-origin preflight
 // round trip and legacy Chromium networking. Do not patch global fetch: binary
@@ -634,7 +637,7 @@ export const selfhostSetStudentRole=()=>selfhostRequest<SelfhostUser>(
 export type SelfhostAdminUser={
   user_id:string;name:string;email:string;role:"teacher"|"student";
   teacher_status:"none"|"pending"|"approved"|"rejected";is_admin:boolean;
-  subscription_plan:"free"|"teacher"|"pro";subscription_until:string|null;created_at:string;
+  subscription_plan:"free"|"pro";subscription_until:string|null;created_at:string;
 };
 export type SelfhostTeacherRequest={
   user_id:string;name:string;email:string;status:"pending"|"approved"|"rejected";
@@ -664,7 +667,7 @@ export const selfhostReviewTeacherRequest=(userId:string,approve:boolean)=>selfh
     method:"POST",body:JSON.stringify({approve}),
   }
 );
-export const selfhostAdminSetSubscription=(userId:string,plan:"free"|"teacher"|"pro",until:string|null)=>
+export const selfhostAdminSetSubscription=(userId:string,plan:"free"|"pro",until:string|null)=>
   selfhostRequest<{ok:boolean}>("/api/v1/admin/users/"+encodeURIComponent(userId)+"/subscription",{
     method:"PATCH",body:JSON.stringify({plan,until}),
   });
@@ -924,6 +927,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           const message=JSON.parse(String(event.data));
+          if(message?.type==="plan_limit"){notifyPlanLimit(message);closeSocket();clearTimers();onStatus("offline");return;}
           if(message?.type==="pong"){
             clearTimeout(responseDeadline);responseDeadline=undefined;
           }

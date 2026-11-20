@@ -30,9 +30,13 @@ from document_delta import (
     encoded_bytes, document_bytes_from_parts,
 )
 from schema import apply_schema
+from billing import MESSAGES, limit_detail, make_billing_router
+from finance import make_finance_router
+from fastapi.responses import JSONResponse
 from board_history import ensure_baseline, record_revision, make_history_router
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
+from telegram_editor import telegram_enabled, run_telegram_editor, make_telegram_router
 from android_updates import router as android_updates_router
 
 ISSUER = "lektrus-selfhost"
@@ -72,6 +76,7 @@ async def lifespan(app: FastAPI):
     app.state.document_deltas = DeltaHistory()
     app.state.feedback_mail_wakeup = asyncio.Event()
     mail_task = None
+    telegram_task = None
     try:
         async with app.state.pool.acquire() as conn:
             if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
@@ -80,8 +85,13 @@ async def lifespan(app: FastAPI):
                 await conn.fetchval("SELECT 1")
         if os.getenv("LEKTRUS_SMTP_HOST", "").strip():
             mail_task = asyncio.create_task(run_feedback_mail(app.state.pool, app.state.feedback_mail_wakeup))
+        if telegram_enabled():
+            telegram_task = asyncio.create_task(run_telegram_editor(app.state.pool))
         yield
     finally:
+        if telegram_task:
+            telegram_task.cancel()
+            await asyncio.gather(telegram_task, return_exceptions=True)
         if mail_task:
             mail_task.cancel()
             await asyncio.gather(mail_task, return_exceptions=True)
@@ -95,6 +105,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 app.include_router(android_updates_router)
+
+@app.exception_handler(asyncpg.PostgresError)
+async def handle_database_error(request: Request, exc: asyncpg.PostgresError):
+    resource = exc.message.removeprefix('LEKTRUS_PLAN:')
+    if exc.sqlstate == 'PT409' and resource in MESSAGES:
+        return JSONResponse(status_code=409, content={'detail': limit_detail(resource)})
+    raise exc
+
 
 
 
@@ -171,7 +189,7 @@ def account_view(row: asyncpg.Record) -> dict[str, Any]:
         "is_admin": row["is_admin"],
         "requested_at": row["teacher_requested_at"].isoformat() if row.get("teacher_requested_at") else None,
         "reviewed_at": row["teacher_reviewed_at"].isoformat() if row.get("teacher_reviewed_at") else None,
-        "subscription_plan": row["subscription_plan"],
+        "subscription_plan": "pro" if row["subscription_plan"] == "pro" and row["subscription_until"] and row["subscription_until"] > datetime.now(timezone.utc) else "free",
         "subscription_until": row["subscription_until"].isoformat() if row["subscription_until"] else None,
     }
 
@@ -367,6 +385,20 @@ app.add_middleware(
 )
 
 
+def billing_seat_available(board_id: UUID, owner: UUID, actor: UUID) -> bool:
+    if actor == owner:
+        return True
+    peers = []
+    for peer_token in _subscribers.get(board_id, {}).values():
+        try:
+            peer = jwt_claims(peer_token)["sub"]
+        except HTTPException:
+            continue
+        if peer != str(owner) and peer not in peers:
+            peers.append(peer)
+    return str(actor) in peers[:5] if len(peers)>=5 else True
+
+
 async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
                        lock: bool = False):
     # Board row lock serializes the initial save against concurrent clients.
@@ -394,6 +426,8 @@ async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
     if role not in ("editor", "viewer"):
         # Do not reveal whether the board ID exists to outsiders.
         error(404, "Доска не найдена.")
+    if lock and not billing_seat_available(board_id, board["owner_id"], user_id) and not await conn.fetchval("SELECT billing_unlimited($1)",board["owner_id"]):
+        raise HTTPException(409, limit_detail("participants"))
     return board, role
 
 async def board_participant(conn, board_id, user, role):
@@ -409,10 +443,10 @@ async def board_participant(conn, board_id, user, role):
     return participant
 
 
-def board_view(row, role: str, participant: str | None = None) -> dict[str, Any]:
+def board_view(row, role: str, participant: str | None = None, plan_read_only: bool = False) -> dict[str, Any]:
     return {
         "id": str(row["id"]), "owner_id": str(row["owner_id"]),
-        "title": row["title"], "role": role,
+        "title": row["title"], "role": role, "plan_read_only": bool(row.get("plan_read_only", plan_read_only)),
         "participant_role": participant or ("owner" if role == "owner" else "observer" if role == "viewer" else "student"),
         "created_at": row["created_at"].isoformat(),
         "updated_at": row["updated_at"].isoformat(),
@@ -424,6 +458,7 @@ async def list_boards(request: Request, user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT b.id,b.owner_id,b.title,b.created_at,b.updated_at,b.deleted_at,
+                      billing_readonly(b.id) AND NOT $3::boolean AS plan_read_only,
                       CASE WHEN b.owner_id=$1 THEN 'owner' ELSE m.role END AS role,
                       CASE WHEN b.owner_id=$1 THEN 'owner'
                            WHEN m.role='viewer' THEN 'observer'
@@ -434,7 +469,7 @@ async def list_boards(request: Request, user=Depends(current_user)):
                 WHERE b.deleted_at IS NULL
                   AND (b.owner_id=$1 OR m.user_id IS NOT NULL)
                 ORDER BY b.updated_at DESC LIMIT 500""", user["id"],
-            user["account_role"] == "teacher" and user["teacher_status"] == "approved",
+            user["account_role"] == "teacher" and user["teacher_status"] == "approved", user["is_admin"],
         )
     return [board_view(row, row["role"], row["participant_role"]) for row in rows]
 
@@ -508,7 +543,7 @@ async def get_board(board_id: UUID, request: Request, user=Depends(current_user)
     async with request.app.state.pool.acquire() as conn:
         board, role = await board_access(conn, board_id, user["id"])
         participant = await board_participant(conn, board_id, user, role)
-        return board_view(board, role, participant)
+        return board_view(board, role, participant, not user["is_admin"] and await conn.fetchval("SELECT billing_readonly($1)", board_id))
 
 
 @app.patch("/api/v1/boards/{board_id}")
@@ -612,12 +647,14 @@ async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT u.id, s.id AS session_id, u.display_name,
-                      b.is_pilot, COALESCE(d.version, 0) AS version,
+                      b.is_pilot, b.owner_id, billing_unlimited(b.owner_id) AS unlimited, COALESCE(d.version, 0) AS version,
                       CASE WHEN b.id IS NULL THEN NULL
+                           WHEN billing_readonly(b.id) AND NOT u.is_admin AND (b.owner_id=u.id OR m.user_id IS NOT NULL) THEN 'viewer'
                            WHEN b.owner_id = u.id THEN 'owner'
                            WHEN u.is_admin THEN 'viewer'
                            ELSE m.role END AS role,
-                      CASE WHEN b.owner_id=u.id THEN 'owner'
+                      CASE WHEN billing_readonly(b.id) AND NOT u.is_admin THEN 'observer'
+                           WHEN b.owner_id=u.id THEN 'owner'
                            WHEN u.is_admin OR m.role='viewer' THEN 'observer'
                            WHEN m.participant_role='co_teacher' AND u.account_role='teacher' AND u.teacher_status='approved' THEN 'co_teacher'
                            WHEN m.participant_role IS NOT NULL THEN 'student'
@@ -1064,6 +1101,11 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         if len(_subscribers[board_id]) >= 100:
             await websocket.close(code=4429)
             return
+        # Reserve one seat for the owner; multiple tabs count once.
+        if not user["unlimited"] and not billing_seat_available(board_id,user["owner_id"],user["id"]):
+            await websocket.send_json({"type": "plan_limit", **limit_detail("participants")})
+            await websocket.close(code=4409)
+            return
         user_meta = {
             "user_id": str(user["id"]),
             "name": str(user["display_name"] or "Участник")[:100],
@@ -1113,6 +1155,10 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 refreshed_user, checked_peers, checked_rows = await authorize_live_frame(
                     websocket.app.state.pool, board_id, websocket, token, message.get("type")
                 )
+                if not refreshed_user["unlimited"] and not billing_seat_available(board_id,refreshed_user["owner_id"],refreshed_user["id"]):
+                    await websocket.send_json({"type":"plan_limit", **limit_detail("participants")})
+                    await websocket.close(code=4409)
+                    return
                 current_role = refreshed_user["role"]
                 participant_role = refreshed_user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student")
                 updated_presence = []
@@ -1234,8 +1280,11 @@ from education import make_education_router
 app.include_router(make_education_router(current_user, board_access))
 from admin import make_admin_router
 app.include_router(make_admin_router(current_user))
+app.include_router(make_billing_router(current_user))
+app.include_router(make_finance_router(current_user))
 from site_news import make_news_router
 app.include_router(make_news_router(current_user))
+app.include_router(make_telegram_router(current_user))
 from comments import make_comments_router
 app.include_router(make_comments_router(current_user, board_access, announce_comments))
 from materials import make_material_router

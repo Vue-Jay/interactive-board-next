@@ -4,7 +4,7 @@ import { getUserByEmail, getUserById, retrySelfhostInvitations, type AuthUser, t
 import { claimRemoteInvitations, deleteRemoteStorageObjects, isRemoteBackendEnabled, listRemoteStorageObjects, remoteRequest } from "./backend";
 import { isSelfhostBackendEnabled, selfhostRequest, SelfhostHttpError, type SelfhostBoard, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation, selfhostAdminBoards, selfhostAdminUserWorkspace } from "./selfhostApi";
 
-export type BoardSummary={id:string;title:string;ownerId:string;role:BoardRole;participantRole?:BoardParticipantRole;createdAt:string;updatedAt:string;deletedAt?:string|null;purgeAfter?:string|null;purgeQueued?:boolean;purgeAssetCount?:number};
+export type BoardSummary={id:string;title:string;ownerId:string;role:BoardRole;participantRole?:BoardParticipantRole;planReadOnly?:boolean;createdAt:string;updatedAt:string;deletedAt?:string|null;purgeAfter?:string|null;purgeQueued?:boolean;purgeAssetCount?:number};
 export type BoardMember={boardId:string;userId:string;role:Exclude<BoardRole,"owner">;participantRole?:InvitedParticipantRole;addedAt:string};
 export type BoardInvitation={id:string;boardId:string;email:string;role:Exclude<BoardRole,"owner">;participantRole?:InvitedParticipantRole;createdAt:string};
 export type BoardAccessMember=BoardMember&{user:AuthUser|null};
@@ -22,7 +22,7 @@ export const boardStorageKey=(id:string)=>LEKTRUS_LOCAL_TEST_MODE?
 const localRole=(u:string,b:string):BoardRole|null=>{const x=boards().find(v=>v.id===b);if(!x)return null;if(x.ownerId===u)return"owner";return members().find(m=>m.boardId===b&&m.userId===u)?.role??null};
 const claimLocal=(user:AuthUser)=>{const matched=invites().filter(i=>norm(i.email)===norm(user.email));if(!matched.length)return;const next=members();for(const i of matched)if(!next.some(m=>m.boardId===i.boardId&&m.userId===user.id))next.push({boardId:i.boardId,userId:user.id,role:i.role,addedAt:new Date().toISOString()});write(MEMBERS_KEY,next);write(INVITES_KEY,invites().filter(i=>!matched.some(x=>x.id===i.id)))};
 
-const rowToBoard=(row:any,role:BoardRole):BoardSummary=>({id:row.id,title:row.title,ownerId:row.owner_id,role,participantRole:row.participant_role,createdAt:row.created_at,updatedAt:row.updated_at,deletedAt:row.deleted_at??null,purgeAfter:row.purge_after??null,purgeQueued:!!row.purge_queued,purgeAssetCount:Number(row.purge_asset_count??0)});
+const rowToBoard=(row:any,role:BoardRole):BoardSummary=>({id:row.id,title:row.title,ownerId:row.owner_id,role,participantRole:row.participant_role,planReadOnly:!!row.plan_read_only,createdAt:row.created_at,updatedAt:row.updated_at,deletedAt:row.deleted_at??null,purgeAfter:row.purge_after??null,purgeQueued:!!row.purge_queued,purgeAssetCount:Number(row.purge_asset_count??0)});
 
 const remoteBoardCacheKey=(userId:string)=>isSelfhostBackendEnabled()
  ? `${REMOTE_BOARD_CACHE_PREFIX}selfhost.${userId}`

@@ -421,6 +421,7 @@ async def test_thirty_socket_sustained_classroom_load(monkeypatch):
             "INSERT INTO account_sessions(id,user_id,refresh_sha256,expires_at) VALUES($1,$2,$3,now()+interval '1 hour')",
             [(sid, uid, str(sid)) for uid, sid in identities],
         )
+        await conn.execute("UPDATE account_users SET subscription_plan='pro',subscription_until=now()+interval '1 day' WHERE id=$1", identities[0][0])
         await conn.execute("INSERT INTO boards(id,owner_id,title) VALUES($1,$2,'Load test')", board_id, identities[0][0])
         await conn.executemany("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,$3)",
                                [(board_id, uid, "editor" if i < active else "viewer")

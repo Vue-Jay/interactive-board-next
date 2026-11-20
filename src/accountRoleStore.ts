@@ -7,7 +7,7 @@ import {
 } from "./selfhostApi";
 export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
-export type SubscriptionPlan="free"|"teacher"|"pro";
+export type SubscriptionPlan="free"|"pro";
 export type AccountAccess={role:AccountRole;teacherStatus:TeacherStatus;isAdmin:boolean;requestedAt:string|null;reviewedAt:string|null;subscriptionPlan:SubscriptionPlan;subscriptionUntil:string|null};
 export type TeacherApplication={phone:string;city:string;organization:string;focusArea:string;experience:string;motivation:string};
 export type TeacherRequest={userId:string;name:string;email:string;status:TeacherStatus;requestedAt:string|null;reviewedAt:string|null;application:TeacherApplication|null};
@@ -20,7 +20,7 @@ const PERSISTENT_CACHE_PREFIX="onlinerepetitor.account-access.v244.";
 let cache:{userId:string;at:number;value:AccountAccess}|null=null;
 let inFlight:{userId:string;promise:Promise<AccountAccess>}|null=null;
 let cacheGeneration=0;
-const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":x==="teacher"||x==="basic"?"teacher":"free";
+const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":"free";
 const LOCAL_ROLE_PREFIX="lektrus.local-account-role.v1.";
 const currentLocalUserId=():string=>{
  try { return String(JSON.parse(localStorage.getItem("lesson-board.auth.session.v1")||"{}")?.userId||""); }
