@@ -81,9 +81,11 @@ assert.ok(app.includes('if (item.kind === "graph") return boardObjectTypeName(it
 // when nothing is selected, never another overlapping object action bar.
 assert.ok(app.includes('selectedItems.length===0 && <LectrisQuickProperties'),
  "Selected objects must not mount a second fixed toolbar over their actions");
-const graphEdit=app.match(/\(\["text","sticky","frame","comment","formula"[^\n]+\.includes\(singleSelected\.kind\)\)\&\&/);
-assert.ok(graphEdit && !graphEdit[0].includes('"graph"'),
- "Graphs must have the original Configure action without duplicate Edit");
+const genericEdit=app.match(/\(\[([^\]]+)\]\.includes\(singleSelected\.kind\)\)\&\&\s*<button[^>]+className="selection-edit-action"/);
+assert.ok(genericEdit,"The generic edit action must be explicitly limited by object type");
+assert.deepEqual(JSON.parse("["+genericEdit[1]+"]"),["text","image"],
+ "Only text and image need the generic editor action; other editors have specific actions");
+assert.ok(!app.includes('className="edit-selected"'),"No duplicate top-left edit chip");
 assert.ok(app.includes('className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"'),
  "The original Configure button must remain intact");
 const touchPolish=file("src/lektrusMathTouchPolish.css");
