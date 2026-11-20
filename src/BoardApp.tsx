@@ -2088,7 +2088,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setSelfhostBoardMode(boardSummary.id,selfhostMode);
     return()=>setSelfhostBoardMode(boardSummary.id,false);
   },[boardSummary.id,selfhostMode]);
-  const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
+  const layoutEditing=!demoMode&&new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const [rolePreview,setRolePreview]=useState<BoardRolePreview>(globalRolePreview);
   useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview]);
   const roleCapabilities=boardRoleCapabilities({
@@ -2100,7 +2100,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
   const canSaveTemplate=isBoardOwner && accountRole==="teacher" && !isStudent && !authUser.isGuest && !demoMode && !layoutEditing;
   const adminHidden = showAdminControls && adminInvisible;
-  const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
+  const toolAllowedForRole = (id:Tool) => (!demoMode||id!=="linkmedia")&&canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
   const canTransformBoardObject=(item:Item|null|undefined)=>
@@ -2230,7 +2230,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       return {wheel:v?.wheel==="scroll"?"scroll":defaultControlSettings.wheel,zoomSpeed:Math.max(.4,Math.min(3,Number(v?.zoomSpeed)||1)),panSpeed:Math.max(.4,Math.min(3,Number(v?.panSpeed)||1)),invertZoom:v?.invertZoom===true,horizontalShift:v?.horizontalShift!==false};
     }catch{return {...defaultControlSettings}}
   });
-  useEffect(()=>{try{localStorage.setItem(controlSettingsKey,JSON.stringify(controlSettings))}catch{}},[controlSettingsKey,controlSettings]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(controlSettingsKey,JSON.stringify(controlSettings))}catch{}},[controlSettingsKey,controlSettings]);
   const controlSettingsRef=useRef(controlSettings);
   controlSettingsRef.current=controlSettings;
   const [developerPrefs, setDeveloperPrefs] = useState(readDeveloperPreferences);
@@ -2415,6 +2415,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // A personal background is viewport preference, never part of the shared board document.
   const personalBackgroundKey="lektrus.personal-background.v1."+authUser.id+"."+boardSummary.id;
   const [personalBackground,setPersonalBackground]=useState<BoardBackground|null>(()=>{
+    if(demoMode)return null;
     try{
       const raw=localStorage.getItem("lektrus.personal-background.v1."+authUser.id+"."+boardSummary.id);
       return raw?normalizeBoardBackground(JSON.parse(raw)):null;
@@ -2437,10 +2438,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!shared && !personalBackground)setPersonalBackground(normalizeBoardBackground(boardBackground));
   };
   useEffect(()=>{
-    if(backgroundIsShared||!personalBackground)return;
+    if(demoMode||backgroundIsShared||!personalBackground)return;
     try{localStorage.setItem(personalBackgroundKey,JSON.stringify(personalBackground))}catch{/* Storage blocked */}
-  },[backgroundIsShared,personalBackground,personalBackgroundKey]);
+  },[backgroundIsShared,personalBackground,personalBackgroundKey,demoMode]);
   const [previous, setPrevious] = useState<DocumentData | null>(() => {
+    if(demoMode)return null;
     try {
       const raw = localStorage.getItem(storageKey + ".before-import");
       return raw ? parseDocument(raw) : null;
@@ -2463,7 +2465,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const setMarkerColor = (value: string) => setInkPreferences(current => withInkSetting(current, "marker", { color: value }));
   const setWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "pen", { size: value }));
   const setMarkerWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "marker", { size: value }));
-  useEffect(() => { writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
+  useEffect(() => { if(!demoMode)writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
   const [eraserSize, setEraserSize] = useState(22);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const guideX=useRef<HTMLDivElement>(null);
@@ -2550,16 +2552,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }catch{return defaults}
   });
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
-  useEffect(()=>{try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
   const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent,canEdit]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
-  useEffect(()=>{try{localStorage.setItem(lectrisLayoutKey,lectrisLayout)}catch{}},[lectrisLayoutKey,lectrisLayout]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisLayoutKey,lectrisLayout)}catch{}},[lectrisLayoutKey,lectrisLayout]);
   const lectrisPanelsKey="lectris.panels.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const [lectrisPanelLayout,setLectrisPanelLayout]=useState<LectrisPanelLayout>(()=>readLectrisPanelLayout(lectrisPanelsKey));
   const [lectrisPanelSettingsOpen,setLectrisPanelSettingsOpen]=useState(false);
-  useEffect(()=>{try{localStorage.setItem(lectrisPanelsKey,JSON.stringify(lectrisPanelLayout))}catch{}},[lectrisPanelsKey,lectrisPanelLayout]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisPanelsKey,JSON.stringify(lectrisPanelLayout))}catch{}},[lectrisPanelsKey,lectrisPanelLayout]);
   const lectrisSavedLayoutKey="lectris.named-layouts.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const [lectrisSavedLayouts,setLectrisSavedLayouts]=useState<LectrisSavedLayout[]>(()=>{
     try{
@@ -2570,7 +2572,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }catch{return []}
   });
   const [lectrisLayoutName,setLectrisLayoutName]=useState("");
-  useEffect(()=>{try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(lectrisSavedLayouts))}catch{}},[lectrisSavedLayoutKey,lectrisSavedLayouts]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(lectrisSavedLayouts))}catch{}},[lectrisSavedLayoutKey,lectrisSavedLayouts]);
   const saveLectrisLayout=()=>{
     const name=lectrisLayoutName.trim().slice(0,40);
     if(!name)return;
@@ -2602,7 +2604,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!canManageBoard||boardSummary.ownerId!==authUser.id)return;
     const next={...lectrisBoardOrganization,subject:normalizeLektrusSubject(subject)};
     setLectrisBoardOrganization(next);
-    queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
+    if(!demoMode)queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
     // An untouched worksheet follows the classroom subject. The first written
     // exercise locks its subject and preserves the design and its editor types.
     const tone=subjectToneForSubject(next.subject);
@@ -2619,8 +2621,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
     }
   };
-  const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject),[lectrisBoardOrganization.subject]);
+  const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject).filter(entry=>!demoMode||entry.id.startsWith("subject-task-")),[lectrisBoardOrganization.subject,demoMode]);
   const [view, setView] = useState<View>(() => {
+    if (demoMode) return initial.data.view;
     try {
       const raw = localStorage.getItem(viewStorageKey);
       if (!raw) return initial.data.view;
@@ -2888,7 +2891,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
-  const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
+  const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}].map(group=>demoMode&&group.id==="media"?{...group,label:"Фото / PDF"}:group);
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   const touchEditorViewport=isCoarsePointer||Capacitor.isNativePlatform();
@@ -3113,6 +3116,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // without broadcasting pan/zoom changes as document revisions.
   useEffect(() => {
     viewRef.current = view;
+    if (demoMode) return;
     if (viewSaveTimer.current) clearTimeout(viewSaveTimer.current);
     viewSaveTimer.current = setTimeout(() => {
       viewSaveTimer.current = null;
@@ -3127,9 +3131,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return () => {
       if (viewSaveTimer.current) clearTimeout(viewSaveTimer.current);
     };
-  }, [view, viewStorageKey]);
+  }, [view, viewStorageKey,demoMode]);
 
   useEffect(() => {
+    if (demoMode) return;
     const saveViewNow = () => {
       try {
         const serialized = JSON.stringify(viewRef.current);
@@ -3149,7 +3154,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       window.removeEventListener("pagehide", saveViewNow);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [viewStorageKey]);
+  }, [viewStorageKey,demoMode]);
   useEffect(() => {
     if (!presentation || !presentationTimerRunning) return;
     const id = window.setInterval(() => {
@@ -3293,7 +3298,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance, acknowledgeRemoteInk]);
 
   const flushSave = useCallback(() => {
-    if (!canEdit || layoutEditing) return;
+    if (!canEdit || layoutEditing || demoMode) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
     labCheckpointStartedAt.current = null;
@@ -3375,7 +3380,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         : itemsRef.current,
     });
     snapshot.current = data;
-    if (!canEdit) return;
+    if (!canEdit||demoMode) return;
     // Do not hash/stringify the entire board on every keystroke or React update.
     // The debounced flush performs both operations once after editing settles.
     setSaveStatus("Сохранение…");
@@ -3459,6 +3464,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const saveBeforeLeaving=async (logout=false)=>{
     if(leavingBoard)return;
+    if(demoMode){onBackToBoards();return;}
     setLeavingBoard(true);
     try{
       finishEdit();
@@ -3773,6 +3779,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!fromRemote) flushSave();
   };
   const importBoard = async (file: File) => {
+    if (demoMode) return;
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if (isStudent&&!isBoardOwner) { setNotice("Импорт с заменой доски доступен только владельцу или преподавателю"); return; }
     try {
@@ -3981,7 +3988,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const aiTransferHandledRef = useRef<string|null>(null);
   useEffect(()=>{
-    if(!canCreateAssignments)return;
+    if(demoMode||!canCreateAssignments)return;
     const transfer=peekAiBoardTransfer();
     if(!transfer||aiTransferHandledRef.current===transfer.queuedAt)return;
     const rect=board.current?.getBoundingClientRect();
@@ -3995,7 +4002,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setTool("select");
     clearAiBoardTransfer();
     setNotice(created.length===1?"AI-материал добавлен на доску":`AI-материалы добавлены на доску · ${created.length}`);
-  },[boardSummary.id,canCreateAssignments]);
+  },[boardSummary.id,canCreateAssignments,demoMode]);
 
   const zoom = (factor: number, anchor?: Point) => {
     if (gesture.current) return;
@@ -4181,7 +4188,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       : [item.id];
 
   useEffect(()=>{
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing)return;
     const channel=connectAttachmentApprovalChannel(
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
@@ -4204,7 +4211,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       pendingAttachmentTimers.current.clear();
       pendingAttachmentStarted.current.clear();
     };
-  },[boardSummary.id,authUser.id,authUser.name,isStudent]);
+  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode]);
 
   const addMediaFile = async (file: File, position?: Point, offset = 0) => {
     if (!canEdit) throw new Error("У вас доступ только для просмотра");
@@ -4268,10 +4275,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return item;
   };
 
-  const openLinkMediaEditor=(item?:Item)=>{setLinkMediaEditId(item?.kind==="linkmedia"?item.id:null);setLinkMediaUrl(item?.kind==="linkmedia"?item.mediaUrl??"":"");setLinkMediaTitle(item?.kind==="linkmedia"?item.mediaTitle??"":"");setLinkMediaOpen(true)};
-  const saveLinkMedia=()=>{if(!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){commit(itemsRef.current.map(i=>i.id===linkMediaEditId?{...i,mediaUrl:info.sourceUrl,mediaTitle:title}:i));setNotice("Ссылка мультимедиа обновлена")}else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
+  const openLinkMediaEditor=(item?:Item)=>{if(demoMode)return;setLinkMediaEditId(item?.kind==="linkmedia"?item.id:null);setLinkMediaUrl(item?.kind==="linkmedia"?item.mediaUrl??"":"");setLinkMediaTitle(item?.kind==="linkmedia"?item.mediaTitle??"":"");setLinkMediaOpen(true)};
+  const saveLinkMedia=()=>{if(demoMode||!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){commit(itemsRef.current.map(i=>i.id===linkMediaEditId?{...i,mediaUrl:info.sourceUrl,mediaTitle:title}:i));setNotice("Ссылка мультимедиа обновлена")}else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
 
-  useEffect(()=>{if(!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit]);
+  useEffect(()=>{if(demoMode||!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit,demoMode]);
 
   const approveAttachmentRequest=(request:AttachmentApprovalRequest)=>{
     if(isStudent)return;
@@ -6829,7 +6836,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!formulaEditorId || !formulaDraft) { closeFormulaEditor(); return; }
     const textValue = formulaDraft.text.slice(0, 10000);
     const fontSize = Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize)));
-    if (textValue.trim()) { const history=[textValue,...formulaHistory.filter((value)=>value!==textValue)].slice(0,12); setFormulaHistory(history); localStorage.setItem("onlinerepetitor.formula-history.v54",JSON.stringify(history)); }
+    if (textValue.trim()) { const history=[textValue,...formulaHistory.filter((value)=>value!==textValue)].slice(0,12); setFormulaHistory(history); if(!demoMode)localStorage.setItem("onlinerepetitor.formula-history.v54",JSON.stringify(history)); }
     commit((pendingMathItem?.kind==="formula"&&pendingMathItem.id===formulaEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map((item) => item.id === formulaEditorId ? {
       ...item,
       text: textValue,
@@ -7820,7 +7827,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing)return;
     if(selfhostMode){
       return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
         if(!latest.document)return;
@@ -7834,19 +7841,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return subscribeBoardDocument(
       boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus
     );
-  },[boardSummary.id,layoutEditing,selfhostMode]);
+  },[boardSummary.id,layoutEditing,selfhostMode,demoMode]);
 
   useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible]);
 
-  useEffect(() => layoutEditing?()=>{}:subscribeBoardPresence(
+  useEffect(() => demoMode||layoutEditing?()=>{}:subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
     setPresenceUsers,
     !adminHidden,
-  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
+  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
 
   useEffect(() => {
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing)return;
     let active=true;
     if(acknowledgedBoardData.current)acknowledgeRemoteInk(acknowledgedBoardData.current);
     const channel = connectBoardCursorChannel(
@@ -7886,10 +7893,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       remoteInkStore.reset();
       remoteEraseStore.reset();remoteEraseTargets.current.clear();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode]);
 
   useEffect(() => {
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing)return;
     const channel = connectBoardViewControl(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name },
@@ -7914,7 +7921,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       viewControlChannel.current = null;
       channel.close();
     };
-  }, [boardSummary.id, authUser.id, authUser.name]);
+  }, [boardSummary.id, authUser.id, authUser.name,demoMode]);
 
   useEffect(() => {
     followTeacherRef.current = followTeacher;
@@ -7941,7 +7948,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     });
   },[itemById]);
   useEffect(() => {
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing)return;
     const channel = connectBoardWorkChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
@@ -8046,7 +8053,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setRemoteObjectPoses({});
       setRemoteWork({});
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
 
   useEffect(() => {
     if(!adminHidden) workChannel.current?.publish(selected,
@@ -8172,7 +8179,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </div>}
       {linkMediaOpen&&<div className="access-backdrop link-media-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setLinkMediaOpen(false)}}><section className="access-modal link-media-dialog"><div className="access-head"><div><h2>{linkMediaEditId?"Изменить мультимедиа":"Мультимедиа по ссылке"}</h2><p>Файл не загружается в Lektrus и не занимает Storage.</p></div><button onClick={()=>setLinkMediaOpen(false)}>×</button></div><label className="link-media-field"><span>Ссылка</span><input value={linkMediaUrl} onChange={e=>setLinkMediaUrl(e.target.value)} placeholder="YouTube, Vimeo, MP3, MP4 или другая http/https ссылка"/></label><label className="link-media-field"><span>Название</span><input value={linkMediaTitle} onChange={e=>setLinkMediaTitle(e.target.value)} placeholder="Необязательно"/></label><div className="link-media-support"><strong>Внутренний плеер</strong><span>YouTube и Vimeo открываются внутри доски. Прямые ссылки на MP3/MP4/WebM и другие поддерживаемые браузером файлы используют встроенный HTML5-плеер. Для остальных ссылок показывается безопасная карточка перехода.</span></div><div className="access-actions"><button onClick={()=>setLinkMediaOpen(false)}>Отмена</button><button className="boards-create" onClick={saveLinkMedia}>{linkMediaEditId?"Сохранить":"Добавить на доску"}</button></div></section></div>}
 
-      {sharing && <ShareDialog board={boardSummary} user={authUser} onClose={() => setSharing(false)}/>}
+      {!demoMode&&sharing && <ShareDialog board={boardSummary} user={authUser} onClose={() => setSharing(false)}/>}
       {showAdminControls && developerSettingsOpen && <div className="access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setDeveloperSettingsOpen(false)}}>
         <section className="access-modal" style={{width:"min(480px,calc(100vw - 24px))",maxHeight:"85vh",overflowY:"auto"}}>
           <div className="access-head"><div><h2>Настройки разработчика</h2><p>Диагностика только для администратора этой доски</p></div><button type="button" aria-label="Закрыть" onClick={()=>setDeveloperSettingsOpen(false)}>×</button></div>
@@ -8363,7 +8370,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           {remoteEditingCount > 0 && <span className="collab-editing-status" title="Сейчас другие участники редактируют объекты">
             ✎ {remoteEditingCount}
           </span>}
-          {canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
+          {!demoMode&&canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
           {discussionEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
@@ -8394,7 +8401,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" disabled={index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
               </div>
               <div className="topbar-menu-section">
-                <button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>
+                {!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
                 {previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
                 <button onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportBoard()}}><Icon name="download" size={16}/><span>Скачать копию</span></button>
               </div>
@@ -8402,7 +8409,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>
               </div>}
               <div className="topbar-menu-section">
-                <button className="topbar-menu-danger" disabled={leavingBoard} onClick={()=>void saveBeforeLeaving(true)}><Icon name="close" size={16}/><span>Выйти из аккаунта</span></button>
+                <button className="topbar-menu-danger" disabled={leavingBoard} onClick={()=>void saveBeforeLeaving(true)}><Icon name="close" size={16}/><span>{demoMode?"Закрыть демо":"Выйти из аккаунта"}</span></button>
               </div>
             </div>
           </details>
@@ -9384,9 +9391,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
-          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{canEdit&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
+          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!demoMode&&canEdit&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
-            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
+            {mobileToolGroups.map(group=>({...group,label:demoMode&&group.tools.includes("linkmedia")?"Фото / PDF":group.label,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
           </div>
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
@@ -9409,7 +9416,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
-          {canEdit&&<button type="button" className="toolbar-ai-button" title="AI-помощник по доске" aria-label="AI-помощник по доске" onClick={()=>{finishEdit();setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}}>
+          {!demoMode&&canEdit&&<button type="button" className="toolbar-ai-button" title="AI-помощник по доске" aria-label="AI-помощник по доске" onClick={()=>{finishEdit();setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}}>
             <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
           </button>}
           <button type="button" className="toolbar-command-search" title="Найти инструмент · Ctrl+K" aria-label="Найти инструмент" onClick={()=>{setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}}>
@@ -9448,6 +9455,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {canCreateAssignments&&subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
+            if(demoMode&&!id.startsWith("subject-task-"))return;
             if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
             const rect=board.current?.getBoundingClientRect();
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
@@ -9520,7 +9528,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           }
         }}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
-          tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso"&&t.id!=="graph"&&t.id!=="formula").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
+          tools={tools.filter(t=>(!demoMode||t.id!=="linkmedia")&&t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso"&&t.id!=="graph"&&t.id!=="formula").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
           onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>id!=="formula"&&id!=="graph"&&tools.some(t=>t.id===id)))}
           onClose={()=>setLectrisCustomizeOpen(false)}/>}
@@ -9538,7 +9546,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div><Icon name="media" size={17}/><span><b>На согласовании</b><small>{pendingAttachmentRequests.length===1?pendingAttachmentRequests[0].name:`Вложений: ${pendingAttachmentRequests.length}`}</small></span></div>
           <button onClick={()=>{for(const request of pendingAttachmentRequests)sendAttachmentRequest(request);setNotice("Запрос повторно отправлен преподавателю")}}>Отправить снова</button>
         </aside>}
-        {boardAiOpen&&canEdit&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
+        {!demoMode&&boardAiOpen&&canEdit&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
           <section className={`board-ai-panel ${boardAiMode==="assistant"?"has-assistant":""}`} role="dialog" aria-modal="true" aria-label="AI-помощник по доске">
             <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник по доске</strong><span>Команды, поиск, анализ и учебные материалы</span></div></div><button type="button" onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
             <nav className="board-ai-mode-tabs" aria-label="Режим помощника">

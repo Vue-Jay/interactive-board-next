@@ -67,8 +67,8 @@ function readPage():Page{
  if(["teachers","students","tools","how","about"].includes(hash))return "home";
  return /^[a-z][a-z0-9-]{0,39}$/.test(hash)?hash:"home";
 }
-function DemoLink({scene="math",children,className=""}:{scene?:string;children:ReactNode;className?:string}){
- return <a className={className} href={"/demo/board?scene="+encodeURIComponent(scene)}>{children}</a>;
+function DemoLink({children,className=""}:{children:ReactNode;className?:string}){
+ return <a className={className} href="/demo/board">{children}</a>;
 }
 
 function SiteMenuIcon({name}:{name:string}){

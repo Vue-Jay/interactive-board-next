@@ -379,12 +379,13 @@ export default function App() {
       }catch(error){const message=error instanceof Error?error.message:"Не удалось подтвердить email";console.warn("Lektrus email confirmation could not be completed",error);if(alive)setAuthCallbackError(message);return false}
     };
     const initialize=async()=>{
+      if(route.kind==="demo"){if(alive)setAuthReady(true);return;}
       if(new URLSearchParams(window.location.search).has("password-reset")){
         await logoutUser();
         if(alive){setAuthUser(null);setAuthReady(true)}
         return;
       }
-      if(route.kind==="site"||route.kind==="demo"){
+      if(route.kind==="site"){
         if(alive)setAuthReady(true);
         return;
       }
@@ -420,7 +421,7 @@ export default function App() {
   // Load the administrator-published interface design for every signed-in
   // account. Refresh on return to the app so other devices pick up updates.
   useEffect(()=>{
-    if(!authReady||!authUser||!(isRemoteBackendEnabled()||isSelfhostBackendEnabled()))return;
+    if(route.kind==="demo"||!authReady||!authUser||!(isRemoteBackendEnabled()||isSelfhostBackendEnabled()))return;
     if(new URLSearchParams(window.location.search).get("layout-editor")==="1")return;
     let alive=true;
     let pending=false;
@@ -435,7 +436,7 @@ export default function App() {
     const interval=window.setInterval(()=>{if(document.visibilityState==="visible")void refresh()},15_000);
     window.addEventListener("focus",refresh);
     return()=>{alive=false;window.clearInterval(interval);window.removeEventListener("focus",refresh)};
-  },[authReady,authUser?.id]);
+  },[authReady,authUser?.id,route.kind]);
 
   const logout = () => {
     // Local test APK is deliberately passwordless. "Exit" returns home
@@ -645,7 +646,7 @@ export default function App() {
       authUser?.teacherStatus, authUser?.isAdmin, studioAdminAccess, navigate, openBoard, submittedSharePassword, mobileJoinUrl]);
 
   useEffect(()=>{
-    if(!authUser)return;
+    if(route.kind==="demo"||!authUser)return;
     let alive=true,lastRefresh=0,inFlight=false;
     const apply=(x:Awaited<ReturnType<typeof getAccountAccess>>)=>{if(alive){setAccountRoleState(x.role);setIsAppAdmin(x.isAdmin)}};
     const cached=getCachedAccountAccess();if(cached)apply(cached);
@@ -662,7 +663,7 @@ export default function App() {
     window.addEventListener("online",refresh);
     document.addEventListener("visibilitychange",onVisibility);
     return()=>{alive=false;window.removeEventListener("onlinerepetitor:account-access",listener);window.removeEventListener("focus",refresh);window.removeEventListener("online",refresh);document.removeEventListener("visibilitychange",onVisibility)}
-  },[authUser?.id]);
+  },[authUser?.id,route.kind]);
 
   useEffect(()=>{if(!isAppAdmin)setAppRolePreview("actual")},[isAppAdmin]);
 
