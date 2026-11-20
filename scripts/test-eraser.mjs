@@ -12,6 +12,35 @@ const compiled = ts.transpileModule(source, {
 const exports = {};
 runInNewContext(compiled, { exports, crypto: { randomUUID } }, { filename: "inkEraser.js" });
 const { eraseInkAlongPath } = exports;
+// Sticker-local ink must survive parsing and use the same partial eraser.
+const modelExports={};
+const modelSource=readFileSync(new URL("../src/boardModel.ts",import.meta.url),"utf8");
+runInNewContext(ts.transpileModule(modelSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:modelExports,crypto:{randomUUID}});
+const stickerExports={};
+const stickerSource=readFileSync(new URL("../src/stickerInk.ts",import.meta.url),"utf8");
+runInNewContext(ts.transpileModule(stickerSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{
+  exports:stickerExports,require:name=>name==="./boardModel"?modelExports:exports,crypto:{randomUUID}
+});
+const {stickerAt,makeStickerInk,stickerInkPixels,eraseStickerInk}=stickerExports;
+const card={id:"card",kind:"sticky",x:100,y:100,width:200,height:100,text:"",color:"#fff3a6"};
+assert.equal(stickerAt([card],{x:150,y:120}),card);
+assert.equal(stickerAt([card],{x:400,y:120}),undefined);
+const ink=makeStickerInk(card,{id:"attached",kind:"pen",color:"#123456",weight:4},[{x:120,y:150},{x:280,y:150}],1);
+const annotated={...card,stickerInk:[ink]};
+const recovered=modelExports.parseDocument(JSON.stringify({version:1,title:"Test",view:{x:0,y:0,zoom:1},items:[annotated]})).items[0];
+assert.equal(JSON.stringify(recovered.stickerInk),JSON.stringify([ink]));
+assert.equal(JSON.stringify(stickerInkPixels({...card,x:500,y:600},ink)),JSON.stringify(stickerInkPixels(card,ink)));
+assert.equal(stickerInkPixels({...card,width:400,height:200},ink).points[0].x,40);
+const rotated={...card,rotation:90};
+const rotatedInk=makeStickerInk(rotated,{id:"rotated",kind:"marker",color:"#123456",weight:8},[{x:200,y:75},{x:200,y:225}],1);
+assert.ok(Math.abs(rotatedInk.points[0].x-.125)<1e-8);
+assert.equal(eraseStickerInk(annotated,[{x:200,y:150}],5).stickerInk.length,2);
+assert.equal(eraseStickerInk(annotated,[{x:200,y:350}],5),annotated);
+assert.throws(()=>modelExports.parseDocument(JSON.stringify({version:1,title:"Test",view:{x:0,y:0,zoom:1},items:[{...annotated,stickerInk:[{...ink,weight:-1}]}]})),/рисунок стикера/);
+const mergeExports={};
+runInNewContext(ts.transpileModule(readFileSync(new URL("../src/lektrusLiveEditorMerge.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:mergeExports});
+const concurrent=mergeExports.mergeEditedValue(card,annotated,{...card,stickerInk:[rotatedInk]});
+assert.equal(concurrent.stickerInk.length,2,"Concurrent first strokes must both survive");
 assert.equal(typeof eraseInkAlongPath, "function");
 
 const point = (x, y) => ({ x, y });

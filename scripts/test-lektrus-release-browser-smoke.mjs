@@ -563,6 +563,63 @@ try{
  for(let dx=12;dx<=84;dx+=12)await mouse("mouseMoved",demoCanvas.x+dx,demoCanvas.y+20,{pressed:true});
  await mouse("mouseReleased",demoCanvas.x+84,demoCanvas.y+20);
  await wait('!!document.querySelector(".viewer-ink-canvas")',"Demo pencil did not render");
+ // Sticker ink is part of the card, not an independent canvas object.
+ await click('.lektrus-desktop-sections button[aria-label="Текст"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-group--create")',"Text tool catalogue did not open");
+ assert.ok(await evaluate('(()=>{const b=[...document.querySelectorAll(".lektrus-tool-overflow-group--create button")].find(b=>b.textContent.trim()==="Стикер");b?.click();return !!b})()'),"Sticker tool missing");
+ await wait('document.querySelector("section.board")?.classList.contains("board-tool-sticky")',"Sticker tool not selected");
+ await mouse("mousePressed",demoCanvas.x-180,demoCanvas.y-120,{pressed:true});
+ await mouse("mouseReleased",demoCanvas.x-180,demoCanvas.y-120);
+ await wait('!!document.querySelector(".object-sticky.selected")',"Sticker was not created");
+ assert.equal(await evaluate('!!document.querySelector(".object-sticky .text-editor,.object-sticky .text-placeholder,.selection-toolbar-screen .selection-edit-action")'),false,"Sticker must not expose a text editor");
+ const cardBefore=await rect(".object-sticky");
+ await click('.toolbar-pinned button[aria-label^="Карандаш"]');
+ await mouse("mousePressed",cardBefore.x-30,cardBefore.y-10,{pressed:true});
+ for(let dx=-20;dx<=30;dx+=10)await mouse("mouseMoved",cardBefore.x+dx,cardBefore.y+dx/3,{pressed:true});
+ await mouse("mouseReleased",cardBefore.x+30,cardBefore.y+10);
+ await wait('!!document.querySelector(".sticker-ink-layer polyline")',"Drawing did not attach to sticker");
+ const attached=await evaluate('document.querySelector(".sticker-ink-layer polyline").getAttribute("points")');
+ await click(".toolbar-pinned button:first-child");
+ await mouse("mousePressed",cardBefore.x,cardBefore.y,{pressed:true});
+ await mouse("mouseMoved",cardBefore.x+80,cardBefore.y+40,{pressed:true});
+ await mouse("mouseReleased",cardBefore.x+80,cardBefore.y+40);
+ await wait(`document.querySelector(".object-sticky").getBoundingClientRect().left>${cardBefore.left+40}`,"Sticker with drawing did not move");
+ assert.equal(await evaluate('document.querySelector(".sticker-ink-layer polyline").getAttribute("points")'),attached,"Sticker moved independently of its ink");
+ assert.equal(await evaluate('!!document.querySelector(".lektrus-direct-comment,.edit-selected")'),false,"Removed tool or overlapping edit chip still visible");
+ const panelFits=`(()=>{const el=document.querySelector(".selection-toolbar-screen"),b=document.querySelector("section.board");
+  if(!el||!b)return false;const p=el.getBoundingClientRect(),r=b.getBoundingClientRect();
+  return p.left>=r.left-1&&p.right<=r.right+1&&p.top>=r.top-1&&p.bottom<=r.bottom+1&&
+   [...el.children].every(child=>{const c=child.getBoundingClientRect();return !c.width||(c.left>=p.left-1&&c.right<=p.right+1&&c.top>=p.top-1&&c.bottom<=p.bottom+1)});
+ })()`;
+ const waitPanelFits=async message=>{
+  try{await wait(panelFits,message)}catch(error){
+   console.error("Selection geometry:",JSON.stringify(await evaluate(`(()=>{
+    const el=document.querySelector(".selection-toolbar-screen"),board=document.querySelector("section.board");
+    const bounds=node=>node?.getBoundingClientRect().toJSON();
+    return {board:bounds(board),panel:bounds(el),editor:!!document.querySelector(".text-editor"),
+     selected:[...document.querySelectorAll(".board-object.selected")].map(node=>node.dataset.object),
+     children:el?[...el.children].map(node=>({className:node.className,title:node.title,bounds:bounds(node)})):[]};
+   })()`)));throw error;
+  }
+ };
+ await waitPanelFits("Sticker action panel extends outside its background or board");
+ await click('.lektrus-desktop-sections button[aria-label="Текст"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-group--create")',"Text tool catalogue did not open");
+ assert.ok(await evaluate('(()=>{const b=[...document.querySelectorAll(".lektrus-tool-overflow-group--create button")].find(b=>b.textContent.trim()==="Текст");b?.click();return !!b})()'),"Text tool missing");
+ await wait('document.querySelector("section.board")?.classList.contains("board-tool-text")',"Text tool not selected");
+ await mouse("mousePressed",demoCanvas.x+190,demoCanvas.y-100,{pressed:true});
+ await mouse("mouseReleased",demoCanvas.x+190,demoCanvas.y-100);
+ await wait('!!document.querySelector(".object-text textarea.text-editor")',"Text editor did not open");
+ await wait('document.activeElement===document.querySelector(".object-text textarea.text-editor")',"New text editor did not receive keyboard focus");
+ await call("Input.insertText",{text:"Проверка текста"});
+ await wait('document.querySelector(".object-text textarea.text-editor")?.value==="Проверка текста"',"Text input was not received");
+ assert.deepEqual(await evaluate('(()=>{const s=getComputedStyle(document.querySelector(".object-text textarea.text-editor"));return [s.outlineStyle,s.boxShadow]})()'),["none","none"],"Text editor has an unnecessary focus ring");
+ await evaluate('document.querySelector(".object-text textarea.text-editor").blur()');
+ await wait('!document.querySelector(".object-text textarea.text-editor")&&document.querySelector(".object-text .text-display")?.textContent==="Проверка текста"',"Text editor did not save and close after losing focus");
+ await waitPanelFits("Text action panel extends outside its background or board");
+ await click('.selection-toolbar-screen summary[aria-label="Ещё действия"]');
+ await wait('!!document.querySelector(".selection-more[open] .selection-text-format-section")',"Text formatting was not moved into More");
+ await click('.selection-toolbar-screen summary[aria-label="Ещё действия"]');
  await delay(550);
  assert.equal(await evaluate('Object.keys(localStorage).some(k=>k.includes("lektrus-demo-"))'),false,"Demo content persisted");
  await call("Page.navigate",{url:new URL("/demo/board?scene=math",url).href});
@@ -590,6 +647,24 @@ try{
   assert.ok(await evaluate(`!!document.querySelector(".board-object.object-${type}")`),
    "Board lost "+type+" objects");
  console.log("✓ Demo board: math lessons and five object types rendered");
+ // The toolbar is shared by all kinds. Exercise the long/short action
+ // sets and real screen bounds at a fitted zoom, not a fixed mock width.
+ await click('.fit-all-button');
+ await delay(300);
+ for(const id of ["math-title","math-note","math-equation","math-graph","math-values"]){
+  const point=await evaluate(`(()=>{const el=document.querySelector('[data-object="${id}"]');if(!el)return null;
+   const r=el.getBoundingClientRect();for(const fy of [.2,.5,.8])for(const fx of [.2,.5,.8]){
+    const x=r.left+r.width*fx,y=r.top+r.height*fy,hit=document.elementFromPoint(x,y);
+    if(hit?.closest('[data-object]')===el&&!hit.closest('button,input,textarea,[data-board-interactive]'))return {x,y};
+   }return null;})()`);
+  assert.ok(point,"No visible selection surface for "+id);
+  await mouse("mousePressed",point.x,point.y,{pressed:true});await mouse("mouseReleased",point.x,point.y);
+  await wait(`document.querySelector('[data-object="${id}"]')?.classList.contains("selected")`,"Could not select "+id);
+  await waitPanelFits("Action toolbar overflow for "+id);
+ }
+ await call("Page.navigate",{url});
+ await wait('document.querySelectorAll(".board-object[data-object]").length>=8',"Math fixture did not restore after selection layout checks");
+ console.log("✓ Selection action geometry across text, sticker, formula, graph and table");
 
  // A fresh profile zooms with the wheel; the alternate mode and reset must
  // work immediately, and the selected mode is kept across reloads.

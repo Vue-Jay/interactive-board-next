@@ -81,6 +81,7 @@ import "./lektrusSelectionCursor.css";
 import "./lektrusAuthLayout.css";
 import "./lektrusMobileWorkspacePolish.css";
 import "./lektrusLearningPages.css";
+import "./lektrusSelectionLayout.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { isSelfhostBackendEnabled } from "./selfhostApi";
