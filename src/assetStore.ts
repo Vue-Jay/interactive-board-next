@@ -5,15 +5,6 @@ import type { DocumentData } from "./boardModel";
 const DB_NAME = "lesson-board.assets.v1";
 const STORE = "assets";
 
-// Public demo attachments exist only until the sandbox is closed. Never
-// fall through to IndexedDB, Supabase or the self-hosted asset endpoints.
-const isDemoBoard = (boardId:string) => boardId.startsWith("lektrus-demo-");
-const demoAssets = new Map<string,Blob>();
-export function clearDemoBoardAssets(boardId:string) {
-  if(!isDemoBoard(boardId))return;
-  for(const key of demoAssets.keys())if(key.startsWith(boardId+"/"))demoAssets.delete(key);
-}
-
 let databasePromise: Promise<IDBDatabase> | null = null;
 
 function db(): Promise<IDBDatabase> {
@@ -61,6 +52,15 @@ async function getLocalAsset(id: string): Promise<Blob | null> {
 }
 
 const synchronized = new Set<string>();
+
+// Public demo attachments exist only until the sandbox is closed. Never
+// fall through to IndexedDB, Supabase or the self-hosted asset endpoints.
+const isDemoBoard = (boardId:string) => boardId.startsWith("lektrus-demo-");
+const demoAssets = new Map<string,Blob>();
+export function clearDemoBoardAssets(boardId:string) {
+  if(!isDemoBoard(boardId))return;
+  for(const key of demoAssets.keys())if(key.startsWith(boardId+"/"))demoAssets.delete(key);
+}
 const downloads = new Map<string, Promise<Blob | null>>();
 const selfhostBoards = new Set<string>();
 export const setSelfhostBoardMode = (boardId:string,enabled:boolean) => {
