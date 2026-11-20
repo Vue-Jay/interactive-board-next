@@ -324,6 +324,32 @@ def check_service_unavailable(browser, ident):
     expect(page.get_by_label("Email",exact=True)).to_be_visible(timeout=30000)
     ctx.close()
 
+    # Reproduce the API 24 release failure: a health probe fails while the
+    # native auth form is open. No production login or new account is needed.
+    ctx=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    ctx.add_init_script("window.CapacitorCustomPlatform={name:'android'}")
+    page=ctx.new_page()
+    with page.expect_response(lambda response: response.url==health_pattern and response.ok,timeout=30000):
+        page.goto(BASE+"/app")
+    page.get_by_role("button",name="Регистрация",exact=True).click()
+    email=page.get_by_label("Email",exact=True)
+    email.fill("native-form@example.test")
+    page.route(health_pattern,unavailable)
+    page.evaluate("window.dispatchEvent(new Event('lektrus:service-request-failed'))")
+    notice=page.locator(".auth-connection-notice")
+    expect(notice).to_be_visible(timeout=30000)
+    expect(page.get_by_role("button",name="Вход",exact=True)).to_be_visible()
+    expect(email).to_have_value("native-form@example.test")
+    expect(page.locator(".lektrus-unavailable")).to_have_count(0)
+    page.unroute(health_pattern,unavailable)
+    notice.get_by_role("button",name="Проверить соединение").click()
+    expect(notice).to_have_count(0,timeout=30000)
+    expect(page.get_by_role("heading",name="Создать аккаунт")).to_be_visible()
+    expect(email).to_have_value("native-form@example.test")
+    page.get_by_role("button",name="Вход",exact=True).click()
+    expect(page.get_by_role("heading",name="С возвращением")).to_be_visible()
+    ctx.close()
+
     # The public landing page and standalone fallback share the same contacts.
     ctx=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
     page=ctx.new_page()

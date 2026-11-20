@@ -226,8 +226,11 @@ export default function App() {
   const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
   const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
   const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
+  // Native authentication is local UI: a failed background health probe must
+  // not replace the form or discard credentials while a user is typing.
+  const preserveNativeAuth=Capacitor.getPlatform()==="android"&&!authUser;
   const serviceAvailability=useServiceAvailability(isSelfhostBackendEnabled()&&!LEKTRUS_LOCAL_TEST_MODE&&!activeBoard&&
-    (route.kind==="home"||route.kind==="join"||route.kind==="board"));
+    (route.kind==="home"||route.kind==="join"||route.kind==="board"),preserveNativeAuth);
   const boardChanged = useCallback((updated: BoardSummary) => {
     setActiveBoard(current => current?.id === updated.id ? updated : current);
   }, []);
@@ -681,7 +684,7 @@ export default function App() {
     return <Suspense fallback={<BoardLoadingScreen/>}><PublicDemoBoard/></Suspense>;
   }
 
-  if(serviceAvailability.reason&&!activeBoard)return <ServiceUnavailableScreen reason={serviceAvailability.reason} checking={serviceAvailability.checking} automatic onRetry={serviceAvailability.check}/>;
+  if(serviceAvailability.reason&&!activeBoard&&!preserveNativeAuth)return <ServiceUnavailableScreen reason={serviceAvailability.reason} checking={serviceAvailability.checking} automatic onRetry={serviceAvailability.check}/>;
 
   if (!authReady) {
     if (nativeBoardOpening) return <BoardLoadingScreen/>;
@@ -692,7 +695,7 @@ export default function App() {
 
 
   if (!authUser) {
-    return <AuthScreen initialError={authCallbackError} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
+    return <AuthScreen initialError={authCallbackError} connectionIssue={preserveNativeAuth&&serviceAvailability.reason?{reason:serviceAvailability.reason,checking:serviceAvailability.checking,onRetry:serviceAvailability.check}:undefined} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
   }
 
   if(mobileJoinUrl&&route.kind==="join")return <main className="auth-shell"><section className="auth-card"><strong>Приглашение на доску Lektrus</strong><p>Где открыть доску?</p><div className="share-password-actions"><a className="primary" href={mobileJoinUrl}>Открыть в приложении</a><button type="button" onClick={()=>setBrowserJoinToken(route.token)}>Продолжить в браузере</button></div><button type="button" onClick={()=>{clearPendingShare();navigate("/app",true)}}>Отмена</button></section></main>;

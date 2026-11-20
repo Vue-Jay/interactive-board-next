@@ -7,13 +7,14 @@ import type {UnavailableReason} from "./ServiceUnavailableScreen";
 const RETRY_MS=15_000;
 const RESUME_MS=60_000;
 
-export function useServiceAvailability(enabled:boolean){
+export function useServiceAvailability(enabled:boolean,preserveView=false){
   const [reason,setReason]=useState<UnavailableReason|null>(null);
   const [checking,setChecking]=useState(false);
   const retry=useRef<()=>void>(()=>{});
   const enabledRef=useRef(enabled);enabledRef.current=enabled;
   useEffect(()=>{
-    if(!enabled){setReason(null);setChecking(false);return}
+    setReason(null);setChecking(false);
+    if(!enabled)return;
     let alive=true,inFlight=false,unavailable=false,lastCheck=0,lastFailureCheck=0;
     let timer:ReturnType<typeof setTimeout>|undefined;
     const mark=(next:UnavailableReason)=>{
@@ -30,11 +31,11 @@ export function useServiceAvailability(enabled:boolean){
         const healthy=await selfhostServiceHealthy();
         if(!alive||!enabledRef.current)return;
         if(!healthy||!navigator.onLine)mark(!navigator.onLine?"offline":"server");
-        else if(unavailable){
+        else if(unavailable&&!preserveView){
           // A full navigation restores failed reads, exact deep links and the
           // existing persisted session. This hook is disabled on open boards.
           window.location.reload();
-        }else setReason(null);
+        }else {unavailable=false;setReason(null);}
       }finally{
         inFlight=false;
         if(alive)setChecking(false);
@@ -67,6 +68,6 @@ export function useServiceAvailability(enabled:boolean){
       window.removeEventListener("focus",resume);document.removeEventListener("visibilitychange",resume);
       void listener?.then(handle=>handle.remove()).catch(()=>{});
     };
-  },[enabled]);
+  },[enabled,preserveView]);
   return {reason:enabled?reason:null,checking,check:()=>retry.current()};
 }

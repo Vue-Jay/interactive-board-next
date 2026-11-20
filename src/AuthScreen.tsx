@@ -7,13 +7,14 @@ import type { AccountRole } from "./accountRoleStore";
 import { isRemoteBackendEnabled } from "./backend";
 import { isSelfhostBackendEnabled } from "./selfhostApi";
 import {saveProfileDetails} from "./profileDetailsStore";
+import type {UnavailableReason} from "./ServiceUnavailableScreen";
 import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, requestPasswordReset, completePasswordReset, type AuthUser } from "./authStore";
 
 type Mode = "login" | "register";
-type Props = { onAuthenticated: (user: AuthUser) => void; previewMode?:boolean; onPreviewClose?:()=>void; initialError?:string };
+type Props = { onAuthenticated: (user: AuthUser) => void; previewMode?:boolean; onPreviewClose?:()=>void; initialError?:string; connectionIssue?:{reason:UnavailableReason;checking:boolean;onRetry:()=>void} };
 const hasJoinLink = () => window.location.pathname.startsWith("/join/") || new URL(window.location.href).searchParams.has("join") || Boolean(pendingSharePath());
 
-export default function AuthScreen({ onAuthenticated,previewMode=false,onPreviewClose,initialError="" }: Props) {
+export default function AuthScreen({ onAuthenticated,previewMode=false,onPreviewClose,initialError="",connectionIssue }: Props) {
   const [mode, setMode] = useState<Mode>(previewMode?"register":"login");
   const [name, setName] = useState("");
   const [firstName,setFirstName]=useState("");
@@ -186,6 +187,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
     {joining && !recovering && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.{!Capacitor.isNativePlatform()&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)&&nativeBoardUrl(pendingSharePath()??window.location.pathname)&&<div><a href={nativeBoardUrl(pendingSharePath()??window.location.pathname)!}>Открыть в приложении Lektrus</a></div>}</div>}
     {!previewMode&&!recovering&&mode==="login"&&remembered&&<div className="auth-remembered"><div className="auth-remembered-avatar"><UserAvatar/></div><div className="auth-remembered-copy"><strong>{remembered.name}</strong><span>{remembered.email}</span></div><button className="auth-remembered-login" type="button" disabled={busy} onClick={()=>void quickLogin()}>{busy?"Входим…":"Войти"}</button><button className="auth-remembered-forget" type="button" disabled={busy} onClick={()=>void forgetQuickLogin()} title="Забыть сохранённый аккаунт">×</button></div>}
     {!previewMode&&!recovering&&<div className="auth-tabs" role="tablist" aria-label="Вход или регистрация"><button type="button" className={mode==="login"?"active":""} disabled={busy} onClick={()=>changeMode("login")}>Вход</button><button type="button" className={mode==="register"?"active":""} disabled={busy} onClick={()=>changeMode("register")}>Регистрация</button></div>}
+    {connectionIssue&&<div className="auth-error auth-connection-notice" role="status"><span>{connectionIssue.reason==="offline"?"Нет подключения к интернету.":"Не удалось проверить доступность сервера Lektrus."} Введённые данные сохраняются в форме.</span><button className="auth-text-action" type="button" disabled={connectionIssue.checking} onClick={connectionIssue.onRetry}>{connectionIssue.checking?"Проверяем…":"Проверить соединение"}</button></div>}
     <form className="auth-form" onSubmit={submit}>
       {previewMode&&previewComplete?<div className="auth-preview-success"><h1 id="auth-title">Регистрация подтверждена</h1><p>Экран подтверждения Lektrus работает. Демо не отправляет письма и не создаёт аккаунты.</p><button type="button" className="auth-submit" onClick={onPreviewClose}>Вернуться к приложению</button></div>:<>
       {recovering ? <>
