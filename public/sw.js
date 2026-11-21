@@ -1,7 +1,7 @@
 /* Lektrus PWA: only the app shell and versioned public assets are cached.
    Board documents, invitations, authentication, Supabase and realtime are
    deliberately network-only. Offline access does NOT imply offline syncing. */
-const CACHE = "lektrus-shell-20261119-v5";
+const CACHE = "lektrus-shell-20261121-v6";
 const SHELL = ["/", "/manifest.webmanifest", "/lektrus-icon-192.png", "/lektrus-icon-512.png", "/service-unavailable.html"];
 
 self.addEventListener("install", event => {
@@ -41,7 +41,7 @@ self.addEventListener("fetch", event => {
     };
     event.respondWith((async () => {
       try {
-        const response = await fetch(request, { cache: "no-cache" });
+        const response = await fetch(request, { cache: "no-store" });
         if(response.status>=500)return offlinePage();
         if (response.ok && url.pathname === "/" && !url.search) {
           const cache = await caches.open(CACHE);
@@ -63,6 +63,8 @@ self.addEventListener("fetch", event => {
 
   // Vite's hashed assets are immutable. No board media or API data is cached.
   if (!url.pathname.startsWith("/assets/") && !SHELL.includes(url.pathname)) return;
+  // Recovery probes intentionally verify the network, not an old cached shell.
+  if(request.cache==="no-store")return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request);

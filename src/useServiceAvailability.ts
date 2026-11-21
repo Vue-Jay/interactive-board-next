@@ -30,15 +30,16 @@ export function useServiceAvailability(enabled:boolean,preserveView=false){
     const check=async()=>{
       if(!alive||!enabledRef.current||inFlight)return;
       clearTimeout(timer);
-      if(navigator.onLine===false){mark("offline");return}
+      // A browser's online flag is a hint, not proof of server reachability.
+      // Keep probing while visible, even if a VPN left that flag stale.
       inFlight=true;lastCheck=Date.now();setChecking(true);
       const epoch=networkEpoch;
       try{
         const healthy=await selfhostServiceHealthy();
         // Results from the previous connection cannot classify the new one.
         if(!alive||!enabledRef.current||epoch!==networkEpoch)return;
-        if(!navigator.onLine){mark("offline");return}
         if(!healthy){
+          if(navigator.onLine===false){failures=0;mark("offline");return}
           // A slow VPN, radio handover or transient HTTP failure must not
           // replace an otherwise usable view after a single failed probe.
           if(++failures<2)schedule(CONFIRM_RETRY_MS);

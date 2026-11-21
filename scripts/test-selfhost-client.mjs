@@ -764,6 +764,11 @@ assert.equal(switched.state().reads,1,"Do not overlap health probes on network c
 finishOldProbe(false);await flush();
 assert.deepEqual(switched.state(),{reason:null,checking:false,reloads:0,reads:2});
 switched.cleanup();assert.equal(switched.timers.size,0);
+const stale=availabilityFixture(true);await flush();
+stale.nav.onLine=false;stale.win.dispatchEvent(new Event("offline"));
+stale.setHealthy(true);stale.tick(15000);await flush();
+assert.equal(stale.state().reason,null,"A successful real response overrides a stale browser offline flag");
+stale.cleanup();assert.equal(stale.timers.size,0);
 const hidden=availabilityFixture(true);
 hidden.doc.visibilityState="hidden";await flush();
 assert.equal(hidden.timers.size,0,"Do not poll hidden views");
