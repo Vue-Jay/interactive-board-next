@@ -134,6 +134,11 @@ try{
  });
  await call("Runtime.enable");
  await call("Page.enable");
+ const inkDockGeometry=`(()=>{const w=window.__originalFrame||window,d=w.document,p=d.querySelector('.lectris-quick-properties.is-ink-properties');if(!p)return null;const r=p.getBoundingClientRect(),bounds=s=>{const b=d.querySelector(s)?.getBoundingClientRect();return b?.width&&b.height?b:null},overlaps=b=>b&&r.left<b.right&&r.right>b.left&&r.top<b.bottom&&r.bottom>b.top;return {width:r.width,height:r.height,gap:w.innerHeight-r.bottom,left:r.left,right:r.right,screen:w.innerWidth,upper:p.dataset.inkUpperRow,overlap:Boolean(overlaps(bounds('.board-controls'))||overlaps(bounds('.minimap'))||overlaps(bounds('nav.mobile-board-tools'))),widths:[...p.querySelectorAll('.lektrus-ink-width-button')].map(b=>{const q=b.getBoundingClientRect();return q.width>=36&&q.height>=38&&b.contains(d.elementFromPoint(q.x+q.width/2,q.y+q.height/2))})}})()`;
+ const assertInkDock=(dock,wide)=>{
+  assert.ok(dock.width<=290&&dock.height<=52&&!dock.overlap&&dock.left>=0&&dock.right<=dock.screen&&dock.widths.length===5&&dock.widths.every(Boolean),JSON.stringify(dock));
+  if(wide)assert.ok(dock.gap<=18&&dock.upper==='false','Ink dock unnecessarily elevated: '+JSON.stringify(dock));
+ };
 
  if(landscapeOnly){
   const viewport=async(width,height)=>{
@@ -181,6 +186,24 @@ try{
   const dx=ink.points.at(-1).x-ink.points[0].x,dy=ink.points.at(-1).y-ink.points[0].y;
   assert.ok(dx>40&&Math.abs(dy)<4,'A logical horizontal stroke was transposed: '+JSON.stringify({dx,dy}));
   console.log('✓ First loader horizontal; real rotated touch pencil drew logical horizontal ink');
+  // Drawing settings share the lowest row with zoom and navigator when they
+  // fit. Verify real hit targets, including the fifth width, after rotation.
+  for(const [w,h] of [[844,390],[932,430],[720,360],[667,375],[390,844]]){
+   await viewport(w,h);
+   await wait(`Math.abs((${inkDockGeometry})?.screen-${Math.max(w,h)})<=2`,'Ink dock did not rotate');
+   await delay(150);
+   const dock=await evaluate(inkDockGeometry);
+   assertInkDock(dock,w>=844||h>=844);
+   const widest=await point('.lectris-quick-properties.is-ink-properties .lektrus-ink-width-button:last-child');
+   assert.ok(widest,'22 px pen inaccessible');await touch([widest]);
+   await wait(`window.__originalFrame.document.querySelector('.lectris-quick-properties .lektrus-ink-width-button:last-child').getAttribute('aria-pressed')==='true'`,'22 px pen did not activate');
+   console.log(`✓ ${w}×${h}: compact ink dock, bottom gap ${dock.gap}px, five reachable widths`);
+  }
+  const color=await point('.lectris-quick-properties.is-ink-properties .lektrus-color-current');assert.ok(color,'Color picker inaccessible');await touch([color]);
+  await wait(`!!window.__originalFrame.document.querySelector('.lektrus-colors-popup')`,'Color popup did not open');
+  const popup=await evaluate(`(()=>{const w=window.__originalFrame,r=w.document.querySelector('.lektrus-colors-popup').getBoundingClientRect();return r.top>=0&&r.bottom<=w.innerHeight&&r.left>=0&&r.right<=w.innerWidth})()`);
+  assert.ok(popup,'Color popup outside landscape viewport');
+  await touch([color]);
   const select=await point('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]');
   assert.ok(select,'No visible select tool');await touch([select]);
   const zoom=()=>evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent`);
@@ -1010,6 +1033,29 @@ try{
  await click('.lektrus-data-chart-dialog footer .primary');
  await wait('!!document.querySelector(\'.board-object .lektrus-data-chart[aria-label*="-10"]\')',"Negative chart data lost on save");
  console.log("✓ Chart: negative values preserved, pie validation and actual line chart save");
+ // Run the compact dock regression in the ordinary PR browser smoke as well
+ // as the dedicated rotated-frame/mobile acceptance suite.
+ await call('Emulation.setDeviceMetricsOverride',{width:844,height:390,deviceScaleFactor:2,mobile:true});
+ await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+ await call('Page.navigate',{url});
+ await wait('!!document.querySelector("section.board")&&!!document.querySelector(".minimap")','Mobile fixture not ready');
+ await click('nav.mobile-board-tools button[data-interface-control="pen"]');
+ await wait('!!document.querySelector(".lectris-quick-properties.is-ink-properties")','Ink settings did not appear');
+ const touchInk=async selector=>{const p=await rect(selector);assert.ok(await evaluate(`!!document.elementFromPoint(${p.x},${p.y})?.closest(${JSON.stringify(selector)})`),'Ink target obscured: '+selector);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y,id:1}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(150);};
+ for(const [width,height] of [[844,390],[932,430],[720,360],[667,375]]){
+  await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+  await delay(250);
+  const dock=await evaluate(inkDockGeometry);assertInkDock(dock,width>=844);
+  for(const n of [1,5]){
+   const selector=`.lectris-quick-properties.is-ink-properties .lektrus-ink-width-button:nth-child(${n})`;
+   await touchInk(selector);
+   await wait(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-pressed')==='true'`,'Ink width did not activate');
+  }
+  console.log(`✓ ${width}×${height}: ink dock ${Math.round(dock.width)}×${Math.round(dock.height)}, bottom gap ${dock.gap}px, all five hit targets`);
+ }
+ await touchInk('.lectris-quick-properties.is-ink-properties .lektrus-color-current');
+ await wait('!!document.querySelector(".lektrus-colors-popup")','Mobile color popup did not open');
+ assert.ok(await evaluate(`(()=>{const r=document.querySelector('.lektrus-colors-popup').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth})()`),'Color popup outside mobile viewport');
  console.log("Lektrus release smoke passed: actual browser interactions and curated subjects.");
  }
  }

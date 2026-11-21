@@ -211,8 +211,34 @@ html.lektrus-native-board body .topbar:not(.update-banner) {
     padding:6px!important;
   }
   html body .workspace .lectris-quick-properties.is-ink-properties {
+    position:fixed!important;top:auto!important;
+    left:var(--lektrus-ink-left,calc(var(--lektrus-rail-left) + 54px))!important;
+    right:var(--lektrus-ink-right,calc(var(--lektrus-safe-right) + 8px))!important;
+    bottom:calc(14px + var(--lektrus-safe-bottom))!important;
+    margin:0 auto!important;transform:none!important;translate:none!important;scale:none!important;
+    width:max-content!important;max-width:none!important;min-height:0!important;
+    padding:3px 5px!important;gap:4px!important;border-radius:11px!important;
+  }
+  html body .workspace .lectris-quick-properties.is-ink-properties[data-ink-upper-row="true"] {
     bottom:calc(68px + var(--lektrus-safe-bottom))!important;
   }
+  html body .workspace .lectris-quick-properties.is-ink-properties .lectris-quick-title,
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-color-caption {display:none!important;}
+  html body .workspace .lectris-quick-properties.is-ink-properties .lectris-quick-details {gap:4px!important;}
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-color-controls {gap:3px;}
+  html body .workspace .lectris-quick-properties.is-ink-properties :is(.lektrus-color-current,.lektrus-color-wheel) {
+    width:34px!important;height:38px!important;min-height:38px!important;flex:0 0 34px!important;
+  }
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-ink-five-widths {
+    gap:1px!important;padding:1px!important;max-width:none!important;overflow:visible!important;
+  }
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-ink-five-widths>.lektrus-ink-width-button {
+    width:38px!important;min-height:40px!important;height:40px!important;padding:1px!important;
+  }
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-ink-swatch {gap:0;}
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-ink-swatch-field {height:23px;min-height:23px;}
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-ink-swatch-stroke {max-width:23px;}
+  html body .workspace .lectris-quick-properties.is-ink-properties .lektrus-ink-swatch-value {font-size:9px;line-height:11px;}
 }
 @media (min-width:720px) and (max-width:1100px) and (orientation:landscape) {
   /* The old 900px cutoff hid the map on many landscape phones. Presentation,
