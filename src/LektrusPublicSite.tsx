@@ -1,4 +1,5 @@
 import {PublicMaintenanceNotice} from "./MaintenanceGate";
+import {PwaInstallButton} from "./PwaInstallOffer";
 import {useEffect,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
 import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
 import {SiteCustomPage,SiteAnchorSlot} from "./SiteEditableSections";
@@ -269,7 +270,7 @@ export default function LektrusPublicSite(){
       </div>
       {!copy?.heading&&<span className="marketing-hero-tagline">Онлайн-платформа для обучения</span>}
       <p className="marketing-hero-lead">{copy?.lead||"Lektrus — интерактивное пространство для уроков в классе и онлайн. Объясняйте на общей доске, исследуйте учебные модели, решайте задачи вместе и сохраняйте результаты в одном месте."}</p>
-      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink></div>
+      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink><PwaInstallButton className="marketing-secondary" label="Установить веб-приложение"/></div>
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
@@ -377,7 +378,7 @@ export default function LektrusPublicSite(){
       <div className="marketing-download-meta"><span>Официальная сборка · бесплатно</span><a href="https://github.com/Vue-Jay/interactive-board-next/releases/latest/download/Lektrus-Android.apk.sha256">SHA-256</a></div>
      </article>
      <article className="marketing-download-guide"><span className="marketing-download-kicker">Три простых шага</span><h2>Как установить</h2><ol><li><span>01</span><div><strong>Скачайте файл</strong><p>Откройте APK после завершения загрузки.</p></div></li><li><span>02</span><div><strong>Разрешите установку</strong><p>Если Android запросит разрешение для браузера, подтвердите установку из этого источника. Не отключайте Play Защиту.</p></div></li><li><span>03</span><div><strong>Войдите в Lektrus</strong><p>Обновления устанавливаются поверх предыдущей версии с той же подписью.</p></div></li></ol></article>
-     <article className="marketing-download-other"><span className="marketing-download-other-icon"><SiteMenuIcon name="monitor"/></span><div><h3>На другом устройстве?</h3><p>На iPhone, iPad и компьютере можно пользоваться Lektrus в браузере.</p></div><a href="/app" className="marketing-secondary marketing-download-web">Открыть веб-версию <span aria-hidden="true">↗</span></a></article>
+     <article className="marketing-download-other"><span className="marketing-download-other-icon"><SiteMenuIcon name="monitor"/></span><div><h3>На другом устройстве?</h3><p>Установите веб-приложение на телефон, планшет или компьютер без APK.</p></div><a href="/app" className="marketing-secondary marketing-download-web">Открыть веб-версию <span aria-hidden="true">↗</span></a><PwaInstallButton className="marketing-primary" label="Установить веб-приложение"/></article>
     </section>
     {placed("before-2")}
    </>}

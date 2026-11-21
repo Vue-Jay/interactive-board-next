@@ -110,8 +110,10 @@ assert.match(loading,/window\.visualViewport\?\.addEventListener\("resize",updat
 assert.match(loadingCss,/\.lektrus-board-loading\[data-native-portrait=true\]\{[^}]*rotate\(90deg\)/);
 assert.doesNotMatch(loadingCss,/\.lektrus-board-loading\[data-native-rotate=true\]/);
 assert.match(loadingCss,/\.lektrus-board-loading\[data-browser-rotate=true\]/);
-assert.ok(boardApp.includes("!Capacitor.isNativePlatform()&&installPrompt"));
-assert.ok(settings.includes('!Capacitor.isNativePlatform()&&<section className="settings-row-card lektrus-install-settings"'));
+assert.ok(boardApp.includes("installState.eligible&&installState.available&&!installState.installed"));
+assert.match(read("src/pwaInstall.ts"), /Capacitor\.isNativePlatform\(\)/);
+assert.match(read("src/pwaInstallController.ts"), /const eligible = !native && win\.top === win\.self/);
+assert.ok(settings.includes('pwa.eligible&&<section className="settings-row-card lektrus-install-settings"'));
 assert.ok(activity.includes("WindowInsetsCompat.Type.tappableElement()"));
 assert.ok(activity.includes("WindowInsetsCompat.Type.ime()"));
 assert.ok(activity.includes("Math.max(bottom, ime.bottom)"));

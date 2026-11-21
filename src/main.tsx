@@ -1,6 +1,7 @@
 // Keep the public-site styles in the initial HTML stylesheet bundle.
 // TatNet serves the landing page through a lazy route; CSS must not depend on that route loading.
 import "./nativeCompatibility";
+import "./pwaInstall";
 import "./lektrusMarketing.css";
 import "./lektrusMarketingTypography.css";
 // Download is a hash route, so its styles must also be in the initial CSS.

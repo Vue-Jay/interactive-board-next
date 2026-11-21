@@ -1,0 +1,53 @@
+.lektrus-pwa-offer {
+  position: fixed;
+  z-index: 1000;
+  inset-block-start: max(12px, env(safe-area-inset-top, 0px));
+  inset-inline: 12px;
+  margin-inline: auto;
+  width: auto;
+  max-width: 420px;
+  box-sizing: border-box;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--lt-line, #cbd7e7);
+  border-radius: 18px;
+  background: var(--lt-surface, #fff);
+  color: var(--lt-text, #182b45);
+  box-shadow: 0 12px 36px #102c5240;
+  font: 14px/1.45 system-ui, sans-serif;
+}
+.lektrus-pwa-offer > img { flex: 0 0 46px; border-radius: 12px; }
+.lektrus-pwa-offer-copy { flex: 1; min-width: 0; }
+.lektrus-pwa-offer-copy > strong { display: block; font-size: 16px; }
+.lektrus-pwa-offer-copy > p { margin: 4px 0 10px; font-size: 13px; }
+.lektrus-pwa-install-action {
+  min-height: 40px; padding: 8px 16px; border: 0; border-radius: 10px;
+  background: var(--lt-primary, #365fd0); color: white;
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.lektrus-pwa-offer-close {
+  flex: 0 0 32px; width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; color: inherit;
+  font: 24px/1 system-ui, sans-serif; cursor: pointer;
+}
+.lektrus-pwa-button-wrap { min-width: 0; max-width: 100%; }
+.lektrus-pwa-manual { margin: 8px 0 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.lektrus-pwa-button-wrap button:disabled { opacity: .65; cursor: wait; }
+.lektrus-install-settings .lektrus-pwa-button-wrap { flex: 0 1 auto; max-width: 60%; }
+.lektrus-install-settings .lektrus-pwa-button-wrap > button {
+  min-height: 40px; height: auto; padding: 8px 13px;
+  border: 1px solid var(--lt-line, #cbd7e7); border-radius: 10px;
+  background: var(--lt-selected, #e8efff); color: var(--lt-primary, #365fd0);
+  font: inherit; font-weight: 650; cursor: pointer;
+}
+.marketing-site .marketing-download-other { flex-wrap: wrap; }
+.marketing-actions .lektrus-pwa-button-wrap, .marketing-download-other .lektrus-pwa-button-wrap { flex: 0 1 auto; }
+.marketing-actions .lektrus-pwa-button-wrap > button, .marketing-download-other .lektrus-pwa-button-wrap > button { cursor: pointer; font-family: inherit; }
+@media (max-width: 370px) {
+  .marketing-actions .lektrus-pwa-button-wrap, .marketing-actions .lektrus-pwa-button-wrap > button { width: 100%; }
+  .lektrus-install-settings .lektrus-pwa-button-wrap { max-width: 100%; }
+}
+@media (display-mode: standalone) { .lektrus-pwa-offer { display: none; } }
+html.lektrus-native-app .lektrus-pwa-offer { display: none; }
