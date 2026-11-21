@@ -92,6 +92,7 @@ import { recoverOutdatedChunk } from "./chunkRecovery";
 import {AndroidUpdateGate} from "./AndroidUpdateGate";
 import {MaintenanceGate} from "./MaintenanceGate";
 import {ServiceUnavailableScreen} from "./ServiceUnavailableScreen";
+import {PwaInstallFeedback} from "./PwaInstallOffer";
 import {registerLektrusServiceWorker} from "./registerServiceWorker";
 
 installInterfaceLayout();
@@ -178,6 +179,6 @@ function AppRoot(){
   return <ErrorBoundary><AndroidUpdateGate><MaintenanceGate><App/><BillingLimitNotice/></MaintenanceGate></AndroidUpdateGate></ErrorBoundary>;
 }
 
-createRoot(root).render(isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:<AppRoot/>);
+createRoot(root).render(isBrowserBoardFrame()?<ErrorBoundary><BrowserBoardFrameEntry/></ErrorBoundary>:<><AppRoot/><PwaInstallFeedback/></>);
 
 if(!isBrowserBoardFrame()&&parseRoute(window.location.pathname).kind!=="demo")registerLektrusServiceWorker();

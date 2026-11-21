@@ -17,11 +17,12 @@ const chromePath=process.env.CHROME_PATH||[
 ].find(existsSync);
 assert.ok(chromePath,"Chrome required for integrated release browser smoke");
 const homeOnly=process.argv.includes("--home-only");
+const pwaOnly=process.argv.includes("--pwa-only");
 const keyboardOnly=process.argv.includes("--keyboard-only");
 const landscapeOnly=process.argv.includes("--landscape-only");
 const interfaceOnly=process.argv.includes("--interface-only");
 const educationOnly=process.argv.includes("--education-only");
-if(homeOnly||keyboardOnly||landscapeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
+if(homeOnly||keyboardOnly||landscapeOnly||pwaOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
 if(interfaceOnly||educationOnly){
  process.env.VITE_LEKTRUS_BACKEND="selfhost";
  delete process.env.VITE_LEKTRUS_API_ORIGIN;
@@ -74,7 +75,7 @@ const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly||interfaceOnly||educationOnly||keyboardOnly||landscapeOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||educationOnly||keyboardOnly||landscapeOnly||pwaOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -164,7 +165,56 @@ try{
   if(wide)assert.ok(dock.gap<=18&&dock.upper==='false','Ink dock unnecessarily elevated: '+JSON.stringify(dock));
  };
 
- if(landscapeOnly){
+ if(pwaOnly){
+  await call("Emulation.setUserAgentOverride",{userAgent:"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",platform:"Linux armv8l"});
+  await call("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:2,mobile:true});
+  await call("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:5});
+  // Suppress real browser install events so the QA case controls their timing.
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`window.addEventListener("beforeinstallprompt",event=>{if(event.isTrusted){event.preventDefault();event.stopImmediatePropagation()}},true);Object.defineProperty(navigator,"getInstalledRelatedApps",{configurable:true,value:async()=>sessionStorage.getItem("qa-pwa-existing")==="1"?[{platform:"webapp",url:"https://lektrus.ru/manifest.webmanifest"}]:[]})`});
+  const waitPwa=async(expression,message,timeout=30000)=>{
+   const deadline=Date.now()+timeout;
+   while(Date.now()<deadline){try{if(await evaluate(expression))return}catch{} await delay(100)}
+   throw new Error(message);
+  };
+  const homeAt=async(stage)=>{
+   const pageUrl=`http://127.0.0.1:${port}/app?qa-pwa-stage=${stage}`;
+   await call("Page.navigate",{url:pageUrl});
+   await waitPwa(`location.href===${JSON.stringify(pageUrl)}&&!!document.querySelector(".lektrus-calendar-grid")`,"PWA workspace did not render");
+  };
+  const signal=(outcome)=>evaluate(`(()=>{window.dispatchEvent(Object.assign(new Event("beforeinstallprompt",{cancelable:true}),{prompt:async()=>{},userChoice:Promise.resolve({outcome:${JSON.stringify(outcome)}})}));return true})()`);
+  const offer='!!document.querySelector(".lektrus-pwa-offer")';
+  const feedback='!!document.querySelector(".lektrus-pwa-feedback")';
+  await homeAt("fresh");
+  assert.equal(await evaluate(offer),false,"no automatic offer without a browser install signal");
+  await signal("accepted");
+  await wait(offer,"Mobile installation offer did not appear");
+  await click(".lektrus-pwa-offer .lektrus-pwa-install-action");
+  await wait(feedback,"Success notification disappeared with the offer");
+  assert.equal(await evaluate(offer),false,"offer disappears immediately after accepted installation");
+  assert.match(await evaluate('document.querySelector(".lektrus-pwa-feedback")?.textContent'),/Приложение установлено/);
+  const bounds=await rect(".lektrus-pwa-feedback");
+  assert.ok(bounds.left>=0&&bounds.right<=390&&bounds.top>=0&&bounds.bottom<=844,"toast must fit mobile viewport");
+  await wait("!"+feedback,"success notification did not expire",6000);
+  await homeAt("returning");
+  assert.equal(await evaluate(offer),false,"installed PWA must not be offered on repeat visit");
+  assert.equal(await evaluate(feedback),false,"no fake success on reload");
+  // Discover an earlier installation even without a local stored marker.
+  await evaluate('localStorage.removeItem("lektrus.pwa-installed.v1");sessionStorage.setItem("qa-pwa-existing","1")');
+  await homeAt("existing");
+  await waitPwa('localStorage.getItem("lektrus.pwa-installed.v1")==="1"',"related app detection did not remember existing installation");
+  assert.equal(await evaluate(offer),false,"related-app detection suppresses the prompt");
+  assert.equal(await evaluate(feedback),false,"detection does not announce a new installation");
+  console.log("✓ PWA workspace: accepted install, visible success notification, expiry, persisted install and existing app detection");
+  // The website shares the same state but has its own independent entry root.
+  await evaluate('localStorage.removeItem("lektrus.pwa-installed.v1");sessionStorage.removeItem("qa-pwa-existing")');
+  await call("Page.navigate",{url:`http://127.0.0.1:${port}/`});
+  await waitPwa('location.pathname==="/"&&!!document.querySelector(".marketing-actions .lektrus-pwa-button-wrap button")',"Public site install button did not render");
+  await signal("accepted");
+  await click(".marketing-actions .lektrus-pwa-button-wrap button");
+  await wait(feedback,"Public site missing success notification");
+  assert.equal(await evaluate('!!document.querySelector(".marketing-actions .lektrus-pwa-button-wrap button")'),false);
+  console.log("✓ PWA public site: successful installation confirmation survives button removal");
+ }else if(landscapeOnly){
   const viewport=async(width,height)=>{
    await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true,screenOrientation:{type:height>width?'portraitPrimary':'landscapePrimary',angle:height>width?0:90}});
    await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});await delay(300);
