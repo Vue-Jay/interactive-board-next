@@ -21,6 +21,15 @@ export function androidUpdateKind(installed:string,update:AndroidUpdate):"none"|
   if(compareAndroidVersions(installed,update.version)!==-1)return "none";
   return compareAndroidVersions(installed,update.minimum_version)===-1?"required":"optional";
 }
+// A failed catalog refresh cannot revoke a newer verified offer or relax a
+// previously confirmed compatibility floor. A fresh response remains authoritative.
+export function resolveAndroidUpdate(installed:string,incoming:AndroidUpdate,known:AndroidUpdate|null):AndroidUpdate{
+  if(!incoming.catalog_stale||!known||androidUpdateKind(installed,known)==="none")return incoming;
+  if(compareAndroidVersions(incoming.version,known.version)===-1)return {...known,catalog_stale:true};
+  if(androidUpdateKind(installed,known)==="required"&&compareAndroidVersions(incoming.minimum_version,known.minimum_version)===-1)
+    return {...incoming,minimum_version:known.minimum_version};
+  return incoming;
+}
 export function shouldOfferAndroidUpdate(installed:string,update:AndroidUpdate,deferredVersion:string,deferredUntil:number,now:number,manual=false){
   const kind=androidUpdateKind(installed,update);
   if(kind==="none")return false;

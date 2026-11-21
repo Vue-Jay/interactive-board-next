@@ -4,12 +4,15 @@ Ordinary PRs verify native auth UI without sending credentials to production.
 Release runs use one reserved invalid address and require real HTTP 401.
 """
 import os
+import hashlib
 import re
 import struct
 import subprocess
 import time
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 
 OUT = Path('artifacts/android-login')
@@ -95,8 +98,49 @@ def collect_diagnostics():
         print(f'Diagnostic capture unavailable: {exc}',flush=True)
 
 
+def package_identity():
+    """System package identity and original install date survive install-over."""
+    raw = adb('shell', 'dumpsys', 'package', PACKAGE).decode(errors='replace')
+    fields = {}
+    for key, pattern in {'versionCode': r'\bversionCode=(\d+)', 'versionName': r'\bversionName=(\S+)',
+                         'uid': r'\b(?:userId|appId)=(\d+)', 'firstInstallTime': r'\bfirstInstallTime=([^\r\n]+)',
+                         'dataDir': r'\bdataDir=(\S+)'}.items():
+        match = re.search(pattern, raw)
+        assert match, f'Package identity field missing: {key}'
+        fields[key] = match[1].strip()
+    return fields
+
+
+def install_after_skipped_releases():
+    # One emulator (Android 11/API 30) additionally proves a real install-over
+    # from a published older signed APK. No extra production login is made.
+    if adb('shell', 'getprop', 'ro.build.version.sdk').strip() != b'30':
+        adb('install', '-r', 'Lektrus-Android.apk', timeout=120)
+        return
+    old_url = 'https://github.com/Vue-Jay/interactive-board-next/releases/download/android-v1.0.4691/Lektrus-Android.apk'
+    old_digest = 'b80911d1c9acee15c0ae3c8eec4e22bbf119d20deb3cac66b20d0aeecab4f5b1'
+    with tempfile.TemporaryDirectory() as directory:
+        existing = Path(directory) / 'previous.apk'
+        with urlopen(Request(old_url, headers={'User-Agent': 'Lektrus-Android-Upgrade-QA'}), timeout=30) as response:
+            raw = response.read(20_000_001)
+        assert len(raw) == 14_730_031 and hashlib.sha256(raw).hexdigest() == old_digest, 'Previous signed release bytes changed'
+        existing.write_bytes(raw)
+        adb('install', '-r', str(existing), timeout=120)
+        before = package_identity()
+        assert before['versionName'] == '1.0.4691', before
+        # No uninstall or data clearing: Android validates the same signer and
+        # permits only a newer versionCode for the package already installed.
+        adb('install', '-r', 'Lektrus-Android.apk', timeout=120)
+        after = package_identity()
+        assert int(after['versionCode']) > int(before['versionCode']), (before, after)
+        for key in ('uid', 'firstInstallTime', 'dataDir'):
+            assert before[key] == after[key], f'Install-over changed {key}: {before[key]} -> {after[key]}'
+        (OUT / 'install-over-evidence.txt').write_text(f'Before: {before}\nAfter: {after}\n')
+        print(f'Install-over verified directly from 1.0.4691 to {after["versionName"]}, without deleting app data.', flush=True)
+
+
 try:
-    adb('install', '-r', 'Lektrus-Android.apk', timeout=120)
+    install_after_skipped_releases()
     adb('shell', 'svc', 'power', 'stayon', 'true')
     # Three independent cold launches with the emulator held sideways.
     # Authentication must always request a portrait activity, including after

@@ -42,6 +42,13 @@ def test_policy_never_requires_unpublished_version():
     assert apply_policy(selected, "invalid")["minimum_version"] == "1.0.0"
 
 
+def test_skipped_releases_select_newest_complete_apk_directly():
+    selected = select_android_release([release("1.0.4691"), release("1.0.4706"),
+                                      release("1.0.4710"), release("1.0.4711", draft=True)])
+    assert selected["version"] == "1.0.4710"
+    assert apply_policy(selected, "1.0.4700")["download_url"].endswith("android-v1.0.4710/Lektrus-Android.apk")
+
+
 def test_catalog_cache_refresh_and_fail_open(monkeypatch):
     now = [100.0]
     calls = []

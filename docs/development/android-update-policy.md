@@ -35,6 +35,17 @@ it does not advertise a release the live catalog no longer lists.
 - Downloads open the exact official HTTPS release asset in Android's browser;
   the user confirms installation via Android. No silent install, temporary
   signing key or Play Protect bypass is used.
+- A user who missed several releases receives the complete newest APK, not a
+  sequence of intermediate updates. Install over the existing `ru.lektrus.board`
+  with the permanent signer and a greater timestamp-based versionCode. The
+  Android 11 signed-release smoke test installs the published 1.0.4691 first,
+  then installs the current APK without uninstalling and verifies package UID,
+  original installation time, data directory and increasing versionCode.
+- A stale catalog cannot replace a newer previously verified optional or
+  mandatory update (even across app restarts), and cannot lower a confirmed
+  mandatory floor. A fresh successful catalog remains authoritative. Manual
+  checks during an outage can open the fixed official release page in the
+  system browser; a stale response never claims the installed version is current.
 
 Versions shipped before this updater cannot display an update dialog. They
 must install the first updater-aware APK manually. This is a client UX gate,
