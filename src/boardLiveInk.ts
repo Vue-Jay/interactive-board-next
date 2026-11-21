@@ -48,7 +48,7 @@ export function mergeRemoteLiveInk(
   if(previousRuns.some(run=>run.offset<=nextStart&&
       run.offset+run.points.length>=nextEnd)){
     return !previous.finished&&incoming.finished&&nextEnd>=oldEnd
-      ? {...previous,finished:true} : previous;
+      ? {...previous,finished:true,cutIds:incoming.cutIds} : previous;
   }
 
   const ranges=[...previousRuns,{offset:nextStart,points:incoming.points}]
@@ -82,7 +82,8 @@ export function mergeRemoteLiveInk(
   const latest=joined[joined.length-1];
   return {...previous,offset:latest.offset,points:latest.points,
     priorRuns:joined.length>1?joined.slice(0,-1):undefined,
-    finished:previous.finished||incoming.finished&&nextEnd>=oldEnd};
+    finished:previous.finished||incoming.finished&&nextEnd>=oldEnd,
+    cutIds:previous.finished?previous.cutIds:incoming.finished&&nextEnd>=oldEnd?incoming.cutIds:previous.cutIds};
 }
 
 const PREVIEW_TTL=120_000;

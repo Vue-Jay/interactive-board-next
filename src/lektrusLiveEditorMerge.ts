@@ -27,7 +27,9 @@ function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):u
    const id=(value as {id:string}).id;
    const original=before.get(id);
    if(original===undefined){result.set(id,value);continue;}
-   if(!same(original,value))result.set(id,mergeEditedValue(original,value,result.get(id)??original,key));
+   // Deleted nested items (including sticker ink) must not be resurrected
+   // by a concurrent edit that still references their old IDs.
+   if(result.has(id)&&!same(original,value))result.set(id,mergeEditedValue(original,value,result.get(id),key));
   }
   for(const [id] of before)if(!edit.some(v=>(v as {id:string}).id===id))result.delete(id);
   return [...result.values()];

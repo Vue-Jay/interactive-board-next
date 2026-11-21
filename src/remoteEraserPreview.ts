@@ -23,6 +23,11 @@ export function previewRemoteErasures(items:Item[],previews:ReadonlyMap<string,R
         if(item.x>run.maxX||item.x+item.width<run.minX||item.y>run.maxY||item.y+item.height<run.minY)continue;
         fragments=eraseInkAlongPath(fragments,run.points,cut.preview.weight/2);
       }
+      // The final packet carries actual affected IDs. If intermediate path
+      // packets were lost, an affected original must not linger untouched
+      // until the durable replacement fragments are downloaded.
+      if(cut.preview.finished&&cut.preview.cutIds?.includes(item.id)&&
+        fragments.length===1&&fragments[0]===item)fragments=[];
     }
     return fragments.length===1&&fragments[0]===item?[item]:fragments.map((part,index)=>({...part,id:`${item.id}:remote-erase:${index}`}));
   });

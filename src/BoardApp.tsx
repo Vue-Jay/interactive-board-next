@@ -125,7 +125,7 @@ import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
-import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem } from "./lektrusBoardObjectAuth";
+import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
@@ -2105,6 +2105,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
   const canTransformBoardObject=(item:Item|null|undefined)=>
     !!item&&(!isLockableBoardItem(item)||!item.locked)&&canTransformStudentBoardObject(item.kind,roleCapabilities);
+  const canCropImage=(item:Item|null|undefined)=>
+    canEdit&&canCropBoardImage(item,authUser.id,isStudent,isBoardOwner);
   const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
   const rejectStudentStructuralEdit = () => {
     if(!studentSelectionHasProtected()) return false;
@@ -2302,6 +2304,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [initial] = useState(() => layoutEditing?
     {data:{version:1 as const,title:"Новая доска",view:{x:0,y:0,zoom:1},items:[] as Item[]},error:""}:
     demoInitialDocument?{data:demoInitialDocument,error:""}:loadInitial(storageKey,boardSummary.title));
+  const [initialAcknowledged]=useState<DocumentData|null>(()=>{
+    if(initialRemoteVersion===null)return null;
+    try{
+      if(localStorage.getItem(storageKey+".pending-sync")==="1"){
+        const base=localStorage.getItem(storageKey+".pending-base");
+        return base?parseDocument(base):null;
+      }
+    }catch{return null;}
+    return initial.data;
+  });
   const [saveBlocked, setSaveBlocked] = useState(!!initial.error);
   const fileInput = useRef<HTMLInputElement>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
@@ -2337,7 +2349,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [arrowHeadStyle,setArrowHeadStyle]=useState<ArrowHeadStyle>("triangle");
   const [arrowHeadSize,setArrowHeadSize]=useState(8);
   const [connectorRouting, setConnectorRouting] = useState<ConnectorRouting>("straight");
-  const [notice, setNoticeState] = useState({ message: "", sequence: 0 });
+  const [notice, setNoticeState] = useState(()=>{
+    let message="";
+    try{if(!demoMode&&localStorage.getItem(storageKey+".recovery-backup"))
+      message="Неподтверждённая старая копия сохранена отдельно; открыта актуальная общая доска.";}catch{}
+    return {message,sequence:0};
+  });
   const setNotice = useCallback((message: string) => {
     setNoticeState(previous => ({ message, sequence: previous.sequence + 1 }));
   }, []);
@@ -2735,6 +2752,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
+  useEffect(()=>{
+    if(imageCropEditorId&&(!canEdit||!canCropBoardImage(items.find(item=>item.id===imageCropEditorId),authUser.id,isStudent,isBoardOwner))){
+      setImageCropEditorId(null);
+      imageCropApplyRef.current=null;
+    }
+  },[items,imageCropEditorId,canEdit,authUser.id,isStudent,isBoardOwner]);
   // A peer ink preview arrives independently of the server document. Avoid
   // scanning the entire board once per preview stroke (previously O(ink*items)
   // in JSX). Rebuild the ID index only when persisted items actually change.
@@ -2749,6 +2772,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [remoteObjectPoses,setRemoteObjectPoses]=useState<Record<string,RemotePose>>({});
   const remoteLiveBases=useRef(new Map<string,string>());
   const pendingEditorBases=useRef(new Map<string,Item>());
+  const modalEditorBase=useRef<Item|null>(null);
+  const mergeModalPatch=(latest:Item,patch:Partial<Item>)=>{
+    const base=modalEditorBase.current;
+    return base?.id===latest.id?mergeEditedValue(base,{...base,...patch},latest):{...latest,...patch};
+  };
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
   // A server-confirmed stroke belongs exclusively to the document. Keeping its
   // live preview after confirmation can resurrect it when an eraser removes
@@ -3059,15 +3087,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const remoteSaveFailures = useRef(0);
   const remoteRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const acknowledgedDocument = useRef<string | null>(
-    initialRemoteVersion == null || (()=>{
-      try{return localStorage.getItem(storageKey+".pending-sync")==="1"}catch{return false}
-    })()?null:documentFingerprint(initial.data));
+    initialAcknowledged===null?null:documentFingerprint(initialAcknowledged));
   const acknowledgedSharedContent = useRef<string | null>(
-    acknowledgedDocument.current===null?null:sharedBoardFingerprint(initial.data));
+    initialAcknowledged===null?null:sharedBoardFingerprint(initialAcknowledged));
   // Base for ALL unacknowledged local edits, including ink and ordinary
   // object transforms. Editor-specific bases alone cannot preserve them.
   const acknowledgedBoardData=useRef<DocumentData|null>(
-    acknowledgedDocument.current===null?null:initial.data);
+    initialAcknowledged);
   const deferredRemote = useRef<RemoteBoardDocument | null>(null);
   const pendingRemote = useRef<RemoteBoardDocument | null>(null);
   const lastAttempt = useRef<{ version: number; fingerprint: string } | null>(null);
@@ -3259,8 +3285,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
-        try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
+        try{localStorage.removeItem(storageKey+".pending-sync");localStorage.removeItem(storageKey+".pending-base")}catch{}
         pendingEditorBases.current.clear();
+      }else{
+        try{
+          localStorage.setItem(storageKey+".pending-base",JSON.stringify(data));
+        }catch{try{localStorage.removeItem(storageKey+".pending-base")}catch{}}
       }
       remoteSaveFailures.current = 0;
       saveFailure.current = null;
@@ -3298,12 +3328,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       remoteSaveInFlight.current = false;
       const deferred = deferredRemote.current;
       deferredRemote.current = null;
+      const needsRebase=!!deferred&&deferred.version>(remoteVersion.current??-1);
       if (boardMounted.current && deferred) receiveRemote.current(deferred);
       const queued = queuedRemoteSnapshot.current;
       queuedRemoteSnapshot.current = null;
       // A competing server revision must be rebased BEFORE starting another
       // save. Sending a previously queued, unrebased document overwrites ink.
-      if (queued && !deferred)
+      // An own/stale notification can be deferred during a save too. It is
+      // ignored by receiveRemote, so it must not swallow the next queued edit.
+      if (queued && !needsRebase)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
   }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance, acknowledgeRemoteInk]);
@@ -3325,7 +3358,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           lastLocalSerialized.current=serialized;
           localBackupValid.current=true;
           if(documentSyncEnabled){
-            try{localStorage.setItem(storageKey+".pending-sync","1")}catch{}
+            try{
+              localStorage.setItem(storageKey+".pending-sync","1");
+              if(acknowledgedBoardData.current)
+                localStorage.setItem(storageKey+".pending-base",JSON.stringify(acknowledgedBoardData.current));
+              else localStorage.removeItem(storageKey+".pending-base");
+            }catch{try{localStorage.removeItem(storageKey+".pending-base")}catch{}}
           }
         } catch(error) {
           // localStorage is often limited to 5 MB. A full quota must NEVER
@@ -3341,7 +3379,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
       )){
-        try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
+        try{localStorage.removeItem(storageKey+".pending-sync");localStorage.removeItem(storageKey+".pending-base")}catch{}
         setSaveStatus("Сохранено на сервере");
         return;
       }
@@ -3884,6 +3922,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setNotice("Нельзя удалить чужую работу или задание преподавателя");
       return;
     }
+    if(blockedBoardImageCrops(current,next,authUser.id,isStudent,isBoardOwner).length){
+      setNotice("Нельзя обрезать чужое изображение");return;
+    }
     const normalized = stampNewBoardItemAuthors(current,syncBoundConnectors(next),authUser.id);
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
@@ -3952,6 +3993,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       history.current[index.current],history.current[next],itemsRef.current);
     if(blockedBoardItemRemovals(itemsRef.current,rebased,authUser.id,isStudent,isBoardOwner).length){
       setNotice("Отмена не может удалить чужую работу");return;
+    }
+    if(blockedBoardImageCrops(itemsRef.current,rebased,authUser.id,isStudent,isBoardOwner).length){
+      setNotice("Нельзя обрезать чужое изображение");return;
     }
     index.current = next;
     display(rebased);
@@ -4880,7 +4924,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         return;
       }
     }
-    if (e.pointerType === "touch" && hit?.kind === "image" && (tool === "select" || tool === "hand") && !space && canEdit && !hit.locked) {
+    if (e.pointerType === "touch" && hit?.kind === "image" && (tool === "select" || tool === "hand") && !space && canCropImage(hit)) {
       const now = performance.now();
       const previousTap = imageTapRef.current;
       const isDoubleTap = !!previousTap && previousTap.id === hit.id && now - previousTap.at <= 420 && Math.hypot(e.clientX - previousTap.x, e.clientY - previousTap.y) <= 28;
@@ -5875,7 +5919,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       case "quiz": openQuizEditor(singleSelected); break;
       case "flashcard": openFlashcardEditor(singleSelected); break;
       case "linkmedia": openLinkMediaEditor(singleSelected); break;
-      case "image": setImageCropEditorId(singleSelected.id); break;
+      case "image": if(canCropImage(singleSelected))setImageCropEditorId(singleSelected.id); break;
       default: break;
     }
   };
@@ -6214,6 +6258,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     commit(itemsRef.current.filter((item) => !deletable.includes(item.id)));
     setSelected(selected.filter((id) => lockedIds.has(id)||foreignIds.has(id)));
+    flushSave();
   };
 
   const moveLayer = (front: boolean) => {
@@ -6853,6 +6898,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "formula" || item.locked) return;
     if (editing) finishEdit();
+    modalEditorBase.current=item;
     setSelected(pendingMathItem?.id===item.id?[]:[item.id]);
     setTool("select");
     setFormulaEditorId(item.id);
@@ -6862,12 +6908,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const closeFormulaEditor = (save = true) => {
     if (save && formulaEditorId && formulaDraft && pendingMathItem?.id!==formulaEditorId) {
-      commit(itemsRef.current.map((item) => item.id === formulaEditorId ? {
-        ...item,
+      commit(itemsRef.current.map((item) => item.id === formulaEditorId ? mergeModalPatch(item,{
         text: formulaDraft.text.slice(0, 10000),
         fontSize: Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize))),
         color: formulaDraft.color,
-      } : item));
+      }) : item));
     }
     setFormulaEditorId(null);
     setFormulaDraft(null);
@@ -6879,12 +6924,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const textValue = formulaDraft.text.slice(0, 10000);
     const fontSize = Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize)));
     if (textValue.trim()) { const history=[textValue,...formulaHistory.filter((value)=>value!==textValue)].slice(0,12); setFormulaHistory(history); if(!demoMode)localStorage.setItem("onlinerepetitor.formula-history.v54",JSON.stringify(history)); }
-    commit((pendingMathItem?.kind==="formula"&&pendingMathItem.id===formulaEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map((item) => item.id === formulaEditorId ? {
-      ...item,
+    commit((pendingMathItem?.kind==="formula"&&pendingMathItem.id===formulaEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map((item) => item.id === formulaEditorId ? mergeModalPatch(item,{
       text: textValue,
       fontSize,
       color: formulaDraft.color,
-    } : item));
+    }) : item));
     closeFormulaEditor(false);
     setNotice("Формула сохранена");
   };
@@ -6921,6 +6965,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const openTableEditor = (item: Item) => {
     if (item.kind !== "table" || item.locked) return;
+    modalEditorBase.current=item;
     const rows = Math.max(1, item.tableRows ?? 3);
     const cols = Math.max(1, item.tableCols ?? 3);
     const cells = Array.from({ length: rows * cols }, (_, index) => item.tableCells?.[index] ?? "");
@@ -6985,8 +7030,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const saveTableEditor = () => {
     if(!canCreateAssignments){setNotice("Изменять учебную таблицу может преподаватель");return;}
     if (!tableEditorId || !tableDraft) { setTableEditorId(null); setTableDraft(null); return; }
-    commit(itemsRef.current.map((item) => item.id === tableEditorId ? {
-      ...item,
+    commit(itemsRef.current.map((item) => item.id === tableEditorId ? mergeModalPatch(item,{
       tableRows: tableDraft.rows,
       tableCols: tableDraft.cols,
       tableCells: tableDraft.cells.map((cell) => cell.slice(0, 2000)),
@@ -6995,7 +7039,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       tableAlign: tableDraft.align,
       tableStripe: tableDraft.stripe,
       tableCompact: tableDraft.compact,
-    } : item));
+    }) : item));
     setTableEditorId(null);
     setTableDraft(null);
     setNotice(`Таблица сохранена · ${tableDraft.rows}×${tableDraft.cols}`);
@@ -7004,6 +7048,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const openChecklistEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "checklist" || item.locked) return;
+    modalEditorBase.current=item;
     const entries = item.checklistItems?.length ? [...item.checklistItems] : ["Новый пункт"];
     const done = entries.map((_, index) => item.checklistDone?.[index] === true);
     setSelected([item.id]);
@@ -7028,14 +7073,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const original=pendingStudyItem?.id===checklistEditorId?pendingStudyItem:null;
     const source=original?[...itemsRef.current,original]:itemsRef.current;
-    commit(source.map((item) => item.id === checklistEditorId ? {
-      ...item,
+    commit(source.map((item) => item.id === checklistEditorId ? mergeModalPatch(item,{
       text: checklistDraft.title.slice(0, 200),
       checklistItems: cleanItems.length ? cleanItems : ["Новый пункт"],
       checklistDone: cleanItems.length ? cleanDone : [false],
       fontSize: Math.max(10, Math.min(32, Math.round(checklistDraft.fontSize))),
       color: checklistDraft.color,
-    } : item));
+    }) : item));
     if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setChecklistEditorId(null);
     setChecklistDraft(null);
@@ -7051,6 +7095,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const openQuizEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "quiz" || item.locked) return;
+    modalEditorBase.current=item;
     const options = item.quizOptions?.length ? [...item.quizOptions] : ["Вариант 1", "Вариант 2"];
     setSelected([item.id]);
     setQuizEditorId(item.id);
@@ -7074,8 +7119,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const original=pendingStudyItem?.id===quizEditorId?pendingStudyItem:null;
     const source=original?[...itemsRef.current,original]:itemsRef.current;
-    commit(source.map((item) => item.id === quizEditorId ? {
-      ...item,
+    commit(source.map((item) => item.id === quizEditorId ? mergeModalPatch(item,{
       text: quizDraft.question.slice(0, 2000),
       quizOptions: options.length >= 2 ? options : [...options, "Вариант 2"].slice(0, 2),
       quizCorrect: correct,
@@ -7084,7 +7128,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       color: quizDraft.color,
       quizRevealed: false,
       quizSelected: undefined,
-    } : item));
+    }) : item));
     if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setQuizEditorId(null);
     setQuizDraft(null);
@@ -7114,6 +7158,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const openFlashcardEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "flashcard" || item.locked) return;
+    modalEditorBase.current=item;
     setSelected([item.id]);
     setFlashcardEditorId(item.id);
     setFlashcardDraft({ front: item.text || "Вопрос", back: item.flashcardBack ?? "Ответ", fontSize: item.fontSize ?? 18, color: item.color ?? "#5355c9" });
@@ -7127,10 +7172,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const original=pendingStudyItem?.id===flashcardEditorId?pendingStudyItem:null;
     const source=original?[...itemsRef.current,original]:itemsRef.current;
-    commit(source.map((item) => item.id === flashcardEditorId ? {
-      ...item, text: flashcardDraft.front.slice(0, 5000), flashcardBack: flashcardDraft.back.slice(0, 5000),
+    commit(source.map((item) => item.id === flashcardEditorId ? mergeModalPatch(item,{
+      text: flashcardDraft.front.slice(0, 5000), flashcardBack: flashcardDraft.back.slice(0, 5000),
       fontSize: Math.max(10, Math.min(48, Math.round(flashcardDraft.fontSize))), color: flashcardDraft.color, flashcardFlipped: false,
-    } : item));
+    }) : item));
     if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setFlashcardEditorId(null); setFlashcardDraft(null); setNotice("Карточка сохранена");
   };
@@ -7263,6 +7308,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const openFrameNotesEditor = (frame: Item) => {
     if (frame.kind !== "frame" || frame.locked) return;
+    modalEditorBase.current=frame;
     setFrameNotesEditorId(frame.id);
     setFrameNotesDraft(frame.notes ?? "");
   };
@@ -7270,7 +7316,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const saveFrameNotes = () => {
     if (!frameNotesEditorId) return;
     const notes = frameNotesDraft.slice(0, 20000);
-    commit(itemsRef.current.map((item) => item.id === frameNotesEditorId ? { ...item, notes } : item));
+    commit(itemsRef.current.map((item) => item.id === frameNotesEditorId ? mergeModalPatch(item,{notes}) : item));
     setFrameNotesEditorId(null);
     setFrameNotesDraft("");
     setNotice(notes.trim() ? "Заметки к фрейму сохранены" : "Заметки к фрейму очищены");
@@ -7834,6 +7880,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         // Do not call applyDocument(): it resets pointer state, selection,
         // editor windows and the undo stack on EVERY server version.
         display(mergedItems);
+        const mergedIds=new Set(mergedItems.map(item=>item.id));
+        setSelected(current=>current.filter(id=>mergedIds.has(id)));
+        if(editing){
+          const edited=mergedItems.find(item=>item.id===editing);
+          if(!edited)setEditing(null);
+          else{draftRef.current=edited.text;setDraft(edited.text);}
+        }
         history.current=[mergedItems];
         index.current=0;
         snapshot.current=merged;
@@ -7899,8 +7952,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         // Retire that preview too; the durable fragments will arrive normally.
         if(ink.finished&&!ink.cancelled&&ink.cutIds?.length){
           if(ink.cutIds.length<500){
-            const originalTargets=targets.get(ink.id);
-            targets.set(ink.id,new Set(ink.cutIds.filter(id=>originalTargets?.has(id))));
+            // Final affected IDs are exact, even when the original stroke
+            // or an earlier erase packet arrived out of order.
+            targets.set(ink.id,new Set(ink.cutIds));
           }
           remoteInkStore.acknowledge(ink.cutIds);
         }
@@ -8547,6 +8601,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
           canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
+          canEditContent={singleSelected?.kind!=="image"||canCropImage(singleSelected)}
           inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
           onDeselect={()=>{setSelected([]);setLectrisInspectorOpen(false)}}
           onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
@@ -8558,6 +8613,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
             pdfPageCount={pdfPageCount}
             canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
+            canEditContent={singleSelected.kind!=="image"||canCropImage(singleSelected)}
             canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
             onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
@@ -10141,7 +10197,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   } else if (tool === "select" && !space && !item.locked && item.kind === "flashcard") {
                     setSelected([item.id]);
                     openFlashcardEditor(item);
-                  } else if ((tool === "select" || tool === "hand") && !space && !item.locked && item.kind === "image") {
+                  } else if ((tool === "select" || tool === "hand") && !space && item.kind === "image" && canCropImage(item)) {
                     setSelected([item.id]);
                     setImageCropEditorId(item.id);
                   }
@@ -10159,12 +10215,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 {item.kind === "shape" && <Shape type={item.shapeType} color={item.color}/>}
                 {item.kind === "connector" && <Connector item={item}/>}
                 {(item.kind === "image" || item.kind === "pdf") && <Media item={item} boardId={boardSummary.id}/>}
-                {item.kind === "image" && imageCropEditorId === item.id && <InlineImageCrop
+                {item.kind === "image" && imageCropEditorId === item.id && canCropImage(item) && <InlineImageCrop
                   item={item} boardId={boardSummary.id}
                   registerApply={apply=>{imageCropApplyRef.current=apply}}
                   onApply={async crop=>{
                     const current=itemsRef.current.find(candidate=>candidate.id===item.id&&candidate.kind==="image");
-                    if(!current)return;
+                    if(!current||!canCropImage(current)){setImageCropEditorId(null);return;}
                     const previous=current.imageCrop??{x:0,y:0,width:1,height:1};
                     const same=([ "x","y","width","height"] as const).every(k=>Math.abs(previous[k]-crop[k])<.00001);
                     if(!same){
@@ -10598,7 +10654,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </span>
 
               {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                (["text","image"].includes(singleSelected.kind))&&
+                (singleSelected.kind==="text"||canCropImage(singleSelected))&&
                 <button type="button" className="selection-edit-action" data-board-interactive="true"
                   title={singleSelected.kind==="image"?"Обрезать изображение":"Редактировать текст"} aria-label={singleSelected.kind==="image"?"Обрезать изображение":"Редактировать текст"}
                   onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>{singleSelected.kind==="image"?"Обрезать":"Редактировать"}</span></button>}
