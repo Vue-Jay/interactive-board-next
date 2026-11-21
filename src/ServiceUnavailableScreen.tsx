@@ -45,6 +45,8 @@ export function ServiceUnavailableScreen({reason,checking=false,automatic=false,
 }
 export function mountStartupUnavailable(root:HTMLElement){
   template(root);
-  update(root,navigator.onLine===false?"offline":"startup",false,false);
-  root.querySelector("[data-u-retry]")?.addEventListener("click",()=>window.location.reload());
+  const recover=(window as Window & {lektrusRecoverDocument?:(root:HTMLElement)=>void}).lektrusRecoverDocument;
+  update(root,!recover&&navigator.onLine===false?"offline":"startup",false,false);
+  if(recover)recover(root);
+  else root.querySelector("[data-u-retry]")?.addEventListener("click",()=>window.location.reload());
 }

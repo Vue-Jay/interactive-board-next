@@ -245,10 +245,77 @@ Pzw1NTHR+9KX23JbbsttuS235fb/u/0vhgYt+DNKb0cAAAAASUVORK5CYII=
 </main>
 <script>
 (function(){
-  var retry=document.querySelector("[data-u-retry]");
-  function title(){if(navigator.onLine===false){document.querySelector("[data-u-status]").textContent="Нет соединения";document.querySelector("[data-u-title]").textContent="Вы не в сети";document.querySelector("[data-u-description]").textContent="Проверьте Wi-Fi или мобильный интернет, чтобы снова открыть Lektrus."}}
-  function reload(){retry.disabled=true;document.querySelector("[data-u-button]").textContent="Проверяем…";if(location.pathname==="/service-unavailable.html")location.replace("/");else location.reload()}
-  title();retry.addEventListener("click",reload);window.addEventListener("online",reload);window.addEventListener("offline",title);
+  // Also embedded in index.html, so recovery works without any app JS bundle.
+  window.lektrusRecoverDocument=function(root){
+    var retry=root.querySelector("[data-u-retry]");
+    if(!retry||retry.dataset.recoveryBound)return;
+    retry.dataset.recoveryBound="true";
+    var status=root.querySelector("[data-u-status]"),title=root.querySelector("[data-u-title]"),description=root.querySelector("[data-u-description]");
+    var button=root.querySelector("[data-u-button]"),note=root.querySelector("[data-u-note]");
+    var original=[status.textContent,title.textContent,description.textContent];
+    var native=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform();
+    var busy=false,pending=false,timer,controller,guardKey="lektrus.document-recovery.v1";
+    function showConnection(){
+      var copy=navigator.onLine===false?["Нет соединения","Вы не в сети","Проверьте Wi-Fi или мобильный интернет, чтобы снова открыть Lektrus."]:original;
+      status.textContent=copy[0];title.textContent=copy[1];description.textContent=copy[2];
+    }
+    function schedule(){
+      clearTimeout(timer);
+      if(!native&&document.visibilityState!=="hidden")timer=setTimeout(function(){check(false)},15000);
+    }
+    function reload(manual){
+      // Survives the next fallback document. Never spin in an automatic reload
+      // loop if HTML is reachable but initialization is still broken.
+      try{
+        var last=Number(sessionStorage.getItem(guardKey)||0);
+        if(!manual&&last&&Date.now()-last<60000)return false;
+        sessionStorage.setItem(guardKey,String(Date.now()));
+      }catch{if(!manual)return false}
+      if(location.pathname==="/service-unavailable.html")location.replace("/");else location.reload();
+      return true;
+    }
+    async function check(manual){
+      if(busy)return;
+      clearTimeout(timer);showConnection();
+      if(native){if(manual)reload(true);return}
+      busy=true;retry.disabled=true;button.textContent="Проверяем…";
+      controller=new AbortController();
+      var deadline=setTimeout(function(){controller.abort()},20000);
+      try{
+        // Health JSON alone is not enough: verify the actual document and its
+        // entry module through fresh, non-navigation same-origin requests.
+        var target=new URL(location.pathname==="/service-unavailable.html"?"/":location.href,location.origin);
+        var options={cache:"no-store",credentials:"same-origin",signal:controller.signal};
+        var response=await fetch(target.href,options);
+        if(!response.ok||!(response.headers.get("content-type")||"").includes("text/html"))throw Error("document unavailable");
+        var html=new DOMParser().parseFromString(await response.text(),"text/html");
+        var script=html.querySelector('script[type="module"][src]');
+        if(!html.getElementById("root")||!script)throw Error("app shell unavailable");
+        var entry=new URL(script.getAttribute("src"),target.href);
+        if(entry.origin!==location.origin||!entry.pathname.startsWith("/assets/"))throw Error("invalid entry");
+        var bundle=await fetch(entry.href,options);
+        if(!bundle.ok||!/javascript|ecmascript/i.test(bundle.headers.get("content-type")||""))throw Error("entry unavailable");
+        await bundle.arrayBuffer();
+        // An actual response outranks a stale navigator.onLine flag.
+        if(controller.signal.aborted)return;
+        note.textContent="Связь восстановлена. Открываем Lektrus…";
+        if(reload(manual))return;
+        note.textContent="Связь восстановлена. Нажмите «Повторить попытку».";
+      }catch{note.textContent="Автоматически проверяем восстановление связи. Ваши данные не удалены."}
+      finally{
+        clearTimeout(deadline);controller=null;busy=false;retry.disabled=false;button.textContent="Повторить попытку";
+        if(pending){pending=false;void check(false)}else schedule();
+      }
+    }
+    function resume(){if(document.visibilityState!=="hidden")void check(false)}
+    retry.addEventListener("click",function(){void check(true)});
+    window.addEventListener("online",function(){if(busy){pending=true;controller.abort()}else resume()});
+    window.addEventListener("offline",function(){pending=false;if(controller)controller.abort();showConnection()});
+    window.addEventListener("focus",resume);document.addEventListener("visibilitychange",resume);
+    showConnection();if(!native)resume();
+  };
+  var standalone=document.querySelector("main.lektrus-unavailable");
+  if(standalone)window.lektrusRecoverDocument(standalone);
 })();
 </script>
 </body>

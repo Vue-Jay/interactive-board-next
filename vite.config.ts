@@ -8,7 +8,8 @@ import { readFileSync } from 'node:fs'
 const recoveryDocument=readFileSync(new URL('./src/serviceUnavailableDocument.html',import.meta.url),'utf8')
 const recoveryStyle=recoveryDocument.match(/<style>[\s\S]*?<\/style>/)?.[0]
 const recoveryMain=recoveryDocument.match(/<main\b[\s\S]*?<\/main>/)?.[0]
-if(!recoveryStyle||!recoveryMain)throw new Error('Missing service recovery template')
+const recoveryScript=recoveryDocument.match(/<script>[\s\S]*?<\/script>/)?.[0]
+if(!recoveryStyle||!recoveryMain||!recoveryScript)throw new Error('Missing service recovery template')
 const recoveryTemplate='<template id="lektrus-unavailable-template">'+recoveryStyle+recoveryMain+'</template>'
 const initialModuleFallback=`<script>
 window.addEventListener('error',function(event){
@@ -17,15 +18,10 @@ window.addEventListener('error',function(event){
     var root=document.getElementById('root'),template=document.getElementById('lektrus-unavailable-template');
     if(!root||root.childNodes.length||!template)return;
     root.appendChild(template.content.cloneNode(true));
-    if(navigator.onLine===false){
-      root.querySelector('[data-u-status]').textContent='Нет соединения';
-      root.querySelector('[data-u-title]').textContent='Вы не в сети';
-      root.querySelector('[data-u-description]').textContent='Проверьте Wi-Fi или мобильный интернет, чтобы снова открыть Lektrus.';
-    }else{
-      root.querySelector('[data-u-status]').textContent='Ошибка загрузки';
-      root.querySelector('[data-u-title]').textContent='Не удалось открыть Lektrus';
-    }
-    root.querySelector('[data-u-retry]').addEventListener('click',function(){location.reload()});
+    root.querySelector('[data-u-status]').textContent='Ошибка загрузки';
+    root.querySelector('[data-u-title]').textContent='Не удалось открыть Lektrus';
+    root.querySelector('[data-u-description]').textContent='Интерфейс не загрузился. Проверяем восстановление подключения.';
+    window.lektrusRecoverDocument(root);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show,{once:true});else show();
 },true);
@@ -35,7 +31,7 @@ export default defineConfig({
   plugins: [react(), {
     name: 'lektrus-service-recovery',
     transformIndexHtml: {order:'pre',handler(html){
-      return html.replace('</head>',initialModuleFallback+'</head>').replace('<div id="root"></div>','<div id="root"></div>'+recoveryTemplate)
+      return html.replace('</head>',recoveryScript+initialModuleFallback+'</head>').replace('<div id="root"></div>','<div id="root"></div>'+recoveryTemplate)
     }},
     generateBundle(){this.emitFile({type:'asset',fileName:'service-unavailable.html',source:recoveryDocument})},
     configureServer(server){server.middlewares.use('/service-unavailable.html',(_req,res)=>{

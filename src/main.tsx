@@ -30,7 +30,10 @@ const isPublicSite=window.location.pathname==="/"&&!appRoute&&!Capacitor.isNativ
 // One application entry for every authenticated route, including email confirmation.
 // The public site and site builder remain separate public-facing entry points only.
 void (window.location.pathname==="/site-builder"&&!Capacitor.isNativePlatform()?import("./LektrusSiteBuilderEntry"):
-  isPublicSite?import("./LektrusSiteEntry"):import("./appEntry")).catch(async error=>{
+  isPublicSite?import("./LektrusSiteEntry"):import("./appEntry")).then(()=>{
+  // Successful startup releases the fallback document's persistent loop guard.
+  try{sessionStorage.removeItem("lektrus.document-recovery.v1")}catch{/* Storage may be unavailable. */}
+}).catch(async error=>{
   if (await recoverOutdatedChunk(error, !Capacitor.isNativePlatform())) return;
   const root=document.getElementById("root");
   if (!root) return;
