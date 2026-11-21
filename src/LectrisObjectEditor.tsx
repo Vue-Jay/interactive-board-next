@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Item,ShapeType,ConnectorStyle,ArrowHeadStyle } from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 import {boardObjectTypeName} from "./boardObjectNames";
@@ -63,6 +63,53 @@ export function LectrisQuickProperties(props: QuickProps) {
   useEffect(()=>setExpanded(false),[tool,item?.id]);
   const drawing=tool==="pen"||tool==="marker";
   const erasing=tool==="eraser";
+  const dockRef=useRef<HTMLElement>(null);
+  useLayoutEffect(()=>{
+    const dock=dockRef.current;
+    const workspace=dock?.closest(".workspace");
+    if(!dock||!workspace||(!drawing&&!erasing))return;
+    const win=dock.ownerDocument.defaultView;
+    if(!win)return;
+    const landscape=win.matchMedia("(max-width:1100px) and (orientation:landscape)");
+    const bounds=(selector:string)=>{
+      const rect=workspace.querySelector(selector)?.getBoundingClientRect();
+      return rect&&rect.width>0&&rect.height>0?rect:null;
+    };
+    const measure=()=>{
+      if(!landscape.matches)return;
+      const rail=bounds("nav.mobile-board-tools")||bounds(".toolbar.compact-toolbar");
+      const zoom=bounds(".board-controls");
+      const map=bounds(".minimap");
+      const left=(rail?.right??0)+8;
+      const header=dock.ownerDocument.querySelector(".topbar");
+      const safeRight=header?Math.max(8,parseFloat(win.getComputedStyle(header).paddingRight)-10||8):8;
+      const right=map?win.innerWidth-map.left+8:safeRight;
+      const zoomRight=Math.max(left,(zoom?.right??0)+8);
+      // Prefer the lowest row between zoom and the map. Where that lane is
+      // genuinely too narrow, move just above zoom rather than cover it.
+      const fits=win.innerWidth-zoomRight-right>=dock.offsetWidth;
+      dock.style.setProperty("--lektrus-ink-left",`${fits?zoomRight:left}px`);
+      dock.style.setProperty("--lektrus-ink-right",`${right}px`);
+      dock.dataset.inkUpperRow=String(!fits);
+    };
+    const observer=typeof ResizeObserver!=="undefined"?new ResizeObserver(measure):null;
+    const observe=()=>{
+      observer?.disconnect();
+      observer?.observe(workspace);
+      workspace.querySelectorAll(".board-controls,.minimap,nav.mobile-board-tools,.toolbar.compact-toolbar").forEach(el=>observer?.observe(el));
+      measure();
+    };
+    const mutations=new MutationObserver(records=>{
+      if(records.some(record=>[...record.addedNodes,...record.removedNodes].some(node=>node instanceof Element&&node.matches(".minimap,.board-controls,nav.mobile-board-tools,.toolbar.compact-toolbar"))))observe();
+    });
+    mutations.observe(workspace,{childList:true});
+    observe();
+    win.addEventListener("resize",measure);
+    return ()=>{
+      observer?.disconnect();mutations.disconnect();win.removeEventListener("resize",measure);
+      dock.style.removeProperty("--lektrus-ink-left");dock.style.removeProperty("--lektrus-ink-right");delete dock.dataset.inkUpperRow;
+    };
+  },[drawing,erasing]);
   if(!selectionCount&&!drawing&&!erasing)return null;
   const inkTool=erasing?"eraser":tool==="marker"?"marker":"pen";
   const inkSizes=INK_WIDTHS[inkTool];
@@ -72,7 +119,7 @@ export function LectrisQuickProperties(props: QuickProps) {
     else if(tool==="marker")props.onMarkerWeight(n);
     else props.onWeight(n);
   };
-  return <section className={`lectris-quick-properties ${drawing||erasing?"is-ink-properties":""} ${expanded?"is-expanded":""}`}
+  return <section ref={dockRef} className={`lectris-quick-properties ${drawing||erasing?"is-ink-properties":""} ${expanded?"is-expanded":""}`}
     aria-label={drawing||erasing?"Параметры инструмента":"Быстрые настройки"}
     onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
     onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>

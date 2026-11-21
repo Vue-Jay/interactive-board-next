@@ -181,6 +181,26 @@ try{
   const dx=ink.points.at(-1).x-ink.points[0].x,dy=ink.points.at(-1).y-ink.points[0].y;
   assert.ok(dx>40&&Math.abs(dy)<4,'A logical horizontal stroke was transposed: '+JSON.stringify({dx,dy}));
   console.log('✓ First loader horizontal; real rotated touch pencil drew logical horizontal ink');
+  // Drawing settings share the lowest row with zoom and navigator when they
+  // fit. Verify real hit targets, including the fifth width, after rotation.
+  const inkDockGeometry=`(()=>{const w=window.__originalFrame,d=w.document,p=d.querySelector('.lectris-quick-properties.is-ink-properties');if(!p)return null;const r=p.getBoundingClientRect(),bounds=s=>{const b=d.querySelector(s)?.getBoundingClientRect();return b?.width&&b.height?b:null},overlaps=b=>b&&r.left<b.right&&r.right>b.left&&r.top<b.bottom&&r.bottom>b.top;return {width:r.width,height:r.height,gap:w.innerHeight-r.bottom,left:r.left,right:r.right,screen:w.innerWidth,upper:p.dataset.inkUpperRow,overlap:Boolean(overlaps(bounds('.board-controls'))||overlaps(bounds('.minimap'))||overlaps(bounds('nav.mobile-board-tools'))),widths:[...p.querySelectorAll('.lektrus-ink-width-button')].map(b=>{const q=b.getBoundingClientRect();return q.width>=36&&q.height>=38&&b.contains(d.elementFromPoint(q.x+q.width/2,q.y+q.height/2))})}})()`;
+  for(const [w,h] of [[844,390],[932,430],[720,360],[667,375],[390,844]]){
+   await viewport(w,h);
+   await wait(`Math.abs((${inkDockGeometry})?.screen-${Math.max(w,h)})<=2`,'Ink dock did not rotate');
+   await delay(150);
+   const dock=await evaluate(inkDockGeometry);
+   assert.ok(dock.width<=290&&dock.height<=52&&!dock.overlap&&dock.left>=0&&dock.right<=dock.screen&&dock.widths.length===5&&dock.widths.every(Boolean),JSON.stringify(dock));
+   if(w>=844||h>=844)assert.ok(dock.gap<=18&&dock.upper==='false','Ink dock unnecessarily elevated: '+JSON.stringify(dock));
+   const widest=await point('.lectris-quick-properties.is-ink-properties .lektrus-ink-width-button:last-child');
+   assert.ok(widest,'22 px pen inaccessible');await touch([widest]);
+   await wait(`window.__originalFrame.document.querySelector('.lectris-quick-properties .lektrus-ink-width-button:last-child').getAttribute('aria-pressed')==='true'`,'22 px pen did not activate');
+   console.log(`✓ ${w}×${h}: compact ink dock, bottom gap ${dock.gap}px, five reachable widths`);
+  }
+  const color=await point('.lectris-quick-properties.is-ink-properties .lektrus-color-current');assert.ok(color,'Color picker inaccessible');await touch([color]);
+  await wait(`!!window.__originalFrame.document.querySelector('.lektrus-colors-popup')`,'Color popup did not open');
+  const popup=await evaluate(`(()=>{const w=window.__originalFrame,r=w.document.querySelector('.lektrus-colors-popup').getBoundingClientRect();return r.top>=0&&r.bottom<=w.innerHeight&&r.left>=0&&r.right<=w.innerWidth})()`);
+  assert.ok(popup,'Color popup outside landscape viewport');
+  await touch([color]);
   const select=await point('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]');
   assert.ok(select,'No visible select tool');await touch([select]);
   const zoom=()=>evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent`);
