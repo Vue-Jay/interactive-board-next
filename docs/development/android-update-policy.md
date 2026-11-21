@@ -7,14 +7,18 @@ isolated offline QA builds do not use this APK prompt.
 
 The server caches the official public GitHub releases for five minutes, ignores
 drafts/prereleases and incomplete/foreign assets, and returns the exact tagged
-APK URL, size, latest version and minimum supported version. A release becomes
-visible automatically after the existing permanent-signing and login-smoke
-publication job succeeds.
+APK URL, size, latest version and minimum supported version. Routine checks use
+the small latest-release API response; if it fails, the public GitHub latest
+download redirects are an independent fallback. HEAD requests verify that both
+official assets exist at the same valid Android tag, without downloading the APK.
+A release becomes visible automatically after the existing permanent-signing and
+login-smoke publication job succeeds.
 
 Temporary GitHub fetch failures retain the last verified release and are
 retried after one minute. On a cold start during an outage, the catalog can
-offer the checked-in, previously verified signed release (1.0.4706) until the
-live catalog recovers. A successful empty catalog invalidates that fallback;
+offer the checked-in, previously verified signed release (1.0.4710) until the
+live catalog recovers. Requests wait at most five seconds for the shared
+refresh, which continues in the background if necessary. A successful empty catalog invalidates that fallback;
 it does not advertise a release the live catalog no longer lists.
 
 - Ordinary releases: leave `LEKTRUS_ANDROID_MINIMUM_VERSION` at its default
