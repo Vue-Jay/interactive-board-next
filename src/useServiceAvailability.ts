@@ -5,6 +5,7 @@ import {selfhostServiceHealthy} from "./selfhostApi";
 import type {UnavailableReason} from "./ServiceUnavailableScreen";
 
 const RETRY_MS=15_000;
+const CONFIRM_RETRY_MS=1_000;
 const RESUME_MS=60_000;
 
 export function useServiceAvailability(enabled:boolean,preserveView=false){
@@ -16,29 +17,46 @@ export function useServiceAvailability(enabled:boolean,preserveView=false){
     setReason(null);setChecking(false);
     if(!enabled)return;
     let alive=true,inFlight=false,unavailable=false,lastCheck=0,lastFailureCheck=0;
+    let failures=0,networkEpoch=0,pendingOnline=false;
     let timer:ReturnType<typeof setTimeout>|undefined;
+    const schedule=(delay:number)=>{
+      clearTimeout(timer);
+      if(document.visibilityState==="visible")timer=setTimeout(()=>void check(),delay);
+    };
     const mark=(next:UnavailableReason)=>{
       unavailable=true;setReason(next);
-      clearTimeout(timer);
-      if(document.visibilityState==="visible")timer=setTimeout(()=>void check(),RETRY_MS);
+      schedule(RETRY_MS);
     };
     const check=async()=>{
       if(!alive||!enabledRef.current||inFlight)return;
       clearTimeout(timer);
       if(navigator.onLine===false){mark("offline");return}
       inFlight=true;lastCheck=Date.now();setChecking(true);
+      const epoch=networkEpoch;
       try{
         const healthy=await selfhostServiceHealthy();
-        if(!alive||!enabledRef.current)return;
-        if(!healthy||!navigator.onLine)mark(!navigator.onLine?"offline":"server");
-        else if(unavailable&&!preserveView){
+        // Results from the previous connection cannot classify the new one.
+        if(!alive||!enabledRef.current||epoch!==networkEpoch)return;
+        if(!navigator.onLine){mark("offline");return}
+        if(!healthy){
+          // A slow VPN, radio handover or transient HTTP failure must not
+          // replace an otherwise usable view after a single failed probe.
+          if(++failures<2)schedule(CONFIRM_RETRY_MS);
+          else mark("server");
+          return;
+        }
+        failures=0;
+        if(unavailable&&!preserveView){
           // A full navigation restores failed reads, exact deep links and the
           // existing persisted session. This hook is disabled on open boards.
           window.location.reload();
         }else {unavailable=false;setReason(null);}
       }finally{
         inFlight=false;
-        if(alive)setChecking(false);
+        if(alive){
+          setChecking(false);
+          if(pendingOnline){pendingOnline=false;void check()}
+        }
       }
     };
     retry.current=()=>void check();
@@ -49,10 +67,18 @@ export function useServiceAvailability(enabled:boolean,preserveView=false){
       lastFailureCheck=Date.now();void check();
     };
     const resume=()=>{
-      if(document.visibilityState==="visible"&&(unavailable||Date.now()-lastCheck>=RESUME_MS))void check();
+      if(document.visibilityState==="visible"&&(unavailable||failures>0||Date.now()-lastCheck>=RESUME_MS))void check();
     };
-    const online=()=>void check();
-    const offline=()=>{if(alive)mark("offline")};
+    const online=()=>{
+      networkEpoch++;failures=0;
+      if(inFlight){pendingOnline=true;return}
+      void check();
+    };
+    const offline=()=>{
+      if(!alive)return;
+      networkEpoch++;failures=0;pendingOnline=false;
+      setChecking(false);mark("offline");
+    };
     window.addEventListener("lektrus:service-request-failed",failure);
     window.addEventListener("online",online);
     window.addEventListener("offline",offline);

@@ -70,6 +70,7 @@ export type SelfhostBoardChannel=(()=>void)&{
 const SESSION_KEY="lektrus.selfhost.session.v1";
 const TIMEOUT_MS=15000;
 const NATIVE_AUTH_TIMEOUT_MS=30000;
+const HEALTH_TIMEOUT_MS=20000;
 let refreshInFlight:Promise<SelfhostSession|null>|null=null;
 
 export class SelfhostHttpError extends Error {
@@ -198,7 +199,7 @@ async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutM
 /** Unauthenticated and uncached: no session refresh, no private data. */
 export async function selfhostServiceHealthy():Promise<boolean>{
   try{
-    const response=await rawRequest("/api/v1/health",{},undefined,6500);
+    const response=await rawRequest("/api/v1/health",{},undefined,HEALTH_TIMEOUT_MS);
     if(!response.ok)return false;
     const data=await response.json() as {ok?:unknown;service?:unknown};
     return data?.ok===true&&data.service==="lektrus-selfhost";

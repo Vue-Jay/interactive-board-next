@@ -694,6 +694,8 @@ for(const platform of ["web","android","ios"]){
   assert.equal(health.api.cachedSelfhostSession(),null);
   assert.equal(health.refreshCount(),0);
   assert.ok(health.records.every(r=>r.path==="/api/v1/health"&&r.bearer===null));
+  if(platform==="android")assert.ok(health.nativeRequests.every(r=>r.connectTimeout===20000&&r.readTimeout===20000),
+    "Health probes must tolerate slower VPN connections on native Android");
 }
 console.log("Public health probe: browser, Android transport and iOS, no auth or session mutation.");
 
@@ -702,7 +704,7 @@ console.log("Public health probe: browser, Android transport and iOS, no auth or
 // is still required. Drive the actual hook using isolated events and timers.
 const availabilitySource=readFileSync(new URL("../src/useServiceAvailability.ts",import.meta.url),"utf8");
 const availabilityCode=ts.transpileModule(availabilitySource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
-function availabilityFixture(preserveView){
+function availabilityFixture(preserveView,initialProbe){
   const win=new EventTarget(),doc=new EventTarget(),nav={onLine:true};
   doc.visibilityState="visible";
   let reason=null,checking=false,reloads=0,reads=0,healthy=false,cleanup;
@@ -714,19 +716,33 @@ function availabilityFixture(preserveView){
     if(name==="react")return react;
     if(name==="@capacitor/core")return {Capacitor:{isNativePlatform:()=>false}};
     if(name==="@capacitor/app")return {App:{}};
-    if(name==="./selfhostApi")return {selfhostServiceHealthy:async()=>{reads++;return healthy}};
+    if(name==="./selfhostApi")return {selfhostServiceHealthy:async()=>{reads++;return reads===1&&initialProbe?initialProbe:healthy}};
     throw Error(name);
-  },window:win,document:doc,navigator:nav,Date,setTimeout(fn){const id=++timerId;timers.set(id,fn);return id},clearTimeout(id){timers.delete(id)}});
+  },window:win,document:doc,navigator:nav,Date,setTimeout(fn,delay){const id=++timerId;timers.set(id,{fn,delay});return id},clearTimeout(id){timers.delete(id)}});
   const hook=exports.useServiceAvailability(true,preserveView);
-  return {hook,cleanup,win,nav,timers,setHealthy(value){healthy=value},state(){return {reason,checking,reloads,reads}}};
+  return {hook,cleanup,win,doc,nav,timers,setHealthy(value){healthy=value},state(){return {reason,checking,reloads,reads}},
+    tick(delay){const next=[...timers].find(([,timer])=>timer.delay===delay);assert.ok(next,`Missing ${delay}ms retry`);timers.delete(next[0]);next[1].fn()}};
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 for(const preserve of [true,false]){
   const f=availabilityFixture(preserve);
   await flush();
-  assert.deepEqual(f.state(),{reason:"server", checking:false,reloads:0,reads:1});
+  assert.deepEqual(f.state(),{reason:null,checking:false,reloads:0,reads:1},"One transient failure must not hide Lektrus");
+  f.setHealthy(true);f.tick(1000);await flush();
+  assert.deepEqual(f.state(),{reason:null,checking:false,reloads:0,reads:2},"VPN recovery before confirmation must not reload the page");
+  assert.equal(f.timers.size,0);
+  f.setHealthy(false);f.hook.check();await flush();
+  assert.equal(f.state().reason,null,"A successful check resets the failure count");
+  f.cleanup();assert.equal(f.timers.size,0);
+}
+for(const preserve of [true,false]){
+  const f=availabilityFixture(preserve);
+  await flush();
+  assert.equal(f.state().reason,null);
+  f.tick(1000);await flush();
+  assert.deepEqual(f.state(),{reason:"server", checking:false,reloads:0,reads:2});
   assert.equal(f.timers.size,1,"Unavailable service must retain its automatic retry");
-  f.setHealthy(true);f.hook.check();await flush();
+  f.setHealthy(true);f.tick(15000);await flush();
   assert.equal(f.state().reloads,preserve?0:1,"Native auth must recover without destroying input state; full-screen route must restore");
   if(preserve){
     assert.equal(f.state().reason,null);
@@ -737,6 +753,23 @@ for(const preserve of [true,false]){
   }
   f.cleanup();assert.equal(f.timers.size,0);
 }
+// Switching Wi-Fi/VPN while a probe is pending must cause a new probe, not
+// let the old network's result count as a failure on the new network.
+let finishOldProbe;
+const switched=availabilityFixture(true,new Promise(resolve=>{finishOldProbe=resolve}));
+switched.nav.onLine=false;switched.win.dispatchEvent(new Event("offline"));
+assert.equal(switched.state().reason,"offline");
+switched.setHealthy(true);switched.nav.onLine=true;switched.win.dispatchEvent(new Event("online"));
+assert.equal(switched.state().reads,1,"Do not overlap health probes on network change");
+finishOldProbe(false);await flush();
+assert.deepEqual(switched.state(),{reason:null,checking:false,reloads:0,reads:2});
+switched.cleanup();assert.equal(switched.timers.size,0);
+const hidden=availabilityFixture(true);
+hidden.doc.visibilityState="hidden";await flush();
+assert.equal(hidden.timers.size,0,"Do not poll hidden views");
+hidden.doc.visibilityState="visible";hidden.doc.dispatchEvent(new Event("visibilitychange"));await flush();
+assert.equal(hidden.state().reason,"server","Resume pending confirmation when the tab becomes visible");
+hidden.cleanup();assert.equal(hidden.timers.size,0);
 assert.match(appSource,/serviceAvailability\.reason&&!activeBoard&&!preserveNativeAuth/);
 assert.match(appSource,/connectionIssue=\{preserveNativeAuth&&serviceAvailability\.reason\?/);
 assert.match(registrationForm,/auth-connection-notice/);
