@@ -149,6 +149,14 @@ const icon192 = readFileSync(new URL("../public/lektrus-icon-192.png", import.me
 const sourceIcon = readFileSync(new URL("../assets/lektrus-brand-source.png", import.meta.url));
 const icon512 = readFileSync(new URL("../public/lektrus-icon-512.png", import.meta.url));
 const nativeSource = readFileSync(new URL("../assets/icon.png", import.meta.url));
+// Standalone APK viewers may only decode raster application icons, while the
+// installed launcher's activity continues to use the adaptive mipmap.
+const apkIcon = readFileSync(new URL("../android/app/src/main/res/drawable-nodpi/lektrus_apk_icon.png", import.meta.url));
+assert.ok(apkIcon.equals(sourceIcon), "APK file icon must be the original Lektrus artwork");
+assert.match(androidManifest, /<application\b[^>]*android:icon="@drawable\/lektrus_apk_icon"[^>]*android:roundIcon="@drawable\/lektrus_apk_icon"/);
+assert.match(androidManifest, /<activity\b[^>]*android:name="\.MainActivity"[^>]*android:icon="@mipmap\/ic_launcher"/);
+assert.match(read("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"), /<adaptive-icon\b/);
+assert.match(read(".github/workflows/refresh-brand-icons.yml"), /cp assets\/lektrus-brand-source\.png android\/app\/src\/main\/res\/drawable-nodpi\/lektrus_apk_icon\.png/);
 assert.ok(icon192.equals(sourceIcon), "192px icon must use the supplied Lektrus artwork");
 for (const [data, size] of [[icon192,192],[icon512,512],[nativeSource,1024]]) {
   assert.equal(data.subarray(0,8).toString("hex"),"89504e470d0a1a0a");

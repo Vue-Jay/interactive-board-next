@@ -20,6 +20,8 @@ jobs:
         shell: bash
         run: |
           cp assets/lektrus-brand-source.png public/lektrus-icon-192.png
+          mkdir -p android/app/src/main/res/drawable-nodpi
+          cp assets/lektrus-brand-source.png android/app/src/main/res/drawable-nodpi/lektrus_apk_icon.png
           sips -z 512 512 assets/lektrus-brand-source.png --out public/lektrus-icon-512.png
           sips -z 1024 1024 assets/lektrus-brand-source.png --out assets/icon.png
           npx --yes @capacitor/assets@3.0.5 generate --android --iconBackgroundColor '#edf5ff' --splashBackgroundColor '#edf5ff'
