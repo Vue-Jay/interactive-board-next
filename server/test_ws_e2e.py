@@ -122,12 +122,39 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                         assert final["finished"] is True and final["cut_ids"]==["native_stroke"]
                         assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
                     saved=await http.put(f"/api/v1/boards/{native}/document?version_only=true",headers=owner,
-                        json={"expected_version":0,"document":{"items":[],"ink":[]}})
+                        json={"expected_version":0,"document":{"version":1,"items":[],"ink":[]}})
                     assert saved.status_code==200,saved.text
                     for ws in (first,second):
                         assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"document_changed","version":1}
                     version=await http.get(f"/api/v1/boards/{native}/document?version_only=true",headers=student)
                     assert version.json()=={"version":1}
+                    # Exercise durable collaboration through real sockets
+                    # and the same incremental HTTP read used by browsers.
+                    from document_delta import apply_delta
+                    url=f"/api/v1/boards/{native}/document"
+                    peer=(await http.get(url,headers=student)).json()["document"]
+                    kinds=("sticky","text","shape","pen","marker","image","pdf","frame","connector","comment",
+                           "table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument")
+                    objects=[{"id":"sync-"+kind,"kind":kind,"x":0,"y":0,"text":"","createdBy":str(TEACHER)} for kind in kinds]
+                    moved=[{**item,"x":100,"y":50} for item in objects]
+                    edited=[{**item,"text":"updated"} for item in moved]
+                    for revision,delta in enumerate((
+                        {"items":{"upsert":objects}},
+                        {"items":{"upsert":moved}},
+                        {"items":{"upsert":edited}},
+                        {"items":{"remove":[item["id"] for item in objects]}},
+                    ),1):
+                        saved=await http.patch(url+"?version_only=true",headers=owner,
+                            json={"expected_version":revision,"delta":delta})
+                        assert saved.status_code==200,saved.text
+                        for ws in (first,second):
+                            assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"document_changed","version":revision+1}
+                        update=(await http.get(url+f"?since_version={revision}",headers=student)).json()
+                        assert update["version"]==revision+1
+                        for patch in update["patches"]:
+                            peer=apply_delta(peer,patch)
+                        assert peer==(await http.get(url,headers=owner)).json()["document"]
+                    assert peer["items"]==[]
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass

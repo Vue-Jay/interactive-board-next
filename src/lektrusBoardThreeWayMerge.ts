@@ -7,7 +7,8 @@ import {mergeLabBench} from "./lektrusChemistryBenchModel";
  * Rebase local unsaved board edits onto a newer server version.
  * Normal object moves, resizes, pen strokes and eraser deletions are all
  * identified by stable item IDs, not only edits made inside special editors.
- * A remote snapshot is never allowed to roll back a locally edited item.
+ * Independent edits are preserved, but deletion of an existing ID wins over
+ * a stale concurrent edit on either participant.
  */
 const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
 
@@ -49,9 +50,20 @@ export function mergeBoardItems(base:readonly Item[],local:readonly Item[],remot
  for(const item of local){
   if(received.has(item.id))continue;
   const original=originals.get(item.id);
-  // Local drawing never disappears just because it is missing in the
-  // competing server revision. A remote deletion does win if no local edit.
-  if(!original||!same(original,item))result.push(item);
+  // Only genuinely new IDs can be appended. An edit based on an old version
+  // must not resurrect a photo, stroke or other object deleted by a peer.
+  if(!original)result.push(item);
+ }
+ // Preserve a local layer reordering when rebasing over an independent edit.
+ // Reorder shared surviving objects only; peer additions retain their slots.
+ const surviving=new Set(result.map(item=>item.id));
+ const shared=new Set(base.filter(item=>surviving.has(item.id)&&changed.has(item.id)&&received.has(item.id)).map(item=>item.id));
+ const oldOrder=base.filter(item=>shared.has(item.id)).map(item=>item.id);
+ const localOrder=local.filter(item=>shared.has(item.id)).map(item=>item.id);
+ if(!same(oldOrder,localOrder)){
+  const byId=new Map(result.map(item=>[item.id,item]));
+  let index=0;
+  return result.map(item=>shared.has(item.id)?byId.get(localOrder[index++])!:item);
  }
  return result;
 }

@@ -271,8 +271,10 @@ assert.match(app,/const movableIds = canEdit\?/,
  "viewer cannot move board objects using the hand tool");
 assert.match(app,/if \(!canTransformBoardObject\(hit\)\) return;/,
  "viewer selection never starts an object drag and student transforms use the shared policy");
-assert.match(app,/&& !space && canEdit && !hit.locked/,
+assert.match(app,/&& !space && canCropImage\(hit\)/,
  "viewer cannot open crop editor on a touch double tap");
+assert.match(app,/canEdit&&canCropBoardImage\(item,authUser.id,isStudent,isBoardOwner\)/,
+ "Viewer and student permissions are enforced by the crop action");
 assert.match(app,/notes: isStudent \? `student-media-request:/,
  "guest and student image/PDF uploads both use the teacher approval path");
 assert.match(css,/\.lektrus-developer-role-options/,"responsive role buttons styled");

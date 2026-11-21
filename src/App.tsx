@@ -17,6 +17,7 @@ import { boardStorageKey, getBoardForUser, type BoardSummary } from "./boardStor
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument } from "./backend";
 import { isSelfhostBackendEnabled, selfhostReadDocument, selfhostSaveDocument, SelfhostHttpError } from "./selfhostApi";
 import { documentFingerprint } from "./boardSync";
+import { mergeBoardDocumentEdits } from "./lektrusBoardThreeWayMerge";
 import { parseDocument, type DocumentData } from "./boardModel";
 import { ensureBoardAssets } from "./assetStore";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
@@ -523,26 +524,40 @@ export default function App() {
           // Older server placeholders used a hard-coded title even for named boards.
           if(parsed.title==="Новая доска"&&board.title!=="Новая доска"&&parsed.items.length===0&&remote.version<=1)
             parsed={...parsed,title:board.title};
-          // If the board was closed before its last upload finished, the local
-          // snapshot is newer than the server revision. Recover it instead of
-          // overwriting newly created subject tools with stale remote objects.
+          // A pending local snapshot must be rebased from the last confirmed
+          // version, never unioned with the server's current object list.
           try{
             const pending=localStorage.getItem(key+".pending-sync")==="1";
             const savedRaw=pending?localStorage.getItem(key):null;
             if(savedRaw&&board.role!=="viewer"){
               const local=parseDocument(savedRaw);
-              if(documentFingerprint(local)!==documentFingerprint(parsed)){
-                parsed={...parsed,
-                  subject:local.subject||parsed.subject,
-                  items:[...local.items,...parsed.items.filter(item=>!local.items.some(own=>own.id===item.id))]};
-                // Keep the pending flag. Board mount will retry the remote save
-                // using the actual remote version and an unacknowledged fingerprint.
+              const serverFingerprint=documentFingerprint(parsed);
+              if(documentFingerprint(local)!==serverFingerprint){
+                const baseRaw=localStorage.getItem(key+".pending-base");
+                if(baseRaw){
+                  const base=parseDocument(baseRaw);
+                  const server=parsed;
+                  parsed=mergeBoardDocumentEdits(base,local,server);
+                  localStorage.setItem(key+".pending-base",JSON.stringify(server));
+                }else{
+                  // Older versions did not save a base. Preserve the local
+                  // recovery copy without guessing which IDs were deleted.
+                  localStorage.setItem(key+".recovery-backup",savedRaw);
+                  localStorage.removeItem(key+".pending-sync");
+                }
+                if(documentFingerprint(parsed)===serverFingerprint){
+                  localStorage.removeItem(key+".pending-sync");
+                  localStorage.removeItem(key+".pending-base");
+                }
               }else{
                 localStorage.removeItem(key+".pending-sync");
+                localStorage.removeItem(key+".pending-base");
               }
             }
           }catch(error){
-            console.warn("Unable to recover pending Lektrus board snapshot",error);
+            // Do not overwrite the only local recovery copy if saving a
+            // backup or rebased baseline failed (e.g. storage quota).
+            throw error;
           }
           localStorage.setItem(key, JSON.stringify(parsed));
           // Backfill a preview of migrated boards on first open, without

@@ -114,3 +114,47 @@ async def test_student_and_guest_can_erase_shared_ink_but_not_locked_lesson(clie
     actual=(await client.get(root+"/document",headers=owner)).json()
     assert actual["version"]==3
     assert actual["document"]["items"]==[locked] and actual["document"]["ink"]==[]
+
+
+@pytest.mark.asyncio
+async def test_photo_permissions_and_peer_document_convergence(client):
+    from document_delta import apply_delta
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, pupil = await sign_in(client, "student@example.test")
+    board_id = (await client.post("/api/v1/boards", headers=owner, json={"title":"Photo lesson"})).json()["id"]
+    root = "/api/v1/boards/"+board_id
+    url = root+"/document"
+    invite = await client.post(root+"/invitations", headers=owner, json={"email":"student@example.test","role":"editor","participant_role":"student"})
+    assert invite.status_code == 200, invite.text
+    teacher_image = {"id":"teacher-photo","kind":"image","x":0,"y":0,"width":100,"height":100,"createdBy":str(TEACHER)}
+    legacy_image = {"id":"legacy-photo","kind":"image"}
+    initial = {"version":1,"items":[teacher_image,legacy_image]}
+    saved = await client.put(url,headers=owner,json={"expected_version":0,"document":initial})
+    assert saved.status_code == 200, saved.text
+    crop = {"x":0.1,"y":0.1,"width":0.8,"height":0.8}
+    for image in (teacher_image,legacy_image):
+        attempt = await client.patch(url,headers=pupil,json={"expected_version":1,"delta":{"items":{"upsert":[{**image,"imageCrop":crop}]}}})
+        assert attempt.status_code == 403, attempt.text
+    forged = deepcopy(initial)
+    forged["items"][0]["imageCrop"] = crop
+    assert (await client.put(url,headers=pupil,json={"expected_version":1,"document":forged})).status_code == 403
+    assert (await client.patch(url,headers=pupil,json={"expected_version":1,"delta":{"items":{"remove":["teacher-photo"]}}})).status_code == 403
+    pupil_photo = {"id":"pupil-photo","kind":"image","createdBy":str(STUDENT)}
+    moved = {**teacher_image,"x":40,"width":125}
+    changes = [
+        (pupil, {"items":{"upsert":[moved,pupil_photo]}}),
+        (pupil, {"items":{"upsert":[{**pupil_photo,"imageCrop":crop}]}}),
+        (owner, {"items":{"upsert":[{**moved,"imageCrop":crop}]}}),
+        (owner, {"items":{"remove":["teacher-photo","legacy-photo"]}}),
+    ]
+    for version,(headers,delta) in enumerate(changes,1):
+        result = await client.patch(url,headers=headers,json={"expected_version":version,"delta":delta})
+        assert result.status_code == 200, result.text
+    remote = (await client.get(url+"?since_version=1",headers=pupil)).json()
+    assert remote["version"] == 5 and remote["base_version"] == 1
+    reconstructed = initial
+    for patch in remote["patches"]:
+        reconstructed = apply_delta(reconstructed,patch)
+    final = (await client.get(url,headers=owner)).json()["document"]
+    assert reconstructed == final == {"version":1,"items":[{**pupil_photo,"imageCrop":crop}]}
+    assert (await client.get(url,headers=pupil)).json()["document"] == final

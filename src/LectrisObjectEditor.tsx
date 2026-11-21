@@ -42,6 +42,7 @@ type QuickProps = {
   markerWeight: number;
   eraserSize: number;
   canModify: boolean;
+  canEditContent?: boolean;
   inspectorOpen: boolean;
   onInspectorOpen: () => void;
   onDeselect: () => void;
@@ -87,7 +88,7 @@ export function LectrisQuickProperties(props: QuickProps) {
             value={item.color||"#365fd0"} onChange={value=>props.onPatch({color:value})}/>}
         {item&&<span className="lectris-quick-metric">{Math.round(item.width)} × {Math.round(item.height)}</span>}
         {item&&item.kind!=="pen"&&item.kind!=="marker"&&<button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
-        {item&&canModify&&advancedKinds.has(item.kind)&&<button type="button" onClick={props.onEdit}>Редактировать</button>}
+        {item&&canModify&&props.canEditContent!==false&&advancedKinds.has(item.kind)&&<button type="button" onClick={props.onEdit}>Редактировать</button>}
         {canModify&&<button type="button" onClick={props.onDuplicate}>Копия</button>}
         {canModify&&<button type="button" className="lectris-danger" onClick={props.onDelete}>Удалить</button>}
         <button type="button" onClick={props.onDeselect} aria-label="Снять выделение">×</button>
@@ -112,6 +113,7 @@ type InspectorProps = {
   item: Item;
   pdfPageCount?: number|null;
   canModify: boolean;
+  canEditContent?: boolean;
   userId: string;
   canToggleLock: boolean;
   onClose: () => void;
@@ -138,8 +140,8 @@ function NumberField({label,value,minimum=-100000,maximum=100000,disabled,onComm
   </label>;
 }
 
-export function LectrisObjectInspector({item,pdfPageCount,canModify,userId,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
-  const editable=advancedKinds.has(item.kind);
+export function LectrisObjectInspector({item,pdfPageCount,canModify,canEditContent,userId,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
+  const editable=canEditContent!==false&&advancedKinds.has(item.kind);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const [locationOpen,setLocationOpen]=useState(false);
   const [textDraft,setTextDraft]=useState(item.text);

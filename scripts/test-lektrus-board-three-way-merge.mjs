@@ -42,9 +42,30 @@ assert.deepEqual(result.find(v=>v.id==="box"),{...base[0],x:140,y:60,width:200,c
 // A remote deletion must be retained if the local object remained unchanged.
 result=sync.mergeBoardItems(base,base,base.slice(1));
 assert.ok(!result.some(v=>v.id==="box"));
-// A local modification before a remote deletion is not silently lost.
+// Deletion wins over stale concurrent movement, regardless of object kind.
 result=sync.mergeBoardItems(base,[{...base[0],x:24},...base.slice(1)],base.slice(1));
-assert.equal(result.find(v=>v.id==="box").x,24);
+assert.ok(!result.some(v=>v.id==="box"));
+for(const kind of ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment",
+ "table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument"]){
+ const original=item("original",0,0,kind);
+ const edited={...original,x:200,text:"new content"};
+ const peer={...original,y:90,color:"#f00"};
+ const addition=item("local-creation",10,10,kind);
+ const peerAddition=item("peer-creation",20,20,kind);
+ const a=[original];
+ const l=[edited,addition];
+ const r=[peer,peerAddition];
+ const combined=sync.mergeBoardItems(a,l,r);
+ assert.deepEqual(combined.find(v=>v.id==="original"),{...edited,y:90,color:"#f00"},kind+" independent move/edit");
+ assert.ok(combined.some(v=>v.id===addition.id)&&combined.some(v=>v.id===peerAddition.id),kind+" creation");
+ assert.deepEqual(sync.mergeBoardItems(a,l,[peerAddition]).map(v=>v.id),[peerAddition.id,addition.id],kind+" remote deletion");
+ assert.deepEqual(sync.mergeBoardItems(a,[addition],r).map(v=>v.id),[peerAddition.id,addition.id],kind+" local deletion");
+}
+assert.deepEqual(sync.mergeBoardItems(base,[base[2],base[0],base[1]],remote).map(v=>v.id),
+ ["eraserTarget","box","pen"],"Layer changes survive independent remote edits");
+assert.deepEqual(edit.mergeEditedValue({stickerInk:[{id:"stroke",color:"black"}]},
+ {stickerInk:[{id:"stroke",color:"red"},{id:"new",color:"blue"}]}, {stickerInk:[]}),
+ {stickerInk:[{id:"new",color:"blue"}]},"Deleted sticker ink cannot reappear");
 // Board-level Undo and Redo are inverse three-way edits, not replacement
 // snapshots. An unrelated student's new object survives both operations.
 const owned={...item("student-own"),createdBy:"student-A"};
@@ -71,6 +92,15 @@ assert.ok(merged.items.some(v=>v.id==="newStroke"));
 assert.equal(merged.title,"Locally renamed");
 assert.equal(merged.background,"#abc");
 assert.equal(merged.items.find(v=>v.id==="box").x,300);
+// Closing and reopening with pending work uses the last confirmed document
+// as base. Neither side's deletion is lost and new offline items survive.
+const photo=item("photo",0,0,"image"),stroke=item("ink",0,0,"pen");
+const reopened=sync.mergeBoardDocumentEdits(doc([photo,stroke]),
+ doc([{...photo,x:80},item("offline-new")]),doc([{...stroke,x:45},item("peer-new")]));
+assert.deepEqual(reopened.items.map(v=>v.id),["peer-new","offline-new"]);
+const appSource=read("src/App.tsx");
+assert.ok(appSource.includes("mergeBoardDocumentEdits(base,local,server)"));
+assert.ok(appSource.includes('key+".recovery-backup"'));
 
 const code=read("src/BoardApp.tsx"),roles=read("src/lektrusBoardRolePreview.ts");
 const roleModule=new Function(compile("src/lektrusBoardRolePreview.ts")+
@@ -101,7 +131,8 @@ assert.ok(code.includes("acknowledgedBoardData.current = data;"));
 assert.ok(code.includes("acknowledgedBoardData.current = remote;"));
 assert.ok(!code.includes("applyDocument(merged, true)"),"No destructive UI reset during remote conflict");
 assert.ok(!code.includes("applyDocument(data, true)"),"No destructive UI reset on clean revisions");
-assert.ok(code.includes("if (queued && !deferred)"),"Stale snapshot not sent while rebasing");
+assert.ok(code.includes("if (queued && !needsRebase)"),"Stale snapshot not sent while rebasing, own ACK cannot suppress queued work");
+assert.ok(code.includes("deferred.version>(remoteVersion.current??-1)"));
 assert.ok(code.includes("items: editing\n        ? itemsRef.current"),"Autosave uses synchronous model during RAF");
 assert.ok(code.includes("const canTransformBoardObject="));
 assert.ok(code.includes("const live=remoteLiveItems[entry.item.id]"),"Realtime preview must not teleport object");

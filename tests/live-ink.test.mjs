@@ -392,6 +392,14 @@ test('live erase cuts only target ink without mutating the persistent board; voc
   assert.equal(JSON.stringify(before),original);assert.ok(cut.slice(0,2).every(x=>x.id.startsWith('ink:remote-erase:')));
   const final=cut.slice(0,2).map((x,i)=>({...x,id:'saved'+i}));
   assert.ok(previewRemoteErasures(final,previews,targets).every((x,i)=>x===final[i]));
+  const completed=h.api.mergeRemoteLiveInk(preview,{...preview,finished:true,cutIds:['ink']});
+  assert.equal(completed.cutIds[0],'ink','Duplicate final geometry still carries the affected IDs');
+  const delayed=h.api.mergeRemoteLiveInk(completed,{...preview,finished:false,cutIds:[]});
+  assert.equal(delayed.cutIds[0],'ink','Late packet cannot clear final affected IDs');
+  const missedPath={...completed,points:[{x:1000,y:1000}]};
+  const withoutGap=previewRemoteErasures(before,new Map([['erase',missedPath]]),targets);
+  assert.equal(withoutGap.length,1);
+  assert.strictEqual(withoutGap[0],untouched,'Missed path must not leave the known erased original visible');
   const {fitLanguageFlashcardItem}=loadMotionModule('languageFlashcardSize.ts');
   const deck={id:'card',kind:'graph',graphFigureId:'language-flashcards',x:0,y:0,width:810,height:450,schoolDiagram:{kind:'flashcards',cards:[{term:'cat',translation:'кот',transcription:''}],showTranslation:true,showTranscription:true,direction:'foreign-first'}};
   const short=fitLanguageFlashcardItem(deck);

@@ -56,8 +56,8 @@ assert.ok(app.includes('className="lektrus-graph-edit-secondary" aria-label="Н�
 assert.ok(app.includes('onClick={()=>setLectrisInspectorOpen(true)}'),
  "Additional properties must remain reachable in the More menu");
 assert.ok(app.includes('onClick={lectrisEditSelected}'),"Object toolbar should expose its editor");
-assert.ok(app.includes('case "image": setImageCropEditorId(singleSelected.id)'),
- "Image editing must open the cropping editor");
+assert.ok(app.includes('case "image": if(canCropImage(singleSelected))setImageCropEditorId(singleSelected.id)'),
+ "Authorized image editing must open the cropping editor");
 assert.ok(editor.includes('"fraction","table"')&&editor.includes('"linkmedia","image"'),
  "Quick actions must cover fraction and image content editors");
 assert.ok(!editor.includes('if(item?.kind==="graph"&&item.graphFigureId==="chem-periodic"'),
@@ -81,10 +81,8 @@ assert.ok(app.includes('if (item.kind === "graph") return boardObjectTypeName(it
 // when nothing is selected, never another overlapping object action bar.
 assert.ok(app.includes('selectedItems.length===0 && <LectrisQuickProperties'),
  "Selected objects must not mount a second fixed toolbar over their actions");
-const genericEdit=app.match(/\(\[([^\]]+)\]\.includes\(singleSelected\.kind\)\)\&\&\s*<button[^>]+className="selection-edit-action"/);
-assert.ok(genericEdit,"The generic edit action must be explicitly limited by object type");
-assert.deepEqual(JSON.parse("["+genericEdit[1]+"]"),["text","image"],
- "Only text and image need the generic editor action; other editors have specific actions");
+assert.match(app,/\(singleSelected\.kind==="text"\|\|canCropImage\(singleSelected\)\)\&\&\s*<button[^>]+className="selection-edit-action"/,
+ "Only text and authorized images need the generic editor action");
 assert.ok(!app.includes('className="edit-selected"'),"No duplicate top-left edit chip");
 assert.ok(app.includes('className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"'),
  "The original Configure button must remain intact");
