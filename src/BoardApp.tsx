@@ -1,4 +1,5 @@
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
+import {pwaInstall,usePwaInstall} from "./pwaInstall";
 import UserAvatar from "./UserAvatar";
 import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, useSyncExternalStore, type PointerEvent as PE, type CSSProperties } from "react";
 import { compileGraphExpression } from "./lektrusGraphExpression";
@@ -2963,8 +2964,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     void lockLandscape();
     return()=>{cancelled=true};
   },[isCoarsePointer]);
-  const [installPrompt,setInstallPrompt]=useState<Event|null>(null);
-  const [isStandalone,setIsStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
+  const installState=usePwaInstall();
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
@@ -3050,10 +3050,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return()=>clearBoardSelectionCursor(board.current);
   },[tool]);
   const previousInteractionTool=useRef(tool);
-  useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
+
   useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
   const applyUpdate=()=>{if(!updateReady?.waiting)return;window.dispatchEvent(new Event("lektrus:apply-update"));updateReady.waiting.postMessage({type:"SKIP_WAITING"})};
-  const installApp=async()=>{const p=installPrompt as (Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null;if(!p)return;await p.prompt();await p.userChoice;setInstallPrompt(null)};
+  const installApp=()=>pwaInstall.requestInstall();
   const clipboard = useRef<Item[]>([]);
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
   const index = useRef(0);
@@ -8385,7 +8385,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
               <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
             </div>
-          </details>{!Capacitor.isNativePlatform()&&installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
+          </details>{installState.eligible&&installState.available&&!installState.installed&&<button type="button" className="install-app-button" disabled={installState.busy} onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
           {documentSyncEnabled && <details className="presence-menu" ref={visitPresenceMenuRef}>
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>

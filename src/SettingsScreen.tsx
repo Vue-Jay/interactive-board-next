@@ -13,19 +13,12 @@ import { applyLectrisPalette,readLectrisPalette,type LectrisPalette } from "./le
 import {addPreviewTeacherRequest} from "./previewTeacherRequestsStore";
 import {AndroidUpdateSettings} from "./AndroidUpdateGate";
 
-// Browsers without beforeinstallprompt (notably iOS Safari) still support
-// installing via the browser menu. Do not present a disabled install button.
-function manualInstallHelp():string {
- const ua=navigator.userAgent;
- const isIOS=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
- if(isIOS)return "Откройте Lektrus в Safari, нажмите «Поделиться» и выберите «На экран Домой».";
- if(/Android/i.test(ua))return "Откройте меню браузера и выберите «Установить приложение» или «Добавить на главный экран».";
- if(/Macintosh|Mac OS X/i.test(ua))return "В Safari выберите «Файл» → «Добавить в Dock»; в Chrome используйте установку в меню браузера.";
- return "Откройте меню браузера и выберите «Установить Lektrus» или «Создать ярлык».";
-}
-type Props={user:AuthUser;onBack:()=>void;onLogout:()=>void;installAvailable:boolean;isInstalled:boolean;onInstall:()=>void;onBilling:()=>void;onWorkspaceMode?:(mode:"teaching"|"learning")=>void;previewRole?:"student"|"teacher"|null;onPreviewRoleChange?:(role:"student"|"teacher"|"actual")=>void};
+import {PwaInstallButton} from "./PwaInstallOffer";
+import {usePwaInstall} from "./pwaInstall";
+type Props={user:AuthUser;onBack:()=>void;onLogout:()=>void;onBilling:()=>void;onWorkspaceMode?:(mode:"teaching"|"learning")=>void;previewRole?:"student"|"teacher"|null;onPreviewRoleChange?:(role:"student"|"teacher"|"actual")=>void};
 
-export default function SettingsScreen({user,onBack,onLogout,installAvailable,isInstalled,onInstall,onBilling,onWorkspaceMode,previewRole=null,onPreviewRoleChange}:Props){
+export default function SettingsScreen({user,onBack,onLogout,onBilling,onWorkspaceMode,previewRole=null,onPreviewRoleChange}:Props){
+ const pwa=usePwaInstall();
  const defaults:ProfileSettings={displayName:user.name,theme:"system",compactUi:false,defaultBoardZoom:100};
  const [s,setS]=useState(defaults),[initial,setInitial]=useState(defaults),[notice,setNotice]=useState("");
  const [access,setAccess]=useState<AccountAccess>({role:"student",teacherStatus:"none",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null}),[roleBusy,setRoleBusy]=useState(false);
@@ -80,7 +73,7 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
     {Capacitor.isNativePlatform()&&isSelfhostBackendEnabled()&&<section className="settings-row-card"><div><b>Сервер Lektrus</b><small>Вход и совместная работа используют собственный сервер Lektrus.</small></div></section>}
     <AndroidUpdateSettings/>
     {Capacitor.isNativePlatform()&&!LEKTRUS_LOCAL_TEST_MODE&&!isSelfhostBackendEnabled()&&!nativeBackendIsBundled()&&<section className="settings-row-card"><div><b>Сервер Lektrus</b><small>Для входа и совместной работы используется сохранённое подключение Supabase</small></div><button type="button" onClick={()=>{if(window.confirm("Изменить подключение к серверу? Потребуется снова указать публичный адрес Supabase и ключ.")){clearNativeBackendConnection();window.location.reload()}}}>Изменить</button></section>}
-    {!Capacitor.isNativePlatform()&&<section className="settings-row-card lektrus-install-settings"><div><b>Приложение для вашего устройства</b><small>{isInstalled?"Lektrus запущен как приложение":installAvailable?"Установите Lektrus для запуска без вкладки браузера":manualInstallHelp()}</small><small>Для входа, совместной работы и синхронизации досок необходимо подключение к интернету.</small></div>{!isInstalled&&installAvailable&&<button type="button" onClick={onInstall}>Установить</button>}</section>}
+    {pwa.eligible&&<section className="settings-row-card lektrus-install-settings"><div><b>Приложение для вашего устройства</b><small>{pwa.installed?"Lektrus запущен как приложение":"Запускайте Lektrus с рабочего стола или главного экрана."}</small></div><PwaInstallButton label="Установить"/></section>}
     {shownAccess.isAdmin&&<section className="settings-row-card settings-developer-card"><div><b>Настройки разработчика</b><small>Диагностика включается только на этом устройстве.</small></div>
      <div className="settings-developer-options">
       <label><span><b>Обмен штрихами</b><small>Показывать отправку и получение рисунков.</small></span><input type="checkbox" checked={developerPrefs.showInkDiagnostics} onChange={e=>updateDeveloperPref("showInkDiagnostics",e.target.checked)}/></label>

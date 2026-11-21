@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
+import {PwaInstallOffer} from "./PwaInstallOffer";
 import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import AuthScreen from "./AuthScreen";
 import { loadGlobalInterfaceLayout, saveInterfaceLayout } from "./lektrusInterfaceLayout";
@@ -326,22 +327,7 @@ export default function App() {
     setAppRolePreview(role);
     if(role!=="actual"&&!activeBoard)navigate("/?section=boards");
   },[isAppAdmin,activeBoard,navigate]);
-  const [globalInstallPrompt,setGlobalInstallPrompt]=useState<Event|null>(null);
-  const [globalStandalone,setGlobalStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
-  useEffect(()=>{
-    const ready=(e:Event)=>{e.preventDefault();setGlobalInstallPrompt(e)};
-    const installed=()=>{setGlobalInstallPrompt(null);setGlobalStandalone(true)};
-    window.addEventListener("beforeinstallprompt",ready);
-    window.addEventListener("appinstalled",installed);
-    return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)};
-  },[]);
-  const installGlobalApp=async()=>{
-    const prompt=globalInstallPrompt as (Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null;
-    if(!prompt)return;
-    await prompt.prompt();
-    await prompt.userChoice;
-    setGlobalInstallPrompt(null);
-  };
+  // Installation state is shared by the early browser listener and every installation button.
 
   useEffect(() => {
     let alive = true;
@@ -711,7 +697,7 @@ export default function App() {
 
 
   if (!authUser) {
-    return <AuthScreen initialError={authCallbackError} connectionIssue={preserveNativeAuth&&serviceAvailability.reason?{reason:serviceAvailability.reason,checking:serviceAvailability.checking,onRetry:serviceAvailability.check}:undefined} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />;
+    return <><AuthScreen initialError={authCallbackError} connectionIssue={preserveNativeAuth&&serviceAvailability.reason?{reason:serviceAvailability.reason,checking:serviceAvailability.checking,onRetry:serviceAvailability.check}:undefined} onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); if(user.guestBoardId){clearPendingShare();navigate(`/board/${user.guestBoardId}`,true);}setAuthUser(user); setActiveBoard(null); }} />{route.kind==="home"&&<PwaInstallOffer/>}</>;
   }
 
   if(mobileJoinUrl&&route.kind==="join")return <main className="auth-shell"><section className="auth-card"><strong>Приглашение на доску Lektrus</strong><p>Где открыть доску?</p><div className="share-password-actions"><a className="primary" href={mobileJoinUrl}>Открыть в приложении</a><button type="button" onClick={()=>setBrowserJoinToken(route.token)}>Продолжить в браузере</button></div><button type="button" onClick={()=>{clearPendingShare();navigate("/app",true)}}>Отмена</button></section></main>;
@@ -756,12 +742,13 @@ export default function App() {
           : section==="profile"
           ? <ProfileScreen user={authUser} accountRole={effectiveAccountRole} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} previewMode={appRolePreview!=="actual"} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} onBack={()=>navigate("/app?section=boards")} />
           : section==="settings"
-          ? <SettingsScreen user={authUser} onWorkspaceMode={modeEnabled?chooseWorkspaceMode:undefined} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>navigate("/app?section=boards")} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/app?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <SettingsScreen user={authUser} onWorkspaceMode={modeEnabled?chooseWorkspaceMode:undefined} previewRole={appRolePreview==="actual"?null:effectiveAccountRole} onPreviewRoleChange={changeAppRolePreview} onBack={()=>navigate("/app?section=boards")} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} onBilling={()=>{window.history.pushState({}, "", "/app?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="billing"
           ? <BillingScreen onBack={()=>{window.history.pushState({}, "", "/app?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="templates" && workspaceRole==="teacher"
           ? <TemplatesScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : <BoardsScreen user={authUser} accountRole={workspaceRole} workspaceMode={modeEnabled?workspaceMode:undefined} isAppAdmin={isAppAdmin&&appRolePreview==="actual"} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={()=>appRolePreview==="actual"?logout():changeAppRolePreview("actual")} />})()}</Suspense></LectrisWorkspaceShell>}
+        {route.kind === "home" && !boardLoading && !boardLoadError && <PwaInstallOffer/>}
         {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setSubmittedSharePassword({token:route.token,value:sharePassword});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
         {boardLoading && <BoardLoadingScreen browserRotate={adminInspecting&&wantsBrowserBoardLandscape()}/>}
         {boardLoadError && <div className="board-server-overlay board-recovery-overlay"><section className="board-server-card board-recovery-card" role="alertdialog" aria-modal="true" aria-labelledby="board-recovery-title" aria-describedby="board-recovery-description">
