@@ -1,4 +1,5 @@
 import {createRoot} from "react-dom/client";
+import {PwaInstallFeedback} from "./PwaInstallOffer";
 import LektrusPublicSite from "./LektrusPublicSite";
 import {registerLektrusServiceWorker} from "./registerServiceWorker";
 import {useServiceAvailability} from "./useServiceAvailability";
@@ -13,6 +14,6 @@ function PublicSite(){
 }
 
 const root=document.getElementById("root");
-if(root)createRoot(root).render(<PublicSite/>);
+if(root)createRoot(root).render(<><PublicSite/><PwaInstallFeedback/></>);
 
 registerLektrusServiceWorker();

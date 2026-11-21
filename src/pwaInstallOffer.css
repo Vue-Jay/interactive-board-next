@@ -51,3 +51,16 @@
 }
 @media (display-mode: standalone) { .lektrus-pwa-offer { display: none; } }
 html.lektrus-native-app .lektrus-pwa-offer { display: none; }
+
+.lektrus-pwa-feedback {
+  position: fixed; z-index: 1001; inset-block-start: max(12px, env(safe-area-inset-top, 0px));
+  inset-inline: 12px; margin-inline: auto; max-width: 380px;
+  display: flex; align-items: center; gap: 12px; box-sizing: border-box;
+  padding: 14px 16px; border: 1px solid var(--lt-line, #cbd7e7);
+  border-radius: 16px; background: var(--lt-surface, #fff); color: var(--lt-text, #182b45);
+  box-shadow: 0 12px 36px #102c5240; font: 14px/1.45 system-ui, sans-serif;
+  pointer-events: none;
+}
+.lektrus-pwa-feedback-check { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 50%; color: #147a46; background: #ddf6e7; font-size: 22px; font-weight: 700; }
+.lektrus-pwa-feedback strong { display: block; font-weight: 700; }
+.lektrus-pwa-feedback small { display: block; font-size: 12px; margin-top: 2px; }
