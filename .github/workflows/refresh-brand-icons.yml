@@ -25,6 +25,9 @@ jobs:
           sips -z 512 512 assets/lektrus-brand-source.png --out public/lektrus-icon-512.png
           sips -z 1024 1024 assets/lektrus-brand-source.png --out assets/icon.png
           npx --yes @capacitor/assets@3.0.5 generate --android --iconBackgroundColor '#edf5ff' --splashBackgroundColor '#edf5ff'
+          # Keep the manifest icon names raster-only across Android versions.
+          mv -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_adaptive.xml
+          mv -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round_adaptive.xml
           npx --yes @capacitor/assets@3.0.5 generate --ios --iconBackgroundColor '#edf5ff' --splashBackgroundColor '#edf5ff'
       - name: Verify app image dimensions
         run: |
