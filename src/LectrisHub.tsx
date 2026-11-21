@@ -211,11 +211,11 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     {teacher&&board.role==="owner"&&<div className="lektrus-home-board-menu"><button type="button" className="lectris-hub-board-edit" aria-label={"Действия с доской "+board.title} aria-expanded={boardMenu===board.id} onClick={()=>setBoardMenu(v=>v===board.id?null:board.id)}>⋯</button>{boardMenu===board.id&&<div className="lektrus-home-board-actions"><button type="button" onClick={()=>{setBoardMenu(null);openEdit(board)}}>Предмет и группа</button><button type="button" className="danger" onClick={()=>{setBoardMenu(null);onDeleteBoard(board)}}>Удалить доску</button></div>}</div>}
   </article>;
   const quickTiles=[
-    {id:"students",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M19 20v-3a5 5 0 0 0-3-4.6"/></svg>,eyebrow:"УЧАСТНИКИ",title:"Ученики",description:"Ученики и приглашения",count:null,theme:"violet"},
+    {id:teacher?"students":"teachers",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M19 20v-3a5 5 0 0 0-3-4.6"/></svg>,eyebrow:"УЧАСТНИКИ",title:teacher?"Ученики":"Преподаватели",description:teacher?"Ученики и приглашения":"Ваши преподаватели и общие доски",count:null,theme:"violet"},
     {id:"subjects",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 6c-2-2-5-2.5-9-2v15c4-.5 7 0 9 2 2-2 5-2.5 9-2V4c-4-.5-7 0-9 2zM12 6v15"/></svg>,eyebrow:"УЧЕБНЫЙ КАТАЛОГ",title:"Предметы",description:"Учебные дисциплины",count:null,theme:"mint"},
     {id:"groups",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><path d="M2 20v-2a5 5 0 0 1 10 0v2M12 20v-2a5 5 0 0 1 10 0v2"/></svg>,eyebrow:"ОРГАНИЗАЦИЯ",title:"Группы и классы",description:"Классы и учебные группы",count:null,theme:"blue"},
-    {id:"assignments",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 11 2.5 2.5L16 8M8 17h8"/></svg>,eyebrow:"УЧЕБНЫЙ ПРОЦЕСС",title:"Задания",description:"Проверка и выполнение",count:null,theme:"coral"},
-  ];
+    {id:"assignments",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 11 2.5 2.5L16 8M8 17h8"/></svg>,eyebrow:"УЧЕБНЫЙ ПРОЦЕСС",title:"Задания",description:teacher?"Выдача и проверка":"Задания от преподавателей",count:null,theme:"coral"},
+  ].filter(tile=>teacher||tile.id!=="groups");
   const syncText=syncStatus==="synced"?"Предметы и группы синхронизированы":syncStatus==="saving"?"Сохраняем предметы и группы…":syncStatus==="error"?"Не удалось синхронизировать предметы и группы":"Изменения сохранены на устройстве";
   const syncTitle=syncStatus==="local"?"Изменения сохранены в этом браузере. Общая синхронизация пока не подключена.":undefined;
   const syncIndicator=<div className="lectris-hub-sync" role="status" title={syncTitle}>
@@ -248,7 +248,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         </div>
       </header>
       <div className="lectris-hub-section-label"><div><span className="lectris-hub-overline">БЫСТРЫЙ ДОСТУП</span><h2>Ваш рабочий стол</h2></div><span>Выберите, с чего начать</span></div>
-      <div className="lectris-hub-tiles" aria-label="Основные разделы">
+      <div className={`lectris-hub-tiles${teacher?"":" lectris-hub-tiles-learner"}`} aria-label="Основные разделы">
         {quickTiles.map(tile=><button type="button" key={tile.id} className={`lectris-hub-tile lectris-hub-tile-${tile.theme}`} onClick={()=>navigate(tile.id)}>
           <span className="lectris-hub-tile-head"><span className="lectris-hub-tile-icon" aria-hidden="true">{tile.icon}</span><span className="lectris-hub-tile-arrow" aria-hidden="true">↗</span></span>
           <span className="lectris-hub-tile-copy"><small>{tile.eyebrow}</small><strong>{tile.title}</strong><span>{tile.description}</span></span>

@@ -143,6 +143,32 @@ def make_education_router(current_user, board_access) -> APIRouter:
             "tags": row["tags"] or [],
         } for row in rows]
 
+    @router.get("/api/v1/teachers")
+    async def list_teachers(request: Request, user=Depends(current_user)):
+        # The learning workspace is available to accounts that also teach.
+        # Only actual student memberships grant access, never admin visibility.
+        if user["guest_board_id"] is not None:
+            raise HTTPException(403, "Список преподавателей доступен зарегистрированным пользователям.")
+        async with request.app.state.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT t.id,t.display_name,
+                          array_agg(b.id::text ORDER BY b.updated_at DESC,b.id) AS board_ids,
+                          array_agg(b.title ORDER BY b.updated_at DESC,b.id) AS board_titles
+                     FROM board_members bm
+                     JOIN boards b ON b.id=bm.board_id AND b.deleted_at IS NULL
+                     JOIN account_users t ON t.id=b.owner_id
+                    WHERE bm.user_id=$1 AND b.owner_id<>$1
+                      AND (bm.participant_role='student' OR
+                           (bm.participant_role IS NULL AND $2='student'))
+                      AND t.guest_board_id IS NULL
+                    GROUP BY t.id,t.display_name
+                    ORDER BY lower(t.display_name),t.id""",
+                user["id"], user["account_role"],
+            )
+        return [{"user_id": str(row["id"]), "name": row["display_name"],
+                 "boards": [{"id": board_id, "title": title} for board_id, title in
+                            zip(row["board_ids"], row["board_titles"])]} for row in rows]
+
     @router.put("/api/v1/students/{student_id}/profile")
     async def save_student_profile(
         student_id: UUID, data: StudentProfileInput, request: Request,
@@ -242,9 +268,12 @@ def make_education_router(current_user, board_access) -> APIRouter:
         async with request.app.state.pool.acquire() as conn:
             rows = await conn.fetch(
                 """SELECT a.id,a.teacher_id,a.student_id,a.board_id,a.title,a.description,
+                          teacher.display_name AS teacher_name,student.display_name AS student_name,
                           a.due_at,a.max_score,a.created_at,b.title AS board_title,
                           s.content,s.submitted_at,s.score,s.feedback,s.reviewed_at
                      FROM assignments a
+                     JOIN account_users teacher ON teacher.id=a.teacher_id
+                     JOIN account_users student ON student.id=a.student_id
                      LEFT JOIN boards b ON b.id=a.board_id
                      LEFT JOIN submissions s
                        ON s.assignment_id=a.id AND s.student_id=a.student_id
@@ -255,6 +284,7 @@ def make_education_router(current_user, board_access) -> APIRouter:
         return [{
             "id": str(row["id"]), "teacher_id": str(row["teacher_id"]),
             "student_id": str(row["student_id"]),
+            "teacher_name": row["teacher_name"], "student_name": row["student_name"],
             "board_id": str(row["board_id"]) if row["board_id"] else None,
             "title": row["title"], "description": row["description"],
             "due_at": iso(row["due_at"]), "max_score": row["max_score"],

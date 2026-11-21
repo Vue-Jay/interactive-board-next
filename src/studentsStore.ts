@@ -77,12 +77,12 @@ export async function deleteStudentSession(id:string){
  write(SESSIONS_KEY,localSessions().filter(s=>s.id!==id));
 }
 
-export async function getStudentsForTeacher(user:AuthUser):Promise<StudentRecord[]>{
- await migrateLocalStudentData();
+export async function getStudentsForTeacher(user:AuthUser,withSessions=true):Promise<StudentRecord[]>{
+ if(withSessions)await migrateLocalStudentData();
  if(isSelfhostBackendEnabled()){
   const rows=await selfhostStudents();
   const records=await Promise.all(rows.map(async row=>{
-   const sessions=await getStudentSessions(row.user_id);
+   const sessions=withSessions?await getStudentSessions(row.user_id):[];
    return {
     userId:row.user_id,name:row.name||"Ученик",email:row.email||"",
     boardIds:Array.isArray(row.board_ids)?row.board_ids:[],
@@ -100,7 +100,7 @@ export async function getStudentsForTeacher(user:AuthUser):Promise<StudentRecord
  for(const board of boards){try{
    const access=await getBoardAccess(user.id,board.id);
    for(const member of access.members){if(!member.user)continue;const p=profileMap.get(member.userId);
-     const previous=byUser.get(member.userId),next:StudentRecord=previous??{userId:member.userId,name:member.user.name||"Ученик",email:member.user.email||"",boardIds:[],boardTitles:[],lastBoardAt:board.updatedAt,note:p?.note??localNotes[member.userId]??"",tags:p?.tags??localTags[member.userId]??[],sessions:await getStudentSessions(member.userId)};
+     const previous=byUser.get(member.userId),next:StudentRecord=previous??{userId:member.userId,name:member.user.name||"Ученик",email:member.user.email||"",boardIds:[],boardTitles:[],lastBoardAt:board.updatedAt,note:p?.note??localNotes[member.userId]??"",tags:p?.tags??localTags[member.userId]??[],sessions:withSessions?await getStudentSessions(member.userId):[]};
      if(!next.boardIds.includes(board.id)){next.boardIds.push(board.id);next.boardTitles.push(board.title)}if(board.updatedAt>next.lastBoardAt)next.lastBoardAt=board.updatedAt;byUser.set(member.userId,next);
    }
  }catch{/* skip inaccessible board */}}

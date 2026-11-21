@@ -20,16 +20,40 @@ const homeOnly=process.argv.includes("--home-only");
 const keyboardOnly=process.argv.includes("--keyboard-only");
 const landscapeOnly=process.argv.includes("--landscape-only");
 const interfaceOnly=process.argv.includes("--interface-only");
+const educationOnly=process.argv.includes("--education-only");
 if(homeOnly||keyboardOnly||landscapeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
-if(interfaceOnly){
+if(interfaceOnly||educationOnly){
  process.env.VITE_LEKTRUS_BACKEND="selfhost";
  delete process.env.VITE_LEKTRUS_API_ORIGIN;
 }
 const studioBoard="/board/00000000-0000-4000-8000-00000000a11a?layout-editor=1";
 const studioUser={id:"00000000-0000-4000-8000-000000000001",email:"admin@example.test",user_metadata:{display_name:"Admin"},account_role:"teacher",teacher_status:"approved",is_admin:true};
 let publishedLayout=null;
+const linkedTeacher="00000000-0000-4000-8000-000000000002";
+const linkedBoard="00000000-0000-4000-8000-000000000003";
+let assignmentFailure=false;
+const educationRows=[
+ {id:"outgoing",teacher_id:studioUser.id,student_id:linkedTeacher,teacher_name:"Admin",student_name:"Ученик Тест",title:"Выданное задание",description:"",board_id:null,max_score:10,created_at:"2026-11-21T10:00:00Z",submissions:null},
+ {id:"incoming",teacher_id:linkedTeacher,student_id:studioUser.id,teacher_name:"Учитель Тест",student_name:"Admin",title:"Полученное задание",description:"",board_id:linkedBoard,max_score:10,created_at:"2026-11-21T10:00:00Z",submissions:null},
+];
 const server=await createServer({configFile:"./vite.config.ts",
- plugins:interfaceOnly?[{name:"interface-studio-fixture",configureServer(server){
+ plugins:educationOnly?[{name:"education-api-fixture",configureServer(server){
+  server.middlewares.use((req,res,next)=>{
+   const path=req.url?.split('?')[0];if(!path?.startsWith("/api/v1/"))return next();
+   res.setHeader("Content-Type","application/json");
+   const send=(value,status=200)=>{res.statusCode=status;res.end(JSON.stringify(value))};
+   if(path==="/api/v1/health")return send({ok:true,service:"lektrus-selfhost"});
+   if(path==="/api/v1/maintenance")return send({state:"off",access_allowed:true});
+   if(path==="/api/v1/auth/me")return send(studioUser);
+   if(path==="/api/v1/boards"||path==="/api/v1/students")return send({detail:"Fixture unavailable"},503);
+   if(path==="/api/v1/assignments")return assignmentFailure?send({detail:"Fixture unavailable"},503):send(educationRows);
+   if(path==="/api/v1/teachers")return send([{user_id:linkedTeacher,name:"Учитель Тест",boards:[{id:linkedBoard,title:"Математика"}]}]);
+   if(path==="/api/v1/account/profile")return send({display_name:"Admin",theme:"light",compact_ui:true,default_board_zoom:100});
+   if(path==="/api/v1/organization")return send({categories:[],boards:[]});
+   if(path==="/api/v1/interface-layout")return send({layout:null});
+   return send([]);
+  });
+ }}]:interfaceOnly?[{name:"interface-studio-fixture",configureServer(server){
   server.middlewares.use(async(req,res,next)=>{
    if(!req.url?.startsWith("/api/v1/"))return next();
    res.setHeader("Content-Type","application/json");
@@ -50,7 +74,7 @@ const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly||interfaceOnly||keyboardOnly||landscapeOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||educationOnly||keyboardOnly||landscapeOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -390,7 +414,48 @@ try{
   console.log('✓ PDF rasterizer: actual third-page pixels for board PNG export');
   await evaluate('window.__disposePdfFixture()');
  }else
- if(interfaceOnly){
+ if(educationOnly){
+  const session={access_token:"test-education-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))});localStorage.setItem('onlinerepetitor.profile-settings.v51','{"compactUi":true}')`});
+  await call("Page.navigate",{url});
+  await wait('!!document.querySelector(".lectris-hub-tiles")&&!!document.querySelector(".lectris-mode-option")',"Teaching home did not open",30000);
+  const tiles=()=>evaluate('[...document.querySelectorAll(".lectris-hub-tile strong")].map(x=>x.textContent)');
+  assert.deepEqual(await tiles(),["Ученики","Предметы","Группы и классы","Задания"]);
+  const nav=label=>click(`.lectris-workspace-sidebar button[aria-label="${label}"]`);
+  await nav("Задания");
+  await wait('document.querySelector(".assignment-list")?.textContent.includes("Выданное задание")',"Teaching assignments were blocked by failed references",30000);
+  assert.ok(!(await evaluate('document.querySelector(".assignment-list").textContent')).includes("Полученное задание"));
+  await click('.lectris-brand');
+  await wait('!!document.querySelector(".lectris-mode-option:nth-child(2)")',"Home did not reopen");
+  await click('.lectris-mode-option:nth-child(2)');
+  await wait('!!document.querySelector(".lectris-hub-tiles-learner")',"Learning mode did not open");
+  assert.deepEqual(await tiles(),["Преподаватели","Предметы","Задания"]);
+  assert.equal(await evaluate('!!document.querySelector(\'.lectris-workspace-sidebar button[aria-label="Ученики"]\')'),false);
+  await nav("Преподаватели");
+  await wait('document.querySelector(".lektrus-teacher-card")?.textContent.includes("Учитель Тест")',"Teacher directory did not load");
+  assert.ok((await evaluate('document.querySelector(".lektrus-teacher-card").textContent')).includes("Математика"));
+  assignmentFailure=true;
+  await nav("Задания");
+  await wait('document.querySelector(".assignments-content [role=alert]")?.textContent.includes("Задания не загрузились")',"No explicit assignment failure state");
+  assert.ok(!(await evaluate('document.querySelector(".assignments-content").textContent')).includes("Заданий пока нет"));
+  assignmentFailure=false;
+  await click('.assignments-content [role=alert] button');
+  await wait('document.querySelector(".assignment-list")?.textContent.includes("Полученное задание")',"Learning assignments failed to recover",30000);
+  assert.ok(!(await evaluate('document.querySelector(".assignment-list").textContent')).includes("Выданное задание"));
+  assert.equal(await evaluate('!!document.querySelector(".assignments-shell .boards-create")'),false);
+  await click('.lectris-brand');
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await wait('!!document.querySelector(".lectris-hub-tiles-learner")',"Mobile home did not open");
+  assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'),true,"Mobile learner home overflow");
+  await click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]');
+  await wait('!!document.querySelector(".lektrus-more-page")',"Mobile More did not open");
+  assert.ok((await evaluate('document.querySelector(".lektrus-more-page").textContent')).includes("Преподаватели"));
+  await evaluate('[...document.querySelectorAll(".lektrus-more-page-item")].find(b=>b.textContent.includes("Настройки")).click()');
+  await wait('!!document.querySelector(".settings-shell")',"Settings did not open");
+  assert.ok(!(await evaluate('document.querySelector(".settings-shell").textContent')).includes("Компактный интерфейс"));
+  assert.equal(await evaluate('document.documentElement.classList.contains("compact-ui")'),false);
+  console.log("✓ Teaching and learning assignments with failed references, retry, private teacher directory, mobile navigation and obsolete setting");
+ }else if(interfaceOnly){
   const session={access_token:"test-admin-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
   await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))})`});
   await call("Page.navigate",{url:new URL(studioBoard,url).href});

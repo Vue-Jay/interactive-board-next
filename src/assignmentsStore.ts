@@ -10,7 +10,7 @@ export const assignmentUrgency=(a:Assignment,now=Date.now())=>{
  return left<0?"overdue" as const:left<=24*60*60*1000?"soon" as const:"normal" as const;
 };
 export type Assignment={
- id:string;teacherId:string;studentId:string;boardId:string;boardTitle:string;title:string;description:string;
+ id:string;teacherId:string;studentId:string;teacherName?:string;studentName?:string;boardId:string;boardTitle:string;title:string;description:string;
  dueAt:string|null;createdAt:string;status:AssignmentStatus;submissionText:string;submittedAt:string|null;
  score:number|null;maxScore:number;feedback:string;reviewedAt:string|null;
 };
@@ -20,7 +20,7 @@ const readLocal=():Assignment[]=>{try{return JSON.parse(localStorage.getItem(KEY
 const writeLocal=(rows:Assignment[])=>localStorage.setItem(KEY,JSON.stringify(rows));
 
 const mapRow=(r:any):Assignment=>({
- id:r.id,teacherId:r.teacher_id,studentId:r.student_id,boardId:r.board_id||"",boardTitle:r.boards?.title||"Без доски",
+ id:r.id,teacherId:r.teacher_id,studentId:r.student_id,teacherName:r.teacher_name||undefined,studentName:r.student_name||undefined,boardId:r.board_id||"",boardTitle:r.boards?.title||"Без доски",
  title:r.title||"",description:r.description||"",dueAt:r.due_at||null,createdAt:r.created_at,
  status:r.submissions?.reviewed_at?"reviewed":r.submissions?.submitted_at?"submitted":"assigned",
  submissionText:r.submissions?.content||"",submittedAt:r.submissions?.submitted_at||null,

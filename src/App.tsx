@@ -31,6 +31,7 @@ const LektrusSystemUi = registerPlugin<{setBoardMode(options:{enabled:boolean}):
 const StudentsScreen = lazy(() => import("./StudentsScreen"));
 
 const AssignmentsScreen = lazy(() => import("./AssignmentsScreen"));
+const TeachersScreen = lazy(() => import("./TeachersScreen"));
 
 const ProgressScreen = lazy(() => import("./ProgressScreen"));
 
@@ -738,8 +739,10 @@ export default function App() {
           ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} rolePreview={appRolePreview} onRolePreviewChange={changeAppRolePreview} onCheckRegistration={()=>navigate("/?section=registration-preview")} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{navigate(`/board/${INTERFACE_STUDIO_BOARD_ID}?layout-editor=1`)}} onBack={()=>navigate("/app?section=boards")} />
           : section==="students" && workspaceRole==="teacher"
           ? <StudentsScreen user={authUser} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="teachers" && workspaceRole==="student"
+          ? <TeachersScreen key={authUser.id} user={authUser} onOpenBoard={id=>navigate(`/board/${id}`)} />
           : section==="assignments"
-          ? <AssignmentsScreen key={workspaceRole} user={authUser} accountRole={workspaceRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          ? <AssignmentsScreen key={`${authUser.id}:${workspaceRole}`} user={authUser} accountRole={workspaceRole} onBack={()=>navigate("/app?section=boards")} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="progress" && workspaceRole==="teacher"
           ? <ProgressScreen user={authUser} onBack={()=>navigate("/app?section=boards")} />
           : section==="schedule"

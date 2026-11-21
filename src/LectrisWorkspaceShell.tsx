@@ -6,13 +6,14 @@ import { listNotifications } from "./notificationsStore";
 
 
 type NavIcon = "search" | "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "feedback" | "profile" | "settings" | "admin" | "menu" | "chevron";
-type NavItem = { id: string; label: string; icon: NavIcon; teacher?: boolean; admin?: boolean };
+type NavItem = { id: string; label: string; icon: NavIcon; teacher?: boolean; learner?: boolean; admin?: boolean };
 const items: NavItem[] = [
   { id:"", label:"Главная", icon:"home" },
   { id:"subjects", label:"Предметы", icon:"subjects" },
   { id:"groups", label:"Группы и классы", icon:"groups", teacher:true },
   { id:"boards", label:"Доски", icon:"boards" },
   { id:"students", label:"Ученики", icon:"users", teacher:true },
+  { id:"teachers", label:"Преподаватели", icon:"users", learner:true },
   { id:"assignments", label:"Задания", icon:"assignments" },
   { id:"schedule", label:"Расписание", icon:"schedule" },
   { id:"progress", label:"Прогресс", icon:"progress", teacher:true },
@@ -67,7 +68,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
     return()=>{active=false;window.clearInterval(timer);window.removeEventListener("focus",wake)};
   },[section]);
 
-  const available=items.filter(x=>(!x.teacher||role==="teacher")&&(!x.admin||(isAdmin&&rolePreview==="actual")));
+  const available=items.filter(x=>(!x.teacher||role==="teacher")&&(!x.learner||role==="student")&&(!x.admin||(isAdmin&&rolePreview==="actual")));
   const active=available.some(x=>x.id===section)?section:"";
   useEffect(()=>{setMenuQuery("")},[section]);
   const move=(target:string)=>{
@@ -97,7 +98,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
           </div>
           <div className="lectris-nav-group">
             <span className="lectris-nav-group-title">Учебный процесс</span>
-            {available.filter(x=>["students","assignments","schedule","progress"].includes(x.id)).map(x=>navButton(x))}
+            {available.filter(x=>["students","teachers","assignments","schedule","progress"].includes(x.id)).map(x=>navButton(x))}
           </div>
           <div className="lectris-nav-group">
             <span className="lectris-nav-group-title">Библиотека и события</span>
