@@ -169,7 +169,8 @@ try{
   await call("Emulation.setUserAgentOverride",{userAgent:"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",platform:"Linux armv8l"});
   await call("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:2,mobile:true});
   await call("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:5});
-  await call("Page.addScriptToEvaluateOnNewDocument",{source:`Object.defineProperty(navigator,"getInstalledRelatedApps",{configurable:true,value:async()=>sessionStorage.getItem("qa-pwa-existing")==="1"?[{platform:"webapp",url:"https://lektrus.ru/manifest.webmanifest"}]:[]})`});
+  // Suppress real browser install events so the QA case controls their timing.
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`window.addEventListener("beforeinstallprompt",event=>{if(event.isTrusted){event.preventDefault();event.stopImmediatePropagation()}},true);Object.defineProperty(navigator,"getInstalledRelatedApps",{configurable:true,value:async()=>sessionStorage.getItem("qa-pwa-existing")==="1"?[{platform:"webapp",url:"https://lektrus.ru/manifest.webmanifest"}]:[]})`});
   const waitPwa=async(expression,message,timeout=30000)=>{
    const deadline=Date.now()+timeout;
    while(Date.now()<deadline){try{if(await evaluate(expression))return}catch{} await delay(100)}
