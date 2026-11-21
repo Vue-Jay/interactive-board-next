@@ -25,6 +25,7 @@ assert.equal(shouldOfferAndroidUpdate("1.0.4668",update,"1.0.4669",Date.now()+86
 const newest={...update,version:"1.0.4710",download_url:update.download_url.replace("1.0.4670","1.0.4710")};
 const oldFallback={...update,catalog_stale:true};
 assert.deepEqual(resolveAndroidUpdate("1.0.4669",oldFallback,newest),{...newest,catalog_stale:true});
+assert.equal(resolveAndroidUpdate("1.0.4660",{...oldFallback,minimum_version:"1.0.4669"},newest).minimum_version,"1.0.4669");
 assert.deepEqual(resolveAndroidUpdate("1.0.4669",update,newest),update); // successful live refresh can revoke a release
 const requiredKnown={...newest,minimum_version:"1.0.4700"};
 const newerStale={...newest,version:"1.0.4712",download_url:newest.download_url.replace("1.0.4710","1.0.4712"),catalog_stale:true};

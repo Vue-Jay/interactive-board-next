@@ -25,7 +25,10 @@ export function androidUpdateKind(installed:string,update:AndroidUpdate):"none"|
 // previously confirmed compatibility floor. A fresh response remains authoritative.
 export function resolveAndroidUpdate(installed:string,incoming:AndroidUpdate,known:AndroidUpdate|null):AndroidUpdate{
   if(!incoming.catalog_stale||!known||androidUpdateKind(installed,known)==="none")return incoming;
-  if(compareAndroidVersions(incoming.version,known.version)===-1)return {...known,catalog_stale:true};
+  if(compareAndroidVersions(incoming.version,known.version)===-1){
+    const minimum_version=compareAndroidVersions(incoming.minimum_version,known.minimum_version)===1?incoming.minimum_version:known.minimum_version;
+    return {...known,minimum_version,catalog_stale:true};
+  }
   if(androidUpdateKind(installed,known)==="required"&&compareAndroidVersions(incoming.minimum_version,known.minimum_version)===-1)
     return {...incoming,minimum_version:known.minimum_version};
   return incoming;
