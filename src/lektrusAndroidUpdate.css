@@ -24,5 +24,6 @@
 .lektrus-update-later{margin-top:8px;color:var(--lt-secondary,#4c607b);background:var(--lt-subtle,#f0f4f9);border:1px solid var(--lt-line,#d5dfed)}
 .lektrus-update-dialog>.lektrus-update-feedback{padding:10px;border-radius:9px;background:var(--lt-selected,#e6edff);color:var(--lt-selected-ink,#244da9);font-size:12px;margin:9px 0 0}
 .lektrus-update-note{display:block;text-align:center;font-size:11.5px;line-height:1.45;color:var(--lt-muted,#637792);margin-top:12px}
+.lektrus-update-recovery{display:block;margin-top:8px;padding:5px 0;text-align:left;color:var(--lt-primary,#3157c4);background:none;border:0;font:inherit;font-size:13px;font-weight:650;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:360px){.lektrus-update-dialog{padding:16px}.lektrus-update-heading h1{font-size:20px}.lektrus-update-heading img{width:44px;height:44px}}
 @media(max-height:480px){.lektrus-update-dialog{padding:15px}.lektrus-update-dialog>p{margin:8px 0}.lektrus-update-file{margin:8px 0}.lektrus-update-heading img{width:40px;height:40px}}

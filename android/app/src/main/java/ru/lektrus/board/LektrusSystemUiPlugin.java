@@ -19,6 +19,13 @@ public class LektrusSystemUiPlugin extends Plugin {
         // Never accept an arbitrary URL from the WebView: only the fixed,
         // official APK release path. The system installer verifies the signer.
         Uri url = Uri.parse("https://github.com/Vue-Jay/interactive-board-next/releases/download/android-v" + version + "/Lektrus-Android.apk");
+        openReleaseUri(call, url);
+    }
+    @PluginMethod
+    public void openAndroidReleasePage(PluginCall call) {
+        openReleaseUri(call, Uri.parse("https://github.com/Vue-Jay/interactive-board-next/releases/latest"));
+    }
+    private void openReleaseUri(PluginCall call, Uri url) {
         getBridge().executeOnMainThread(() -> {
             try {
                 getActivity().startActivity(new Intent(Intent.ACTION_VIEW, url).addCategory(Intent.CATEGORY_BROWSABLE));

@@ -7,14 +7,18 @@ isolated offline QA builds do not use this APK prompt.
 
 The server caches the official public GitHub releases for five minutes, ignores
 drafts/prereleases and incomplete/foreign assets, and returns the exact tagged
-APK URL, size, latest version and minimum supported version. A release becomes
-visible automatically after the existing permanent-signing and login-smoke
-publication job succeeds.
+APK URL, size, latest version and minimum supported version. Routine checks use
+the small latest-release API response; if it fails, the public GitHub latest
+download redirects are an independent fallback. HEAD requests verify that both
+official assets exist at the same valid Android tag, without downloading the APK.
+A release becomes visible automatically after the existing permanent-signing and
+login-smoke publication job succeeds.
 
 Temporary GitHub fetch failures retain the last verified release and are
 retried after one minute. On a cold start during an outage, the catalog can
-offer the checked-in, previously verified signed release (1.0.4706) until the
-live catalog recovers. A successful empty catalog invalidates that fallback;
+offer the checked-in, previously verified signed release (1.0.4710) until the
+live catalog recovers. Requests wait at most five seconds for the shared
+refresh, which continues in the background if necessary. A successful empty catalog invalidates that fallback;
 it does not advertise a release the live catalog no longer lists.
 
 - Ordinary releases: leave `LEKTRUS_ANDROID_MINIMUM_VERSION` at its default
@@ -31,6 +35,17 @@ it does not advertise a release the live catalog no longer lists.
 - Downloads open the exact official HTTPS release asset in Android's browser;
   the user confirms installation via Android. No silent install, temporary
   signing key or Play Protect bypass is used.
+- A user who missed several releases receives the complete newest APK, not a
+  sequence of intermediate updates. Install over the existing `ru.lektrus.board`
+  with the permanent signer and a greater timestamp-based versionCode. The
+  Android 11 signed-release smoke test installs the published 1.0.4691 first,
+  then installs the current APK without uninstalling and verifies package UID,
+  original installation time, data directory and increasing versionCode.
+- A stale catalog cannot replace a newer previously verified optional or
+  mandatory update (even across app restarts), and cannot lower a confirmed
+  mandatory floor. A fresh successful catalog remains authoritative. Manual
+  checks during an outage can open the fixed official release page in the
+  system browser; a stale response never claims the installed version is current.
 
 Versions shipped before this updater cannot display an update dialog. They
 must install the first updater-aware APK manually. This is a client UX gate,
