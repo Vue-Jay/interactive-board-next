@@ -38,6 +38,13 @@ async def test_student_roster_profiles_and_session_records(client):
 
     assert (await client.get("/api/v1/students",headers=student)).status_code == 403
     assert (await client.get("/api/v1/students",headers=outsider)).status_code == 403
+    teachers = await client.get("/api/v1/teachers", headers=student)
+    assert teachers.status_code == 200, teachers.text
+    assert teachers.json() == [{"user_id": str(TEACHER), "name": "teacher",
+                                "boards": [{"id": board_id, "title": "Математика"}]}]
+    assert (await client.get("/api/v1/teachers", headers=outsider)).json() == []
+    assert (await client.get("/api/v1/teachers", headers=teacher)).json() == []
+    assert (await client.get("/api/v1/teachers")).status_code == 401
     assert (await client.put(f"/api/v1/students/{OUTSIDER}/profile",
         headers=teacher,json={"note":"чужой"})).status_code == 404
 
@@ -82,6 +89,24 @@ async def test_student_roster_profiles_and_session_records(client):
 
 
 @pytest.mark.asyncio
+async def test_teachers_directory_respects_membership_and_dual_role(client):
+    teacher, student, outsider, board_id = await teacher_board(client)
+    second = await client.post("/api/v1/boards", headers=teacher, json={"title":"Физика"})
+    second_id = second.json()["id"]
+    assert (await client.post(f"/api/v1/boards/{second_id}/invitations", headers=teacher,
+        json={"email":"student@example.test","role":"editor","participant_role":"student"})).status_code == 200
+    assert (await client.post(f"/api/v1/boards/{second_id}/invitations", headers=teacher,
+        json={"email":"outsider@example.test","role":"viewer","participant_role":"observer"})).status_code == 200
+    assert (await client.post("/api/v1/account/role/teacher", headers=student)).status_code == 200
+    directory = (await client.get("/api/v1/teachers", headers=student)).json()
+    assert len(directory) == 1 and directory[0]["user_id"] == str(TEACHER)
+    assert {b["id"] for b in directory[0]["boards"]} == {board_id, second_id}
+    assert (await client.get("/api/v1/teachers", headers=outsider)).json() == []
+    assert (await client.delete(f"/api/v1/boards/{second_id}", headers=teacher)).status_code == 200
+    assert (await client.get("/api/v1/teachers", headers=student)).json()[0]["boards"] == [{"id":board_id,"title":"Математика"}]
+
+
+@pytest.mark.asyncio
 async def test_assignment_create_submit_review_and_permissions(client):
     teacher, student, outsider, board_id = await teacher_board(client)
     assignment_id = uuid4()
@@ -103,6 +128,9 @@ async def test_assignment_create_submit_review_and_permissions(client):
 
     student_list = await client.get("/api/v1/assignments",headers=student)
     assert student_list.status_code == 200
+    assert student_list.json()[0]["teacher_name"] == "teacher"
+    assert student_list.json()[0]["student_name"] == "student"
+    assert (await client.get("/api/v1/assignments",headers=outsider)).json() == []
     assert len(student_list.json()) == 1
     assert student_list.json()[0]["id"] == str(assignment_id)
     assert student_list.json()[0]["submissions"] is None
