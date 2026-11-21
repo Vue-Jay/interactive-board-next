@@ -128,11 +128,16 @@ jobs:
           AAPT="$(dirname "$APK_SIGNER")/aapt"
           "$AAPT" dump badging Lektrus-Android.apk > apk-badging.txt
           unzip -Z1 Lektrus-Android.apk > apk-files.txt
-          grep -E "^application:.*icon='res/mipmap-[^']*/ic_launcher\.png'" apk-badging.txt
-          grep -E "^launchable-activity:.*icon='res/mipmap-[^']*/ic_launcher\.png'" apk-badging.txt
+          grep -E "^application:.*icon='res/drawable[^']*/icon\.png'" apk-badging.txt
+          grep -E "^launchable-activity:.*icon='res/drawable[^']*/icon\.png'" apk-badging.txt
+          grep -Fx 'res/drawable/icon.png' apk-files.txt
+          grep -Fx 'res/drawable/icon_round.png' apk-files.txt
           for density in ldpi mdpi hdpi xhdpi xxhdpi xxxhdpi; do
             for icon in ic_launcher ic_launcher_round; do
               grep -Eq "^res/mipmap-${density}(-v[0-9]+)?/${icon}\.png$" apk-files.txt
+            done
+            for icon in icon icon_round; do
+              grep -Eq "^res/drawable-${density}(-v[0-9]+)?/${icon}\.png$" apk-files.txt
             done
           done
           echo "Package ru.lektrus.board, versionCode $LEKTRUS_ANDROID_VERSION_CODE"
