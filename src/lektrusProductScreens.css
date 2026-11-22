@@ -84,7 +84,9 @@ html body .topbar .topbar-right .topbar-menu-section .topbar-menu-danger{color:#
 
 /* The legacy snap control keeps its existing interaction while taking its
    selected color from the user's Lektrus palette. */
-.workspace .board-controls .snap-toggle{color:var(--lt-secondary)!important;border-radius:8px;transition:background-color .14s ease,color .14s ease,border-color .14s ease}
+.workspace .board-controls .snap-toggle{position:relative;color:var(--lt-secondary)!important;border-radius:8px;transition:background-color .14s ease,color .14s ease,border-color .14s ease}
+.workspace .board-controls .snap-toggle:not(.active)::after{content:"";position:absolute;left:50%;top:50%;width:20px;height:1.5px;background:currentColor;transform:translate(-50%,-50%) rotate(-45deg);border-radius:2px;box-shadow:0 0 0 1px var(--lt-raised,#fff);pointer-events:none}
+.workspace .board-controls .snap-toggle.active::after{content:"";position:absolute;right:4px;bottom:4px;width:5px;height:5px;border-radius:50%;background:currentColor;pointer-events:none}
 .workspace .board-controls .snap-toggle:hover{background:var(--lt-hover)!important;color:var(--lt-text)!important}
 .workspace .board-controls .snap-toggle.active{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;border-color:var(--lt-line-strong)!important}
 .workspace .board-controls .snap-toggle:focus-visible{outline:2px solid var(--lt-focus)!important;outline-offset:2px}

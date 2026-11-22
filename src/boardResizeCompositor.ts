@@ -5,6 +5,7 @@
 export type ResizePreviewItem={
  id:string;kind:string;x:number;y:number;width:number;height:number;
  rotation?:number;points?:readonly unknown[];hidden?:boolean;commentTargetId?:string;
+ stickerInk?:readonly unknown[];
  connectorStartBinding?:{itemId:string}|null;
  connectorEndBinding?:{itemId:string}|null;
 };
@@ -29,7 +30,7 @@ export function canCompositeBoardResize<T extends ResizePreviewItem>(
  for(const item of items){
   if(ids.has(item.id)){
    found++;
-   if(item.points||item.hidden||!resizeLayoutKinds.has(item.kind))return false;
+   if(item.points||item.hidden||item.stickerInk?.length||!resizeLayoutKinds.has(item.kind))return false;
   }
   if(item.kind==="connector"&&(
    item.connectorStartBinding&&ids.has(item.connectorStartBinding.itemId)||

@@ -19,9 +19,9 @@ assert.ok(captureBody.indexOf('if((tool==="pen"')<captureBody.indexOf('if(tool!=
 
 // Object manipulation is reserved for the selecting/hand tools, not ink.
 for(const pattern of [
-  /if \(\(tool === "select" \|\| tool === "hand"\) && connectorEndpoint/,
-  /if \(\(tool === "select" \|\| tool === "hand"\) && groupHandle/,
-  /if \(\(tool === "select" \|\| tool === "hand"\) && transformHandle/,
+  /if \(\(tool === "select" \|\| tool === "hand" \|\| tool === "lasso"\) && connectorEndpoint/,
+  /if \(\(tool === "select" \|\| tool === "hand" \|\| tool === "lasso"\) && groupHandle/,
+  /if \(\(tool === "select" \|\| tool === "hand" \|\| tool === "lasso"\) && transformHandle/,
 ]) assert.match(app,pattern);
 assert.match(app,/else if \(tool === "pen" \|\| tool === "marker"\) \{\s*mode = "draw";/);
 assert.match(app,/beginInkPreview\(gesture\.current,p\)/);

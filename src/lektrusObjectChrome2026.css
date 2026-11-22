@@ -80,8 +80,20 @@
 .workspace .board .lektrus-selection-move-grip:active{cursor:grabbing}
 .workspace .board .screen-transform-group .lektrus-selection-move-grip{color:#6b53b3}
 .workspace .board .connector-endpoint-handle{
- border:2px solid #316bc9;background:#f5faff;
- box-shadow:0 0 0 3px #ffffffeb,0 2px 8px #224a7b33;
+ border:0;background:transparent;box-shadow:none;
+}
+.workspace .board .connector-endpoint-handle::after{
+ width:8px;height:8px;border:1.5px solid #316bc9;background:#fff;
+ box-shadow:none;
+}
+.workspace .board .connector-endpoint-handle.attached::after{
+ background:#316bc9;
+}
+.workspace .board .connector-endpoint-handle:hover::after{
+ width:10px;height:10px;box-shadow:0 0 0 2px #316bc926;
+}
+@media(pointer:coarse){
+ .workspace .board .connector-endpoint-handle{width:34px;height:34px}
 }
 .workspace .board .board-object:focus-visible{
  outline:2px solid #417ae1;outline-offset:3px;
