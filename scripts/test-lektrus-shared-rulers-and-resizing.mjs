@@ -22,6 +22,16 @@ const {resizedRect,preserveRotatedAnchor}=load(transpile("src/lektrusRotateResiz
 const model=load(transpile("src/boardModel.ts"));
 const app=read("src/BoardApp.tsx");
 const geometry=read("src/GeometryInstruments.tsx");
+const {instrumentPivot,rotateInstrumentAboutPivot}=load(transpile("src/instrumentPivot.ts"));
+for(const scale of [.5,1,2]){
+ const original={x:300,y:400,rotation:25};
+ const pivot=instrumentPivot(original,"protractor",scale);
+ for(const angle of [0,45,90,180,270]){
+  const next=rotateInstrumentAboutPivot(original,"protractor",scale,angle);
+  const measured=instrumentPivot(next,"protractor",scale);
+  assert.ok(Math.hypot(measured.x-pivot.x,measured.y-pivot.y)<1e-8,"the baseline midpoint remains stationary during rotation");
+ }
+}
 transpile("src/GeometryInstruments.tsx");
 transpile("src/BoardApp.tsx");
 

@@ -15,6 +15,13 @@ function load(moduleCode,dependencies={}){
  return exports;
 }
 const names=load(transpile("src/lektrusGeometryPointNames.ts"));
+const plane=load(transpile("src/coordinatePlane.ts"));
+const coordinateItem={kind:"graph",graphPurpose:"coordinates",width:600,height:300,graphXMin:-10,graphXMax:10,graphYMin:-5,graphYMax:5};
+assert.equal(plane.isCoordinatePlane(coordinateItem),true);
+assert.equal(plane.isCoordinatePlane({...coordinateItem,graphPurpose:"function"}),false);
+assert.deepEqual(plane.coordinatePlaneViewport(coordinateItem),{width:600,height:300});
+assert.deepEqual(plane.planePointFromSvg(coordinateItem,{x:345,y:175}),{x:1.5,y:-.8333});
+assert.deepEqual(plane.planePointFromSvg({...coordinateItem,graphSnap:true},{x:345,y:175}),{x:2,y:-1});
 const constraints=load(transpile("src/lektrusGeometryConstraints.ts"));
 const precise=load(transpile("src/lektrusGeometryPrecision.ts"));
 const math=load(transpile("src/LektrusGraphEditor.tsx"),{
@@ -470,8 +477,10 @@ assert.match(app,/aria-pressed=\{constructionActive\}/,
  "the on-canvas construction toggle exposes active state to assistive technologies");
 assert.match(boardGeometryCss,/\.lektrus-graph-canvas-construction\[aria-pressed="true"\]/,
  "active on-graph construction button is visibly distinguished");
-assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
- "a normal graph drag no longer adds accidental vertices");
+assert.match(app,/onAddPoint=\{isCoordinatePlane\(item\).*?\?\(x,y\)=>/,
+ "coordinate planes accept points without opening the editor");
+assert.match(app,/:graphPointEditId===item\.id&&item\.graphPurpose!=="geometry"/,
+ "other graphs still require explicit point edit mode");
 assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id/,
  "a normal graph drag no longer closes a free polygon accidentally");
 assert.match(app,/activeBoardGeometryMode\(item\)==="move"/,

@@ -2,6 +2,7 @@ import {useEffect,useId,useRef,useState,type RefObject,type PointerEvent} from "
 import "./lektrusMeasurementInstruments.css";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
+import {instrumentPivot,rotateInstrumentAboutPivot} from "./instrumentPivot";
 
 export type InstrumentType="ruler"|"triangle"|"protractor";
 type Point={x:number;y:number};
@@ -105,9 +106,11 @@ function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,
  const zoom=Math.max(.01,view.zoom);
  const visualScale=zoom*(item.instrumentScale??1);
  const rect=boardRef.current?.getBoundingClientRect();
+ const scale=item.instrumentScale??1;
+ const pivot=instrumentPivot(point,type,scale);
  const screenPosition={
-  x:(rect?.left??0)+view.x+point.x*zoom,
-  y:(rect?.top??0)+view.y+point.y*zoom,
+  x:(rect?.left??0)+view.x+pivot.x*zoom,
+  y:(rect?.top??0)+view.y+pivot.y*zoom,
  };
  const boardPosition={x:view.x+point.x*zoom,y:view.y+point.y*zoom};
  const rad=rotation*Math.PI/180;
@@ -132,10 +135,8 @@ function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,
    x:g.x+(event.clientX-g.startX)/zoom,
    y:g.y+(event.clientY-g.startY)/zoom,
    rotation:g.angle,
-  }:{
-   x:g.x,y:g.y,
-   rotation:g.angle+angleTo(event.clientX,event.clientY,screenPosition)-g.startAngle
-  };
+  }:rotateInstrumentAboutPivot({x:g.x,y:g.y,rotation:g.angle},type,scale,
+    g.angle+angleTo(event.clientX,event.clientY,screenPosition)-g.startAngle);
   g.latest=next;setLive(next);
  };
  const finish=(event:PointerEvent<HTMLElement>)=>{
@@ -170,7 +171,7 @@ function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,
         onPointerDown={event=>begin(event,"rotate")} onPointerMove={moving}
         onPointerUp={finish} onPointerCancel={finish}
         title="Повернуть инструмент" aria-label="Повернуть инструмент">⟳</button>
-      <button type="button" onClick={()=>onUpdate(item.id,{rotation:0})}
+      <button type="button" onClick={()=>onUpdate(item.id,rotateInstrumentAboutPivot(point,type,scale,0))}
         aria-label="Сбросить угол">0°</button>
       <button type="button" onClick={()=>updateScale(-.1)} aria-label="Уменьшить инструмент">−</button>
       <button type="button" onClick={()=>updateScale(.1)} aria-label="Увеличить инструмент">+</button>

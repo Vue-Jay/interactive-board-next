@@ -130,7 +130,8 @@ import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals,
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
-import { eraseStickerInk, makeStickerInk, stickerAt, stickerInkPixels } from "./stickerInk";
+import { eraseStickerInk, makeStickerInk, resizeStickerInk, splitStickerPath, stickerAt, stickerInkPixels } from "./stickerInk";
+import {coordinatePlaneViewport,isCoordinatePlane,planePointFromClient} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
@@ -288,7 +289,7 @@ const iconBody = (name: IconName) => {
     case "label": return <><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 10h8M8 14h5"/></>;
     case "zoom-in": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="M10.5 8v5M8 10.5h5M15 15l4 4"/></>;
     case "zoom-out": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="M8 10.5h5M15 15l4 4"/></>;
-    case "snap": return <><path d="M5 4v7a4 4 0 0 0 8 0V4M5 8h4M13 8h4"/><path d="M17 5v6"/></>;
+    case "snap": return <><path d="M5 4v10a7 7 0 0 0 14 0V4h-5v10a2 2 0 0 1-4 0V4H5Z"/><path d="M5 9h5M14 9h5"/></>;
     case "chevron-left": return <path d="m15 5-7 7 7 7"/>;
     case "chevron-right": return <path d="m9 5 7 7-7 7"/>;
     case "templates": return <><rect x="4" y="4" width="7" height="7" rx="1.2"/><rect x="13" y="4" width="7" height="7" rx="1.2"/><rect x="4" y="13" width="7" height="7" rx="1.2"/><path d="M13 16.5h7M16.5 13v7"/></>;
@@ -539,10 +540,11 @@ const blobToDataUrl = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
-const fitItemToRect = (base: Item, rect: Bounds): Item => {
+const fitItemToRect = (base: Item, rect: Bounds, keepWorldInk=false): Item => {
   const sx = rect.width / Math.max(1, base.width);
   const sy = rect.height / Math.max(1, base.height);
   const scaled = { ...base, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  if(base.kind==="sticky")return resizeStickerInk(base,scaled,keepWorldInk);
   if (base.kind === "connector" && base.connectorStart && base.connectorEnd) {
     return {
       ...scaled,
@@ -1163,7 +1165,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const purpose = item.graphPurpose ?? (item.graphCircles?.length ? "unit-circle" : item.graphPolygons?.length ? "geometry" : expression ? "function" : "coordinates");
   const title = item.text?.trim() || (purpose === "unit-circle" ? "Единичная окружность" : purpose === "geometry" ? "Геометрическое построение" : purpose === "coordinates" ? "Координатная плоскость" : "График функции");
   const xMin = item.graphXMin ?? -10, xMax = item.graphXMax ?? 10, yMin = item.graphYMin ?? -10, yMax = item.graphYMax ?? 10;
-  const W = 600, H = 360;
+  const planeViewport=isCoordinatePlane(item)?coordinatePlaneViewport(item):null;
+  const W = planeViewport?.width??600, H = planeViewport?.height??360;
   // A single unit scale on both axes keeps circles circular and geometry measurable.
   const scale = Math.min(W / Math.max(.01,xMax-xMin), H / Math.max(.01,yMax-yMin));
   const cx = (xMin+xMax)/2, cy = (yMin+yMax)/2;
@@ -1190,10 +1193,14 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const distance = (a:{x:number;y:number},b:{x:number;y:number}) => Math.hypot(a.x-b.x,a.y-b.y);
   const curvePath=purpose==="function"&&item.graphShowCurve!==false&&evaluateCurve?graphCurvePath(evaluateCurve,xMin,xMax,yMin,yMax,sx,sy):"";
   const coord = (clientX:number,clientY:number,svg:SVGSVGElement,pointIndex=-1) => {
+    if(isCoordinatePlane(item)){
+      const local=planePointFromClient(item,svg,{x:clientX,y:clientY});
+      if(local)return local;
+    }
     const r=svg.getBoundingClientRect(),factor=Math.min(r.width/W,r.height/H)||1;
     const left=r.left+(r.width-W*factor)/2,top=r.top+(r.height-H*factor)/2;
     let x=ux((clientX-left)/factor),y=uy((clientY-top)/factor);
-    if((purpose==="geometry"?item.graphSnap===true:item.graphSnap!==false)&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
+    if(item.graphSnap===true&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
     if(purpose==="geometry"&&item.graphMagneticSnap!==false&&pointIndex>=0){
       const aligned=magneticGeometrySnap(item.graphPoints??[],pointIndex,x,y,12/scale);
       x=aligned.x;y=aligned.y;
@@ -1306,7 +1313,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
       </div>)}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
-      data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}
+      data-board-gesture-owner={onPickPoint||onAddPoint&&!isCoordinatePlane(item)?"true":undefined}
       onPointerDownCapture={event=>{
         if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
         if(onPickPoint){
@@ -1403,7 +1410,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           freePointGesture.current?.cancel();
         }
       }}
-      onDoubleClick={e=>{if(purpose==="geometry"){if((e.target as Element).closest(".graph-point")){e.preventDefault();e.stopPropagation()}return;}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      onDoubleClick={e=>{if(purpose==="geometry"){if((e.target as Element).closest(".graph-point")){e.preventDefault();e.stopPropagation()}return;}if(onAddPoint&&purpose!=="unit-circle"){e.preventDefault();e.stopPropagation();if(!(e.target as Element).closest(".lektrus-diagram-grid-toggle,.graph-point")){const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}}>
       {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free")&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
@@ -1807,8 +1814,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         {!((item.graphFigureId??"").startsWith("physics-")&&
           (item.graphSegments??[]).some(s=>s.scienceArrow&&s.b===i))&&
           <circle cx={sx(p.x)} cy={sy(p.y)}
-           r={(item.graphFigureId??"").startsWith("physics-")?2.5:movable?5:4}
-           style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>}
+           r={(item.graphFigureId??"").startsWith("physics-")?2.5:["line","segment","ray","parallel","perpendicular"].includes(item.graphFigureId??"")?2.8:movable?5:4}
+           style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor,strokeWidth:["line","segment","ray","parallel","perpendicular"].includes(item.graphFigureId??"")?1.2:undefined}}/>}
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&
           <g pointerEvents="none">
           {geometryCaptions?.[i]?.leader&&<line x1={sx(p.x)} y1={sy(p.y)} x2={geometryCaptions[i]!.x} y2={geometryCaptions[i]!.y} stroke="#788ba3" strokeWidth=".8" strokeDasharray="3 2"/>}
@@ -1817,7 +1824,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            textAnchor={geometryCaptions?.[i]?"middle":undefined} dominantBaseline={geometryCaptions?.[i]?"central":undefined}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text></g>}
       </g>})}
-      {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
+      {(purpose==="geometry"||isCoordinatePlane(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
         <g role="button" tabIndex={0} className="lektrus-grid-control"
           aria-label={item.graphGrid===false?"Показать сетку":"Скрыть сетку"}
           aria-pressed={item.graphGrid!==false}
@@ -1847,6 +1854,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             <path d="M9 5.5v14M15 5.5v14M21 5.5v14M6 9.5h18M6 15.5h18" opacity=".42"/>
             <path d="M21 8.5l-5 5M16.4 10.5l-.4 3.1 3.1-.4" strokeWidth="1.65"/>
             <circle cx="15" cy="15.5" r="2.45" fill="currentColor" stroke="var(--lt-raised,#fff)" strokeWidth=".9"/>
+            {item.graphSnap!==true&&<path d="M6 21L24 4" stroke="#fff" strokeWidth="3.2"/>}
+            {item.graphSnap!==true&&<path d="M6 21L24 4" strokeWidth="1.6"/>}
           </g>
         </g>}
       </g>}
@@ -2392,6 +2401,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [boardGeometryError,setBoardGeometryError]=useState("");
   const geometryCanvasTouch=useRef<{pointer:number;id:string;x:number;y:number}|null>(null);
   const lastGeometryCanvasTap=useRef<{id:string;x:number;y:number;time:number}|null>(null);
+  const coordinateDoubleTapUntil=useRef(0);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const provisionalChemistryBoards=useRef(new Set<string>());
   const provisionalChemistryWorksheets=useRef(new Set<string>());
@@ -2486,7 +2496,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const setMarkerWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "marker", { size: value }));
   useEffect(() => { if(!demoMode)writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
   const [eraserSize, setEraserSize] = useState(22);
-  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [snapEnabled, setSnapEnabled] = useState(false);
   const guideX=useRef<HTMLDivElement>(null);
   const guideY=useRef<HTMLDivElement>(null);
   // Smart guides are purely transient DOM decorations. Updating their React
@@ -2815,16 +2825,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
-    if(g.sticker){
-      const item=g.sticker,cx=item.x+item.width/2,cy=item.y+item.height/2;
-      const a=(item.rotation??0)*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
-      ctx.beginPath();
-      for(const [i,[x,y]] of [[-item.width/2,-item.height/2],[item.width/2,-item.height/2],[item.width/2,item.height/2],[-item.width/2,item.height/2]].entries()){
-        const px=cx+x*c-y*s,py=cy+x*s+y*c;
-        if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
-      }
-      ctx.closePath();ctx.clip();
-    }
     // Composite the entire active stroke once. Alpha on each incremental
     // batch would darken round caps and self-intersections on the sender.
     ctx.globalAlpha=1;
@@ -4637,9 +4637,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     else if (g.mode === "draw" && g.ink && g.sticker) {
       const sticker=g.sticker;
-      const ink=makeStickerInk(sticker,g.ink,g.path,g.view.zoom);
-      flushSync(()=>commit(g.before.map(item=>item.id===sticker.id?
-        {...item,stickerInk:[...(item.stickerInk??[]),ink]}:item),{immediatePaint:true}));
+      const attached:NonNullable<Item["stickerInk"]>=[],outside:Item[]=[];
+      for(const [index,piece] of splitStickerPath(sticker,g.path).entries()){
+        const ink={...g.ink,id:index===0?g.ink.id:createId()};
+        if(piece.inside)attached.push(makeStickerInk(sticker,ink,piece.points,g.view.zoom));
+        else outside.push(stroke(ink.id,ink.kind,piece.points,ink.color,ink.weight,g.view.zoom));
+      }
+      flushSync(()=>commit([...g.before.map(item=>item.id===sticker.id?
+        {...item,stickerInk:[...(item.stickerInk??[]),...attached]}:item),...outside],{immediatePaint:true}));
     }
     else if (g.mode === "draw" && g.ink)
       flushSync(()=>commit([
@@ -4760,7 +4765,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setPanning(false);
     setMarqueeRect(null);
     clearGuides();
-    if(tool!=="select")setSelected([]);
+    if(tool!=="select"&&tool!=="lasso")setSelected([]);
   },[tool]);
   // Some embedded widgets consume pointerup, and a captured element can be
   // removed mid-drag. A window-level fallback retires orphaned pointers.
@@ -4830,7 +4835,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (contextMenu && !target.closest("[data-context-menu]")) setContextMenu(null);
     const connectorEndpointEl = target.closest<HTMLElement>("[data-connector-endpoint]");
     const connectorEndpoint = connectorEndpointEl?.dataset.connectorEndpoint;
-    if ((tool === "select" || tool === "hand") && connectorEndpoint && selected.length === 1) {
+    if ((tool === "select" || tool === "hand" || tool === "lasso") && connectorEndpoint && selected.length === 1) {
       const connector = itemsRef.current.find((item) => item.id === selected[0] && item.kind === "connector");
       if (connector && canEdit && !connector.locked && canTransformBoardObject(connector)) {
         e.preventDefault();
@@ -4846,7 +4851,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // Moving the common selection grip works even for embedded maps,
     // formulas, media frames and other widgets that consume pointer events.
     const groupGrip=target.closest<HTMLElement>("[data-group-selection-drag]");
-    if((tool==="select"||tool==="hand")&&groupGrip&&canEdit&&selected.length>1){
+    if((tool==="select"||tool==="hand"||tool==="lasso")&&groupGrip&&canEdit&&selected.length>1){
       const movable=itemsRef.current.filter(item=>selected.includes(item.id)&&
         !item.locked&&canTransformBoardObject(item)).map(item=>item.id);
       if(movable.length){
@@ -4859,7 +4864,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const groupHandleEl = target.closest<HTMLElement>("[data-group-transform-handle]");
     const groupHandle = groupHandleEl?.dataset.groupTransformHandle;
-    if ((tool === "select" || tool === "hand") && groupHandle && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && i.locked)) {
+    if ((tool === "select" || tool === "hand" || tool === "lasso") && groupHandle && canEdit && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && (i.locked||!canTransformBoardObject(i)))) {
       const bases = itemsRef.current.filter((i) => selected.includes(i.id)).map((i) => ({ ...i, points: i.points?.map((p) => ({ ...p })) }));
       const groupBounds = boundsOf(bases);
       if (groupBounds) {
@@ -4883,7 +4888,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
     }
     let id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
-    if ((tool==="select"||tool==="hand") && !space &&
+    if ((tool==="select"||tool==="hand"||tool==="lasso") && !space &&
         !target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint]")) {
       // The Canvas layer is not a DOM object. Resolve a pen stroke only when
       // clicked, in its original stacking order above a hit DOM object.
@@ -4940,7 +4945,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const handleEl = target.closest<HTMLElement>("[data-transform-handle]");
     const transformHandle = handleEl?.dataset.transformHandle;
-    if ((tool === "select" || tool === "hand") && transformHandle && hit && canEdit && !hit.locked && canTransformBoardObject(hit) && selected.length === 1 && selected[0] === hit.id) {
+    if ((tool === "select" || tool === "hand" || tool === "lasso") && transformHandle && hit && canEdit && !hit.locked && canTransformBoardObject(hit) && selected.length === 1 && selected[0] === hit.id) {
       e.preventDefault();
       e.stopPropagation();
       gesture.current = {
@@ -5027,8 +5032,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       mode = "pan";
       setPanning(true);
     } else if (tool === "lasso") {
-      mode = "lasso";
-      setPath([p]);
+      if(hit&&selected.includes(hit.id)&&!e.shiftKey&&canEdit&&
+         !itemsRef.current.some(item=>selected.includes(item.id)&&(item.locked||!canTransformBoardObject(item)))){
+        mode="drag";
+      }else{
+        mode = "lasso";
+        setPath([p]);
+      }
     } else if (tool === "pen" || tool === "marker") {
       mode = "draw";
       setSelected([]);
@@ -5431,6 +5441,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           const snapped = snapBoardDrag(cache.moving,cache.snapIndex,worldDx,worldDy,7/g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
+            // The visible board grid is 24 world pixels. Prefer a nearby
+            // object alignment; otherwise use the closest grid intersection.
+            if(visibleBoardBackground.mode!=="plain"){
+              if(snapped.guides.x===undefined){
+                const x=cache.moving.x+worldDx,n=Math.round(x/24)*24;
+                if(Math.abs(n-x)<=7/g.view.zoom){worldDx+=n-x;snapped.guides.x=n;}
+              }
+              if(snapped.guides.y===undefined){
+                const y=cache.moving.y+worldDy,n=Math.round(y/24)*24;
+                if(Math.abs(n-y)<=7/g.view.zoom){worldDy+=n-y;snapped.guides.y=n;}
+              }
+            }
           setDragGuides(snapped.guides);
         }
       } else {
@@ -5499,7 +5521,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         const localWy=wx*Math.sin(radians)+wy*Math.cos(radians);
         const localRect = resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
         const rect = preserveRotatedAnchor(base,localRect,base.rotation??0);
-        const resized=fitItemToRect(base,rect);
+        const resized=fitItemToRect(base,rect,true);
         if(!paintCompositorResize(g,[resized]))
           display(g.before.map(item=>item.id===base.id?resized:item));
       }
@@ -6748,8 +6770,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
   };
-  const graphDraftFromItem=(item:Item):GraphDraft=>({constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphPurpose==="geometry"?item.graphSnap===true:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
-  const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
+  const graphDraftFromItem=(item:Item):GraphDraft=>({boardWidth:item.width,boardHeight:item.height,constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap===true,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
+  const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,...(d.purpose==="coordinates"?{width:d.boardWidth??item.width,height:d.boardHeight??item.height}:{}),text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
+  const addCoordinatePlanePoint=(id:string,x:number,y:number)=>{
+    const item=itemsRef.current.find(candidate=>candidate.id===id);
+    if(!item||!isCoordinatePlane(item)||item.locked||!canEdit||structurallyLockedForStudent(item))return;
+    const points=item.graphPoints??[];
+    if(points.length>=40)return;
+    commit(itemsRef.current.map(candidate=>candidate.id===id?
+      {...candidate,graphPoints:[...points,{x,y,label:"",color:"#111111"}]}:candidate));
+    setSelected([id]);
+  };
   const liveGraphDraftRef=useRef<GraphDraft|null>(null);
   const graphLiveBaseRef=useRef<Item|null>(null);
   const openGraphEditor = (item: Item) => {
@@ -8588,6 +8619,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
              onClick={()=>{setControlSettingsOpen(false);setLectrisPanelSettingsOpen(true)}}>
              Настроить расположение панелей <span aria-hidden="true">→</span>
             </button>
+            <label className="lektrus-controls-check"><input type="checkbox" checked={snapEnabled}
+             onChange={e=>{setSnapEnabled(e.target.checked);clearGuides()}}/>
+             <span><b>Привязка объектов к сетке и направляющим</b>
+              <small>{snapEnabled?"Включена для текущего сеанса доски":"Выключена — объекты перемещаются свободно"}</small></span>
+            </label>
            </section>
            <p className="lektrus-controls-note">На сенсорном экране жест двумя пальцами продолжает работать независимо. Настройки применяются сразу и сохраняются автоматически.</p>
           </div>
@@ -9054,7 +9090,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             collaborative={items.some(item=>item.id===graphEditorId)}
             onChange={changeLiveGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={closeGraphEditor}
             preview={<GraphView item={{
-              id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:graphDraft.title,
+              id:"preview",kind:"graph",x:0,y:0,width:graphDraft.boardWidth??600,height:graphDraft.boardHeight??360,text:graphDraft.title,
               graphPurpose:graphDraft.purpose,graphAxisMode:graphDraft.axisMode,graphFigureId:graphDraft.figureId,graphRotationX:graphDraft.rotationX,graphRotationY:graphDraft.rotationY,graphParallelMarks:graphDraft.parallelMarks,graphIntervalStartClosed:graphDraft.intervalStartClosed,graphIntervalEndClosed:graphDraft.intervalEndClosed,
               graphType:graphDraft.type,graphExpression:graphDraft.expression,
               graphShowCurve:graphDraft.showCurve,graphConnectPoints:graphDraft.connectPoints,
@@ -9641,7 +9677,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 target.closest(".graph-view")&&!pinchState.current){
                 const objectId=target.closest<HTMLElement>("[data-object]")?.dataset.object;
                 const candidate=objectId?itemsRef.current.find(it=>it.id===objectId):null;
-                if(candidate?.kind==="graph"&&candidate.graphPurpose==="geometry"&&!candidate.locked&&
+                if(candidate?.kind==="graph"&&(candidate.graphPurpose==="geometry"||isCoordinatePlane(candidate)&&!!target.closest("svg"))&&!candidate.locked&&
                     !(structurallyLockedForStudent(candidate))&&activeBoardGeometryMode(candidate)==="move"){
                   geometryCanvasTouch.current={pointer:e.pointerId,id:candidate.id,x:e.clientX,y:e.clientY};
                 }
@@ -9778,12 +9814,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             // matching, biology, syntax, coding or a full subject worksheet).
             // Active buttons/inputs and independent pan/zoom canvases are
             // excluded by the shared DOM classifier.
-            if(tool==="select"&&!presentation&&!space&&!objectEditorOpen&&
+            if((tool==="select"||tool==="lasso")&&!presentation&&!space&&!objectEditorOpen&&
                e.button===0&&!pinchState.current&&!gesture.current&&canEdit){
               const dragSurface=boardObjectAtInertPointerTarget(target);
               const objectId=dragSurface?.dataset.object;
               const dragItem=objectId?itemsRef.current.find(item=>item.id===objectId):null;
-              if(dragItem&&!dragItem.hidden&&canTransformBoardObject(dragItem)){
+              if(dragItem&&!dragItem.hidden&&canTransformBoardObject(dragItem)&&(tool==="select"||selected.includes(dragItem.id))){
                 down(e);
                 // down() updates the gesture ref imperatively. TypeScript
                 // cannot infer that mutation after the !gesture.current guard.
@@ -9890,6 +9926,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   Math.hypot(previous.x-e.clientX,previous.y-e.clientY)<27){
                   lastGeometryCanvasTap.current=null;
                   const target=itemsRef.current.find(it=>it.id===canvasTap.id);
+                  if(target&&isCoordinatePlane(target)&&!target.locked&&canEdit&&!structurallyLockedForStudent(target)){
+                    const element=Array.from(board.current?.querySelectorAll<HTMLElement>(".board-object[data-object]")??[]).find(el=>el.dataset.object===target.id);
+                    const svg=element?.querySelector<SVGSVGElement>(".graph-view > svg");
+                    const point=svg?planePointFromClient(target,svg,{x:e.clientX,y:e.clientY}):null;
+                    if(point){
+                      if(gesture.current?.pointer===e.pointerId){move(e);end();}
+                      touchEnd(e);
+                      e.preventDefault();e.stopPropagation();
+                      coordinateDoubleTapUntil.current=Date.now()+650;
+                      addCoordinatePlanePoint(target.id,point.x,point.y);
+                      return;
+                    }
+                  }
                   if(target?.kind==="graph"&&target.graphPurpose==="geometry"&&!target.locked&&canEdit){
                     if(gesture.current?.pointer===e.pointerId){move(e);end();}
                     touchEnd(e);
@@ -10119,13 +10168,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               const base=live?{...live,x:entry.item.x,y:entry.item.y,
                 width:entry.item.width,height:entry.item.height,
                 rotation:entry.item.rotation}:entry.item;
-              const item=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
+              const posed=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
                 height:pose.height,rotation:pose.rotation,
                 ...(base.kind==="connector"?{
                   connectorStart:pose.connectorStart??base.connectorStart,
                   connectorEnd:pose.connectorEnd??base.connectorEnd
                 }:{}),
               }:base;
+              const item=pose&&base.kind==="sticky"?resizeStickerInk(base,posed,true):posed;
               return (
               <div
                 data-object={item.id}
@@ -10156,6 +10206,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                         : "#fff",
                 }}
                 onDoubleClick={(event) => {
+                  if(isCoordinatePlane(item))return;
                   if(item.kind==="graph"&&item.graphPurpose==="geometry"&&
                      (event.target as Element).closest?.(".graph-point"))return;
                   if(scienceEditorItem?.id===item.id&&item.graphFigureId?.startsWith("chem-formula-"))return;
@@ -10381,7 +10432,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?closeFreeSketchBoard(candidate):candidate));
                     setSelected([item.id]);
                   }:undefined}
-                  onAddPoint={graphPointEditId===item.id&&item.graphPurpose!=="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
+                  onAddPoint={isCoordinatePlane(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(x,y)=>{
+                    if(Date.now()>=coordinateDoubleTapUntil.current)addCoordinatePlanePoint(item.id,x,y);
+                  }:graphPointEditId===item.id&&item.graphPurpose!=="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const points=candidate.graphPoints??[];
@@ -11063,7 +11116,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button
             className={`snap-toggle ${snapEnabled ? "active" : ""}`}
             onClick={() => { setSnapEnabled((value) => !value); clearGuides(); }}
-            title="Умные привязки при перемещении · Alt временно отключает"
+            aria-pressed={snapEnabled}
+            aria-label={snapEnabled?"Привязка включена · отключить":"Привязка выключена · включить"}
+            title={snapEnabled?"Привязка включена · Alt временно отключает":"Привязка выключена · нажмите, чтобы включить"}
           >
             <Icon name="snap" size={16} />
           </button>

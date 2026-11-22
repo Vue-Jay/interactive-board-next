@@ -75,6 +75,7 @@ export type GraphDraft = {
   expression: string; connectPoints: boolean;
   a: number; b: number; c: number;
   xMin: number; xMax: number; yMin: number; yMax: number;
+  boardWidth?:number; boardHeight?:number;
   grid: boolean; points: NonNullable<Item["graphPoints"]>;
   freePathStart?:number;
   constraints:NonNullable<Item["graphConstraints"]>;magneticSnap:boolean;
@@ -736,6 +737,32 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
               </div>)}
 
             <label className="lektrus-graph-field"><span>Название построения</span><input value={draft.title} maxLength={100} onChange={e=>patch({title:e.target.value})}/></label>
+            {draft.purpose==="coordinates"&&<div className="lektrus-graph-axis-ranges">
+              <strong>Размер координатной плоскости</strong>
+              <small>Увеличьте ширину и высоту на доске, чтобы сделать координатные оси длиннее.</small>
+              <div className="lektrus-geometry-range-inputs">
+                {([["Ширина","boardWidth",520],["Высота","boardHeight",340]] as const).map(([label,key,fallback])=>
+                  <label key={key}>{label}, px
+                    <input type="number" min="200" max="4000" step="20" key={key+":"+draft[key]}
+                      defaultValue={draft[key]??fallback} onBlur={e=>{
+                        const n=Number(e.target.value);
+                        if(e.target.value.trim()&&Number.isFinite(n))patch({[key]:Math.max(200,Math.min(4000,n))});
+                        else e.target.value=String(draft[key]??fallback);
+                      }} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>
+                  </label>)}
+              </div>
+              <strong>Диапазон осей X и Y</strong>
+              <div className="lektrus-geometry-range-inputs">
+                {([["Начало X","xMin"],["Конец X","xMax"],["Начало Y","yMin"],["Конец Y","yMax"]] as const).map(([label,key])=>
+                  <label key={key}>{label}<input type="number" step="any" key={key+":"+draft[key]}
+                    defaultValue={draft[key]} onBlur={e=>{
+                      const n=Number(e.target.value);
+                      if(e.target.value.trim()&&Number.isFinite(n))setAxisBoundary(key,n);
+                      else e.target.value=String(draft[key]);
+                    }} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></label>)}
+              </div>
+              <label className="lektrus-graph-check"><input type="checkbox" checked={draft.snap} onChange={e=>patch({snap:e.target.checked})}/> Привязывать точки к сетке</label>
+            </div>}
             {draft.purpose==="function"&&<div className="lektrus-graph-section"><strong>Функция</strong>
               <label className="lektrus-graph-field"><span>Шаблон построения</span>
                 <select value={draft.type} onChange={e=>{const type=e.target.value as GraphDraft["type"];setExpressionInput(formulas[type]);patch({type,expression:formulas[type],showCurve:true})}}>
