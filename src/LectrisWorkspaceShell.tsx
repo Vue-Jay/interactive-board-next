@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { navigateWorkspaceSection } from "./routes";
 import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
@@ -56,6 +56,20 @@ type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;n
 export default function LectrisWorkspaceShell({children,section,role,isAdmin,name,rolePreview="actual",workspaceMode,onWorkspaceMode,modeBusy=false,modeNotice=""}:Props) {
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("lectris.shell.collapsed")==="1"}catch{return false}});
   const [morePage,setMorePage]=useState(false);
+  const stageRef=useRef<HTMLDivElement>(null);
+  // Use the available workspace width, not the device width: the sidebar
+  // and split-screen windows can change it without an orientation change.
+  useLayoutEffect(()=>{
+    const stage=stageRef.current;
+    if(!stage)return;
+    const measure=()=>{const width=stage.clientWidth;stage.dataset.tabletWidth=width<630?"compact":width<880?"medium":"wide";};
+    measure();
+    const observer=typeof ResizeObserver==="undefined"?undefined:new ResizeObserver(measure);
+    observer?.observe(stage);
+    window.addEventListener("resize",measure);
+    return ()=>{observer?.disconnect();window.removeEventListener("resize",measure);};
+  },[collapsed]);
+  useLayoutEffect(()=>{if(stageRef.current){stageRef.current.scrollTop=0;stageRef.current.scrollLeft=0;}},[section,morePage]);
   const [menuQuery,setMenuQuery]=useState("");
   const [unreadCount,setUnreadCount]=useState(0);
   useEffect(()=>{
@@ -109,7 +123,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
           {available.filter(x=>["profile","settings","admin"].includes(x.id)).map(x=>navButton(x))}
         </div>
       </aside>
-      <div className="lectris-workspace-stage">{workspaceMode&&section===""&&!morePage&&<div className="lectris-workspace-mode" role="group" aria-label="Режим работы"><div className="lectris-mode-segment">{(["teaching","learning"] as const).map(mode=><button key={mode} type="button" className="lectris-mode-option" aria-pressed={workspaceMode===mode} disabled={modeBusy} onClick={()=>onWorkspaceMode?.(mode)}><WorkspaceModeGlyph mode={mode}/><span>{mode==="teaching"?"Я преподаю":"Я учусь"}</span></button>)}</div>{modeBusy&&<small role="status">Подключаем функции…</small>}{modeNotice&&<small role="alert">{modeNotice}</small>}</div>}{morePage?<main className="lektrus-more-page"><header className="lektrus-more-page-title"><div><span>НАВИГАЦИЯ</span><h1>Ещё</h1><p>Все остальные разделы Lektrus</p></div></header><label className="lektrus-more-page-search"><NavGlyph name="search"/><input type="search" placeholder="Найти раздел" aria-label="Найти раздел" value={menuQuery} onChange={event=>setMenuQuery(event.target.value)}/></label><div className="lektrus-more-page-grid">{moreItems.filter(x=>x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU"))).map(entry=><button key={entry.id} type="button" className="lektrus-more-page-item" onClick={()=>move(entry.id)}><span className="lektrus-more-page-icon"><NavGlyph name={entry.icon}/></span><span className="lektrus-more-page-label">{entry.label}</span><span aria-hidden="true" className="lektrus-more-page-arrow">›</span>{entry.id==="notifications"&&unreadCount>0&&<b>{unreadCount}</b>}</button>)}</div>{!moreItems.some(x=>x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU")))&&<p className="lektrus-more-page-empty">Ничего не найдено</p>}</main>:children}</div>
+      <div className="lectris-workspace-stage" ref={stageRef}>{workspaceMode&&section===""&&!morePage&&<div className="lectris-workspace-mode" role="group" aria-label="Режим работы"><div className="lectris-mode-segment">{(["teaching","learning"] as const).map(mode=><button key={mode} type="button" className="lectris-mode-option" aria-pressed={workspaceMode===mode} disabled={modeBusy} onClick={()=>onWorkspaceMode?.(mode)}><WorkspaceModeGlyph mode={mode}/><span>{mode==="teaching"?"Я преподаю":"Я учусь"}</span></button>)}</div>{modeBusy&&<small role="status">Подключаем функции…</small>}{modeNotice&&<small role="alert">{modeNotice}</small>}</div>}{morePage?<main className="lektrus-more-page"><header className="lektrus-more-page-title"><div><span>НАВИГАЦИЯ</span><h1>Ещё</h1><p>Все остальные разделы Lektrus</p></div></header><label className="lektrus-more-page-search"><NavGlyph name="search"/><input type="search" placeholder="Найти раздел" aria-label="Найти раздел" value={menuQuery} onChange={event=>setMenuQuery(event.target.value)}/></label><div className="lektrus-more-page-grid">{moreItems.filter(x=>x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU"))).map(entry=><button key={entry.id} type="button" className="lektrus-more-page-item" onClick={()=>move(entry.id)}><span className="lektrus-more-page-icon"><NavGlyph name={entry.icon}/></span><span className="lektrus-more-page-label">{entry.label}</span><span aria-hidden="true" className="lektrus-more-page-arrow">›</span>{entry.id==="notifications"&&unreadCount>0&&<b>{unreadCount}</b>}</button>)}</div>{!moreItems.some(x=>x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU")))&&<p className="lektrus-more-page-empty">Ничего не найдено</p>}</main>:children}</div>
     </div>
     <nav className="lectris-mobile-bottom" aria-label="Навигация Lektrus">
       {mainTabs.map(x=>navButton(x,"lectris-mobile-tab"))}

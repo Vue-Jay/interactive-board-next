@@ -92,14 +92,17 @@ assert.ok(pkg.dependencies["@capacitor/screen-orientation"]);
 // The route policy applies even with device rotation enabled. A pending
 // authenticated board URL must never turn the sign-in form sideways.
 assert.ok(app.includes('ScreenOrientation.lock({ orientation: board ? "landscape-primary" : "portrait-primary" })'));
-assert.doesNotMatch(app,/ScreenOrientation\.unlock\(/);
+assert.match(app,/if\(!board&&Math\.min\(window\.screen\.width,window\.screen\.height\)>=600\)return ScreenOrientation\.unlock\(\)/);
 assert.match(app,/authenticatedBoardRoute = authReady && !!authUser && route.kind === "board"/);
 assert.match(app,/void lockNativeOrientation\(false\)/);
 assert.match(app,/void lockNativeOrientation\(true\)/);
-assert.match(androidManifest,/android:screenOrientation="portrait"/);
+assert.match(androidManifest,/android:screenOrientation="unspecified"/);
+assert.match(activity,/public void onCreate\(Bundle savedState\) \{[\s\S]*restoreRouteOrientation\(\);[\s\S]*super\.onCreate\(savedState\)/);
+assert.match(activity,/smallestScreenWidthDp >= 600/);
+assert.match(activity,/if \(isTablet\(\)\) \{[\s\S]*setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_FULL_USER\)/);
 assert.match(activity,/if \(!boardMode\) \{[\s\S]*setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_PORTRAIT\)/);
 assert.match(activity,/boardMode = enabled;[\s\S]*restoreRouteOrientation\(\)/);
-assert.match(read("ios/App/App/LektrusFilesPlugin.swift"),/override func setScreenOrientationDefaults\(\) \{[\s\S]*supportedOrientations = \[UIInterfaceOrientation\.portrait\.rawValue\]/);
+assert.match(read("ios/App/App/LektrusFilesPlugin.swift"),/override func setScreenOrientationDefaults\(\) \{[\s\S]*supportedOrientations = UIDevice\.current\.userInterfaceIdiom == \.pad[\s\S]*landscapeLeft[\s\S]*landscapeRight[\s\S]*: \[UIInterfaceOrientation\.portrait\.rawValue\]/);
 assert.match(app,/nativeBoardOpening && !nativeLandscapeReady\) return <BoardLoadingScreen/);
 const loading = read("src/BrowserBoardLandscape.tsx");
 const loadingCss = read("src/lektrusBoardLoading.css");

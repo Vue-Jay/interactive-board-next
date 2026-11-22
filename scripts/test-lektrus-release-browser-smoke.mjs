@@ -649,6 +649,52 @@ try{
    await wait(`location.pathname==="/app"&&new URLSearchParams(location.search).get("section")===${JSON.stringify(id)}&&!!document.querySelector(${JSON.stringify(selector)})`,
     "Wrong workspace section: "+id);
   };
+  // A real tablet has two independent scrolling regions, and its layout
+  // follows the remaining workspace width in both orientations.
+  await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+  for(const [width,height] of [[768,1024],[1024,768],[1280,800]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:true});
+   await click('.lectris-brand');
+   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Tablet home did not render");
+   await wait('!!document.querySelector(".lectris-workspace-stage[data-tablet-width]")',"Tablet stage has no measured width");
+   const geometry=()=>evaluate(`(()=>{
+    const stage=document.querySelector('.lectris-workspace-stage'),sidebar=document.querySelector('.lectris-workspace-sidebar'),shell=document.querySelector('.lectris-workspace'),b=stage.getBoundingClientRect(),s=sidebar.getBoundingClientRect(),r=shell.getBoundingClientRect();
+    const controls=[...stage.querySelectorAll('.lectris-library-sort select,.lectris-library-search,.lectris-palette-options>button,.assignment-stats>button,.students-header button,.lektrus-category-strip>button,.schedule-calendar .lektrus-schedule-day-select,.lektrus-feedback-screen-grid>section')].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden');
+    return {stageWidth:b.width,viewport:innerWidth,profile:stage.dataset.tabletWidth,sidebarWidth:s.width,fullWidth:r.width>=innerWidth-2&&b.right>=innerWidth-2,fullHeight:b.bottom<=innerHeight+2&&b.bottom>=innerHeight-2&&s.bottom<=innerHeight+2,sideBySide:s.right<=b.left+2,vertical:getComputedStyle(stage).overflowY,sidebarScroll:getComputedStyle(sidebar).overflowY,overflow:controls.filter(e=>{const c=e.getBoundingClientRect();return c.left<b.left-2||c.right>b.right+2}).map(e=>e.className||e.tagName),documentWidth:document.documentElement.scrollWidth,heroHeight:stage.querySelector('.lectris-hub-hero')?.getBoundingClientRect().height||0};
+   })()`);
+   const assertTablet=async name=>{
+    const g=await geometry();
+    assert.ok(g.fullWidth&&g.fullHeight&&g.sideBySide&&g.sidebarWidth>50&&g.vertical==='auto'&&g.sidebarScroll==='auto'&&g.documentWidth<=g.viewport+2&&!g.overflow.length,`${name} ${width}×${height}: ${JSON.stringify(g)}`);
+    assert.equal(g.profile,g.stageWidth<630?'compact':g.stageWidth<880?'medium':'wide',`Wrong tablet width profile: ${JSON.stringify(g)}`);
+    return g;
+   };
+   const home=await assertTablet('Home');
+   assert.ok(home.heroHeight>0&&home.heroHeight<340,'Tablet hero has excessive empty space: '+JSON.stringify(home));
+   // Actual touch gesture, not assigning scrollTop from JS.
+   const scroll=await evaluate(`(()=>{const e=document.querySelector('.lectris-workspace-stage'),r=e.getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height*.8),travel:Math.round(r.height*.55),available:e.scrollHeight-e.clientHeight}})()`);
+   if(scroll.available>60){
+    await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:scroll.x,y:scroll.y}]});
+    for(let step=1;step<=7;step++){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:scroll.x,y:scroll.y-Math.round(scroll.travel*step/7)}]});await delay(30);}
+    await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await wait('document.querySelector(".lectris-workspace-stage").scrollTop>40',"Tablet touch could not scroll the home page");
+   }
+   for(const [label,id,selector] of sections){
+    // Native touch navigation needs to reach items below the visible sidebar.
+    await evaluate(`document.querySelector(${JSON.stringify('.lectris-workspace-sidebar button[aria-label="'+label+'"]')}).scrollIntoView({block:"nearest"})`);
+    await click('.lectris-workspace-sidebar button[aria-label="'+label+'"]');
+    await checkSection(id,selector);
+    await assertTablet(id);
+    if(id==="feedback"){
+     await evaluate(`document.querySelector('.lektrus-feedback-screen button[type=submit]').scrollIntoView({block:'center',behavior:'instant'})`);
+     await delay(180);
+     const feedback=await evaluate(`(()=>{const e=document.querySelector('.lektrus-feedback-screen button[type=submit]'),s=document.querySelector('.lectris-workspace-stage'),b=e.getBoundingClientRect(),r=s.getBoundingClientRect();return {top:b.top,bottom:b.bottom,stageTop:r.top,stageBottom:r.bottom,viewport:innerHeight,scroll:s.scrollTop,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,visible:b.bottom<=Math.min(r.bottom,innerHeight)+2&&b.top>=r.top-2}})()`);
+     assert.ok(feedback.visible,"Tablet feedback submit is unreachable: "+JSON.stringify(feedback));
+    }
+   }
+   console.log(`✓ Tablet ${width}×${height}: all 13 routes, full screen, independent scrolling and controls within the stage`);
+  }
+  await call('Emulation.setTouchEmulationEnabled',{enabled:false});
+  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   for(const [label,id,selector] of sections){
    await click('.lectris-workspace-sidebar button[aria-label="'+label+'"]');
    await checkSection(id,selector);
