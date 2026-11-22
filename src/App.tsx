@@ -97,9 +97,11 @@ export default function App() {
   // Android owns the orientation request and system bars in one native call.
   // iOS uses the Capacitor orientation plugin.
   const lockNativeOrientation = useCallback((board: boolean) => {
-    return Capacitor.getPlatform() === "android"
-      ? LektrusSystemUi.setBoardMode({enabled: board})
-      : ScreenOrientation.lock({ orientation: board ? "landscape-primary" : "portrait-primary" });
+    if(Capacitor.getPlatform()==="android")return LektrusSystemUi.setBoardMode({enabled: board});
+    // Screen dimensions stay device-sized when the iPad viewport changes
+    // (including Split View). Only phones require a portrait workspace.
+    if(!board&&Math.min(window.screen.width,window.screen.height)>=600)return ScreenOrientation.unlock();
+    return ScreenOrientation.lock({ orientation: board ? "landscape-primary" : "portrait-primary" });
   }, []);
   const [authUser, setAuthUser] = useState<AuthUser | null>(() =>
     new URLSearchParams(window.location.search).has("password-reset") ? null : getCachedCurrentUser()

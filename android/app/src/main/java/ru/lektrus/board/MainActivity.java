@@ -57,8 +57,14 @@ public class MainActivity extends BridgeActivity {
         if (isInMultiWindowMode()) return;
         int requested = getRequestedOrientation();
         if (!boardMode) {
-            // Authentication and every workspace page remain upright even
-            // when the device is held sideways or returning from a board.
+            // Tablets use the full display in either orientation. Phones
+            // keep the existing portrait workspace / landscape board flow.
+            if (isTablet()) {
+                if (requested != ActivityInfo.SCREEN_ORIENTATION_FULL_USER) {
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
+                }
+                return;
+            }
             if (requested != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT ||
                     getResources().getConfiguration().orientation != Configuration.ORIENTATION_PORTRAIT) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -76,6 +82,10 @@ public class MainActivity extends BridgeActivity {
                     ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                     : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         }
+    }
+
+    private boolean isTablet() {
+        return getResources().getConfiguration().smallestScreenWidthDp >= 600;
     }
 
     private void scheduleRouteOrientationRestore() {
@@ -96,6 +106,10 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
+        if (!boardMode && isTablet()) {
+            restoreRouteOrientation();
+            return;
+        }
         int expected = boardMode ? Configuration.ORIENTATION_LANDSCAPE : Configuration.ORIENTATION_PORTRAIT;
         if (configuration.orientation != expected) {
             scheduleRouteOrientationRestore();
@@ -107,6 +121,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LektrusSystemUiPlugin.class);
         registerPlugin(LektrusFilesPlugin.class);
         super.onCreate(savedState);
+        restoreRouteOrientation();
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         boardWebView = getBridge().getWebView();
         // QA instrumentation only: accessibility can omit the WebView during
