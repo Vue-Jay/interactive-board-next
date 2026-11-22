@@ -660,11 +660,11 @@ try{
    const geometry=()=>evaluate(`(()=>{
     const stage=document.querySelector('.lectris-workspace-stage'),sidebar=document.querySelector('.lectris-workspace-sidebar'),shell=document.querySelector('.lectris-workspace'),b=stage.getBoundingClientRect(),s=sidebar.getBoundingClientRect(),r=shell.getBoundingClientRect();
     const controls=[...stage.querySelectorAll('.lectris-library-sort select,.lectris-library-search,.lectris-palette-options>button,.assignment-stats>button,.students-header button,.lektrus-category-strip>button,.schedule-calendar .lektrus-schedule-day-select,.lektrus-feedback-screen-grid>section')].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden');
-    return {stageWidth:b.width,viewport:innerWidth,profile:stage.dataset.tabletWidth,sidebarWidth:s.width,fullWidth:r.width>=innerWidth-2&&b.right>=innerWidth-2,sideBySide:s.right<=b.left+2,vertical:getComputedStyle(stage).overflowY,sidebarScroll:getComputedStyle(sidebar).overflowY,overflow:controls.filter(e=>{const c=e.getBoundingClientRect();return c.left<b.left-2||c.right>b.right+2}).map(e=>e.className||e.tagName),documentWidth:document.documentElement.scrollWidth,heroHeight:stage.querySelector('.lectris-hub-hero')?.getBoundingClientRect().height||0};
+    return {stageWidth:b.width,viewport:innerWidth,profile:stage.dataset.tabletWidth,sidebarWidth:s.width,fullWidth:r.width>=innerWidth-2&&b.right>=innerWidth-2,fullHeight:b.bottom<=innerHeight+2&&b.bottom>=innerHeight-2&&s.bottom<=innerHeight+2,sideBySide:s.right<=b.left+2,vertical:getComputedStyle(stage).overflowY,sidebarScroll:getComputedStyle(sidebar).overflowY,overflow:controls.filter(e=>{const c=e.getBoundingClientRect();return c.left<b.left-2||c.right>b.right+2}).map(e=>e.className||e.tagName),documentWidth:document.documentElement.scrollWidth,heroHeight:stage.querySelector('.lectris-hub-hero')?.getBoundingClientRect().height||0};
    })()`);
    const assertTablet=async name=>{
     const g=await geometry();
-    assert.ok(g.fullWidth&&g.sideBySide&&g.sidebarWidth>50&&g.vertical==='auto'&&g.sidebarScroll==='auto'&&g.documentWidth<=g.viewport+2&&!g.overflow.length,`${name} ${width}×${height}: ${JSON.stringify(g)}`);
+    assert.ok(g.fullWidth&&g.fullHeight&&g.sideBySide&&g.sidebarWidth>50&&g.vertical==='auto'&&g.sidebarScroll==='auto'&&g.documentWidth<=g.viewport+2&&!g.overflow.length,`${name} ${width}×${height}: ${JSON.stringify(g)}`);
     assert.equal(g.profile,g.stageWidth<630?'compact':g.stageWidth<880?'medium':'wide',`Wrong tablet width profile: ${JSON.stringify(g)}`);
     return g;
    };
@@ -685,7 +685,10 @@ try{
     await checkSection(id,selector);
     await assertTablet(id);
     if(id==="feedback"){
-     assert.ok(await evaluate(`(()=>{const e=document.querySelector('.lectris-feedback-screen button[type=submit]'),s=document.querySelector('.lectris-workspace-stage');if(!e)return false;s.scrollTop=s.scrollHeight;const b=e.getBoundingClientRect(),r=s.getBoundingClientRect();return b.bottom<=r.bottom+2&&b.top>=r.top-2})()`),"Tablet feedback submit is unreachable");
+     await evaluate(`document.querySelector('.lektrus-feedback-screen button[type=submit]').scrollIntoView({block:'center',behavior:'instant'})`);
+     await delay(180);
+     const feedback=await evaluate(`(()=>{const e=document.querySelector('.lektrus-feedback-screen button[type=submit]'),s=document.querySelector('.lectris-workspace-stage'),b=e.getBoundingClientRect(),r=s.getBoundingClientRect();return {top:b.top,bottom:b.bottom,stageTop:r.top,stageBottom:r.bottom,viewport:innerHeight,scroll:s.scrollTop,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,visible:b.bottom<=Math.min(r.bottom,innerHeight)+2&&b.top>=r.top-2}})()`);
+     assert.ok(feedback.visible,"Tablet feedback submit is unreachable: "+JSON.stringify(feedback));
     }
    }
    console.log(`✓ Tablet ${width}×${height}: all 13 routes, full screen, independent scrolling and controls within the stage`);
