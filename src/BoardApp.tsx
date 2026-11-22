@@ -4765,7 +4765,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setPanning(false);
     setMarqueeRect(null);
     clearGuides();
-    if(tool!=="select")setSelected([]);
+    if(tool!=="select"&&tool!=="lasso")setSelected([]);
   },[tool]);
   // Some embedded widgets consume pointerup, and a captured element can be
   // removed mid-drag. A window-level fallback retires orphaned pointers.
