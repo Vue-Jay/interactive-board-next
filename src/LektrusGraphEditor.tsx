@@ -790,6 +790,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
             </div>}
             {draft.purpose==="number-line"&&<div className="lektrus-graph-section">
               <strong>Промежуток на числовой прямой</strong>
+              <label className="lektrus-graph-check"><input type="checkbox" checked={draft.snap} onChange={e=>patch({snap:e.target.checked})}/> Привязывать точки к делениям</label>
               <small>Первые две точки задают границы. Пустая точка означает, что число не входит в промежуток.</small>
               <div className="lektrus-graph-intervals">
                 <label><input type="checkbox" checked={draft.intervalStartClosed} onChange={e=>patch({intervalStartClosed:e.target.checked})}/> Левая граница включена</label>

@@ -150,13 +150,13 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
       graphXMin:-7,graphXMax:7,graphYMin:-5,graphYMax:6};
   }
   if(id==="free")return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,graphSnap:false,graphShowLabels:true};
-  if(id==="blank")return {...graph,text:"Координатная плоскость"};
+  if(id==="blank")return {...graph,text:"Координатная плоскость",graphSnap:true};
   if(id==="linear")return {...graph,graphPurpose:"function",graphType:"linear",graphExpression:"2*x + 1",graphShowCurve:true};
   if(id==="quadratic")return {...graph,graphPurpose:"function",graphType:"quadratic",graphExpression:"x^2 - 4*x + 3",graphShowCurve:true};
   if(id==="hyperbola")return {...graph,graphPurpose:"function",graphType:"hyperbola",graphExpression:"1/x",graphShowCurve:true};
   if(id==="sine"||id==="cosine")return {...graph,graphPurpose:"function",graphType:id==="sine"?"sin":"cos",graphExpression:id==="sine"?"sin(x)":"cos(x)",graphShowCurve:true,graphXMin:-7,graphXMax:7,graphYMin:-2,graphYMax:2};
   if(id==="number-line")return {
-    ...graph,graphPurpose:"number-line",graphAxisMode:"x",graphGrid:false,
+    ...graph,graphPurpose:"number-line",graphAxisMode:"x",graphGrid:false,graphSnap:true,
     graphXMin:-10,graphXMax:10,graphYMin:-3,graphYMax:3,
     graphIntervalStartClosed:false,graphIntervalEndClosed:true,
     graphConnectPoints:true,graphPoints:[{x:-2,y:0,label:""},{x:3,y:0,label:""}]

@@ -1,12 +1,14 @@
-/* A sticker is a drawable surface. Its local ink inherits the object's
-   transforms and is clipped to the card, not to the global canvas. */
+/* The full stroke follows the paper, including any overhang outside it.
+   The paper itself remains the hit target for starting another stroke. */
+.workspace .board .object-sticky {
+  overflow:visible;
+}
 .workspace .board .sticker-ink-layer {
   position:absolute;
   inset:0;
   width:100%;
   height:100%;
-  border-radius:inherit;
-  overflow:hidden;
+  overflow:visible;
   pointer-events:none;
 }
 .workspace .board .selection-more-menu .selection-text-format-section {

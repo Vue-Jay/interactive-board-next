@@ -251,8 +251,10 @@ assert.match(app,/if \(!canEdit\) \{ setNotice\("У вас доступ толь
  "write guard remains at board commit");
 assert.match(app,/end\(true\);setEditing\(null\);/,
  "switch cancels active interactions");
-assert.match(app,/onRemovePoint=\{selectedIds\.has\(item.id\).*?!structurallyLockedForStudent\(item\)/,
+assert.match(app,/:selectedIds\.has\(item.id\).*?!structurallyLockedForStudent\(item\).*?item.graphPurpose==="geometry"/,
  "students cannot remove vertices from teacher's geometry");
+assert.match(app,/onRemovePoint=\{isCoordinatePointGraph\(item\).*?!structurallyLockedForStudent\(item\)/,
+ "students cannot remove points from protected coordinate graphs");
 assert.match(app,/onGridChange=\{!item.locked&&canEdit&&!structurallyLockedForStudent\(item\)/,
  "students cannot edit protected graph structure");
 assert.match(app,/if\(tool!=="select"&&tool!=="hand"&&tool!=="lasso"&&!toolAllowedForRole\(tool\)\)/,

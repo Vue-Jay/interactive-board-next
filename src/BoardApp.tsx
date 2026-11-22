@@ -130,8 +130,8 @@ import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals,
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
-import { eraseStickerInk, makeStickerInk, resizeStickerInk, splitStickerPath, stickerAt, stickerInkPixels } from "./stickerInk";
-import {coordinatePlaneViewport,isCoordinatePlane,planePointFromClient} from "./coordinatePlane";
+import { eraseStickerInk, makeStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
+import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planePointFromClient} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
@@ -482,6 +482,8 @@ const boundsOf = (list: Item[]): Bounds | null => {
   const bottom = Math.max(...list.map((i) => i.y + i.height));
   return { x, y, width: right - x, height: bottom - y };
 };
+const visualBoundsOf=(list:Item[])=>minimapContentBounds(list.map(item=>
+  item.kind==="sticky"&&item.stickerInk?.length?stickerVisualBounds(item):item));
 
 const containedByFrame = (frame: Item, source: Item[]): Item[] => source.filter((item) => {
   if (item.id === frame.id || item.hidden || item.kind === "frame") return false;
@@ -1193,19 +1195,19 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const distance = (a:{x:number;y:number},b:{x:number;y:number}) => Math.hypot(a.x-b.x,a.y-b.y);
   const curvePath=purpose==="function"&&item.graphShowCurve!==false&&evaluateCurve?graphCurvePath(evaluateCurve,xMin,xMax,yMin,yMax,sx,sy):"";
   const coord = (clientX:number,clientY:number,svg:SVGSVGElement,pointIndex=-1) => {
-    if(isCoordinatePlane(item)){
+    if(isCoordinatePointGraph(item)){
       const local=planePointFromClient(item,svg,{x:clientX,y:clientY});
       if(local)return local;
     }
     const r=svg.getBoundingClientRect(),factor=Math.min(r.width/W,r.height/H)||1;
     const left=r.left+(r.width-W*factor)/2,top=r.top+(r.height-H*factor)/2;
     let x=ux((clientX-left)/factor),y=uy((clientY-top)/factor);
-    if(item.graphSnap===true&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
+    if(graphPointSnapEnabled(item)&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
     if(purpose==="geometry"&&item.graphMagneticSnap!==false&&pointIndex>=0){
       const aligned=magneticGeometrySnap(item.graphPoints??[],pointIndex,x,y,12/scale);
       x=aligned.x;y=aligned.y;
     }
-    return {x:Number(x.toFixed(4)),y:Number(y.toFixed(4))};
+    return {x:Number(x.toFixed(4)),y:purpose==="number-line"?0:Number(y.toFixed(4))};
 
   };
   const beginOrbit=(e:PE<SVGGElement>)=>{
@@ -1313,7 +1315,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
       </div>)}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
-      data-board-gesture-owner={onPickPoint||onAddPoint&&!isCoordinatePlane(item)?"true":undefined}
+      data-board-gesture-owner={onPickPoint||onAddPoint&&!isCoordinatePointGraph(item)?"true":undefined}
       onPointerDownCapture={event=>{
         if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
         if(onPickPoint){
@@ -1341,7 +1343,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           event.stopPropagation();
           return;
         }
-        if(onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&event.button===0&&event.isPrimary){
+        if(onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&!isCoordinatePointGraph(item)&&event.button===0&&event.isPrimary){
           if((event.target as SVGElement).closest?.(".lektrus-diagram-grid-toggle"))return;
           const box=event.currentTarget.getBoundingClientRect(),factor=Math.min(box.width/W,box.height/H)||1;
           const left=box.left+(box.width-W*factor)/2,top=box.top+(box.height-H*factor)/2;
@@ -1410,8 +1412,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           freePointGesture.current?.cancel();
         }
       }}
-      onDoubleClick={e=>{if(purpose==="geometry"){if((e.target as Element).closest(".graph-point")){e.preventDefault();e.stopPropagation()}return;}if(onAddPoint&&purpose!=="unit-circle"){e.preventDefault();e.stopPropagation();if(!(e.target as Element).closest(".lektrus-diagram-grid-toggle,.graph-point")){const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}}>
-      {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free")&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
+      onDoubleClick={e=>{if(purpose==="geometry"){if((e.target as Element).closest(".graph-point")){e.preventDefault();e.stopPropagation()}return;}if(onAddPoint&&purpose!=="unit-circle"){e.preventDefault();e.stopPropagation();if(Date.now()<=ignoreNativeDoubleClickUntil.current)return;if(!(e.target as Element).closest(".lektrus-diagram-grid-toggle,.graph-point")){const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}}>
+      {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&!isCoordinatePointGraph(item))&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
         {gridX.map(x=><line key={`x${x}`} className={motionAxes?(majorMotionX.has(x)?"graph-grid-major":undefined):Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
@@ -1744,8 +1746,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         const movable=!!(onPointMove||onPointMoveEnd)&&!selectable&&(purpose!=="unit-circle"||i>=5);
         const closesHere=closingVertex===i&&!!onCloseFreePolygon&&!selectable;
         const picked=pickedPoints?.includes(i)??false;
-        return <g data-board-interactive={movable&&item.graphFigureId?.startsWith("physics-")?"true":undefined} className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
-        onDoubleClick={onRemovePoint&&purpose==="geometry"?(e)=>{e.preventDefault();e.stopPropagation();if(Date.now()>ignoreNativeDoubleClickUntil.current)onRemovePoint(i);ignoreNativeDoubleClickUntil.current=0}:undefined}
+        return <g data-board-interactive={movable&&item.graphFigureId?.startsWith("physics-")||onRemovePoint&&isCoordinatePointGraph(item)?"true":undefined} className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
+        onDoubleClick={onRemovePoint&&(purpose==="geometry"||isCoordinatePointGraph(item))?(e)=>{e.preventDefault();e.stopPropagation();if(Date.now()>ignoreNativeDoubleClickUntil.current)onRemovePoint(i);ignoreNativeDoubleClickUntil.current=0}:undefined}
         onPointerDown={movable||closesHere||selectable||!!onRemovePoint?(e)=>{
           if(e.button!==0||!e.isPrimary||
             (item.graphFigureId==="free"||selectable||onPointMoveEnd)&&freeContacts.current.size>1)return;
@@ -1778,7 +1780,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             if(ev.pointerId!==id)return;
             cleanup();
             if(onPointMoveEnd){setLiveVertex(null);if(!cancelled&&didMove&&lastPosition)onPointMoveEnd(i,lastPosition.x,lastPosition.y);}
-            if(!cancelled&&!didMove&&ev.pointerType==="touch"&&onRemovePoint&&purpose==="geometry"){
+            if(!cancelled&&!didMove&&ev.pointerType==="touch"&&onRemovePoint&&(purpose==="geometry"||isCoordinatePointGraph(item))){
               const previous=pointDoubleTap.current,now=Date.now();
               pointDoubleTap.current={index:i,at:now,x:ev.clientX,y:ev.clientY};
               if(previous?.index===i&&now-previous.at<420&&Math.hypot(previous.x-ev.clientX,previous.y-ev.clientY)<26){
@@ -1824,7 +1826,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            textAnchor={geometryCaptions?.[i]?"middle":undefined} dominantBaseline={geometryCaptions?.[i]?"central":undefined}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text></g>}
       </g>})}
-      {(purpose==="geometry"||isCoordinatePlane(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
+      {(purpose==="geometry"||isCoordinatePointGraph(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
         <g role="button" tabIndex={0} className="lektrus-grid-control"
           aria-label={item.graphGrid===false?"Показать сетку":"Скрыть сетку"}
           aria-pressed={item.graphGrid!==false}
@@ -1840,22 +1842,22 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           </g>
         </g>
         {onSnapChange&&<g transform="translate(35 0)" role="button" tabIndex={0}
-          className="lektrus-grid-control" aria-label={item.graphSnap===true?"Отключить привязку к сетке":"Включить привязку к сетке"}
-          aria-pressed={item.graphSnap===true}
+          className="lektrus-grid-control" aria-label={graphPointSnapEnabled(item)?"Отключить привязку к сетке":"Включить привязку к сетке"}
+          aria-pressed={graphPointSnapEnabled(item)}
           onPointerDown={event=>event.stopPropagation()}
           onPointerUp={event=>event.stopPropagation()}
-          onClick={event=>{event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}
-          onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}>
-          <title>{item.graphSnap===true?"Отключить привязку к сетке":"Включить привязку к сетке"}</title>
-          <rect width="30" height="25" rx="7" className={item.graphSnap===true?"is-on":""}/>
+          onClick={event=>{event.preventDefault();event.stopPropagation();onSnapChange(!graphPointSnapEnabled(item))}}
+          onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onSnapChange(!graphPointSnapEnabled(item))}}>
+          <title>{graphPointSnapEnabled(item)?"Отключить привязку к сетке":"Включить привязку к сетке"}</title>
+          <rect width="30" height="25" rx="7" className={graphPointSnapEnabled(item)?"is-on":""}/>
           <g stroke="currentColor" strokeWidth="1.15" fill="none" pointerEvents="none"
              strokeLinecap="round" strokeLinejoin="round">
             {/* Grid junction and a short arrow moving the loose point into it. */}
             <path d="M9 5.5v14M15 5.5v14M21 5.5v14M6 9.5h18M6 15.5h18" opacity=".42"/>
             <path d="M21 8.5l-5 5M16.4 10.5l-.4 3.1 3.1-.4" strokeWidth="1.65"/>
             <circle cx="15" cy="15.5" r="2.45" fill="currentColor" stroke="var(--lt-raised,#fff)" strokeWidth=".9"/>
-            {item.graphSnap!==true&&<path d="M6 21L24 4" stroke="#fff" strokeWidth="3.2"/>}
-            {item.graphSnap!==true&&<path d="M6 21L24 4" strokeWidth="1.6"/>}
+            {!graphPointSnapEnabled(item)&&<path d="M6 21L24 4" stroke="#fff" strokeWidth="3.2"/>}
+            {!graphPointSnapEnabled(item)&&<path d="M6 21L24 4" strokeWidth="1.6"/>}
           </g>
         </g>}
       </g>}
@@ -4637,14 +4639,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     else if (g.mode === "draw" && g.ink && g.sticker) {
       const sticker=g.sticker;
-      const attached:NonNullable<Item["stickerInk"]>=[],outside:Item[]=[];
-      for(const [index,piece] of splitStickerPath(sticker,g.path).entries()){
-        const ink={...g.ink,id:index===0?g.ink.id:createId()};
-        if(piece.inside)attached.push(makeStickerInk(sticker,ink,piece.points,g.view.zoom));
-        else outside.push(stroke(ink.id,ink.kind,piece.points,ink.color,ink.weight,g.view.zoom));
-      }
+      const attached=makeStickerInk(sticker,g.ink,g.path,g.view.zoom);
       flushSync(()=>commit([...g.before.map(item=>item.id===sticker.id?
-        {...item,stickerInk:[...(item.stickerInk??[]),...attached]}:item),...outside],{immediatePaint:true}));
+        {...item,stickerInk:[...(item.stickerInk??[]),attached]}:item)],{immediatePaint:true}));
     }
     else if (g.mode === "draw" && g.ink)
       flushSync(()=>commit([
@@ -5975,7 +5972,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         : scope === "selection" ? expandedIdsForFrameSelection(selected) : [];
       const exportIds = scope === "all" ? null : new Set(idsForScope);
       const source = itemsRef.current.filter((item) => !item.hidden && (!exportIds || exportIds.has(item.id)));
-      const bounds = boundsOf(source);
+      const bounds = visualBoundsOf(source);
       if (!bounds) { setNotice(scope === "all" ? "Доска пока пустая" : scope === "frame" ? "Сначала выберите фрейм" : "Сначала выберите объекты"); return; }
       setNotice("Готовим PNG…");
       const pad = 48;
@@ -6171,7 +6168,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         } else if (item.kind === "sticky") {
           ctx.fillStyle = item.color ?? "#fff3a6"; roundedRect(item.x, item.y, item.width, item.height, 10); ctx.fill();
           ctx.fillStyle = "#252733"; ctx.font = `${item.fontSize ?? 20}px Arial, sans-serif`; wrapText(item.text, item.x + 14, item.y + 30, Math.max(20, item.width - 28), (item.fontSize ?? 20) * 1.25, 18);
-          ctx.save();roundedRect(item.x,item.y,item.width,item.height,10);ctx.clip();
+          ctx.save();
           for(const ink of item.stickerInk??[]){
             const {points,weight}=stickerInkPixels(item,ink);
             ctx.globalAlpha=ink.kind==="marker"?.32:1;ctx.lineWidth=weight;
@@ -6770,11 +6767,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
   };
-  const graphDraftFromItem=(item:Item):GraphDraft=>({boardWidth:item.width,boardHeight:item.height,constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap===true,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
+  const graphDraftFromItem=(item:Item):GraphDraft=>({boardWidth:item.width,boardHeight:item.height,constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:graphPointSnapEnabled(item),axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
   const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,...(d.purpose==="coordinates"?{width:d.boardWidth??item.width,height:d.boardHeight??item.height}:{}),text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
   const addCoordinatePlanePoint=(id:string,x:number,y:number)=>{
     const item=itemsRef.current.find(candidate=>candidate.id===id);
-    if(!item||!isCoordinatePlane(item)||item.locked||!canEdit||structurallyLockedForStudent(item))return;
+    if(!item||!isCoordinatePointGraph(item)||item.locked||!canEdit||structurallyLockedForStudent(item))return;
     const points=item.graphPoints??[];
     if(points.length>=40)return;
     commit(itemsRef.current.map(candidate=>candidate.id===id?
@@ -7523,7 +7520,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const drawingCount = useMemo(() => items.filter(isInkItem).length, [items]);
   // Only actual objects need minimap markers; strokes are already rasterized.
   const minimapObjects = useMemo(() => visibleItems.filter(item => !isInkItem(item)), [visibleItems]);
-  const miniContentBounds = useMemo(() => minimapContentBounds(visibleItems), [visibleItems]);
+  const miniContentBounds = useMemo(() => visualBoundsOf(visibleItems), [visibleItems]);
   // Rasterize unselected, unlocked pen/marker runs in every role. Selected
   // ink remains a real DOM object for handles, moving and rotating. The
   // separate geometric hit test resolves clicks on canvas strokes.
@@ -7663,7 +7660,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const showPresentationFrame = (indexValue: number) => {
     const frames = itemsRef.current.filter((item) => item.kind === "frame" && !item.hidden).sort((a, b) => (a.presentationOrder ?? itemsRef.current.indexOf(a)) - (b.presentationOrder ?? itemsRef.current.indexOf(b)));
     if (!frames.length) {
-      requestAnimationFrame(() => fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden)), 70));
+      requestAnimationFrame(() => fitToBounds(visualBoundsOf(itemsRef.current.filter((item) => !item.hidden)), 70));
       return;
     }
     const normalized = ((indexValue % frames.length) + frames.length) % frames.length;
@@ -9677,7 +9674,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 target.closest(".graph-view")&&!pinchState.current){
                 const objectId=target.closest<HTMLElement>("[data-object]")?.dataset.object;
                 const candidate=objectId?itemsRef.current.find(it=>it.id===objectId):null;
-                if(candidate?.kind==="graph"&&(candidate.graphPurpose==="geometry"||isCoordinatePlane(candidate)&&!!target.closest("svg"))&&!candidate.locked&&
+                if(candidate?.kind==="graph"&&(candidate.graphPurpose==="geometry"||isCoordinatePointGraph(candidate)&&!!target.closest("svg"))&&!candidate.locked&&
                     !(structurallyLockedForStudent(candidate))&&activeBoardGeometryMode(candidate)==="move"){
                   geometryCanvasTouch.current={pointer:e.pointerId,id:candidate.id,x:e.clientX,y:e.clientY};
                 }
@@ -9926,7 +9923,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   Math.hypot(previous.x-e.clientX,previous.y-e.clientY)<27){
                   lastGeometryCanvasTap.current=null;
                   const target=itemsRef.current.find(it=>it.id===canvasTap.id);
-                  if(target&&isCoordinatePlane(target)&&!target.locked&&canEdit&&!structurallyLockedForStudent(target)){
+                  if(target&&isCoordinatePointGraph(target)&&!target.locked&&canEdit&&!structurallyLockedForStudent(target)){
                     const element=Array.from(board.current?.querySelectorAll<HTMLElement>(".board-object[data-object]")??[]).find(el=>el.dataset.object===target.id);
                     const svg=element?.querySelector<SVGSVGElement>(".graph-view > svg");
                     const point=svg?planePointFromClient(target,svg,{x:e.clientX,y:e.clientY}):null;
@@ -10206,7 +10203,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                         : "#fff",
                 }}
                 onDoubleClick={(event) => {
-                  if(isCoordinatePlane(item))return;
+                  if(isCoordinatePointGraph(item))return;
                   if(item.kind==="graph"&&item.graphPurpose==="geometry"&&
                      (event.target as Element).closest?.(".graph-point"))return;
                   if(scienceEditorItem?.id===item.id&&item.graphFigureId?.startsWith("chem-formula-"))return;
@@ -10377,7 +10374,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   constructionActive={boardGeometryMode?.id===item.id}
                   onToggleConstruction={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")
                     ?()=>{if(boardGeometryMode?.id===item.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(item,"move")}:undefined}
-                  onPointMoveEnd={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
+                  onPointMoveEnd={isCoordinatePointGraph(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(index,x,y)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((point,i)=>i===index?{...point,x,y:candidate.graphPurpose==="number-line"?0:y}:point)}:candidate));setSelected([item.id]);}:boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const moved=moveGeometryVertex({
@@ -10432,7 +10429,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?closeFreeSketchBoard(candidate):candidate));
                     setSelected([item.id]);
                   }:undefined}
-                  onAddPoint={isCoordinatePlane(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(x,y)=>{
+                  onAddPoint={isCoordinatePointGraph(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(x,y)=>{
                     if(Date.now()>=coordinateDoubleTapUntil.current)addCoordinatePlanePoint(item.id,x,y);
                   }:graphPointEditId===item.id&&item.graphPurpose!=="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
@@ -10449,7 +10446,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   onPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(index)=>selectBoardGeometryPoint(item,index):undefined}
                   onCreateAndPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(x,y)=>tapBoardGeometryBlank(item,x,y):undefined}
                   pickedPoints={boardGeometryMode?.id===item.id?boardGeometryMode.selected:[]}
-                  onRemovePoint={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
+                  onRemovePoint={isCoordinatePointGraph(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);}:selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
@@ -11012,7 +11009,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               ) : (
                 <>
                   <button disabled={!clipboard.current.length} onClick={() => { pasteClipboard(); setContextMenu(null); }}>Вставить <span>Ctrl+V</span></button>
-                  <button disabled={!items.length} onClick={() => { fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden))); setContextMenu(null); }}>Показать всю доску</button>
+                  <button disabled={!items.length} onClick={() => { fitToBounds(visualBoundsOf(itemsRef.current.filter((item) => !item.hidden))); setContextMenu(null); }}>Показать всю доску</button>
                   <button onClick={() => { setView({ x: 0, y: 0, zoom: 1 }); setContextMenu(null); }}>Масштаб 100%</button>
                 </>
               )}
@@ -11126,7 +11123,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             className="fit-button fit-all-button"
             aria-label="Показать всю доску"
             disabled={!items.length}
-            onClick={() => fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden)))}
+            onClick={() => fitToBounds(visualBoundsOf(itemsRef.current.filter((item) => !item.hidden)))}
             title="Показать всю доску"
           >
             <Icon name="fit" size={16} />
@@ -11135,7 +11132,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             className="fit-button fit-selection-button"
             aria-label="Приблизить выделение"
             disabled={!selectionBounds}
-            onClick={() => fitToBounds(selectionBounds, 120)}
+            onClick={() => fitToBounds(visualBoundsOf(selectedItems), 120)}
             title="Приблизить выделение"
           >
             <Icon name="select" size={16} />

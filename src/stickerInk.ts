@@ -50,37 +50,24 @@ export function resizeStickerInk(base: Item, next: Item, keepWorldPosition=false
   })};
 }
 
-/** Split a continuous pointer path at the actual (possibly rotated) paper
- * boundary, even when a single pointer sample jumps across the whole card. */
-export function splitStickerPath(item: Item, path: readonly Point[]) {
-  const pieces:{inside:boolean;points:Point[]}[]=[];
-  const local=path.map(p=>stickerLocalPoint(item,p));
-  const inside=(p:Point)=>p.x>=0&&p.x<=item.width&&p.y>=0&&p.y<=item.height;
-  if(path.length===1)return [{inside:inside(local[0]),points:[path[0]]}];
-  const add=(onCard:boolean,a:Point,b:Point)=>{
-    const last=pieces[pieces.length-1];
-    if(last?.inside===onCard)last.points.push(b);
-    else pieces.push({inside:onCard,points:[a,b]});
-  };
-  for(let i=1;i<path.length;i++){
-    const a=local[i-1],b=local[i],dx=b.x-a.x,dy=b.y-a.y;
-    const ts=[0,1];
-    for(const [start,delta,limit] of [[a.x,dx,item.width],[a.y,dy,item.height]]){
-      if(Math.abs(delta)<1e-9)continue;
-      for(const edge of [0,limit]){
-        const t=(edge-start)/delta;
-        if(t>0&&t<1)ts.push(t);
-      }
-    }
-    ts.sort((a,b)=>a-b);
-    const at=(t:number)=>({x:path[i-1].x+(path[i].x-path[i-1].x)*t,y:path[i-1].y+(path[i].y-path[i-1].y)*t});
-    for(let j=1;j<ts.length;j++){
-      if(ts[j]-ts[j-1]<1e-9)continue;
-      const mid=(ts[j]+ts[j-1])/2;
-      add(inside({x:a.x+dx*mid,y:a.y+dy*mid}),at(ts[j-1]),at(ts[j]));
+/** Visual extent including ink beyond the paper. Do not use this for resize
+ * handles or for determining the surface on which a new stroke starts. */
+export function stickerVisualBounds(item: Item) {
+  const angle=(item.rotation??0)*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+  const cx=item.x+item.width/2,cy=item.y+item.height/2;
+  const halfW=(Math.abs(c)*item.width+Math.abs(s)*item.height)/2;
+  const halfH=(Math.abs(s)*item.width+Math.abs(c)*item.height)/2;
+  let left=cx-halfW,right=cx+halfW,top=cy-halfH,bottom=cy+halfH;
+  for(const ink of item.stickerInk??[]){
+    const radius=ink.weight*Math.min(item.width,item.height)/2;
+    for(const point of ink.points){
+      const dx=point.x*item.width-item.width/2,dy=point.y*item.height-item.height/2;
+      const x=cx+dx*c-dy*s,y=cy+dx*s+dy*c;
+      left=Math.min(left,x-radius);right=Math.max(right,x+radius);
+      top=Math.min(top,y-radius);bottom=Math.max(bottom,y+radius);
     }
   }
-  return pieces;
+  return {x:left,y:top,width:right-left,height:bottom-top,rotation:0};
 }
 
 /** Apply the ordinary partial-stroke eraser in the sticker's own geometry. */
