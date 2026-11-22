@@ -19,7 +19,8 @@ assert.ok(chromePath,"Chrome required for integrated release browser smoke");
 const homeOnly=process.argv.includes("--home-only");
 const pwaOnly=process.argv.includes("--pwa-only");
 const keyboardOnly=process.argv.includes("--keyboard-only");
-const landscapeOnly=process.argv.includes("--landscape-only");
+const tabletToolsOnly=process.argv.includes("--tablet-tools-only");
+const landscapeOnly=process.argv.includes("--landscape-only")||tabletToolsOnly;
 const interfaceOnly=process.argv.includes("--interface-only");
 const educationOnly=process.argv.includes("--education-only");
 if(homeOnly||keyboardOnly||landscapeOnly||pwaOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
@@ -216,7 +217,7 @@ try{
   console.log("✓ PWA public site: successful installation confirmation survives button removal");
  }else if(landscapeOnly){
   const viewport=async(width,height)=>{
-   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true,screenOrientation:{type:height>width?'portraitPrimary':'landscapePrimary',angle:height>width?0:90}});
+   await call('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:2,mobile:true,screenOrientation:{type:height>width?'portraitPrimary':'landscapePrimary',angle:height>width?0:90}});
    await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});await delay(300);
   };
   await viewport(390,844);
@@ -249,6 +250,61 @@ try{
   const point=async(selector)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll(${JSON.stringify(selector)})].find(b=>b.getBoundingClientRect().width>0&&b.getBoundingClientRect().height>0&&d.elementFromPoint(b.getBoundingClientRect().x+b.getBoundingClientRect().width/2,b.getBoundingClientRect().y+b.getBoundingClientRect().height/2)?.closest(${JSON.stringify(selector)}));if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
   const physical=async(points)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),r=f.getBoundingClientRect(),rotated=f.parentElement.dataset.rotated==='true';return ${JSON.stringify(points)}.map(p=>rotated?{x:r.right-p.y,y:r.top+p.x}:{x:r.left+p.x,y:r.top+p.y})})()`);
   const touch=async(points)=>{const mapped=await physical(points);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...mapped[0],id:1}]});if(mapped.length>1)await delay(100);for(const p of mapped.slice(1)){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...p,id:1}]});await delay(30)}await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(250)};
+  if(tabletToolsOnly){
+   const boardExpr=expression=>`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,w=f.contentWindow;return (${expression})})()`;
+   const boardEval=expression=>evaluate(boardExpr(expression));
+   const boardWait=(expression,message)=>wait(boardExpr(expression),message);
+   const tap=async selector=>{const p=await point(selector);assert.ok(p,"Inaccessible tool: "+selector);await touch([p])};
+   const plus='nav.mobile-board-tools .mobile-tools-more';
+   const groups=".mobile-tools-groups";
+   const close='.mobile-tools-sheet-head button[aria-label="Закрыть"]';
+   const catalogue=()=>boardEval(`[...d.querySelectorAll('.mobile-tools-group')].map(g=>({label:g.querySelector('span').textContent,tools:[...g.querySelectorAll('button')].map(b=>b.getAttribute('aria-label')||b.textContent.trim())}))`);
+   const swipe=async selector=>{
+    const region=await boardEval(`(()=>{const s=d.querySelector(${JSON.stringify(selector)}),r=s.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height*.76,distance:r.height*.55,top:s.scrollTop,max:s.scrollHeight-s.clientHeight,hit:!!d.elementFromPoint(r.x+r.width/2,r.y+r.height*.76)?.closest(${JSON.stringify(selector)})}})()`);
+    assert.ok(region.max>10&&region.hit,'No scrollable touch area: '+JSON.stringify(region));
+    await touch(Array.from({length:9},(_,i)=>({x:region.x,y:region.y-region.distance*i/8})));
+    await boardWait(`d.querySelector(${JSON.stringify(selector)}).scrollTop>${region.top}`,'Real swipe did not scroll '+selector);
+   };
+   await viewport(844,390);
+   await tap(plus);
+   await boardWait(`!!d.querySelector('${groups}')`,'Phone catalogue failed to open');
+   const phone=await catalogue();
+   assert.equal(phone.length,7,JSON.stringify(phone));
+   await tap(close);
+   const checkDock=async()=>{
+    await boardWait("d.documentElement.hasAttribute('data-tablet-tool-dock')",'Tablet dock not selected');
+    assert.ok(await point(plus),'Tablet plus inaccessible');
+    assert.equal(await boardEval("w.getComputedStyle(d.querySelector('.toolbar.compact-toolbar')).display"),"none");
+    await tap(plus);
+    await boardWait(`!!d.querySelector('${groups}')`,'Tablet catalogue failed to open');
+    assert.deepEqual(await catalogue(),phone,'Tablet must expose all phone tool groups and buttons');
+    await swipe(groups);
+    assert.ok(await point(close),'Catalogue header scrolled out of reach');
+    await tap(close);
+   };
+   await viewport(768,1024);
+   await checkDock();
+   await viewport(1024,768);
+   await checkDock();
+   await tap(plus);
+   await tap('.mobile-tools-sheet-head button[aria-label="Настроить основные инструменты"]');
+   await boardWait("!!d.querySelector('.lectris-tools-customize')",'Toolbar customization did not open');
+   await boardEval("(()=>{d.querySelectorAll('.lectris-tools-customize-section:nth-child(2) button:not(:disabled)').forEach(b=>b.click());return true})()");
+   await boardWait("d.querySelectorAll('.lectris-tools-customize-section:nth-child(2) button:not(:disabled)').length===0",'Tools were not pinned');
+   await boardEval("(()=>{d.querySelector('.lectris-toolbar-save').click();return true})()");
+   await boardWait("!d.querySelector('.lectris-tools-customize')",'Toolbar customization did not close');
+   await viewport(1280,800);
+   await checkDock();
+   const middle='nav.mobile-board-tools .mobile-tool-cluster-create';
+   const beforeTool=await boardEval("d.querySelector('section.board').className");
+   await swipe(middle);
+   assert.equal(await boardEval("d.querySelector('section.board').className"),beforeTool,'Swiping the toolbar must not select a tool');
+   assert.ok(await point(plus),'Plus disappeared after scrolling pinned tools');
+   await tap(plus);
+   assert.deepEqual(await catalogue(),phone);
+   await tap(close);
+   console.log('✓ Tablet tool catalogue matches phone; real touch scrolls catalogue and pinned tools in portrait and landscape up to 1280px');
+  }else{
   const pen=await point('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]');
   assert.ok(pen,'No visible pencil on the landscape board');await touch([pen]);
   await wait('document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector("section.board").classList.contains("board-tool-pen")','Rotated touch did not activate pencil');
@@ -406,6 +462,7 @@ try{
   await wait(boardReady,'Public demo did not open in landscape',45000);
   const demoState=await state();assert.equal(demoState.rotated,true);assert.ok(demoState.width>demoState.height);
   console.log('✓ Public demo board uses the same landscape viewport');
+  }
  }else
  if(keyboardOnly){
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Application did not render",30000);
