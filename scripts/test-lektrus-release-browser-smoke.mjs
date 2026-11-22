@@ -552,6 +552,53 @@ try{
 
  if(homeOnly){
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home did not render",30000);
+  // Seed the isolated local-test store, never the live user account. Previously
+  // this test covered an empty dashboard and missed the squeezed mobile cards.
+  const ownerId="00000000-0000-4000-8000-00000000a11f";
+  const longId="00000000-0000-4000-8000-00000000b101",shortId="00000000-0000-4000-8000-00000000b102";
+  const longTitle="Математика: подробное объяснение решения задач по алгебре и геометрии для подготовительной группы";
+  const subject="Иностранный язык и дополнительная подготовка к экзаменам";
+  const group="Группа углублённого изучения иностранного языка";
+  const fixture=[{id:longId,title:longTitle,ownerId,role:"owner",createdAt:"2026-11-20T09:00:00Z",updatedAt:"2026-11-22T09:00:00Z"},
+   {id:shortId,title:"Алгебра",ownerId,role:"owner",createdAt:"2026-11-20T09:00:00Z",updatedAt:"2026-11-21T09:00:00Z"}];
+  await evaluate(`localStorage.setItem('lesson-board.local-test.boards.v1',${JSON.stringify(JSON.stringify(fixture))});localStorage.setItem(${JSON.stringify('lectris.board-organization.v1.'+ownerId)},${JSON.stringify(JSON.stringify({[longId]:{subject,group}}))});true`);
+  await call('Page.reload');
+  await wait('document.querySelectorAll(".lektrus-recent-board").length===2',"Recent board fixtures did not render",30000);
+  const boardGeometry=()=>evaluate(`(()=>{
+   const all=[...document.querySelectorAll('.lektrus-recent-board')];
+   const box=e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}};
+   return all.map(card=>{
+    const title=card.querySelector('.lektrus-recent-board-title'),text=title.firstElementChild,cover=card.querySelector('.lectris-hub-board-cover'),info=card.querySelector('.lectris-hub-board-info'),menu=card.querySelector('.lectris-hub-board-edit');
+    const b=box(card),t=box(title),c=box(cover),i=box(info),m=box(menu);
+    const rows=[...info.querySelectorAll('.lectris-hub-board-kind,.lektrus-recent-board-group,.lektrus-recent-board-role,time')];
+    return {title:text.textContent,scrolling:text.classList.contains('is-scrolling'),travel:parseFloat(text.style.getPropertyValue('--title-travel')),expected:Math.max(0,text.scrollWidth-title.clientWidth),
+     columns:getComputedStyle(card.querySelector('.lectris-hub-board-main')).flexDirection,ordered:t.bottom<=c.top+1&&c.bottom<=i.top+1,fullCover:c.width>=b.width-3,menuClear:t.right<=m.left+1,
+     inside:[t,c,i,m,...rows.map(box)].every(x=>x.left>=b.left-1&&x.right<=b.right+1&&x.top>=b.top-1&&x.bottom<=b.bottom+1),
+     readable:rows.every(e=>e.scrollWidth<=e.clientWidth+1&&e.scrollHeight<=e.clientHeight+1&&getComputedStyle(e).whiteSpace==='normal'),details:rows.map(e=>e.textContent)};
+   });
+  })()`);
+  for(const [width,height] of [[320,640],[360,800],[390,844],[430,932],[768,1024],[1024,768],[1440,900]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<=768});
+   await delay(180);
+   const cards=await boardGeometry();
+   assert.equal(cards.length,2);
+   for(const card of cards)assert.ok(card.columns==='column'&&card.ordered&&card.fullCover&&card.menuClear&&card.inside&&card.readable,`Recent board card squeezed at ${width}: ${JSON.stringify(card)}`);
+   assert.ok(cards[0].scrolling&&Math.abs(-cards[0].travel-cards[0].expected)<=1,`Long title must scroll exactly its overflow at ${width}`);
+   assert.equal(cards[1].scrolling,false,'Short title must stay still');
+   assert.deepEqual(cards[0].details.slice(0,2),[subject,group]);
+   console.log(`✓ Recent board cards ${width}×${height}: title above full-width preview, wrapped metadata and separate menu`);
+  }
+  const motion=await evaluate(`(()=>{const text=document.querySelector('.lektrus-recent-board-title .is-scrolling'),a=text.getAnimations()[0];if(!a)return null;a.pause();const d=a.effect.getTiming().duration;a.currentTime=0;const start=new DOMMatrixReadOnly(getComputedStyle(text).transform).m41;a.currentTime=d*.55;const end=new DOMMatrixReadOnly(getComputedStyle(text).transform).m41;a.currentTime=d*.99;const back=new DOMMatrixReadOnly(getComputedStyle(text).transform).m41;a.play();return {start,end,back,travel:parseFloat(text.style.getPropertyValue('--title-travel'))}})()`);
+  assert.ok(motion&&Math.abs(motion.start)<1&&Math.abs(motion.end-motion.travel)<1&&Math.abs(motion.back)<2,'Title must travel to its end and back: '+JSON.stringify(motion));
+  await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  await delay(120);
+  assert.ok(await evaluate(`(()=>{const e=document.querySelector('.lektrus-recent-board-title'),t=e.firstElementChild;return t.getAnimations().length===0&&getComputedStyle(t).whiteSpace==='normal'&&t.scrollWidth<=e.clientWidth+1&&t.scrollHeight<=e.clientHeight+1})()`),'Reduced-motion title should wrap rather than clip');
+  await call('Emulation.setEmulatedMedia',{features:[]});
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await click('.lektrus-recent-board .lectris-hub-board-edit');
+  assert.ok(await evaluate(`(()=>{const m=document.querySelector('.lektrus-home-board-actions');if(!m)return false;m.scrollIntoView({block:'center'});const b=m.lastElementChild.getBoundingClientRect();return b.width>0&&m.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2))})()`),'Recent-board action menu must not be clipped by its card');
+  await click('.lektrus-recent-board .lectris-hub-board-edit');
+  console.log('✓ Long title pans in both directions, reduced motion wraps, owner actions remain accessible');
   const snapshot=()=>evaluate(`(() => {
    const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
    const one=s=>document.querySelector(s), all=s=>[...document.querySelectorAll(s)];
