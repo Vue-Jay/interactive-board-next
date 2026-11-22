@@ -152,11 +152,11 @@ try{
   assert.ok(result,"Missing element geometry: "+selector);
   return result;
  };
- const mouse=async(type,x,y,{pressed=false}={})=>call("Input.dispatchMouseEvent",{
+ const mouse=async(type,x,y,{pressed=false,clickCount=1}={})=>call("Input.dispatchMouseEvent",{
   type,x,y,
   button:pressed||type==="mouseReleased"?"left":"none",
   buttons:pressed?1:0,
-  clickCount:type==="mousePressed"||type==="mouseReleased"?1:0
+  clickCount:type==="mousePressed"||type==="mouseReleased"?clickCount:0
  });
  await call("Runtime.enable");
  await call("Page.enable");
@@ -920,11 +920,18 @@ try{
  await mouse('mousePressed',grownCard.x,grownCard.y,{pressed:true});
  await mouse('mouseMoved',grownCard.right+36,grownCard.y,{pressed:true});
  await mouse('mouseReleased',grownCard.right+36,grownCard.y);
- await wait('document.querySelectorAll(".sticker-ink-layer polyline").length===2',"Cross-boundary ink must retain its inside segment");
+ await wait('document.querySelectorAll(".sticker-ink-layer polyline").length===2',"Cross-boundary ink must be stored as one sticker stroke");
+ const overhang=await evaluate(`(()=>{const card=document.querySelector('.object-sticky'),svg=card.querySelector('.sticker-ink-layer'),line=svg.querySelectorAll('polyline')[1],p=line.points.getItem(line.points.numberOfItems-1),s=new DOMPoint(p.x,p.y).matrixTransform(svg.getScreenCTM());return {points:line.getAttribute('points'),outside:s.x>card.getBoundingClientRect().right+15,visible:getComputedStyle(svg).overflow==='visible'&&getComputedStyle(card).overflow==='visible',x:s.x,y:s.y}})()`);
+ assert.ok(overhang.outside&&overhang.visible,"The entire tail must remain visible outside the paper");
  await click('.toolbar-pinned button:first-child');
  await mouse('mousePressed',grownCard.x,grownCard.y-25,{pressed:true});
- await mouse('mouseReleased',grownCard.x,grownCard.y-25);
- console.log('✓ Grid toggle, lasso move and resize, fixed-size sticker ink and crossing its boundary');
+ await mouse('mouseMoved',grownCard.x-40,grownCard.y-5,{pressed:true});
+ await mouse('mouseReleased',grownCard.x-40,grownCard.y-5);
+ await wait(`document.querySelector('.object-sticky').getBoundingClientRect().left<${grownCard.left-20}`,"Sticker with outside ink did not move");
+ const movedTail=await evaluate(`(()=>{const svg=document.querySelector('.sticker-ink-layer'),line=svg.querySelectorAll('polyline')[1],p=line.points.getItem(line.points.numberOfItems-1),s=new DOMPoint(p.x,p.y).matrixTransform(svg.getScreenCTM());return {points:line.getAttribute('points'),x:s.x,y:s.y}})()`);
+ assert.equal(movedTail.points,overhang.points,"Outside ink was detached or distorted by movement");
+ assert.ok(Math.abs(movedTail.x-overhang.x+40)<2&&Math.abs(movedTail.y-overhang.y-20)<2,"Outside tail must follow the paper");
+ console.log('✓ Grid toggle, lasso move and resize, fixed-size sticker ink and complete attached overhang');
  assert.equal(await evaluate('!!document.querySelector(".lektrus-direct-comment,.edit-selected")'),false,"Removed tool or overlapping edit chip still visible");
  const panelFits=`(()=>{const el=document.querySelector(".selection-toolbar-screen"),b=document.querySelector("section.board");
   if(!el||!b)return false;const p=el.getBoundingClientRect(),r=b.getBoundingClientRect();
@@ -977,6 +984,44 @@ try{
  assert.equal(await evaluate('document.querySelector("#lektrus-subject-tools-panel .lektrus-subject-tools-list button")?.getAttribute("aria-label")'),"Задания на доске");
  assert.deepEqual(demoRequests,[],"Demo made backend requests");
  socket.removeEventListener("message",observeDemo);
+ // A new coordinate plane and number line snap independently from the board.
+ await call("Page.navigate",{url:new URL("/demo/board?qa-release-fixture=1&scene=coordinates&capture=1",url).href});
+ await wait('!!document.querySelector(\'[data-object="qa-plane"] .graph-view > svg\')',"Coordinate fixture did not open");
+ await click('.fit-all-button');
+ await delay(350);
+ const svgPoint=async(id,x,y)=>evaluate(`(()=>{const svg=document.querySelector('[data-object="${id}"] .graph-view > svg'),p=new DOMPoint(${x},${y}).matrixTransform(svg.getScreenCTM());return {x:p.x,y:p.y}})()`);
+ const doubleClick=async p=>{for(const count of [1,2]){await mouse("mousePressed",p.x,p.y,{pressed:true,clickCount:count});await mouse("mouseReleased",p.x,p.y,{clickCount:count});}};
+ const planeHeight=await evaluate('document.querySelector(\'[data-object="qa-plane"] .graph-view > svg\').viewBox.baseVal.height');
+ assert.equal(await evaluate('document.querySelector(\'[data-object="qa-plane"] .lektrus-grid-control[aria-label*="привязку"]\').getAttribute("aria-pressed")'),"true");
+ await doubleClick(await svgPoint("qa-plane",351,planeHeight/2+37));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===1',"Double-click did not add a point");
+ const planeVertex=await evaluate('(()=>{const c=document.querySelector(\'[data-object="qa-plane"] .graph-point circle:not(.graph-point-hit)\');return {x:Number(c.getAttribute("cx")),y:Number(c.getAttribute("cy"))}})()');
+ assert.ok(Math.abs(planeVertex.x-360)<.01&&Math.abs(planeVertex.y-(planeHeight/2+30))<.01,"Point did not snap to the integer grid");
+ await doubleClick(await svgPoint("qa-plane",planeVertex.x,planeVertex.y));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===0',"Double-click did not delete the point");
+ assert.equal(await evaluate('!!document.querySelector(".graph-editor-backdrop,.lektrus-graph-dialog")'),false,"Point gestures opened the settings editor");
+ const linePoint=await svgPoint("qa-line",351,180);
+ await doubleClick(linePoint);
+ await wait('document.querySelectorAll(\'[data-object="qa-line"] .graph-point\').length===3',"Number line point was not added");
+ const lineVertex=await evaluate('(()=>{const c=[...document.querySelectorAll(\'[data-object="qa-line"] .graph-point circle:not(.graph-point-hit)\')].at(-1);return {x:Number(c.getAttribute("cx")),y:Number(c.getAttribute("cy"))}})()');
+ assert.equal(lineVertex.x,360);assert.equal(lineVertex.y,180);
+ await doubleClick(await svgPoint("qa-line",lineVertex.x,lineVertex.y));
+ await wait('document.querySelectorAll(\'[data-object="qa-line"] .graph-point\').length===2',"Number line point was not deleted");
+ await call("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:5});
+ const doubleTap=async p=>{for(let i=0;i<2;i++){
+  await call("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:p.x,y:p.y,id:1}]});
+  await call("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+  if(i===0)await delay(90);
+ }};
+ await doubleTap(await svgPoint("qa-plane",231,planeHeight/2-37));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===1',"Double tap did not add a coordinate point");
+ await delay(700); // separate gestures, including the browser's native double-click suppression
+ await doubleTap(await svgPoint("qa-plane",240,planeHeight/2-30));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===0',"Double tap did not delete the coordinate point");
+ await delay(350);
+ assert.equal(await evaluate('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length'),0,"Synthetic double click recreated the deleted point");
+ await call("Emulation.setTouchEmulationEnabled",{enabled:false});
+ console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion");
  await call("Page.navigate",{url});
  console.log("✓ Empty public demo, ephemeral ink, subject tools and text input focus");
 

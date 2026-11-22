@@ -5,18 +5,22 @@ import BoardApp from "../src/BoardApp";
 import {defaultLabBench,addLabVessel} from "../src/lektrusChemistryBenchModel";
 import {circuitTemplate} from "../src/lektrusCircuitModel";
 import {makeSchoolDiagram} from "../src/lektrusSchoolDiagramModel";
+import {makeMathPresetItem} from "../src/lektrusMathPresets";
 import type {DocumentData,Item} from "../src/boardModel";
 import type {BoardSummary} from "../src/boardStore";
 import type {AuthUser} from "../src/authStore";
 
-type Scene="math"|"chemistry"|"geometry"|"physics"|"russian"|"contour"|"history";
-const sceneIds:Record<Scene,string>={math:"00000000-0000-4000-8000-0000000000a0",chemistry:"00000000-0000-4000-8000-0000000000a1",geometry:"00000000-0000-4000-8000-0000000000a2",physics:"00000000-0000-4000-8000-0000000000a3",contour:"00000000-0000-4000-8000-0000000000a4",russian:"00000000-0000-4000-8000-0000000000a5",history:"00000000-0000-4000-8000-0000000000a6"};
-const sceneNames:Record<Scene,string>={math:"Функция и её график",chemistry:"Химическая лаборатория",geometry:"Геометрическое исследование",physics:"Электрическая цепь",contour:"Контурная карта Европы",russian:"Фонетический разбор",history:"Европа в 1914 году"};
+type Scene="math"|"chemistry"|"geometry"|"physics"|"russian"|"contour"|"history"|"coordinates";
+const sceneIds:Record<Scene,string>={math:"00000000-0000-4000-8000-0000000000a0",chemistry:"00000000-0000-4000-8000-0000000000a1",geometry:"00000000-0000-4000-8000-0000000000a2",physics:"00000000-0000-4000-8000-0000000000a3",contour:"00000000-0000-4000-8000-0000000000a4",russian:"00000000-0000-4000-8000-0000000000a5",history:"00000000-0000-4000-8000-0000000000a6",coordinates:"00000000-0000-4000-8000-0000000000a7"};
+const sceneNames:Record<Scene,string>={math:"Функция и её график",chemistry:"Химическая лаборатория",geometry:"Геометрическое исследование",physics:"Электрическая цепь",contour:"Контурная карта Европы",russian:"Фонетический разбор",history:"Европа в 1914 году",coordinates:"Координатные точки"};
 const txt=(id:string,x:number,y:number,width:number,height:number,text:string,size:number,color="#1b334c",weight:"normal"|"bold"="normal"):Item=>({id,kind:"text",x,y,width,height,text,fontSize:size,color,fontWeight:weight,lineHeight:1.25});
 const card=(id:string,x:number,y:number,width:number,height:number,text:string,color:string,size=20):Item=>({id,kind:"sticky",x,y,width,height,text,color,fontSize:size,lineHeight:1.4});
 const graph=(id:string,x:number,y:number,width:number,height:number,text:string,values:Partial<Item>):Item=>({id,kind:"graph",x,y,width,height,text,color:"#315bd4",graphGrid:true,graphShowCurve:true,graphAxisMode:"both",graphAxisLabels:true,...values});
 
 function documentFor(scene:Scene):DocumentData{
+ if(scene==="coordinates")return {version:1,title:sceneNames[scene],subject:"Математика",view:{x:0,y:0,zoom:1},
+  items:[makeMathPresetItem("blank",380,310,"qa-plane"),makeMathPresetItem("number-line",980,310,"qa-line")],
+  background:{mode:"dots",color:"#fbfcfe",opacity:100}};
  const common:Item[]=[txt(`${scene}-eyebrow`,92,24,540,44,"LEKTRUS · ИНТЕРАКТИВНОЕ ПРОСТРАНСТВО",12,"#54806f","bold")];
  if(scene==="math"){
   const items:Item[]=[...common,
