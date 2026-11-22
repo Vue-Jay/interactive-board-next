@@ -271,13 +271,36 @@ try{
    const phone=await catalogue();
    assert.equal(phone.length,7,JSON.stringify(phone));
    await tap(close);
+   const assertSubjectSize=async()=>{
+    const geometry=await boardEval(`(()=>{const s=d.querySelector('nav.mobile-board-tools>.lektrus-mobile-subject-trigger'),p=d.querySelector('${plus}'),a=s.getBoundingClientRect(),b=p.getBoundingClientRect(),i=s.querySelector('svg').getBoundingClientRect();return {subject:[a.width,a.height],plus:[b.width,b.height],icon:[i.width,i.height]}})()`);
+    assert.ok(geometry.subject.every((v,i)=>Math.abs(v-geometry.plus[i])<=1),'Subject button differs from other buttons: '+JSON.stringify(geometry));
+    assert.ok(geometry.icon.every(v=>v>=18&&v<=22),'Oversized subject icon: '+JSON.stringify(geometry));
+   };
+   const flickCatalogue=async()=>{
+    const before=await boardEval(`(()=>{const g=d.querySelector('${groups}'),r=g.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height*.7,room:g.scrollHeight-g.clientHeight-g.scrollTop}})()`);
+    assert.ok(before.room>100,'Catalogue needs room for a flick');
+    const mapped=await physical([{x:before.x,y:before.y},{x:before.x,y:before.y-15},{x:before.x,y:before.y-32},{x:before.x,y:before.y-50}]);
+    await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...mapped[0],id:1}]});
+    for(const p of mapped.slice(1)){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...p,id:1}]});await delay(18)}
+    await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    const released=await boardEval(`d.querySelector('${groups}').scrollTop`);
+    await delay(160);
+    assert.ok(await boardEval(`d.querySelector('${groups}').scrollTop>${released+5}`),'Catalogue must keep scrolling smoothly after a flick');
+    assert.ok(await point(close),'Catalogue header must remain accessible during inertia');
+   };
+   await assertSubjectSize();
    const checkDock=async()=>{
     await boardWait("d.documentElement.hasAttribute('data-tablet-tool-dock')",'Tablet dock not selected');
     assert.ok(await point(plus),'Tablet plus inaccessible');
+    await assertSubjectSize();
     assert.equal(await boardEval("w.getComputedStyle(d.querySelector('.toolbar.compact-toolbar')).display"),"none");
     await tap(plus);
     await boardWait(`!!d.querySelector('${groups}')`,'Tablet catalogue failed to open');
     assert.deepEqual(await catalogue(),phone,'Tablet must expose all phone tool groups and buttons');
+    await flickCatalogue();
+    await tap(close);
+    await tap(plus);
+    await boardWait(`!!d.querySelector('${groups}')`,'Catalogue did not reopen after flick');
     await swipe(groups);
     assert.ok(await point(close),'Catalogue header scrolled out of reach');
     await tap(close);
