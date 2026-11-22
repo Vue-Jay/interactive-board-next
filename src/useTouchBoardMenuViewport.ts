@@ -1,4 +1,5 @@
 import { useLayoutEffect } from "react";
+import { installBoardToolTouchScroll } from "./boardToolTouchScroll";
 
 const MENU_SELECTOR = ".topbar .topbar-right details > .topbar-more-popover," +
   ".topbar .topbar-right details > .lektrus-board-actions-popover," +
@@ -10,6 +11,7 @@ const MENU_SELECTOR = ".topbar .topbar-right details > .topbar-more-popover," +
 export function useTouchBoardMenuViewport(enabled: boolean) {
   useLayoutEffect(() => {
     if (!enabled) return;
+    const disposeToolScroll = installBoardToolTouchScroll();
     const managed = new Set<HTMLElement>();
     const viewport = window.visualViewport;
     let frame = 0;
@@ -135,6 +137,7 @@ export function useTouchBoardMenuViewport(enabled: boolean) {
     viewport?.addEventListener("scroll", schedule);
     schedule();
     return () => {
+      disposeToolScroll();
       observer.disconnect();
       cancelAnimationFrame(frame);
       document.removeEventListener("toggle", schedule, true);
