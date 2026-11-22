@@ -96,9 +96,8 @@ assert.match(app,/if\(!board&&Math\.min\(window\.screen\.width,window\.screen\.h
 assert.match(app,/authenticatedBoardRoute = authReady && !!authUser && route.kind === "board"/);
 assert.match(app,/void lockNativeOrientation\(false\)/);
 assert.match(app,/void lockNativeOrientation\(true\)/);
-assert.match(androidManifest,/android:screenOrientation="@integer\/lektrus_start_orientation"/);
-assert.match(read("android/app/src/main/res/values/orientation.xml"),/name="lektrus_start_orientation">1</);
-assert.match(read("android/app/src/main/res/values-sw600dp/orientation.xml"),/name="lektrus_start_orientation">13</);
+assert.match(androidManifest,/android:screenOrientation="unspecified"/);
+assert.match(activity,/public void onCreate\(Bundle savedState\) \{[\s\S]*restoreRouteOrientation\(\);[\s\S]*super\.onCreate\(savedState\)/);
 assert.match(activity,/smallestScreenWidthDp >= 600/);
 assert.match(activity,/if \(isTablet\(\)\) \{[\s\S]*setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_FULL_USER\)/);
 assert.match(activity,/if \(!boardMode\) \{[\s\S]*setRequestedOrientation\(ActivityInfo\.SCREEN_ORIENTATION_PORTRAIT\)/);

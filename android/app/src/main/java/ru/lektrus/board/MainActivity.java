@@ -118,6 +118,10 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedState) {
+        // The manifest cannot select orientation using screen-size resource
+        // qualifiers (the package manager resolves them only at install).
+        // Pick the phone/tablet policy before initializing the WebView.
+        restoreRouteOrientation();
         registerPlugin(LektrusSystemUiPlugin.class);
         registerPlugin(LektrusFilesPlugin.class);
         super.onCreate(savedState);
