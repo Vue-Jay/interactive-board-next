@@ -31,7 +31,7 @@ assert.ok(touchStart.indexOf('consumedTouchIds.current.add(id)')<
 assert.match(touchStart,/if\(eraserSession\.current\)cancelEraser\(\)/,
  "Pinch must cancel the uncommitted eraser session");
 const eraseCancellation=slice("  const cancelEraser=","  const recordEraserPoint=");
-assert.match(eraseCancellation,/if\(g\)sendLiveEraser\(g,true,true\);\s*eraserSession\.current=null;\s*stopEraserPreview\(\)/,
+assert.match(eraseCancellation,/if\(g\)\{sendLiveEraser\(g,true,true\);g\.hiddenStickerInk\.forEach\(el=>el\.style\.removeProperty\("visibility"\)\);\}\s*eraserSession\.current=null;\s*stopEraserPreview\(\)/,
  "Cancelled gestures must roll back both local and remote eraser previews");
 assert.match(touchStart,/pinchState\.current=\{distance:/);
 assert.ok(touchStart.includes("const pinchBaseView=viewerPendingPan.current??viewRef.current;"),
@@ -45,9 +45,9 @@ assert.ok(cancel.includes('const consumed=touchEnd(e)'));
 assert.ok(cancel.includes('if(gesture.current?.pointer===e.pointerId){end(true);return;}'));
 assert.match(down,/if\(eraserSession\.current\|\|pinchState\.current\|\|touchPoints\.current\.size>1\|\|/);
 assert.ok(down.includes('setSelected([])'));
-assert.match(app,/const erased=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/,
+assert.match(app,/const erased=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\),g\.mode\)/,
  "Touch eraser persists one gesture and allows erasing every participant's stroke");
-assert.match(app,/eraseStickerInk\(item,g\.path,g\.weight\/2\)/,"Eraser must also cut attached sticker ink");
+assert.match(app,/eraseStickerInk\(item,g\.path,g\.weight\/2,g\.mode\)/,"Both eraser modes must also apply to attached sticker ink");
 assert.ok(eraser.includes('item.kind!=="pen"&&item.kind!=="marker"'),
  "Brush must only erase ink strokes and marker strokes");
 assert.ok(interaction.includes('.board.board-tool-eraser [data-object] *'));
