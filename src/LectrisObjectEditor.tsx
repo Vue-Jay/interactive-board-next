@@ -7,26 +7,24 @@ import type {EraserMode} from "./inkEraser";
 export function EraserModePicker({value,onChange}:{value:EraserMode;onChange:(mode:EraserMode)=>void}){
  return <div className="lektrus-eraser-modes" role="group" aria-label="Режим ластика">
   <button type="button" data-eraser-mode="partial" aria-pressed={value==="partial"}
-    aria-label="Стирать участок линии"
-    title="Точечный: стирает только часть линии под ластиком"
+    aria-label="Стирать участок линии" title="Стереть только участок под ластиком"
     onClick={()=>onChange("partial")}>
    <svg viewBox="0 0 48 32" width="44" height="30" fill="none" aria-hidden="true">
-    <path d="M3 26 17 19 M31 12 45 5" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-    <path d="m18 12 8-7 9 10-8 7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill="currentColor" fillOpacity=".12"/>
-    <path d="m23 17 9-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M3 25H16 M32 25H45" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
+    <path d="m18 15 10-11 11 10-10 11-11-10Z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+    <path d="m23 20 11-11" stroke="currentColor" strokeWidth="1.5"/>
    </svg>
    <span className="lektrus-eraser-mode-label" aria-hidden="true">Часть</span>
    <span className="lektrus-eraser-mode-check" aria-hidden="true">✓</span>
   </button>
   <button type="button" data-eraser-mode="stroke" aria-pressed={value==="stroke"}
-    aria-label="Стирать весь штрих одним касанием"
-    title="Весь штрих: удаляет линию целиком одним касанием"
+    aria-label="Стирать весь штрих одним касанием" title="Удалить линию целиком одним касанием"
     onClick={()=>onChange("stroke")}>
    <svg viewBox="0 0 48 32" width="44" height="30" fill="none" aria-hidden="true">
-    <path d="M3 26 45 5" stroke="currentColor" strokeWidth="3" strokeDasharray="2 5" strokeLinecap="round" opacity=".45"/>
-    <path d="M18 8 32 24 M32 8 18 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M3 22H27" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
+    <path d="M31 12H45 M36 9h4 M33 15l1 12h8l1-12 M37 18v6 M40 18v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
    </svg>
-   <span className="lektrus-eraser-mode-label" aria-hidden="true">Всё</span>
+   <span className="lektrus-eraser-mode-label" aria-hidden="true">Штрих</span>
    <span className="lektrus-eraser-mode-check" aria-hidden="true">✓</span>
   </button>
  </div>;
