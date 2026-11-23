@@ -1369,6 +1369,10 @@ try{
  const paddedSelector=`.object-image:has(img[alt="${paddedName}"])`;
  await wait(`document.querySelector(${JSON.stringify(paddedSelector)})?.querySelector("img")?.naturalWidth>0`,
    "Padded worksheet did not load");
+ await wait(`(()=>{
+   const saved=JSON.parse(localStorage.getItem("lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0")||'{"items":[]}');
+   return saved.items.some(i=>i.name===${JSON.stringify(paddedName)}&&i.imageCrop?.width<.4);
+  })()`,"Automatically cropped image must also persist in the saved board",15000);
  const beforeCrop=await evaluate(`(()=>{
   const element=document.querySelector(${JSON.stringify(paddedSelector)});
   const saved=JSON.parse(localStorage.getItem("lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0"));
