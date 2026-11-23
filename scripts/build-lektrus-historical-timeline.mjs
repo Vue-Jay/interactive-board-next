@@ -1545,7 +1545,25 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
  const comoroLocal=[null,comoroDecision('historical-moheli','Mohéli (local rulers)','Мохели (местные правители)','Separate local island authority before the French protectorate treaty of 26 April 1886; this is an island outline, not a surveyed dynastic frontier.','Местные правители Мохели до договора о протекторате 26 апреля 1886 г.; контур острова не устанавливает точные пределы власти отдельных династий.'),comoroDecision('historical-anjouan','Anjouan (sultanate)','Анжуан (султанат)','Separate sultanate before the French protectorate treaty of 21 April 1886; this is a generalized coastline.','Отдельный султанат до договора о французском протекторате 21 апреля 1886 г.; береговой контур генерализован.')];
  const mayotteColony=comoroDecision('historical-mayotte','Mayotte (French colony)','Майотта (французская колония)','France formally took possession in June 1843; Mayotte remained a colony distinct from the neighboring protectorates until the 1912 reorganization.','Франция официально вступила во владение в июне 1843 г.; Майотта оставалась колонией, отличной от соседних протекторатов, до реорганизации 1912 г.');
  const protectorates=[mayotteColony,...[[1,'historical-moheli','Mohéli','Мохели','26 April','26 апреля'],[2,'historical-anjouan','Anjouan','Анжуан','21 April','21 апреля'],[3,'historical-ngazidja','Grande Comore','Нгазиджа','6 January','6 января']].map(([,entity,name,ru,date,dateRu])=>comoroDecision(entity,`${name} (French protectorate)`,`${ru} (французский протекторат)`,`The initial protectorate treaty was signed on ${date} 1886, with later complementary agreements and reorganizations; formal protectorate status, not uniform effective control.`,`Первоначальный договор о протекторате подписан ${dateRu} 1886 г.; последовали дополнительные соглашения и административные изменения. Показан юридический статус, не единообразный фактический контроль.`))];
- const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar dependencies)','Коморы (зависимости Мадагаскара)','The 1908 decree attached Mayotte and the protectorates to Madagascar; the 25 July 1912 law annexed the three protectorates. During WWII the archipelago was affected by the British intervention and Free French transition. Colonial jurisdiction, not precise military control.','Декрет 1908 г. подчинил Майотту и протектораты Мадагаскару; закон от 25 июля 1912 г. превратил три протектората в колонии. Во Вторую мировую войну архипелаг затронули британская операция и переход к Свободной Франции. Показана колониальная юрисдикция, не точные пределы военного контроля.');
+ // Decree of 9 April 1908 attached Mayotte and its dependent protectorates to
+// the Governor-General of Madagascar, but the other three islands retained
+// their *protectorate* status until the annexation law of 25 July 1912.
+// The 1908 change was administrative, not a new sovereignty border.
+const comoroUnderMadagascar=protectorates.map((d,i)=>({
+ ...d,
+ name:['Mayotte (French colony, Madagascar administration)',
+       'Mohéli (French protectorate, Madagascar administration)',
+       'Anjouan (French protectorate, Madagascar administration)',
+       'Grande Comore (French protectorate, Madagascar administration)'][i],
+ nameRu:['Майотта (французская колония; управление через Мадагаскар)',
+         'Мохели (французский протекторат; управление через Мадагаскар)',
+         'Анжуан (французский протекторат; управление через Мадагаскар)',
+         'Нгазиджа (французский протекторат; управление через Мадагаскар)'][i],
+ reason:d.reason+' The decree of 9 April 1908 subordinated the colonial administration to the Madagascar Governor-General, without abolishing the three protectorates before 1912.',
+ reasonRu:d.reasonRu+' По декрету от 9 апреля 1908 г. административное руководство островами перешло генерал-губернаторству Мадагаскара; статус трёх протекторатов сохранялся до закона от 25 июля 1912 г.',
+ sources:[...new Set([...d.sources,comoroAdministration,'https://www.persee.fr/doc/outre_1631-0438_2005_num_92_348_4160'])]
+}));
+const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar dependencies)','Коморы (зависимости Мадагаскара)','The 1908 decree attached Mayotte and the protectorates to Madagascar; the 25 July 1912 law annexed the three protectorates. During WWII the archipelago was affected by the British intervention and Free French transition. Colonial jurisdiction, not precise military control.','Декрет 1908 г. подчинил Майотту и протектораты Мадагаскару; закон от 25 июля 1912 г. превратил три протектората в колонии. Во Вторую мировую войну архипелаг затронули британская операция и переход к Свободной Франции. Показана колониальная юрисдикция, не точные пределы военного контроля.');
  const comoroTerritory=comoroDecision('comoros-colonial','Comoros (French overseas territory)','Коморы (заморская территория Франции)','The archipelago became a separate overseas territory under the 1946 law; internal autonomy followed in 1961.','В 1946 г. архипелаг стал самостоятельной заморской территорией Франции; в 1961 г. получил внутреннюю автономию.');
  const comoroAutonomous={...comoroTerritory,name:'Comoros (autonomous French overseas territory)',nameRu:'Коморы (автономная заморская территория Франции)'};
  const comoroUncertain=comoroDecision('historical-ngazidja','Grande Comore (local sultanates)','Нгазиджа (местные султанаты)','Several rival sultanates existed on Ngazidja before the 1886 protectorate; no year-specific territorial partition has been established.','На Нгазидже до договора 1886 г. существовали соперничающие местные султанаты; точное ежегодное разделение территории не установлено.');
@@ -1556,12 +1574,13 @@ export function deriveColonialAndSalonaReviews(features,existingExclusions){
   const parts=earlyComorosHashes.map(h=>rawParts(f).findIndex(p=>componentHash(p)===h));assert.ok(parts.every(i=>i>=0),`Comoro source ${source}`);
   const overlay=(selected,a,b,decision,local=false)=>{for(const {target,f,parts:overlayParts} of comoroOverlays){const start=Math.max(a,f.properties.FromYear),end=Math.min(b,f.properties.ToYear);if(start>end)continue;const matching=overlayParts.filter(p=>selected.some(i=>componentHash(rawParts(features[source])[i])===p.hash)).map(p=>p.part);if(!matching.length)continue;if(local||f.properties.Name==='(Vichy France)'&&start>=1942)exclude(target,start,end,matching,decision);else groupLinks.push({target,from:start,to:end,name:decision.name,decision});}};
   const first=Math.max(from,1846),last=Math.min(to,1974);
-  for(const [a,b,mode] of [[first,Math.min(last,1885),'local'],[Math.max(first,1886),Math.min(last,1911),'protectorate'],[Math.max(first,1912),Math.min(last,1945),'colony'],[Math.max(first,1946),Math.min(last,1960),'territory'],[Math.max(first,1961),last,'autonomy']])if(a<=b){
+  for(const [a,b,mode] of [[first,Math.min(last,1885),'local'],[Math.max(first,1886),Math.min(last,1907),'protectorate'],[Math.max(first,1908),Math.min(last,1911),'madagascar-protectorate'],[Math.max(first,1912),Math.min(last,1945),'colony'],[Math.max(first,1946),Math.min(last,1960),'territory'],[Math.max(first,1961),last,'autonomy']])if(a<=b){
    if(mode==='local'){
     for(let i=0;i<3;i++){const decision=i===0?mayotteColony:comoroLocal[i];restoreGroup(source,[parts[i]],a,b,decision);overlay([parts[i]],a,b,decision,i!==0);comoroReviewed+=b-a+1;}
     uncertain(source,parts[3],a,b,'Коморы',comoroUncertain.reason,comoroUncertain.reasonRu,comoroUncertain.sources);overlay([parts[3]],a,b,comoroUncertain,true);comoroPending+=b-a+1;
-   }else if(mode==='protectorate'){
-    for(let i=0;i<4;i++){restoreGroup(source,[parts[i]],a,b,protectorates[i]);overlay([parts[i]],a,b,protectorates[i]);comoroReviewed+=b-a+1;}
+   }else if(mode==='protectorate'||mode==='madagascar-protectorate'){
+    const decisions=mode==='protectorate'?protectorates:comoroUnderMadagascar;
+    for(let i=0;i<4;i++){restoreGroup(source,[parts[i]],a,b,decisions[i]);overlay([parts[i]],a,b,decisions[i]);comoroReviewed+=b-a+1;}
    }else{
     const decision=mode==='colony'?comoroColony:mode==='territory'?comoroTerritory:comoroAutonomous;
     restoreGroup(source,parts,a,b,decision);overlay(parts,a,b,decision);comoroReviewed+=4*(b-a+1);

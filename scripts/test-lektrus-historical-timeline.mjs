@@ -457,10 +457,18 @@ if(outDir&&sourceFile){
       if(year>=1846&&year<=1974){
         const source=sourceRecords.find(r=>r.sourceName===(year<1958?'French Africa':'French Fifth Republic'));assert.ok(source);
         const raw=input.features[source.sourceIndex].geometry.coordinates,parts=earlyComorosHashes.map(h=>raw.findIndex(p=>componentHash(p)===h));assert.ok(parts.every(i=>i>=0));
-        const labels=year<1886?['Mayotte (French colony)','Mohéli (local rulers)','Anjouan (sultanate)',null]:year<1912?['Mayotte (French colony)','Mohéli (French protectorate)','Anjouan (French protectorate)','Grande Comore (French protectorate)']:Array(4).fill(year<1946?'Comoros (Madagascar dependencies)':year<1961?'Comoros (French overseas territory)':'Comoros (autonomous French overseas territory)');
+        const labels=year<1886?['Mayotte (French colony)','Mohéli (local rulers)','Anjouan (sultanate)',null]:
+         year<1908?['Mayotte (French colony)','Mohéli (French protectorate)','Anjouan (French protectorate)','Grande Comore (French protectorate)']:
+         year<1912?['Mayotte (French colony, Madagascar administration)','Mohéli (French protectorate, Madagascar administration)','Anjouan (French protectorate, Madagascar administration)','Grande Comore (French protectorate, Madagascar administration)']:
+         Array(4).fill(year<1946?'Comoros (Madagascar dependencies)':year<1961?'Comoros (French overseas territory)':'Comoros (autonomous French overseas territory)');
         for(const [i,part] of parts.entries()){
           const h=earlyComorosHashes[i];assert.ok(!hasPart(source,source.sourceIndex,part));const owners=state.drawable.filter(({geometry})=>geometry.coordinates.some(p=>componentHash(p)===h));
-          if(labels[i]){assert.equal(owners.length,1,`Comoro owner ${year}/${i}`);assert.equal(owners[0].record.name,labels[i]);assert.ok(owners[0].record.editorialRestoration);assert.ok(owners[0].record.review.sources.length>=4);}
+          if(labels[i]){assert.equal(owners.length,1,`Comoro owner ${year}/${i}`);assert.equal(owners[0].record.name,labels[i]);assert.ok(owners[0].record.editorialRestoration);assert.ok(owners[0].record.review.sources.length>=4);
+           if(year>=1908&&year<=1911){
+             assert.ok(owners[0].record.review.reasonRu.includes('9 апреля 1908'));
+             assert.ok(owners[0].record.review.reasonRu.includes('25 июля 1912'));
+             assert.ok(owners[0].record.review.sources.includes('https://www.persee.fr/doc/outre_1631-0438_2005_num_92_348_4160'));
+           }}
           else{assert.equal(owners.length,0);assert.ok(state.territorialIssues.some(r=>r.sourceIndex===source.sourceIndex&&r.part===part&&r.group==='Коморы'));}
           for(const {geometry,record} of state.overlays.filter(({record})=>/French|France/.test(record.sourceName)))if(year<1886&&i!==0||year>=1942&&record.sourceName==='(Vichy France)')assert.ok(!geometry.coordinates.some(p=>componentHash(p)===h),`Premature or outdated Comoro overlay ${year}/${i}`);
         }
