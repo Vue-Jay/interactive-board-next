@@ -20,15 +20,14 @@ assert.match(app,/onPointerCancelCapture/,"touch cancellation must be handled");
 assert.match(app,/pinchState\.current/,"two-finger zoom remains active");
 assert.match(app,/data-board-interactive/,"embedded board controls keep receiving clicks");
 assert.match(app,/suppressTouchClickUntil\.current/,"block accidental click after pinch");
-assert.match(app,/lektrus-ink-settings-direct/,"show direct brush controls");
-assert.match(app,/INK_WIDTHS\.eraser/);
-assert.match(app,/INK_WIDTHS\.marker/);
-assert.match(app,/INK_WIDTHS\.pen/);
+assert.match(app,/<LectrisQuickProperties/, "Keep one original bottom brush/eraser dock");
+assert.doesNotMatch(app,/lektrus-ink-settings-direct/, "There must not be a duplicate upper brush dock");
+assert.match(app,/board-ink-dock-open/, "Reserve canvas-free space for the bottom controls");
 assert.match(quick,/pen:\[1,3,6,12,22\]/);
 assert.match(quick,/marker:\[2,7,14,28,48\]/);
 assert.match(quick,/eraser:\[6,16,32,55,92\]/);
-assert.match(responsive,/\.lectris-quick-properties\.is-ink-properties\{display:none!important\}/,
- "mobile should not have a duplicate collapsed brush toolbar");
+assert.doesNotMatch(responsive,/\.lectris-quick-properties\.is-ink-properties\{display:none!important\}/,
+ "The single bottom toolbar must remain visible on mobile");
 assert.match(organic,/onPointerCancel=\{e=>/, "cancelled touch must not insert a bond");
 assert.match(organic,/attachFunctionalGroup/);
 assert.match(organic,/onPointerDown=\{e=>handleAtom/);
