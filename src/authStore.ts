@@ -1,7 +1,7 @@
 import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
 import { setLocalAccountRole, type AccountRole } from "./accountRoleStore";
 import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
-import { clearSelfhostSession, getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, selfhostClaimInvitations, selfhostLogin, selfhostGuestLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, selfhostRequestPasswordReset, selfhostCompletePasswordReset, type SelfhostSession } from "./selfhostApi";
+import { clearSelfhostSession, getCachedSelfhostSession, getSelfhostSession, isSelfhostBackendEnabled, getRememberedSelfhostAccount, resumeRememberedSelfhostAccount, forgetRememberedSelfhostAccount, leaveSelfhostAccountRemembered, selfhostClaimInvitations, selfhostLogin, selfhostGuestLogin, selfhostLogout, selfhostSignup, selfhostVerifyEmail, selfhostRequestPasswordReset, selfhostCompletePasswordReset, type SelfhostSession } from "./selfhostApi";
 
 export type BoardRole = "owner" | "editor" | "viewer";
 /** Independent, owner-assigned educational context. Never inferred from an upgraded account. */
@@ -151,10 +151,10 @@ export const loginGuest=async(name:string,token?:string,password?:string):Promis
  return remoteUser(s)!;
 };
 
-export const getRememberedAccount=()=>!isSelfhostBackendEnabled()&&isRemoteBackendEnabled()?getRememberedRemoteAccount():null;
+export const getRememberedAccount=()=>isSelfhostBackendEnabled()?getRememberedSelfhostAccount():isRemoteBackendEnabled()?getRememberedRemoteAccount():null;
 
 export const resumeRememberedAccount=async():Promise<AuthUser>=>{
- if(isSelfhostBackendEnabled())throw new Error("Для быстрого входа на новом сервере сохранённая сессия уже восстанавливается автоматически.");
+ if(isSelfhostBackendEnabled())return selfhostUser(await resumeRememberedSelfhostAccount())!;
  if(!isRemoteBackendEnabled())throw new Error("Быстрый вход доступен только в серверной версии.");
  const s=await resumeRememberedRemoteAccount();
  await claimRemoteInvitations();
@@ -162,15 +162,20 @@ export const resumeRememberedAccount=async():Promise<AuthUser>=>{
 };
 
 export const forgetRememberedAccount=async()=>{
- if(isSelfhostBackendEnabled()){await selfhostLogout();return}
+ if(isSelfhostBackendEnabled()){await forgetRememberedSelfhostAccount();return}
  if(!isRemoteBackendEnabled())return;
  clearRememberedRemoteAccount();
  await signOutRemote();
 };
 
-export const logoutUser=async()=>{
+export const logoutUser=async(options?:{forget?:boolean})=>{
  if(LEKTRUS_LOCAL_TEST_MODE)return;
- if(isSelfhostBackendEnabled()){await selfhostLogout();return}
+ if(isSelfhostBackendEnabled()){
+  if(options?.forget){await forgetRememberedSelfhostAccount();await selfhostLogout();}
+  else if(getCachedSelfhostSession()?.user.guest_board_id)await selfhostLogout();
+  else leaveSelfhostAccountRemembered();
+  return;
+ }
  if(isRemoteBackendEnabled()){
    const current=getCachedRemoteSession();
    if(current?.user?.email)leaveRemoteAccountRemembered();
