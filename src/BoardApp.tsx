@@ -3578,7 +3578,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       for(const type of events)document.removeEventListener(type,userAction,true);
       document.removeEventListener("visibilitychange",visibility);
     };
-  },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave]);
+  },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,objectEditorOpen,editing,boardAssistantBusy,boardAiGenerating,pendingAttachmentRequests.length]);
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{

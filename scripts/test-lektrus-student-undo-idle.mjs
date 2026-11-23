@@ -72,6 +72,7 @@ assert.match(board,/await getRemoteBoardDocument\(boardSummary\.id\)/);
 assert.match(board,/objectEditorOpen\|\|editing\|\|boardAssistantBusy\|\|boardAiGenerating/);
 assert.match(board,/pendingAttachmentTimers\.current\.size\|\|pendingAttachmentRequests\.length/);
 assert.match(board,/remoteRetryTimer\.current/);
+assert.match(board,/flushSave,objectEditorOpen,editing,boardAssistantBusy,boardAiGenerating,pendingAttachmentRequests\.length/);
 assert.match(board,/className="lektrus-board-idle-indicator"/);
 assert.match(board,/if\(boardResumePendingRef\.current\)\{setNotice/);
 
