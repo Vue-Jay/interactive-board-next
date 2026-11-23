@@ -789,12 +789,12 @@
  min-width:0;box-sizing:border-box;padding:5px 8px;
 }
 .lektrus-ink-tool-name{font-size:11px;white-space:nowrap;color:#526986}
-/* The legacy quick-properties rule hides .ink-settings. On touch layouts the
-   separate quick-properties strip is also hidden, so explicitly restore this
-   direct tool strip without exposing it during a presentation. */
+/* The legacy quick-properties rule hides .ink-settings. Touch layouts must
+   expose the direct strip, except during presentation. Presentation mode lives
+   on the .app ancestor, NOT on .workspace: guard the correct DOM element. */
 @media(max-width:1100px),(pointer:coarse){
- .workspace:not(.presentation-mode) .ink-settings.lektrus-ink-settings-direct{display:flex!important}
- .presentation-mode .workspace .ink-settings.lektrus-ink-settings-direct{display:none!important}
+ .app:not(.presentation-mode) .workspace .ink-settings.lektrus-ink-settings-direct{display:flex!important}
+ .app.presentation-mode .workspace .ink-settings.lektrus-ink-settings-direct{display:none!important}
 }
 @media(max-width:630px) and (orientation:portrait){
  .workspace .ink-settings.lektrus-ink-settings-direct:has(.lektrus-eraser-modes){
