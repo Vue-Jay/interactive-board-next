@@ -16,6 +16,7 @@ import { useTouchBoardMenuViewport } from "./useTouchBoardMenuViewport";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import { boardObjectAtInertPointerTarget } from "./boardObjectDragSurface";
 import {captureStudentBoardAction,replayStudentBoardAction,type StudentBoardAction} from "./studentBoardUndo";
+import {useBoardIdleConnection} from "./useBoardIdleConnection";
 import { buildBoardDragSnapIndex, snapBoardDrag, type BoardDragSnapIndex } from "./boardDragSnapIndex";
 import { applyBoardSelectionCursor, clearBoardSelectionCursor, selectionCursorForGesture, selectionCursorForTarget } from "./lektrusSelectionCursor";
 import "./App.css";
@@ -3145,6 +3146,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [, setRemoteConflict] = useState<RemoteBoardDocument | null>(null);
   const [, setConflictLocalBackup] = useState<DocumentData | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("reconnecting");
+  const boardConnectionAwake=useBoardIdleConnection(!demoMode&&!layoutEditing,()=>(
+    !gesture.current&&!eraserSession.current&&!objectEditorOpen&&
+    !remoteSaveInFlight.current&&!saveTimer.current&&!remoteRetryTimer.current&&
+    !queuedRemoteSnapshot.current&&!pendingRemote.current&&
+    !boardAssistantBusy&&!boardAiGenerating&&!pendingAttachmentRequests.length&&
+    pendingAttachmentTimers.current.size===0
+  ));
+
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
   useEffect(() => {
@@ -3519,13 +3528,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const chatOpenRef=useRef(chatOpen);
   chatOpenRef.current=chatOpen;
   useEffect(()=>{
-    if(layoutEditing||!discussionEnabled)return;
+    if(layoutEditing||!discussionEnabled||!boardConnectionAwake)return;
     const refresh=()=>{void refreshDiscussions().catch(()=>{})};
     return subscribeBoardComments(boardSummary.id,()=>{
       if(!chatOpenRef.current)setChatUnread(value=>Math.min(99,value+1));
       refresh();
     },refresh);
-  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
+  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions,boardConnectionAwake]);
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get("discussion");
     if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
@@ -4372,7 +4381,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       : [item.id];
 
   useEffect(()=>{
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardConnectionAwake)return;
     const channel=connectAttachmentApprovalChannel(
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
@@ -4395,7 +4404,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       pendingAttachmentTimers.current.clear();
       pendingAttachmentStarted.current.clear();
     };
-  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode]);
+  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode,boardConnectionAwake]);
 
   const addMediaFile = async (file: File, position?: Point, offset = 0) => {
     if (!canEdit) throw new Error("У вас доступ только для просмотра");
@@ -8070,7 +8079,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardConnectionAwake)return;
     if(selfhostMode){
       return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
         if(!latest.document)return;
@@ -8084,19 +8093,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return subscribeBoardDocument(
       boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus
     );
-  },[boardSummary.id,layoutEditing,selfhostMode,demoMode]);
+  },[boardSummary.id,layoutEditing,selfhostMode,demoMode,boardConnectionAwake]);
 
-  useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible]);
+  useEffect(() => layoutEditing||!boardConnectionAwake||!documentSyncEnabled||adminInvisible?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible,boardConnectionAwake]);
 
-  useEffect(() => demoMode||layoutEditing?()=>{}:subscribeBoardPresence(
+  useEffect(() => demoMode||layoutEditing||!boardConnectionAwake?()=>{}:subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
     setPresenceUsers,
     !adminHidden,
-  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
+  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardConnectionAwake]);
 
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardConnectionAwake)return;
     let active=true;
     if(acknowledgedBoardData.current)acknowledgeRemoteInk(acknowledgedBoardData.current);
     const channel = connectBoardCursorChannel(
@@ -8137,10 +8146,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       remoteInkStore.reset();
       remoteEraseStore.reset();remoteEraseTargets.current.clear();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode,boardConnectionAwake]);
 
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardConnectionAwake)return;
     const channel = connectBoardViewControl(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name },
@@ -8165,7 +8174,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       viewControlChannel.current = null;
       channel.close();
     };
-  }, [boardSummary.id, authUser.id, authUser.name,demoMode]);
+  }, [boardSummary.id, authUser.id, authUser.name,demoMode,boardConnectionAwake]);
 
   useEffect(() => {
     followTeacherRef.current = followTeacher;
@@ -8192,7 +8201,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     });
   },[itemById]);
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardConnectionAwake)return;
     const channel = connectBoardWorkChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
@@ -8297,7 +8306,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setRemoteObjectPoses({});
       setRemoteWork({});
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardConnectionAwake]);
 
   useEffect(() => {
     if(!adminHidden) workChannel.current?.publish(selected,
@@ -8690,6 +8699,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </div>
       </header>
       <main className={`workspace ${!objectEditorOpen && !presentation && selectedItems.length===0 && (tool==="pen" || tool==="marker" || tool==="eraser") ? "board-ink-dock-open" : ""} lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+        {!boardConnectionAwake&&<div className="lektrus-board-idle-indicator" role="status" aria-live="polite">
+          Соединение приостановлено · коснитесь доски или нажмите клавишу для продолжения
+        </div>}
         {controlSettingsOpen&&<div className="access-backdrop"
          onPointerDown={e=>{if(e.target===e.currentTarget)setControlSettingsOpen(false)}}>
          <section className="access-modal lektrus-control-settings" role="dialog" aria-modal="true"
