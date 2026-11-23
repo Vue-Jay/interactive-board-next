@@ -37,11 +37,15 @@ const ast=ts.createSourceFile("LektrusLanguageSocialView.tsx",view,
  ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(ast.parseDiagnostics.length,0,"Sentence editor TSX must parse");
 for(const marker of [
- "onPointerDown={event=>beginDrag(event,id)}","onPointerMove={dragWord}",
- "onPointerCancel={event=>endDrag(event,true)}",
- "onLostPointerCapture={releaseLostCapture}","setPointerCapture(event.pointerId)",
+ "onPointerDown={event=>beginDrag(event,id)}",
+ "window.addEventListener(\"pointermove\",move,{capture:true,passive:false})",
+ "window.addEventListener(\"pointerup\",release,true)",
+ "window.addEventListener(\"pointercancel\",release,true)",
+ "setPointerCapture(event.pointerId)",
  "onKeyDown={event=>reorderWithKeyboard(event,id)}",
  "sentenceWordDropSlot(event.clientX,event.clientY,",
+ "setOrder(current=>moveSentenceWord(current,gesture.id,gesture.slot))",
+ 'data-board-interactive="true"',
  'aria-label="Соберите предложение, перетаскивая слова в правильном порядке"',
  "lektrus-sentence-drag-preview"
 ])assert.ok(view.includes(marker),"Sentence drag UI is missing "+marker);
