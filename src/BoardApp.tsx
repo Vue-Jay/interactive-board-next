@@ -86,6 +86,7 @@ import { useAdaptiveBoardToolbar } from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import { LectrisQuickProperties, LectrisObjectInspector, InkWidthSample, INK_WIDTHS, EraserModePicker } from "./LectrisObjectEditor";
 import { placeImageCrop } from "./imageCropGeometry";
+import { detectImageContentCropFromElement, fitImageFrameAspect } from "./imageAutoCrop";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
@@ -755,8 +756,12 @@ function AttachmentRequestPreview({request,boardId}:{request:AttachmentApprovalR
  return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:usesEmbeddedPdf()?<Suspense fallback={<span>Загрузка PDF…</span>}><PdfPageCanvas src={url} title={request.name} maxPixels={250000}/></Suspense>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
 }
 
-const Media = memo(function Media({ item, boardId }: { item: Item; boardId: string }) {
+const Media = memo(function Media({ item, boardId, selected, autoFitEnabled, onAutoFit }: {
+  item: Item; boardId: string; selected: boolean; autoFitEnabled: boolean;
+  onAutoFit: (id:string,crop:Item["imageCrop"],sourceAspect:number)=>void;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const measuredSource = useRef("");
   const [nearViewport, setNearViewport] = useState(false);
   const [src, setSrc] = useState("");
 
@@ -792,6 +797,26 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
     };
   }, [nearViewport, item.assetId, boardId]);
 
+  // Existing boards can contain images that predate proportional insertion.
+  // Correct their source aspect or substantial intrinsic white margins the
+  // first time the owner selects them. Leave original asset pixels untouched.
+  useEffect(()=>{
+    if(!selected||!autoFitEnabled||item.kind!=="image"||item.imageCrop||!src)return;
+    const image=hostRef.current?.querySelector<HTMLImageElement>(".media-image");
+    if(!image)return;
+    const key=(item.assetId??item.id)+":"+src;
+    if(measuredSource.current===key)return;
+    const measure=()=>{
+      if(!image.complete||!image.naturalWidth||!image.naturalHeight)return;
+      measuredSource.current=key;
+      onAutoFit(item.id,detectImageContentCropFromElement(image)??undefined,
+        image.naturalWidth/image.naturalHeight);
+    };
+    if(image.complete&&image.naturalWidth)measure();
+    else image.addEventListener("load",measure,{once:true});
+    return()=>image.removeEventListener("load",measure);
+  },[selected,autoFitEnabled,item.id,item.assetId,item.kind,item.imageCrop,src,onAutoFit]);
+
   const crop=item.kind==="image"?item.imageCrop:undefined;
   const imageStyle:CSSProperties=crop?{
     position:"absolute",objectFit:"fill",
@@ -817,6 +842,8 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
   </div>;
 }, (previous, next) =>
   previous.boardId === next.boardId &&
+  previous.selected===next.selected &&
+  previous.autoFitEnabled===next.autoFitEnabled &&
   previous.item.assetId === next.item.assetId &&
   previous.item.kind === next.item.kind &&
   previous.item.name === next.item.name &&
@@ -3994,6 +4021,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         subject:lectrisBoardOrganization.subject,items:normalized});
     }
   };
+  const autoFitExistingImage=(id:string,crop:Item["imageCrop"],sourceAspect:number)=>{
+    const current=itemsRef.current.find(item=>item.id===id&&item.kind==="image");
+    if(!current||current.imageCrop||!canCropImage(current)||
+       !Number.isFinite(sourceAspect)||sourceAspect<=0)return;
+    const reframe=crop?placeImageCrop(current,crop):current;
+    const visibleRatio=sourceAspect*(crop?.width??1)/(crop?.height??1);
+    const fitted=fitImageFrameAspect(reframe,visibleRatio);
+    if(!crop&&fitted===current)return;
+    // Undo/redo and collaboration see one ordinary, reversible operation.
+    commit(itemsRef.current.map(item=>item.id===id?{
+      ...item,...fitted,imageSourceAspect:sourceAspect
+    }:item));
+  };
   const finishEdit = () => {
     if (!editing) return;
     const editedItem = itemsRef.current.find((item) => item.id === editing);
@@ -4324,16 +4364,24 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     let width = 360;
     let height = isPdf ? 500 : 260;
     let imageSourceAspect:number|undefined;
+    let imageCrop:Item["imageCrop"];
     if (isImage) {
       const url = URL.createObjectURL(file);
       try {
-        const natural = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const natural = await new Promise<{ width: number; height: number; crop:Item["imageCrop"] }>((resolve, reject) => {
           const image = new Image();
-          image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+          image.onload = () => resolve({
+            width: image.naturalWidth, height: image.naturalHeight,
+            crop: detectImageContentCropFromElement(image)??undefined,
+          });
           image.onerror = () => reject(new Error("Не удалось определить размер изображения"));
           image.src = url;
         });
-        ({width,height}=initialImageSize(natural.width,natural.height));
+        imageCrop=natural.crop??undefined;
+        ({width,height}=initialImageSize(
+          natural.width*(imageCrop?.width??1),
+          natural.height*(imageCrop?.height??1)
+        ));
         imageSourceAspect=natural.width/natural.height;
       } finally {
         URL.revokeObjectURL(url);
@@ -4352,6 +4400,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       width,
       height,
       imageSourceAspect,
+      imageCrop,
       text: "",
       assetId: id,
       name: file.name,
@@ -10308,7 +10357,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 {item.points && <Ink item={item} />}
                 {item.kind === "shape" && <Shape type={item.shapeType} color={item.color}/>}
                 {item.kind === "connector" && <Connector item={item}/>}
-                {(item.kind === "image" || item.kind === "pdf") && <Media item={item} boardId={boardSummary.id}/>}
+                {(item.kind === "image" || item.kind === "pdf") && <Media
+                  item={item} boardId={boardSummary.id}
+                  selected={selectedIds.has(item.id)}
+                  autoFitEnabled={canCropImage(item)&&imageCropEditorId!==item.id}
+                  onAutoFit={autoFitExistingImage}
+                />}
                 {item.kind === "image" && imageCropEditorId === item.id && canCropImage(item) && <InlineImageCrop
                   item={item} boardId={boardSummary.id}
                   registerApply={apply=>{imageCropApplyRef.current=apply}}

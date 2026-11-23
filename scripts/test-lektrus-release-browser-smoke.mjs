@@ -1351,6 +1351,51 @@ try{
  }
  console.log("✓ PNG, JPEG and WebP: real image insertion and proportional side resize without padding");
 
+ // Large white bars around scans must be excluded BEFORE first resize,
+ // without manually opening the crop editor.
+ const paddedName="qa-padded-worksheet";
+ await evaluate(`(async()=>{
+  const b=document.querySelector("section.board"),r=b.getBoundingClientRect();
+  const c=document.createElement("canvas");c.width=600;c.height=800;
+  const ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,600,800);
+  ctx.fillStyle="#2275ce";ctx.fillRect(215,20,170,760);
+  const blob=await new Promise(resolve=>c.toBlob(resolve,"image/png"));
+  const file=new File([blob],${JSON.stringify(paddedName)},{type:"image/png"});
+  const transfer=new DataTransfer();transfer.items.add(file);
+  b.dispatchEvent(new DragEvent("drop",{bubbles:true,cancelable:true,dataTransfer:transfer,
+   clientX:r.left+r.width*.55,clientY:r.top+r.height*.42}));
+  return true;
+ })()`);
+ const paddedSelector=`.object-image:has(img[alt="${paddedName}"])`;
+ await wait(`document.querySelector(${JSON.stringify(paddedSelector)})?.querySelector("img")?.naturalWidth>0`,
+   "Padded worksheet did not load");
+ await wait(`(()=>{
+   const saved=JSON.parse(localStorage.getItem("lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0")||'{"items":[]}');
+   return saved.items.some(i=>i.name===${JSON.stringify(paddedName)}&&i.imageCrop?.width<.4);
+  })()`,"Automatically cropped image must also persist in the saved board",15000);
+ const beforeCrop=await evaluate(`(()=>{
+  const element=document.querySelector(${JSON.stringify(paddedSelector)});
+  const saved=JSON.parse(localStorage.getItem("lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0"));
+  const item=saved.items.find(i=>i.name===${JSON.stringify(paddedName)});
+  return {ratio:element.offsetWidth/element.offsetHeight,crop:item?.imageCrop};
+ })()`);
+ assert.ok(beforeCrop.crop?.width<.4&&beforeCrop.crop.x>.3&&beforeCrop.ratio<.4,
+  "Blank source margins must not be scaled as content: "+JSON.stringify(beforeCrop));
+ const oldWidth=await evaluate(`document.querySelector(${JSON.stringify(paddedSelector)}).getBoundingClientRect().width`);
+ const gripPadded=await rect(".screen-handle-e");
+ await mouse("mousePressed",gripPadded.x,gripPadded.y,{pressed:true});
+ await mouse("mouseMoved",gripPadded.x+24,gripPadded.y,{pressed:true});
+ await mouse("mouseReleased",gripPadded.x+24,gripPadded.y);
+ await wait(`document.querySelector(${JSON.stringify(paddedSelector)}).getBoundingClientRect().width>${oldWidth+10}`,
+  "The scanned content itself must enlarge on side grip");
+ const afterRatio=await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(paddedSelector)});return el.offsetWidth/el.offsetHeight})()`);
+ assert.ok(Math.abs(afterRatio-beforeCrop.ratio)<.025,"Automatic image crop aspect drifted during resize");
+ await click('button[aria-label="Отменить"]');
+ await click('button[aria-label="Отменить"]');
+ await wait(`!document.querySelector(${JSON.stringify(paddedSelector)})`,"Undo must remove the fitted image");
+ console.log("✓ White-margin scan is fitted on insertion and truly enlarges on drag");
+
+
  // The release catalogue must show the real 'Задания на доске' option.
  // Existing subject diagrams are never deleted by this menu filter.
  await click(".lektrus-desktop-subject-trigger");
