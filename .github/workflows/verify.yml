@@ -23,6 +23,7 @@ jobs:
       - name: Check curated subject catalogue, saved objects and sentence dragging
         run: |
           node scripts/test-lektrus-release-tools.mjs
+          node scripts/test-lektrus-student-undo.mjs
           node scripts/test-lektrus-sentence-drag.mjs
       - name: Check sentence drag in real Chrome with mouse, touch and keyboard
         run: |
