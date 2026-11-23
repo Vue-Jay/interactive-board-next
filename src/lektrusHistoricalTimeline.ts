@@ -35,7 +35,7 @@ export type HistoricalPack = {
   records: HistoricalRevision[]; geometries: Record<string, HistoricalGeometry>;
   coverageGaps: Record<string, HistoricalCoverageGap[]>;
 };
-export type HistoricalCoverageGap={name:string;date:string;source:string;reason:string};
+export type HistoricalCoverageGap={name:string;date:string;source:string;reason:string;kind?:'documented-state'};
 export type HistoricalBlock = {from: number; to: number; file: string; sha256: string; bytes: number; gzipBytes: number};
 export type HistoricalManifest = {
   schema: 5; from: number; to: number; source: {name: string; version: string; url: string; license: string; sha256: string};
@@ -112,7 +112,7 @@ export function validateHistoricalManifest(value: unknown): HistoricalManifest {
 export function validateHistoricalPack(value: unknown, block: HistoricalBlock): HistoricalPack {
   const pack = value as HistoricalPack;
   if (pack?.schema !== HISTORY_SCHEMA || pack.from !== block.from || pack.to !== block.to || !Array.isArray(pack.records) || !pack.geometries || typeof pack.geometries !== 'object'||!pack.coverageGaps||typeof pack.coverageGaps!=='object'||Array.isArray(pack.coverageGaps)) throw new Error('Invalid historical period pack');
-  for(const [year,gaps] of Object.entries(pack.coverageGaps))if(!/^-?(?:[1-9]\d*|0)$/.test(year)||!validHistoricalYear(Number(year))||Number(year)<block.from||Number(year)>block.to||!Array.isArray(gaps)||gaps.some(g=>!g.name||!g.date||!g.reason||typeof g.source!=='string'||!g.source.startsWith('https://')))throw new Error('Invalid historical coverage gap');
+  for(const [year,gaps] of Object.entries(pack.coverageGaps))if(!/^-?(?:[1-9]\d*|0)$/.test(year)||!validHistoricalYear(Number(year))||Number(year)<block.from||Number(year)>block.to||!Array.isArray(gaps)||gaps.some(g=>!g.name||!g.date||!g.reason||typeof g.source!=='string'||!g.source.startsWith('https://')||(g.kind!==undefined&&g.kind!=='documented-state')))throw new Error('Invalid historical coverage gap');
   const recordIds = new Set<string>();
   for (const record of pack.records) {
     if (!record || !hash.test(record.id) || recordIds.has(record.id) || !hash.test(record.entityId) || !hash.test(record.geometryId) || !record.name || !validHistoricalYear(record.from) || !validHistoricalYear(record.to) || record.from > record.to || record.from > block.to || record.to < block.from || !['candidate','rejected'].includes(record.geometryStatus) || !['candidate','reviewed'].includes(record.nameStatus)) throw new Error('Invalid historical revision');

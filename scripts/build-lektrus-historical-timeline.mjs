@@ -2001,7 +2001,19 @@ export function buildHistoricalTimeline(source, sourceHash, outDir) {
     const ids = [...new Set(active.flatMap(r=>[r.geometryId,...(r.mapPartition?[r.mapPartition.outlineGeometryId]:[]),...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)]))].sort();
     const coverageGaps={};
     for(let year=Math.max(1960,from);year<=to;year++){
-      const gaps=referenceAdmissionWarnings(year,active.filter(r=>r.role==='polity'&&r.geometryStatus!=='rejected'&&r.from<=year&&r.to>=year).map(r=>r.name));
+      const currentPolities=active.filter(r=>r.role==='polity'&&r.geometryStatus!=='rejected'&&r.from<=year&&r.to>=year);
+      const gaps=referenceAdmissionWarnings(year,currentPolities.map(r=>r.name));
+      // Recognition of independence in 1986 and the UN's later 1990
+      // trusteeship termination are different events. We have no vetted
+      // 1986-89 outline; never silently backdate the modern island geometry.
+      const marshall=independentIslands.states.find(s=>s.iso==='MHL');
+      if(batch.count&&marshall&&year>=marshall.recognitionFrom&&year<marshall.from&&
+         !currentPolities.some(r=>r.sourceWikidata===marshall.wikidata||
+          /Marshall Islands/i.test(r.name))){
+        gaps.push({name:'Marshall Islands',kind:'documented-state',date:'1986-10-21',
+         source:'https://history.state.gov/countries/marshall-islands',
+         reason:'Independent state recognized in 1986; no independently dated 1986–89 geometry has been accepted. A 1990 outline must not be backdated.'});
+      }
       if(gaps.length)coverageGaps[year]=gaps;
     }
     const pack = {schema:HISTORY_SCHEMA,from,to,records:active,coverageGaps,geometries:Object.fromEntries(ids.map(id=>[id,geometries.get(id)]))};

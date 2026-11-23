@@ -86,6 +86,8 @@ assert.deepEqual(delhi.records.filter(r=>r.role==='composite').map(r=>[r.from,r.
 assert.equal(delhi.records.find(r=>r.from===1451&&r.role==='polity').name,'Lodi Dynasty');
 assert.deepEqual(delhi.records.find(r=>r.from===1451&&r.role==='composite').sourceComponents,['Tughlaq Dynasty']);
 const zhou=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Later Zhou',-750,-451,square(),'Q1154556'),feature('Later Zhou',960,960,square(),'Q1154556'),feature('(Spring and Autumn States)',-750,-481,square(),'','POLITY','Later Zhou')]});
+assert.equal(independentIslands.states.find(s=>s.iso==='MHL').recognitionFrom,1986);
+assert.equal(independentIslands.states.find(s=>s.iso==='MHL').from,1990);
 assert.equal(zhou.records[0].name,'Eastern Zhou');assert.equal(zhou.records[1].name,'Later Zhou');assert.deepEqual(zhou.records[2].components,['Eastern Zhou']);assert.deepEqual(zhou.records[2].sourceComponents,['Later Zhou']);
 assert.throws(()=>normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Bad',1,2,{type:'Polygon',coordinates:[[[0,0],[1,0],[0,1],[1,1]]]})]}));
 const fixtureDir=mkdtempSync(path.join(tmpdir(),'lektrus-timeline-fixture-'));
@@ -709,7 +711,19 @@ if(outDir&&sourceFile){
         for(const group of r.memberOf){if(!bySourceName.get(group)?.some(g=>g.role!=='polity'&&g.components.includes(r.name)))groupLinkWarnings.push({kind:'unmatched-membership',group,component:r.name,sourceIndex:r.sourceIndex})}
       }
       const membershipWarnings=referenceAdmissionWarnings(year,state.drawable.map(r=>r.record.name));
-      assert.deepEqual(state.coverageGaps,membershipWarnings,`Coverage gaps not preserved at ${year}`);
+      const documented=state.coverageGaps.filter(g=>g.kind==='documented-state');
+      if(year>=1986&&year<=1989){
+        const plottedMarshall=state.drawable.some(({record:r})=>
+          r.sourceWikidata==='Q709'||/Marshall Islands/i.test(r.name));
+        assert.equal(documented.filter(g=>g.name==='Marshall Islands').length,plottedMarshall?0:1,
+         `Marshall independence coverage at ${year}`);
+        for(const gap of documented){
+          assert.equal(gap.date,'1986-10-21');
+          assert.equal(gap.source,'https://history.state.gov/countries/marshall-islands');
+        }
+      }else assert.equal(documented.length,0,`Unexpected statehood gap at ${year}`);
+      assert.deepEqual(state.coverageGaps.filter(g=>g.kind!=='documented-state'),membershipWarnings,
+       `UN admission gaps not preserved at ${year}`);
       if(identityCollisions.length)yearsWithIdentityCollisions++;
       if(sharedGeometry.length)yearsWithSharedGeometry++;
       admissionWarnings+=membershipWarnings.length;
