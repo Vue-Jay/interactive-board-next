@@ -69,6 +69,7 @@ export type SelfhostBoardChannel=(()=>void)&{
   sendEvent:(event:Record<string,unknown>)=>boolean};
 
 const SESSION_KEY="lektrus.selfhost.session.v1";
+const REMEMBERED_SESSION_KEY="lektrus.selfhost.remembered.v1";
 const TIMEOUT_MS=15000;
 const NATIVE_AUTH_TIMEOUT_MS=30000;
 const HEALTH_TIMEOUT_MS=20000;
@@ -110,6 +111,70 @@ function saveSession(session:SelfhostSession|null){
   else localStorage.setItem(SESSION_KEY,JSON.stringify(session));
   if(typeof window!=="undefined"&&typeof window.dispatchEvent==="function"&&typeof Event==="function")
     window.dispatchEvent(new Event("lektrus:session-changed"));
+}
+// Quick login is opt-in via the existing "Exit" affordance. Keep the
+// credential separately so a page reload never silently signs back in.
+function loadRememberedSession():SelfhostSession|null{
+ try{
+  const raw=localStorage.getItem(REMEMBERED_SESSION_KEY);
+  if(!raw)return null;
+  const value=JSON.parse(raw) as SelfhostSession;
+  if(typeof value?.access_token!=="string"||typeof value?.refresh_token!=="string"||
+     !Number.isFinite(value.expires_at)||typeof value.user?.id!=="string"||
+     !value.user.email||value.user.guest_board_id)return null;
+  return value;
+ }catch{return null;}
+}
+function saveRememberedSession(session:SelfhostSession|null){
+ if(session)localStorage.setItem(REMEMBERED_SESSION_KEY,JSON.stringify(session));
+ else localStorage.removeItem(REMEMBERED_SESSION_KEY);
+}
+export function getRememberedSelfhostAccount(){
+ const session=loadRememberedSession();
+ if(!session)return null;
+ const meta=session.user.user_metadata||{};
+ return {id:session.user.id,email:session.user.email,
+  name:String(meta.display_name||[meta.first_name,meta.last_name].filter(Boolean).join(" ")||session.user.email.split("@")[0])};
+}
+/** Leave workspace without revoking the explicitly remembered account. */
+export function leaveSelfhostAccountRemembered(){
+ const session=loadSession();
+ if(session&&!session.user.guest_board_id&&session.user.email)saveRememberedSession(session);
+ else saveRememberedSession(null);
+ refreshInFlight=null;
+ saveSession(null);
+}
+export async function forgetRememberedSelfhostAccount(){
+ const session=loadRememberedSession();
+ saveRememberedSession(null);
+ if(!session)return;
+ // Do not log out another account; this revokes only the saved credential.
+ try{await rawRequest("/api/v1/auth/logout",{method:"POST"},session.access_token);}
+ catch{/* Removing it locally never depends on the network. */}
+}
+export async function resumeRememberedSelfhostAccount():Promise<SelfhostSession>{
+ const remembered=loadRememberedSession();
+ if(!remembered)throw new Error("Сохранённый вход больше недоступен.");
+ // Inactive until the user explicitly clicks the quick-login button.
+ saveSession(remembered);
+ try{
+  const current=await selfhostSession();
+  if(!current)throw new SelfhostHttpError(401,"Сохранённая сессия истекла. Введите пароль ещё раз.");
+  // A cached access token may have been revoked. Verify it server-side.
+  await selfhostRequest<SelfhostUser>("/api/v1/auth/me");
+  const ready=loadSession();
+  if(!ready||ready.user.id!==remembered.user.id)throw new Error("Аккаунт изменился во время входа.");
+  saveRememberedSession(null);
+  return ready;
+ }catch(error){
+  const live=loadSession();
+  if(live?.user.id===remembered.user.id){
+   if(!(error instanceof SelfhostHttpError&&error.status===401))saveRememberedSession(live);
+   saveSession(null);
+  }
+  if(error instanceof SelfhostHttpError&&error.status===401)saveRememberedSession(null);
+  throw error;
+ }
 }
 export const cachedSelfhostSession=()=>loadSession();
 export function clearSelfhostSession(){refreshInFlight=null;saveSession(null);}
