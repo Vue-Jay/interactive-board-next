@@ -84,7 +84,7 @@ import { formatPiRadians, makeMathPresetItem } from "./lektrusMathPresets";
 import { isSolidFigure, projectSolid, projectSolidAxis, projectSolidSurfaces, projectSolidEdges, solidDimensionEdgePairs } from "./lektrusSolid3d";
 import { useAdaptiveBoardToolbar } from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
-import { LectrisQuickProperties, LectrisObjectInspector, InkWidthSample, INK_WIDTHS, EraserModePicker } from "./LectrisObjectEditor";
+import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
 import { placeImageCrop } from "./imageCropGeometry";
 import { detectImageContentCropFromElement, fitImageFrameAspect } from "./imageAutoCrop";
 import LektrusColorPicker from "./LektrusColorPicker";
@@ -8723,7 +8723,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
          </section></div>}
         {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
 
-        {!objectEditorOpen && !presentation && selectedItems.length===0 && tool!=="pen" && tool!=="marker" && tool!=="eraser" && <LectrisQuickProperties userId={authUser.id}
+        {!objectEditorOpen && !presentation && selectedItems.length===0 && <LectrisQuickProperties userId={authUser.id}
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize} eraserMode={eraserMode} onEraserMode={setEraserMode}
@@ -9492,30 +9492,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           </div>
         )}
         </MobileBoardEditorPortal>
-        {(tool === "pen" || tool === "marker" || tool === "eraser") && (
-          <div className="ink-settings lektrus-ink-settings-direct"
-            role="group" aria-label={"Параметры инструмента: "+(tool==="eraser"?"ластик":tool==="marker"?"маркер":"карандаш")}
-            onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
-            <strong className="lektrus-ink-tool-name">{tool==="eraser"?"Ластик":tool==="marker"?"Маркер":"Карандаш"}</strong>
-            {tool==="eraser"&&<EraserModePicker value={eraserMode} onChange={setEraserMode}/>}
-            {tool!=="eraser"&&<LektrusColorPicker userId={authUser.id} compact label="Цвет"
-              value={tool==="marker"?markerColor:penColor}
-              onChange={tool==="marker"?setMarkerColor:setPenColor}/>}
-            <div className="lektrus-direct-ink-widths" role="group" aria-label="Толщина инструмента">
-              {(tool==="eraser"?INK_WIDTHS.eraser:tool==="marker"?INK_WIDTHS.marker:INK_WIDTHS.pen).map((size,index)=>{
-                const current=tool==="eraser"?eraserSize:tool==="marker"?markerWeight:weight;
-                const candidates=tool==="eraser"?INK_WIDTHS.eraser:tool==="marker"?INK_WIDTHS.marker:INK_WIDTHS.pen;
-                const nearest=candidates.reduce((best,value,i)=>Math.abs(value-current)<Math.abs(candidates[best]-current)?i:best,0);
-                return <button key={size} type="button" aria-pressed={nearest===index}
-                  aria-label={["Очень тонкий","Тонкий","Средний","Толстый","Очень толстый"][index]+" штрих, "+size+" пикселей"}
-                  onClick={()=>tool==="eraser"?setEraserSize(size):tool==="marker"?setMarkerWeight(size):setWeight(size)}>
-                  <InkWidthSample tool={tool} size={size}
-                    color={tool==="marker"?markerColor:penColor}/>
-                </button>;
-              })}
-            </div>
-          </div>
-        )}
         {tool === "connector" && (
           <div className="connector-settings">
             <div className="connector-style-buttons">
