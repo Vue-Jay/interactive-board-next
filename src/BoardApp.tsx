@@ -127,6 +127,7 @@ import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
+import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
@@ -3097,6 +3098,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const clipboard = useRef<Item[]>([]);
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
   const index = useRef(0);
+  // The pupil's own operations survive incoming collaborator snapshots.
+  const personalHistory=useRef<{entries:PersonalBoardEdit[];cursor:number}>({entries:[],cursor:0});
+  const personalUndoAvailable=()=>personalHistory.current.cursor>0;
+  const personalRedoAvailable=()=>personalHistory.current.cursor<personalHistory.current.entries.length;
 
   const snapshot = useRef<DocumentData | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3997,6 +4002,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           JSON.stringify(item) === JSON.stringify(baseline[pos])))
       return;
     const isLabSimulation=options?.labSimulation===true;
+    if(isStudent&&!isBoardOwner&&!isLabSimulation){
+      const own=personalBoardEdit(current,normalized);
+      if(own){
+        const stack=personalHistory.current;
+        stack.entries=[...stack.entries.slice(0,stack.cursor),own].slice(-80);
+        stack.cursor=stack.entries.length;
+      }
+    }
     labSimulationOnly.current=isLabSimulation;
     if(!isLabSimulation)labCheckpointStartedAt.current=null;
     history.current = history.current.slice(0, index.current + 1);
@@ -4061,6 +4074,29 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const undo = (direction: number) => {
     if (gesture.current || !canEdit) return;
+    if(isStudent&&!isBoardOwner){
+      const stack=personalHistory.current;
+      const step=direction<0?stack.cursor-1:stack.cursor;
+      if(step<0||step>=stack.entries.length)return;
+      const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo");
+      if(!outcome.changed){
+        setNotice("Это действие уже изменено другим участником. Чужие правки не затронуты.");
+        return;
+      }
+      if(blockedBoardItemRemovals(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length){
+        setNotice("Отмена не может изменить защищённую работу другого участника.");
+        return;
+      }
+      stack.cursor=direction<0?step:step+1;
+      display(outcome.items);
+      if(snapshot.current&&!saveBlocked)
+        snapshot.current=packDocumentInk({...snapshot.current,items:outcome.items});
+      history.current=[outcome.items];index.current=0;
+      setSelected([]);
+      if(outcome.conflicts)setNotice("Отменены только ваши изменения. Более поздние чужие правки сохранены.");
+      return;
+    }
     const next = index.current + direction;
     if (next < 0 || next >= history.current.length) return;
     // History snapshots describe our change, not a license to replace the
@@ -8597,8 +8633,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
-                <button type="button" disabled={index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
-                <button type="button" disabled={index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
+                <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
               </div>
               <div className="topbar-menu-section">
                 {!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
@@ -8746,8 +8782,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
 
         <div className="mobile-undo-redo" aria-label="История изменений">
-          <button type="button" disabled={index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
-          <button type="button" disabled={index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
         </div>
         {presentation && (
           <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>
