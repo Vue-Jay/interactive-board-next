@@ -86,3 +86,6 @@
   outline:none!important;
   box-shadow:none!important;
 }
+.workspace .board .board-object.object-image,
+.workspace .board .object-image .media-host,
+.workspace .board .object-image .media-image {background:transparent!important;}

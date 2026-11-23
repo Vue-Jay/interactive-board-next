@@ -1,4 +1,5 @@
 import type { Item, Point } from "./boardModel";
+export type EraserMode = "partial" | "stroke";
 
 /** A freehand eraser: cut an ink polyline only where the brush passed. */
 const distance2 = (p:Point,a:Point,b:Point) => {
@@ -121,12 +122,23 @@ export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[
  * boards are never scanned once per pointer movement.
  */
 export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
-  canErase:(item:Item)=>boolean=()=>true): Item[] {
+  canErase:(item:Item)=>boolean=()=>true, mode:EraserMode="partial"): Item[] {
   if (!path.length || radius <= 0) return items;
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const p of path){
     minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);
     maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);
+  }
+  if(mode==="stroke"){
+    const remaining=items.filter(item=>{
+      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!canErase(item))return true;
+      const pad=radius+(item.weight??3)/2;
+      // Rotated items need their expanded world bounds; never discard a
+      // long vertical stroke merely because its stored bounds are horizontal.
+      if(!item.rotation&&(item.x>maxX+pad||item.x+item.width<minX-pad||item.y>maxY+pad||item.y+item.height<minY-pad))return true;
+      return !inkTouchesEraser(item,path,radius);
+    });
+    return remaining.length===items.length?items:remaining;
   }
   const output:Item[]=[];
   let changed=false;
@@ -145,4 +157,27 @@ export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
     output.push(...fragments);
   }
   return changed?output:items;
+}
+
+/** A stroke eraser removes the original ID as soon as ANY ink is touched.
+ * Use the swept brush capsule, including round caps and rotated strokes. */
+export function inkTouchesEraser(item:Item,path:Point[],radius:number):boolean {
+  if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length||!path.length||radius<=0)return false;
+  const r=radius+(item.weight??3)/2;
+  const angle=-(item.rotation??0)*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+  const cx=item.x+item.width/2,cy=item.y+item.height/2;
+  const local=path.map(p=>({x:(p.x-cx)*c-(p.y-cy)*s+item.width/2,y:(p.x-cx)*s+(p.y-cy)*c+item.height/2}));
+  for(let i=0;i<local.length;i++){
+    const a=local[Math.max(0,i-1)],b=local[i];
+    const minX=Math.min(a.x,b.x)-r,maxX=Math.max(a.x,b.x)+r;
+    const minY=Math.min(a.y,b.y)-r,maxY=Math.max(a.y,b.y)+r;
+    if(minX>item.width||maxX<0||minY>item.height||maxY<0)continue;
+    if(item.points.length===1&&distance2(item.points[0],a,b)<=r*r)return true;
+    for(let j=1;j<item.points.length;j++){
+      const p=item.points[j-1],q=item.points[j];
+      if(Math.max(p.x,q.x)<minX||Math.min(p.x,q.x)>maxX||Math.max(p.y,q.y)<minY||Math.min(p.y,q.y)>maxY)continue;
+      if(cutInterval(p,q,a,b,r))return true;
+    }
+  }
+  return false;
 }

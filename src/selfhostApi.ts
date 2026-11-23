@@ -42,6 +42,7 @@ export type SelfhostLiveInkPacket={
   color:string;weight:number;offset:number;points:SelfhostPoint[];finished:boolean;
   cancelled?:boolean;
   cut_ids?:string[];
+  erase_mode?:"partial"|"stroke";
 };
 export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;online_at?:string};
 export type SelfhostLiveEvent=

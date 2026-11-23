@@ -18,7 +18,7 @@ const load=(code)=>{
  return exports;
 };
 
-const {resizedRect,preserveRotatedAnchor}=load(transpile("src/lektrusRotateResize.ts"));
+const {resizedRect,resizedImageRect,initialImageSize,preserveRotatedAnchor}=load(transpile("src/lektrusRotateResize.ts"));
 const model=load(transpile("src/boardModel.ts"));
 const app=read("src/BoardApp.tsx");
 const geometry=read("src/GeometryInstruments.tsx");
@@ -40,6 +40,20 @@ const outward={
  nw:[-30,-20],n:[0,-20],ne:[30,-20],e:[30,0],
  se:[30,20],s:[0,20],sw:[-30,20],w:[-30,0]
 };
+for(const [width,height] of [[500,120],[90,750],[1600,900],[200,200],[8,35],[2500,5]]){
+ const size=initialImageSize(width,height);
+ assert.ok(Math.abs(size.width/size.height-width/height)<1e-8,"image insertion must preserve its original ratio");
+ assert.ok(size.width<=420.00001&&size.height<=320.00001);
+ const image={x:70,y:90,...size};
+ for(const [handle,[dx,dy]] of Object.entries(outward)){
+  const next=resizedImageRect(image,handle,dx,dy);
+  assert.ok(Math.abs(next.width/next.height-width/height)<1e-8,"all image grips preserve ratio: "+handle);
+  assert.ok(next.width>=image.width&&next.height>=image.height-1e-8);
+  const tiny=resizedImageRect(image,handle,-dx*1000,-dy*1000);
+  assert.ok(tiny.width>0&&tiny.height>0&&Math.abs(tiny.width/tiny.height-width/height)<1e-8);
+ }
+}
+assert.equal(resizedImageRect({x:0,y:0,width:100,height:100},"e",100,0,4).height,50,"old padded frames restore source aspect");
 for(const [handle,[dx,dy]] of Object.entries(outward)){
  const result=resizedRect(base,handle,dx,dy,30,25,false);
  assert.ok(result.width>=base.width-(handle==="n"||handle==="s"?0:0));

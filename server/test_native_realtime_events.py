@@ -133,6 +133,10 @@ def test_live_erase_is_editor_only_and_validates_cancellation():
              "kind":"eraser", "color":"#000000", "weight":180, "offset":0,
              "points":[{"x":10,"y":20}, {"x":20,"y":20}], "finished":False, "cancelled":False, "cut_ids":[]}
     assert accept(frame)["points"] == frame["points"]
+    assert accept({**frame,"erase_mode":"stroke"})["erase_mode"] == "stroke"
+    assert "erase_mode" not in accept(frame)  # Older clients remain compatible.
+    with pytest.raises(InvalidLiveEvent,match="invalid_erase_mode"):
+        accept({**frame,"erase_mode":"invalid"})
     assert accept({**frame,"finished":True,"cancelled":True})["cancelled"] is True
     with pytest.raises(InvalidLiveEvent,match="read_only"):
         accept(frame,role="viewer")
