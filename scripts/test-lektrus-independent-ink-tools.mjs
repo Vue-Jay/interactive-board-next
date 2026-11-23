@@ -54,6 +54,13 @@ assert.equal(ink.normalizeInkPreferences({marker:{color:"#000000",size:100}}).ma
 const editor=fs.readFileSync("src/LectrisObjectEditor.tsx","utf8");
 assert.match(editor,/pen:\[1,3,6,12,22\]/);
 assert.match(editor,/onClick=\{\(\)=>updateWidth\(size\)\}/);
+assert.match(editor,/data-eraser-mode="partial" aria-pressed=\{value==="partial"\}/,
+ "Partial eraser must be a directly selectable, clearly marked mode");
+assert.match(editor,/data-eraser-mode="stroke" aria-pressed=\{value==="stroke"\}/,
+ "Whole-stroke eraser must be a directly selectable, clearly marked mode");
+assert.match(editor,/<strong>Участок<\/strong><small>Под ластиком<\/small>/);
+assert.match(editor,/<strong>Весь штрих<\/strong><small>Одним касанием<\/small>/);
+
 const inkCss=fs.readFileSync("src/lektrusSubjectPolish2026.css","utf8");
 assert.match(inkCss,/Every pen-width preset, especially the fifth 22px button/,
  "The maximum pen preset must remain accessible in narrow toolbars");
@@ -73,6 +80,13 @@ assert.match(app,/viewerToolRef\.current=chosen;\s*writeBoardSessionTool\(boardS
 assert.match(app,/useLayoutEffect\(\(\)=>\{\s*viewerToolRef\.current=tool;\s*writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
  "Keep individual tool selection intact on document re-render");
 const directCss=fs.readFileSync("src/lektrusResponsive.css","utf8");
+assert.match(directCss,/\.lektrus-eraser-mode-check/,
+ "The selected eraser behavior must be visible without relying only on color");
+assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\[aria-pressed="true"\]/,
+ "The active eraser mode needs a distinct selected state");
+assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\{min-height:50px/,
+ "Eraser mode choices must remain touch-sized on mobile");
+
 assert.match(directCss,/Five full-width, directly tappable pen presets/);
 assert.match(directCss,/\.lektrus-ink-settings-direct \.lektrus-direct-ink-widths\{/);
 assert.match(directCss,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)!important/);
