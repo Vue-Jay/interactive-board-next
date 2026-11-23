@@ -285,6 +285,7 @@ export async function selfhostLogin(email:string,password:string):Promise<Selfho
   });
   if(!response.ok)throw await responseError(response);
   const session=normalizeSession(await response.json());
+  saveRememberedSession(null);
   saveSession(session);
   return session;
 }
@@ -810,6 +811,7 @@ export async function selfhostCompletePasswordReset(token:string,password:string
     method:"POST",body:JSON.stringify({token,password}),
   });
   if(!response.ok)throw await responseError(response);
+  saveRememberedSession(null);
 }
 
 export type SelfhostBoardComment={
