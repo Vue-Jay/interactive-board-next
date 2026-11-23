@@ -192,6 +192,10 @@ assert.throws(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.co
 const atlasUI=fs.readFileSync(new URL('../src/LektrusMapAtlas.tsx',import.meta.url),'utf8');
 assert.match(atlasUI,/if\(annualPreview&&year===2025\)return \{type:"FeatureCollection",features:\[\],historicalUncoveredYear:2025\}/);
 assert.match(atlasUI,/data-atlas-uncovered-year="2025"/);
+assert.match(atlasUI,/const sourcedHistoryCenters=historical&&annualSource/);
+assert.match(atlasUI,/data-atlas-sourced-centers=\{sourcedHistoryCenters\.length\}/);
+assert.match(atlasUI,/\.\.\.historicalTreatyPortCenters\(snapshot\.year\),\.\.\.historicalCorsicaLiberationCenters\(snapshot\.year\)/);
+assert.match(atlasUI,/\.\.\.unresolvedCenters,\.\.\.sourcedHistoryCenters/);
 assert.throws(()=>historicalYearState(pack,1800));
 let requests=0, corrupt=false;
 const fetchFixture=async url=>{

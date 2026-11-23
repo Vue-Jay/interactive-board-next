@@ -899,7 +899,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    historicalSnapshots[Math.max(0,index-1)].year)/2));
  const schoolMarkers=historical&&mode==="events"?eventsNearYear(snapshot.year).map(event=>({...event,
   id:`school-${event.year}-${event.lat}-${event.lon}`})):[];
- const unresolvedCenters=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?[...historicalUnresolvedCenters(snapshot.year,source?.historicalTerritorialIssues??[]),...historicalTreatyPortCenters(snapshot.year),...historicalCorsicaLiberationCenters(snapshot.year)]:[];
+ const unresolvedCenters=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?
+   historicalUnresolvedCenters(snapshot.year,source?.historicalTerritorialIssues??[]):[];
+ const sourcedHistoryCenters=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?
+   [...historicalTreatyPortCenters(snapshot.year),...historicalCorsicaLiberationCenters(snapshot.year)]:[];
  const unresolvedRegions=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?historicalUnresolvedRegions(snapshot.year,source?.historicalTerritorialIssues??[]):[];
  const selectedRegionDetails=unresolvedRegions.find(r=>r.id===selectedMarker);
  const openUnresolvedRegion=(id:string)=>{setSelectedMarker(id);setSelected(null);setSelectedMineral(null);setHistoryTab('article');setInspectorOpen(true)};
@@ -909,7 +912,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   <p>Исключённые исходные атрибуции: {selectedRegionDetails.rows.map(r=>r.name).join('; ')}.</p>
   <ul>{selectedRegionDetails.sources.map((url,i)=><li key={url}><a href={url} target="_blank" rel="noopener noreferrer">Источник {i+1} ↗</a></li>)}</ul>
  </div>;
- const displayedMarkers=[...userMarkers.map(marker=>({...marker,url:undefined})),...schoolMarkers,...unresolvedCenters];
+ const displayedMarkers=[...userMarkers.map(marker=>({...marker,url:undefined})),...schoolMarkers,...unresolvedCenters,...sourcedHistoryCenters];
  const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
  const selectedAnnualReview=annualSource(snapshot.year)?selected?.properties?.review as {reason:string;reasonRu?:string;sources:string[]}|undefined:undefined;
  const selectedTerritorialAttributions=annualSource(snapshot.year)?selected?.properties?.territorialAttributions as {group:string;reason:string;sources:string[]}[]|undefined:undefined;
@@ -2350,8 +2353,23 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <summary>Неуточнённые территории: {unresolvedRegions.length}</summary>
      <small>Оранжевый пунктир показывает ошибочный исходный контур, а не исторически установленную границу. Принадлежность, местное управление и границы уточняются отдельно.</small>
      <ul>{unresolvedRegions.map(r=><li key={r.id}><button type="button" onClick={()=>openUnresolvedRegion(r.id)}>{r.title}</button><p>{r.description}</p><small>Исключённых исходных записей: {r.rows.length}</small></li>)}</ul>
-     {unresolvedCenters.length>0&&<><p>Ромбы — приблизительные местоположения подтверждённых политических центров, не границы государств.</p><ul>{unresolvedCenters.map(c=><li key={c.id}><button type="button" onClick={()=>{const [x,y]=projectGeography(c.lon,c.lat);const s=32;commitCamera({scale:s,position:normalizePosition({x:-(x-450)*s,y:-(y-225)*s},s)});setSelectedMarker(c.id);setSelected(null);setSelectedMineral(null);setHistoryTab('article')}}>{c.title} ⌖</button> <a href={c.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></li>)}</ul></>}
+     {unresolvedCenters.length>0&&<><p>Ромбы обозначают приблизительные местоположения исторических центров, а не границы государств.</p><ul>{unresolvedCenters.map(c=><li key={c.id}><button type="button" onClick={()=>{const [x,y]=projectGeography(c.lon,c.lat);const s=32;commitCamera({scale:s,position:normalizePosition({x:-(x-450)*s,y:-(y-225)*s},s)});setSelectedMarker(c.id);setSelected(null);setSelectedMineral(null);setHistoryTab('article')}}>{c.title} ⌖</button> <a href={c.url} target="_blank" rel="noopener noreferrer">Источник ↗</a></li>)}</ul></>}
     </details>}
+    {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&sourcedHistoryCenters.length>0&&
+     <details className="lektrus-atlas-layer-warning" data-atlas-sourced-centers={sourcedHistoryCenters.length}>
+      <summary>Датированные исторические ориентиры: {sourcedHistoryCenters.length}</summary>
+      <small>Документированные события и городские администрации. Точки не обозначают государственные границы и не утверждают иностранный суверенитет над окружающей территорией.</small>
+      <ul>{sourcedHistoryCenters.map(c=><li key={c.id}>
+       <button type="button" onClick={()=>{
+        const [x,y]=projectGeography(c.lon,c.lat),s=32;
+        commitCamera({scale:s,position:normalizePosition({x:-(x-450)*s,y:-(y-225)*s},s)});
+        setSelectedMarker(c.id);setSelected(null);setSelectedMineral(null);
+        setHistoryTab("article");setInspectorOpen(true);
+       }}>{c.title} ⌖</button>{" "}
+       <a href={c.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>
+       <p>{c.description}</p>
+      </li>)}</ul>
+     </details>}
     {historical&&annualSource(snapshot.year)&&!!source?.historicalRejected?.length&&<details className="lektrus-atlas-layer-warning"><summary>Исключённые неподтверждённые контуры: {source.historicalRejected.length}</summary><ul>{source.historicalRejected.map((r,i)=><li key={i}><strong>{r.name}</strong>{r.review&&<p>{r.review.reasonRu??r.review.reason}</p>}{r.review?.sources.map(url=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Источник ↗</a></span>)}</li>)}</ul><small>Эти контуры не показаны из-за подтверждённых ошибок. Отсутствие контура не означает отсутствие государства.</small></details>}
     {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalCoverageGaps?.length&&<details open={annualGapDetailsOpen} onToggle={e=>setAnnualGapDetailsOpen(e.currentTarget.open)} className="lektrus-atlas-layer-warning" data-atlas-annual-gap-count={source.historicalCoverageGaps.length}>
      <summary>Пробелы исторического покрытия: {source.historicalCoverageGaps.length}</summary>
