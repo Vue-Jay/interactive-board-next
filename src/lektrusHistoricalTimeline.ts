@@ -78,6 +78,18 @@ export function historicalYearState(pack: HistoricalPack, year: number) {
   };
 }
 
+/** Comparing against a missing/archival year would falsely turn a data
+ * coverage gap into the birth or disappearance of every named state.
+ * Keep this release gate independent of the visual "Compare" checkbox. */
+export function historicalYearSourcesComparable(
+  current: {historicalUncoveredYear?:number}|null|undefined,
+  previous: {historicalUncoveredYear?:number}|null|undefined,
+  currentIsArchivedOverview=false,
+): boolean {
+  return !!current&&!!previous&&!currentIsArchivedOverview&&
+    current.historicalUncoveredYear===undefined&&previous.historicalUncoveredYear===undefined;
+}
+
 /** Geometry adapter for the existing SVG atlas renderer. Rejected records
  * remain in the audit state but cannot silently reach the map layer. */
 export function historicalYearFeatureCollection(state: ReturnType<typeof historicalYearState>, includeOverlays=false) {

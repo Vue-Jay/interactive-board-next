@@ -7,7 +7,7 @@ import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
-import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
+import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,historicalYearSourcesComparable,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {buildChangeRegistry,componentHash,exactComponentConflicts,sourceComponentEvidence} from './audit-lektrus-historical-changes.mjs';
@@ -67,6 +67,13 @@ assert.equal(groupedFixture.length,1);assert.equal(groupedFixture[0].rows.length
 assert.deepEqual(historicalUnresolvedRegions(1768,[unresolvedFixture]),[]);
 assert.throws(()=>historicalYearOrdinal(0));
 for(let year=2024;year>=-3400;year--){if(year===0)continue;assert.equal(historicalYearFromOrdinal(historicalYearOrdinal(year)),year);}
+// No false political "extinctions" when moving across 2024→2025 or
+// 2025→archive-2026; the comparison must also be withheld visually.
+assert.equal(historicalYearSourcesComparable({features:[]},{features:[]}),true);
+assert.equal(historicalYearSourcesComparable({historicalUncoveredYear:2025},{features:[]}),false);
+assert.equal(historicalYearSourcesComparable({features:[]},{historicalUncoveredYear:2025}),false);
+assert.equal(historicalYearSourcesComparable({features:[]},{features:[]},true),false);
+assert.equal(historicalYearSourcesComparable(null,{features:[]}),false);
 const normalized=normalizeHistoricalSource(source);
 assert.equal(normalized.counts.uniqueGeometries,2);
 assert.equal(normalized.counts.sourceRelations,1);

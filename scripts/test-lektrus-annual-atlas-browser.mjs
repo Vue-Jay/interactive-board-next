@@ -138,6 +138,11 @@ async function main(){
      await page.locator('[data-atlas-uncovered-year="2025"]').waitFor({state:'visible',timeout:90000});
      const noData=await page.locator('[data-atlas-uncovered-year="2025"]').textContent();
      if(!noData?.includes('не копирует соседние годы'))row.issues.push({kind:'missing-no-fallback-explanation'});
+     await page.getByRole('tab',{name:'Изменения'}).click();
+     await page.locator('[data-atlas-comparison-unavailable="true"]').waitFor({state:'visible',timeout:5000});
+     if(await page.locator('.lektrus-atlas-changes').count())row.issues.push({kind:'false-state-extinction-from-missing-data'});
+     if(await page.locator('.lektrus-atlas-compare').count())row.issues.push({kind:'historical-comparison-enabled-without-source'});
+     await page.getByRole('tab',{name:'Территории'}).click();
      const stale=await page.locator('path.lektrus-atlas-country[data-atlas-feature-index]').count();
      if(stale)row.issues.push({kind:'stale-polygons-on-unsupported-year',actual:stale});
      row.coverageStatus='missing-dated-source';row.expectedClicks=0;

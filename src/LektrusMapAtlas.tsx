@@ -26,7 +26,7 @@ import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./L
 import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale,zoomAtlasCamera} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots as legacyHistoricalSnapshots,nearestSnapshotIndex,yearLabel,eventsNearYear} from "./lektrusAtlasModel";
-import {HISTORY_FIRST_YEAR,HISTORY_LAST_YEAR,historicalYearFeatureCollection} from "./lektrusHistoricalTimeline";
+import {HISTORY_FIRST_YEAR,HISTORY_LAST_YEAR,historicalYearFeatureCollection,historicalYearSourcesComparable} from "./lektrusHistoricalTimeline";
 import {createHistoricalTimelineLoader} from "./lektrusHistoricalTimelineLoader";
 import {historicalGapLocators,HISTORICAL_GAP_LOCATOR_SOURCE} from "./lektrusHistoricalGapLocators";
 import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters} from "./lektrusHistoricalUnresolvedCenters";
@@ -888,11 +888,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    return [{key,name,feature}];
   }).sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,450);
  },[administrative,selectedRegion,regionId]);
+ const canCompareYears=historicalYearSourcesComparable(source,previous,modernReference);
  const changes=useMemo(()=>{
-  if(!source||!previous)return null;
+  if(!canCompareYears||!source||!previous)return null;
   const visible=(collection:typeof source)=>({...collection,features:collection.features.filter(f=>!f.properties?.historicalRole||f.properties.historicalRole==='polity'||f.properties.historicalRole===annualOverlay)});
   return summariseNamedChanges(visible(previous),visible(source));
- },[source,previous,annualOverlay]);
+ },[source,previous,annualOverlay,canCompareYears]);
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
    historicalSnapshots[Math.max(0,index-1)].year)/2));
@@ -1727,7 +1728,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <circle r="1.25" fill="#fff" stroke="none"/>
        <title>Метка координат. Двойной щелчок или правая кнопка для удаления</title>
       </g>}
-      {historical&&compare&&previous&&<g fill="none" stroke="#d64646"
+      {historical&&compare&&canCompareYears&&previous&&<g fill="none" stroke="#d64646"
        strokeWidth=".95" strokeDasharray="5 3" strokeOpacity=".85" pointerEvents="none">
        {previous.features.filter(f=>(!f.properties?.historicalRole||f.properties.historicalRole==='polity'||f.properties.historicalRole===annualOverlay)&&!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
@@ -2622,10 +2623,11 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      {mode==="relief"&&<p>При включённой гипсометрии цвета рассчитаны по высотам DEM; без неё заливка обозначает тип природной области. Подписи высот берутся из атрибутов Natural Earth.</p>}
      {citiesOn&&<p>На политической карте столицы появляются после стран, регионы и города постепенно показываются при приближении. Городские границы берутся из OSM там, где доступны геометрии.</p>}
     </div>}
-    {historical&&historyTab==="changes"&&index>0&&<label className="lektrus-atlas-compare">
+    {historical&&historyTab==="changes"&&index>0&&canCompareYears&&<label className="lektrus-atlas-compare">
      <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>
      <span>Границы предыдущего снимка <small>(красный пунктир)</small></span>
     </label>}
+    {historical&&historyTab==="changes"&&index>0&&!canCompareYears&&<p className="lektrus-atlas-compare-unavailable" role="status" data-atlas-comparison-unavailable="true">Нельзя сравнить годы: для одного из них нет самостоятельной датированной карты или доступен только архивный обзор. Отсутствие данных не означает исчезновение государств.</p>}
     {historical&&historyTab==="changes"&&changes&&<div className="lektrus-atlas-changes">
      <strong>Отличия от предыдущего снимка</strong>
      <small>{yearLabel(historicalSnapshots[index-1].year)} → {yearLabel(snapshot.year)}</small>
