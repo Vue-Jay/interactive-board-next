@@ -67,6 +67,6 @@ for(const [tool,sizes] of [["pen",[1,3,6,12,22]],["marker",[2,7,14,28,48]],["era
  assert.ok(sizes.every((n,i)=>i===0||n>sizes[i-1]*1.65),
   "Visually distinct presets for "+tool);
 }
-assert.ok(app.includes("<InkWidthSample tool={tool} size={size}"),
- "Bottom toolbar must show a real-size proportional stroke and numeric label");
+assert.ok(widthsSource.includes("<InkWidthSample tool={inkTool} size={size}"),
+ "The single bottom toolbar must show proportionate thickness previews");
 console.log("Lektrus brush presets + editable non-destructive image crops: OK");

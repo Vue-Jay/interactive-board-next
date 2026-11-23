@@ -374,7 +374,7 @@ export default function App() {
     const initialize=async()=>{
       if(route.kind==="demo"){if(alive)setAuthReady(true);return;}
       if(new URLSearchParams(window.location.search).has("password-reset")){
-        await logoutUser();
+        await logoutUser({forget:true});
         if(alive){setAuthUser(null);setAuthReady(true)}
         return;
       }

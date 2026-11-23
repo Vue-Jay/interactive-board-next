@@ -33,7 +33,7 @@ async function loadSelfhost(enabled, platform="web") {
   const data=new Map([["lesson-board.supabase.session.v1","production-must-remain"]]);
   const record=[];
   let expires=900,refreshes=0,documentVersion=3,documentFailures=0,healthStatus=200,healthBody={ok:true,service:'lektrus-selfhost'};
-  let refreshStatus=200,rotations=0,activeRefresh="refresh-first",rejectOldAccess=false;
+  let refreshStatus=200,rotations=0,activeRefresh="refresh-first",rejectOldAccess=false,transientRefresh401=false;
   let lockTail=Promise.resolve();
   const locks={request(_name,callback){
     const result=lockTail.then(callback);lockTail=result.catch(()=>{});return result;
@@ -76,6 +76,7 @@ async function loadSelfhost(enabled, platform="web") {
     }
     if(u.pathname==="/api/v1/auth/refresh"){
       refreshes++;
+      if(transientRefresh401){transientRefresh401=false;return ok({detail:"Update in progress"},401);}
       if(refreshStatus!==200)return ok({detail:"Session service unavailable"},refreshStatus);
       if(JSON.parse(options.body).refresh_token!==activeRefresh)return ok({detail:"Already rotated"},401);
       const suffix=++rotations===1?"":"-"+rotations;
@@ -90,6 +91,10 @@ async function loadSelfhost(enabled, platform="web") {
       const body=JSON.parse(options.body);
       assert.deepEqual(body,{email:"recipient@example.test",kinds:["password_reset","reply"]});
       return ok({email:body.email,results:[{kind:"password_reset",status:"sent"},{kind:"reply",status:"failed"}]});
+    }
+    if(u.pathname==="/api/v1/auth/me"){
+      if(!headers.get("Authorization")?.startsWith("Bearer "))return ok({detail:"Unauthorized"},401);
+      return ok(user);
     }
     if(u.pathname==="/api/v1/auth/logout")return new Response(null,{status:200});
     if(u.pathname==="/api/v1/boards"&&options.method==="POST"){
@@ -290,7 +295,7 @@ async function loadSelfhost(enabled, platform="web") {
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
   return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
-    setRefreshStatus:v=>{refreshStatus=v},rejectOldAccess:()=>{rejectOldAccess=true},
+    setRefreshStatus:v=>{refreshStatus=v},setTransientRefresh401:()=>{transientRefresh401=true},rejectOldAccess:()=>{rejectOldAccess=true},
     remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
 }
 
@@ -650,6 +655,36 @@ await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
+// A deliberate exit retains one server-authenticated, one-click last account.
+const quick=await loadSelfhost(true);
+const quickSession=await quick.api.selfhostLogin("teacher@example.test","test-password");
+quick.api.leaveSelfhostAccountRemembered();
+assert.equal(quick.api.cachedSelfhostSession(),null,"Exit must end the active session");
+assert.equal(quick.api.getRememberedSelfhostAccount().email,"teacher@example.test");
+const restarted=quick.forkApi();
+assert.equal(restarted.cachedSelfhostSession(),null,"Reload must not silently log in");
+assert.equal(restarted.getRememberedSelfhostAccount().name,"Учитель");
+const restored=await restarted.resumeRememberedSelfhostAccount();
+assert.equal(restored.user.id,quickSession.user.id,"One click restores the prior account");
+assert.equal(restarted.getRememberedSelfhostAccount(),null,"Remembered token moves to active session");
+restarted.leaveSelfhostAccountRemembered();
+await restarted.forgetRememberedSelfhostAccount();
+assert.equal(restarted.getRememberedSelfhostAccount(),null,"Forget removes the last account button");
+assert.equal(quick.storage.get("lektrus.selfhost.remembered.v1"),undefined);
+const temporary=await loadSelfhost(true);
+await temporary.api.selfhostLogin("teacher@example.test","test-password");
+temporary.api.leaveSelfhostAccountRemembered();
+temporary.setRefreshStatus(503);
+const savedQuickSession=JSON.parse(temporary.storage.get("lektrus.selfhost.remembered.v1"));
+temporary.storage.set("lektrus.selfhost.remembered.v1",JSON.stringify({...savedQuickSession,expires_at:1}));
+await assert.rejects(temporary.api.resumeRememberedSelfhostAccount(),e=>e.status===503);
+assert.equal(temporary.api.cachedSelfhostSession(),null,"Temporary outage must not cause automatic login");
+assert.equal(temporary.api.getRememberedSelfhostAccount().email,"teacher@example.test",
+ "Transient update failure must keep the last-account quick-login button");
+temporary.setRefreshStatus(200);
+assert.equal((await temporary.api.resumeRememberedSelfhostAccount()).user.id,quickSession.user.id);
+console.log("Last account quick login, manual forget, reload and transient refresh recovery OK.");
+
 // Independent tabs share storage and only one single-use refresh token.
 const multi=await loadSelfhost(true);
 await multi.api.selfhostLogin("teacher@example.test","test-password");
@@ -670,6 +705,15 @@ assert.equal((await secondTab.selfhostSession()).access_token,"token-refreshed-2
 expiredSession();multi.setRefreshStatus(401);
 assert.equal(await multi.api.selfhostSession(),null,"A confirmed rejection still expires the session");
 assert.equal(secondTab.cachedSelfhostSession(),null);
+const duringUpdate=await loadSelfhost(true);
+await duringUpdate.api.selfhostLogin("teacher@example.test","test-password");
+const beforeUpdate=JSON.parse(duringUpdate.storage.get("lektrus.selfhost.session.v1"));
+duringUpdate.storage.set("lektrus.selfhost.session.v1",JSON.stringify({...beforeUpdate,expires_at:1}));
+duringUpdate.setTransientRefresh401();
+assert.equal((await duringUpdate.api.selfhostSession()).user.id,beforeUpdate.user.id,
+ "A single temporary auth rejection during an update must not sign out the user");
+assert.equal(duringUpdate.api.cachedSelfhostSession()?.user.id,beforeUpdate.user.id);
+assert.equal(duringUpdate.refreshCount(),2,"Refresh must retry only once after transient 401");
 const delayed=await loadSelfhost(true);
 await delayed.api.selfhostLogin("teacher@example.test","test-password");
 delayed.rejectOldAccess();

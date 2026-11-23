@@ -61,7 +61,7 @@ assert.match(editor,/data-eraser-mode="stroke" aria-pressed=\{value==="stroke"\}
 assert.match(editor,/aria-label="Стирать участок линии"/);
 assert.match(editor,/aria-label="Стирать весь штрих одним касанием"/);
 assert.match(editor,/className="lektrus-eraser-mode-label" aria-hidden="true">Часть<\/span>/);
-assert.match(editor,/className="lektrus-eraser-mode-label" aria-hidden="true">Всё<\/span>/);
+assert.match(editor,/className="lektrus-eraser-mode-label" aria-hidden="true">Штрих<\/span>/);
 assert.match(editor,/viewBox="0 0 48 32"/, "Each eraser mode has an illustrative icon");
 
 const inkCss=fs.readFileSync("src/lektrusSubjectPolish2026.css","utf8");
@@ -82,32 +82,23 @@ assert.match(app,/viewerToolRef\.current=chosen;\s*writeBoardSessionTool\(boardS
  "The viewer's tool must be stored BEFORE React schedules a UI update");
 assert.match(app,/useLayoutEffect\(\(\)=>\{\s*viewerToolRef\.current=tool;\s*writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
  "Keep individual tool selection intact on document re-render");
-const directCss=fs.readFileSync("src/lektrusResponsive.css","utf8");
-assert.match(directCss,/\.lektrus-eraser-mode-check/,
- "The selected eraser behavior must be visible without relying only on color");
-assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\[aria-pressed="true"\]/,
- "The active eraser mode needs a distinct selected state");
-assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\{width:60px;min-width:60px;min-height:54px/,
- "Compact mobile eraser controls must still have finger-sized touch targets");
-assert.match(directCss,/\.lektrus-eraser-mode-label\{/,
- "Keep a minimal caption for clarity without text-heavy controls");
-assert.match(app,/className=\{`app \$\{presentation \? "presentation-mode" : ""\}/,
- "Presentation mode belongs to the app ancestor, not the workspace");
-assert.match(directCss,/\.app:not\(\.presentation-mode\) \.workspace \.ink-settings\.lektrus-ink-settings-direct\{display:flex!important\}/,
- "Touch devices must see their eraser settings outside presentation mode");
-assert.doesNotMatch(directCss,/\.workspace:not\(\.presentation-mode\) \.ink-settings\.lektrus-ink-settings-direct/,
- "A workspace-only check would show ink controls during presentation mode");
-assert.match(directCss,/\.workspace \.ink-settings\.lektrus-ink-settings-direct:has\(\.lektrus-eraser-modes\)/,
- "Portrait tool settings must keep both mode icons and all five widths reachable");
-assert.match(directCss,/\.app\.presentation-mode \.workspace \.ink-settings\.lektrus-ink-settings-direct\{display:none!important\}/,
- "The eraser strip must not cover presentation mode");
-
-assert.match(directCss,/Five full-width, directly tappable pen presets/);
-assert.match(directCss,/\.lektrus-ink-settings-direct \.lektrus-direct-ink-widths\{/);
-assert.match(directCss,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)!important/);
-assert.match(directCss,/\.lektrus-direct-ink-widths>button\{/);
-assert.match(directCss,/touch-action:manipulation!important/,
- "Every thickness including pen 22 px must receive touches");
+const dockCss=fs.readFileSync("src/lektrusMobileWorkspacePolish.css","utf8");
+const style=fs.readFileSync("src/lektrusResponsive.css","utf8");
+assert.match(style,/\.lektrus-eraser-mode-check/,"Active eraser must have a checkmark");
+assert.match(style,/\.workspace \.lektrus-eraser-modes>button\[aria-pressed="true"\]/);
+assert.match(editor,/data-eraser-mode="partial"/);
+assert.match(editor,/data-eraser-mode="stroke"/);
+assert.equal((app.match(/<LectrisQuickProperties/g)||[]).length,1,
+ "There must only be one original bottom ink toolbar");
+assert.doesNotMatch(app,/lektrus-ink-settings-direct/,
+ "Never render an extra upper ink settings panel");
+assert.match(app,/board-ink-dock-open/,"Reserve safe non-canvas footer");
+assert.match(dockCss,/\.workspace\.board-ink-dock-open \.board\s*\{\s*bottom:96px!important/);
+assert.match(dockCss,/\.workspace\.board-ink-dock-open:has\(\.is-ink-properties\[data-ink-upper-row="true"\]\) \.board/);
+assert.match(dockCss,/\.workspace\.board-ink-dock-open \.board\s*\{\s*bottom:145px!important/);
+assert.match(dockCss,/\.lectris-quick-properties\.is-ink-properties\s*\{/);
+assert.match(editor,/viewBox="0 0 48 32"/);
+assert.match(app,/className=\{`app \$\{presentation \? "presentation-mode" : ""\}/);
 assert.match(app,/if \(gesture\.current \|\| eraserSession\.current\)/,
  "Remote document changes must defer while local ink is being drawn");
 assert.match(app,/if \(decision === "conflict"\)/,
