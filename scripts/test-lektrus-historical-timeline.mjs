@@ -57,6 +57,12 @@ assert.equal(settlementFixture.records[0].role,'settlement');
 assert.equal(settlementFixture.records[0].sourceRole,'polity');
 assert.equal(settlementFixture.records[0].geometryId,sha256(JSON.stringify(square())));
 const source={type:'FeatureCollection',features:[feature('A',-3400,0),feature('A',1,10),feature('Mali Federation',1960,1960,square(),'Q216632'),feature('Mali Federation',1961,2024,square(),'Q216632'),feature('Republic of Indonesia',1960,1975,square(137.5,-4.5),'Q252'),feature('(Relation)',1,2024,square(),'','RELATION','A;B'),feature('(Composite)',1,10,square(),'','POLITY','A')]};
+assert.ok(territorialResolutions.davaoTransfer.reasonRu.includes('к концу 1849'),
+ 'The city history dates Oyanguren\'s claimed peaceful control to the END of 1849');
+assert.ok(!territorialResolutions.davaoTransfer.reasonRu.includes('к началу 1849'),
+ 'Do not backdate Davao Gulf control to early 1849');
+assert.ok(territorialResolutions.davaoTransfer.reason.includes('The 1848 polygon is therefore'),
+ '1848 conquest of the fortified settlement is not a survey of the entire gulf');
 assert.equal(tianjinConcessionChronology.length,8);
 assert.deepEqual(tianjinConcessionStatus(1860).established.map(c=>c.id),['british']);
 assert.deepEqual(tianjinConcessionStatus(1895).established.map(c=>c.id),['german']);

@@ -23,6 +23,12 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# New atlas pushes supersede the old heavy 24-shard browser audits.
+# GitHub cancels the old workflow run rather than continuing to spend minutes
+# on a no-longer-current candidate. Different PRs remain independent.
+concurrency:
+  group: atlas-exhaustive-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   modern-boundary-audit-2026:
     runs-on: ubuntu-latest
