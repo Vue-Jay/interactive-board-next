@@ -1,6 +1,7 @@
 // Full synthetic SVG selection/card acceptance for the pinned legacy years,
-// plus a physically dispatched mouse click on a visible country per year.
-// The sampled pointer check does not prove that EVERY shape is physically hittable.
+// plus an actual Playwright mouse click and emulated touchscreen tap on an
+// on-screen country per year. These sample physical hit-testing paths but do
+// not prove that EVERY shape or a real physical device works.
 // Run against a local build BEFORE publishing; use genuine pinned source files.
 // LEKTRUS_ATLAS_DATA_DIR=/path/to/pinned/files node scripts/test-lektrus-atlas-every-country-browser.mjs
 import assert from "node:assert/strict";
@@ -15,7 +16,7 @@ assert.ok(dir,"LEKTRUS_ATLAS_DATA_DIR must contain the pinned GeoJSON files");
 const base=process.env.LEKTRUS_ATLAS_BASE_URL||"http://127.0.0.1:4175";
 const browser=await chromium.launch({headless:true,...(process.env.LEKTRUS_CHROMIUM_EXECUTABLE?{executablePath:process.env.LEKTRUS_CHROMIUM_EXECUTABLE}:{})});
 try{
- const page=await browser.newPage({viewport:{width:1360,height:1000}});
+ const page=await browser.newPage({viewport:{width:1360,height:1000},hasTouch:true});
  const errors=[];
  page.on("pageerror",err=>errors.push(err.message));
  await page.route(/(?:historical-basemaps|natural-earth-vector).*\/(?:world_[^/]+\.geojson|ne_[^/]+\.geojson|index\.json)(?:\?.*)?$/,async route=>{
@@ -33,9 +34,9 @@ try{
  await page.getByRole("option",{name:"Весь мир",exact:true}).click();
  const requested=process.env.LEKTRUS_ATLAS_YEARS?.split(",").map(Number);
  if(requested)for(const year of requested)assert.ok(years.includes(year),`missing period in UI: ${year}`);
- let tested=0,physicalMouseHits=0;
+ let tested=0,physicalMouseHits=0,physicalTouchHits=0;
  const noPhysicalHit=[];
- const verifyRealMouseHit=async year=>{
+ const verifyPhysicalInput=async(year,ids)=>{
   // The DOM-dispatched click above does not exercise hit testing. Locate a
   // real on-screen pixel genuinely owned by a painted SVG country, avoiding
   // labels, zoom controls, overlapping paths and polygons with empty centers.
@@ -66,8 +67,22 @@ try{
   assert.ok((await actual.locator('.lektrus-atlas-description strong').first().textContent())?.trim(),
    `${year}/${probe.id}: real mouse click did not open a populated card`);
   physicalMouseHits++;
+  // Reset the card to a DIFFERENT country; otherwise a broken touch handler
+  // could "pass" because the mouse already selected the expected one.
+  const otherId=ids.find(id=>id!==probe.id);
+  assert.ok(otherId,`${year}: need a second territory to verify touch selection`);
+  await page.locator(`path.lektrus-atlas-country[data-atlas-feature-index="${otherId}"]`).dispatchEvent('click');
+  await page.locator(`.lektrus-atlas-info-object[data-atlas-selected-index="${otherId}"]`).waitFor({state:'visible',timeout:6000});
+  // Playwright emits touchstart/touchend in a hasTouch Chromium context.
+  // This is a real browser hit-test path, but NOT real Android hardware QA.
+  await page.touchscreen.tap(probe.x,probe.y);
+  await actual.waitFor({state:'visible',timeout:6000});
+  assert.ok((await actual.locator('.lektrus-atlas-description strong').first().textContent())?.trim(),
+   `${year}/${probe.id}: emulated touch did not open a populated card`);
+  physicalTouchHits++;
  };
- for(const year of years.filter(y=>!requested||requested.includes(y)).sort((a,b)=>b-a)){
+ const yearsToAudit=years.filter(y=>!requested||requested.includes(y)).sort((a,b)=>b-a);
+ for(const year of yearsToAudit){
   await period.selectOption(String(year));
   await page.locator(`[data-atlas-source-year="${year}"]`).waitFor({timeout:90000});
   await page.getByTitle("Вписать выбранный регион").click();
@@ -126,12 +141,14 @@ try{
    tested++;
   }
   if(year===2026){assert.equal(verifiedStats.size,195,"all 195 UN roster cards must expose verified statistics");console.log("2026: 195 sourced country statistics cards verified after map clicks");}
-  await verifyRealMouseHit(year);
-  console.log(`${year}: ${ids.length} synthetic SVG card checks, ${physicalMouseHits} sampled physical mouse hits, ${tested} total`);
+  await verifyPhysicalInput(year,ids);
+  console.log(`${year}: ${ids.length} synthetic SVG card checks, ${physicalMouseHits} sampled mouse clicks, ${physicalTouchHits} emulated touch taps, ${tested} total`);
  }
  assert.deepEqual(errors,[],"uncaught browser errors during atlas audit");
- console.log(`Verified ${tested} synthetic SVG path card checks and ${physicalMouseHits} real screen-coordinate mouse hits; ${noPhysicalHit.length} years lacked a visible probe.`);
- if(noPhysicalHit.length)console.warn('Historical atlas physical hit-testing gaps (not accepted):',JSON.stringify(noPhysicalHit));
- // A passing UI test never certifies historical facts, all islands, touch
- // interactions or a full per-year/per-territory physical-pointer audit.
+ console.log(`Verified ${tested} synthetic SVG path card checks, ${physicalMouseHits} screen-coordinate mouse clicks and ${physicalTouchHits} emulated touchscreen taps. Missing physical probes: ${noPhysicalHit.length}.`);
+ assert.deepEqual(noPhysicalHit,[],'No historical year may pass without an actually visible mouse/touch target');
+ assert.equal(physicalMouseHits,yearsToAudit.length,'One trusted mouse hit per historical reference year required');
+ assert.equal(physicalTouchHits,yearsToAudit.length,'One emulated touchscreen hit per historical reference year required');
+ // Even a passing sampled test never certifies independent historical facts,
+ // touch on actual tablets, or physical hit-testing of EVERY country/year.
 }finally{await browser.close()}
