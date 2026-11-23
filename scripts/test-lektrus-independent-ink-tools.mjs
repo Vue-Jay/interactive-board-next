@@ -91,11 +91,15 @@ assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\{width:60px;mi
  "Compact mobile eraser controls must still have finger-sized touch targets");
 assert.match(directCss,/\.lektrus-eraser-mode-label\{/,
  "Keep a minimal caption for clarity without text-heavy controls");
-assert.match(directCss,/\.workspace:not\(\.presentation-mode\) \.ink-settings\.lektrus-ink-settings-direct\{display:flex!important\}/,
- "Touch devices must see their eraser settings even when the legacy quick panel is hidden");
+assert.match(app,/className=\{`app \$\{presentation \? "presentation-mode" : ""\}/,
+ "Presentation mode belongs to the app ancestor, not the workspace");
+assert.match(directCss,/\.app:not\(\.presentation-mode\) \.workspace \.ink-settings\.lektrus-ink-settings-direct\{display:flex!important\}/,
+ "Touch devices must see their eraser settings outside presentation mode");
+assert.doesNotMatch(directCss,/\.workspace:not\(\.presentation-mode\) \.ink-settings\.lektrus-ink-settings-direct/,
+ "A workspace-only check would show ink controls during presentation mode");
 assert.match(directCss,/\.workspace \.ink-settings\.lektrus-ink-settings-direct:has\(\.lektrus-eraser-modes\)/,
  "Portrait tool settings must keep both mode icons and all five widths reachable");
-assert.match(directCss,/\.presentation-mode \.workspace \.ink-settings\.lektrus-ink-settings-direct\{display:none!important\}/,
+assert.match(directCss,/\.app\.presentation-mode \.workspace \.ink-settings\.lektrus-ink-settings-direct\{display:none!important\}/,
  "The eraser strip must not cover presentation mode");
 
 assert.match(directCss,/Five full-width, directly tappable pen presets/);
