@@ -8336,7 +8336,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setRemoteObjectPoses({});
       setRemoteWork({});
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
     if(!adminHidden) workChannel.current?.publish(selected,
