@@ -8723,7 +8723,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
          </section></div>}
         {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
 
-        {!objectEditorOpen && !presentation && selectedItems.length===0 && <LectrisQuickProperties userId={authUser.id}
+        {!objectEditorOpen && !presentation && selectedItems.length===0 && tool!=="pen" && tool!=="marker" && tool!=="eraser" && <LectrisQuickProperties userId={authUser.id}
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize} eraserMode={eraserMode} onEraserMode={setEraserMode}
