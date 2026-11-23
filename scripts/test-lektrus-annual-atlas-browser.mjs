@@ -1,5 +1,7 @@
-// Exhaustive annual real-browser audit. One record per year, one actual SVG
-// click per rendered territory/layer per year, with results retained even on failure.
+// Exhaustive annual Chromium DOM-handler audit. Each rendered territory per
+// year receives a synthetic SVG click to verify selection and its facts.
+// This does NOT prove that physical mouse/touch hit testing works. That remains
+// a separate release gate; preserve the distinction in every report.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -128,12 +130,14 @@ async function main(){
    return {mode,rendered,issues,results};
   },{year,mode,expected,modern});
   const runYear=async year=>{
-   const row={year,shard,source:year===2026?'Natural Earth historical archive overview':year===2025?'missing':'Cliopatria 0.2.1',coverageStatus:'candidate',expectedClicks:null,issues:[],layers:[],gaps:[],rejected:[],pageErrors:[],completed:false};
+   const row={year,shard,source:year===2026?'Natural Earth historical archive overview':year===2025?'missing':'Cliopatria 0.2.1',coverageStatus:'candidate',interactionMethod:'synthetic-svg-dom-click',physicalClicks:0,expectedClicks:null,issues:[],layers:[],gaps:[],rejected:[],pageErrors:[],completed:false};
    const errorStart=completed===0?0:errors.length;
    try{
     if(year===2025){
-     await input.fill('2025');await input.press('Enter');
-     await page.getByRole('alert').filter({hasText:'Для 2025 года пока нет'}).waitFor({timeout:90000});
+     await openYear(2025);
+     await page.locator('[data-atlas-uncovered-year="2025"]').waitFor({state:'visible',timeout:90000});
+     const noData=await page.locator('[data-atlas-uncovered-year="2025"]').textContent();
+     if(!noData?.includes('не копирует соседние годы'))row.issues.push({kind:'missing-no-fallback-explanation'});
      const stale=await page.locator('path.lektrus-atlas-country[data-atlas-feature-index]').count();
      if(stale)row.issues.push({kind:'stale-polygons-on-unsupported-year',actual:stale});
      row.coverageStatus='missing-dated-source';row.expectedClicks=0;
@@ -226,7 +230,7 @@ async function main(){
   };
   if(shard===0&&!focused){await runYear(2026);await runYear(2025);}
   for(const year of years)await runYear(year);
-  console.log(`Shard ${shard}: ${completed} years, ${clicked} actual SVG clicks, ${passed} card checks, ${failures} technical issues. Historical truth remains unverified.`);
+  console.log(`Shard ${shard}: ${completed} years, ${clicked} synthetic SVG DOM-handler dispatches, ${passed} card checks, ${failures} technical issues. Physical pointer hit-testing and independent historical accuracy remain UNVERIFIED.`);
   if(failures||completed!==years.length+(shard===0&&!focused?2:0))process.exitCode=1;
  }finally{await browser.close();}
 }

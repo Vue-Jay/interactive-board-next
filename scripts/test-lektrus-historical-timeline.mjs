@@ -121,10 +121,12 @@ assert.throws(()=>validateHistoricalPack({...pack,geometries:{}},block));
 // year zero is not. Accept only years belonging to the enclosing data pack.
 const bceBlock=historicalBlockForYear(fixture,-1);
 const bcePack=JSON.parse(fs.readFileSync(path.join(fixtureDir,bceBlock.file)));
-const bceGap={name:'Undated state boundary',date:'-1',reason:'Unknown source coverage',source:'https://www.un.org/en/about-us/growth-in-un-membership'};
+const bceGap={name:'Undated state boundary',date:'-1',reason:'Unknown source coverage',source:'https://www.metmuseum.org/exhibitions/listings/2003/art-of-the-first-cities'};
 assert.doesNotThrow(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[bceGap]}},bceBlock));
 assert.throws(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.coverageGaps,'0':[bceGap]}},bceBlock));
 assert.ok(historicalYearState({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[bceGap]}},-1).coverageGaps.length===1);
+assert.throws(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[{...bceGap,source:'http://example.org'}]}},bceBlock),
+ 'Historical evidence must use HTTPS');
 const atlasUI=fs.readFileSync(new URL('../src/LektrusMapAtlas.tsx',import.meta.url),'utf8');
 assert.match(atlasUI,/if\(annualPreview&&year===2025\)return \{type:"FeatureCollection",features:\[\],historicalUncoveredYear:2025\}/);
 assert.match(atlasUI,/data-atlas-uncovered-year="2025"/);
