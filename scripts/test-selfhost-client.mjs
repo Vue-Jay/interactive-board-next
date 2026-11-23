@@ -675,8 +675,8 @@ const temporary=await loadSelfhost(true);
 await temporary.api.selfhostLogin("teacher@example.test","test-password");
 temporary.api.leaveSelfhostAccountRemembered();
 temporary.setRefreshStatus(503);
-const saved=JSON.parse(temporary.storage.get("lektrus.selfhost.remembered.v1"));
-temporary.storage.set("lektrus.selfhost.remembered.v1",JSON.stringify({...saved,expires_at:1}));
+const savedQuickSession=JSON.parse(temporary.storage.get("lektrus.selfhost.remembered.v1"));
+temporary.storage.set("lektrus.selfhost.remembered.v1",JSON.stringify({...savedQuickSession,expires_at:1}));
 await assert.rejects(temporary.api.resumeRememberedSelfhostAccount(),e=>e.status===503);
 assert.equal(temporary.api.cachedSelfhostSession(),null,"Temporary outage must not cause automatic login");
 assert.equal(temporary.api.getRememberedSelfhostAccount().email,"teacher@example.test",
