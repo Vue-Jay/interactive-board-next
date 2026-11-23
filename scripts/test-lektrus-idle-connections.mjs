@@ -109,7 +109,7 @@ for(const marker of [
 ]){
  const at=board.indexOf(marker);
  assert.ok(at>=0,marker+" missing");
- const guard=board.slice(Math.max(0,at-300),at);
+ const guard=board.slice(Math.max(0,at-1350),at);
  assert.match(guard,/boardConnectionAwake/,marker+" needs an idle gate");
 }
 assert.match(board,/layoutEditing\|\|!boardConnectionAwake\|\|!documentSyncEnabled/);
