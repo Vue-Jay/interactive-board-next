@@ -119,6 +119,18 @@ assert.equal(zhou.records[0].name,'Eastern Zhou');assert.equal(zhou.records[1].n
 assert.throws(()=>normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Bad',1,2,{type:'Polygon',coordinates:[[[0,0],[1,0],[0,1],[1,1]]]})]}));
 const fixtureDir=mkdtempSync(path.join(tmpdir(),'lektrus-timeline-fixture-'));
 const fixture=buildHistoricalTimeline(source,sha256(JSON.stringify(source)),fixtureDir);
+// The minimal source has no reviewed historical island supplement; annual
+// pack building must not refer to normalizeHistoricalSource's private "batch".
+// This regression failed with ReferenceError: batch is not defined.
+const fixture1987Block=historicalBlockForYear(fixture,1987);
+assert.ok(fixture1987Block,'1987 must have a generated yearly pack in fixture');
+const fixture1987Pack=validateHistoricalPack(
+ JSON.parse(fs.readFileSync(path.join(fixtureDir,fixture1987Block.file),'utf8')),
+ fixture1987Block
+);
+assert.equal(historicalYearState(fixture1987Pack,1987).coverageGaps.filter(
+ g=>g.kind==='documented-state'&&g.name==='Marshall Islands').length,0,
+ 'Do not inject Marshall Islands candidate supplements into small test fixtures');
 assert.equal(historicalBlockForYear(fixture,0),undefined);
 assert.equal(historicalBlockForYear(fixture,2025),undefined);
 assert.throws(()=>validateHistoricalManifest({...fixture,blocks:fixture.blocks.slice(1)}));

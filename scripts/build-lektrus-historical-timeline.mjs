@@ -210,6 +210,9 @@ const rawParts=f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometr
 // is never removed on the strength of an index alone: check both geometries,
 // their dates, and the reviewed hash. The reconstruction queue remains open.
 export const territorialBatch=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989.json',import.meta.url),'utf8'));
+// Use the same source-size gate for normalization and annual-pack generation.
+// Small test fixtures deliberately omit the source-indexed editorial reviews.
+const REVIEWED_SOURCE_MIN_FEATURES=Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)));
 export const territorialResolutions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-batch-989-resolutions.json',import.meta.url),'utf8'));
 export const independentIslands=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independent-islands.json',import.meta.url),'utf8'));
 export const independentIslandGeometry=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independent-islands-geometry.json',import.meta.url),'utf8'));
@@ -1710,7 +1713,7 @@ export function normalizeHistoricalSource(source) {
   const geometries = new Map(), records = [];
   const derivedExclusions=deriveConfirmedOverlapExclusions(source.features);
   // Small synthetic fixtures do not contain the pinned source indices.
-  const batch=source.features.length>Math.max(...territorialBatch.rows.map(r=>Math.max(r.source,r.other)))?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],resolved:[],restorations:[],relabels:new Map(),attributions:[],count:0};
+  const batch=source.features.length>REVIEWED_SOURCE_MIN_FEATURES?deriveTerritorialBatch(source.features):{exclusions:[],pending:[],resolved:[],restorations:[],relabels:new Map(),attributions:[],count:0};
   if(batch.count){const secondary=deriveSecondaryTerritorialReviews(source.features);for(const key of ['exclusions','pending','restorations','attributions'])batch[key].push(...secondary[key]);
    const coast=deriveCeylonCoastalReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers'])batch[key].push(...coast[key]);
    const cape=deriveCapeTerritoryReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','pending'])batch[key].push(...cape[key]);
@@ -2011,6 +2014,8 @@ export function normalizeHistoricalSource(source) {
 
 export function buildHistoricalTimeline(source, sourceHash, outDir) {
   const {records,geometries,counts} = normalizeHistoricalSource(source);
+  const hasSourceIndexedReviews=source.features.length>REVIEWED_SOURCE_MIN_FEATURES;
+  const marshall=independentIslands.states.find(s=>s.iso==='MHL');
   fs.mkdirSync(path.join(outDir,'packs'),{recursive:true});
   const blocks = [];
   function writeBlock(ordinal, end) {
@@ -2025,8 +2030,7 @@ export function buildHistoricalTimeline(source, sourceHash, outDir) {
       // Recognition of independence in 1986 and the UN's later 1990
       // trusteeship termination are different events. We have no vetted
       // 1986-89 outline; never silently backdate the modern island geometry.
-      const marshall=independentIslands.states.find(s=>s.iso==='MHL');
-      if(batch.count&&marshall&&year>=marshall.recognitionFrom&&year<marshall.from&&
+      if(hasSourceIndexedReviews&&marshall&&year>=marshall.recognitionFrom&&year<marshall.from&&
          !currentPolities.some(r=>r.sourceWikidata===marshall.wikidata||
           /Marshall Islands/i.test(r.name))){
         gaps.push({name:'Marshall Islands',kind:'documented-state',date:'1986-10-21',
