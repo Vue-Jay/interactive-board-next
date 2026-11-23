@@ -102,7 +102,7 @@ import ShareDialog from "./ShareDialog";
 import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
-import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
+import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
@@ -127,6 +127,7 @@ import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
+import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
@@ -3097,6 +3098,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const clipboard = useRef<Item[]>([]);
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
   const index = useRef(0);
+  // The pupil's own operations survive incoming collaborator snapshots.
+  const personalHistory=useRef<{entries:PersonalBoardEdit[];cursor:number}>({entries:[],cursor:0});
+  const personalUndoAvailable=()=>personalHistory.current.cursor>0;
+  const personalRedoAvailable=()=>personalHistory.current.cursor<personalHistory.current.entries.length;
 
   const snapshot = useRef<DocumentData | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3140,6 +3145,25 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [, setRemoteConflict] = useState<RemoteBoardDocument | null>(null);
   const [, setConflictLocalBackup] = useState<DocumentData | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("reconnecting");
+  // After ten minutes without a user action, close all board-specific sockets.
+  // A hidden app sleeps earlier. Auth stays intact; reconnection checks the
+  // server document version before accepting the next local edit.
+  const [boardRealtimeAwake,setBoardRealtimeAwake]=useState(true);
+  // Until the latest server revision is fetched, no interaction may edit a
+  // document that another participant updated while this board was asleep.
+  const [boardResumePending,setBoardResumePending]=useState(false);
+  const boardResumePendingRef=useRef(false);
+  const boardResumeRequestRunning=useRef(false);
+  const [boardResumeAttempt,setBoardResumeAttempt]=useState(0);
+  const boardLastAction=useRef(Date.now());
+  // Read live refs at timeout, not the last React render. A network save may
+  // finish without rerendering the board; stale busy=true would prevent sleep.
+  const boardIdleBusy=()=>Boolean(gesture.current||eraserSession.current||saveTimer.current||
+    remoteSaveInFlight.current||remoteSavePromise.current||remoteRetryTimer.current||
+    queuedRemoteSnapshot.current||deferredRemote.current||pendingRemote.current||
+    pendingAttachmentTimers.current.size||pendingAttachmentRequests.length||
+    objectEditorOpen||editing||boardAssistantBusy||boardAiGenerating);
+
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
   useEffect(() => {
@@ -3504,6 +3528,57 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [flushSave]);
+  // One timer per open board. User input wakes sockets, but the first action
+  // is consumed until a fresh server document has been fetched and reconciled.
+  useEffect(()=>{
+    if(demoMode||layoutEditing)return;
+    const ACTIVE_IDLE_MS=10*60*1000,HIDDEN_IDLE_MS=90*1000;
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    const arm=()=>{
+      clearTimeout(timeout);
+      if(!boardRealtimeAwake)return;
+      const limit=document.visibilityState==="hidden"?HIDDEN_IDLE_MS:ACTIVE_IDLE_MS;
+      const due=Math.max(50,boardLastAction.current+limit-Date.now());
+      timeout=setTimeout(()=>{
+        if(boardIdleBusy()){timeout=setTimeout(arm,1500);return;}
+        if(Date.now()-boardLastAction.current>=limit){
+          boardResumePendingRef.current=false;
+          setBoardResumePending(false);
+          flushSave();
+          setBoardRealtimeAwake(false);
+        }else arm();
+      },due);
+    };
+    const userAction=(event:Event)=>{
+      boardLastAction.current=Date.now();
+      if(!boardRealtimeAwake){
+        boardResumePendingRef.current=true;
+        setBoardResumePending(true);
+        setBoardRealtimeAwake(true);
+      }else if(boardResumePendingRef.current&&!boardResumeRequestRunning.current){
+        // A failed reconnect is retried only after another actual user action.
+        setBoardResumeAttempt(value=>value+1);
+      }else arm();
+      if(boardResumePendingRef.current){
+        if(event.cancelable)event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    // Mouse hover and passive network messages never keep the socket awake.
+    // Capture before React board handlers; passive:false is necessary to
+    // prevent a stale pointer or keystroke from changing the shared document.
+    const events=["pointerdown","pointerup","click","keydown","beforeinput","wheel","input"] as const;
+    for(const type of events)
+      document.addEventListener(type,userAction,{capture:true,passive:false});
+    const visibility=()=>{if(boardRealtimeAwake)arm()};
+    document.addEventListener("visibilitychange",visibility);
+    arm();
+    return()=>{
+      clearTimeout(timeout);
+      for(const type of events)document.removeEventListener(type,userAction,true);
+      document.removeEventListener("visibilitychange",visibility);
+    };
+  },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,objectEditorOpen,editing,boardAssistantBusy,boardAiGenerating,pendingAttachmentRequests.length]);
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
@@ -3514,13 +3589,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const chatOpenRef=useRef(chatOpen);
   chatOpenRef.current=chatOpen;
   useEffect(()=>{
-    if(layoutEditing||!discussionEnabled)return;
+    if(layoutEditing||!discussionEnabled||!boardRealtimeAwake)return;
     const refresh=()=>{void refreshDiscussions().catch(()=>{})};
     return subscribeBoardComments(boardSummary.id,()=>{
       if(!chatOpenRef.current)setChatUnread(value=>Math.min(99,value+1));
       refresh();
     },refresh);
-  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
+  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions,boardRealtimeAwake]);
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get("discussion");
     if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
@@ -3977,6 +4052,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     const current=itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
@@ -3997,6 +4073,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           JSON.stringify(item) === JSON.stringify(baseline[pos])))
       return;
     const isLabSimulation=options?.labSimulation===true;
+    if(isStudent&&!isBoardOwner&&!isLabSimulation){
+      const own=personalBoardEdit(current,normalized);
+      if(own){
+        const stack=personalHistory.current;
+        stack.entries=[...stack.entries.slice(0,stack.cursor),own].slice(-80);
+        stack.cursor=stack.entries.length;
+      }
+    }
     labSimulationOnly.current=isLabSimulation;
     if(!isLabSimulation)labCheckpointStartedAt.current=null;
     history.current = history.current.slice(0, index.current + 1);
@@ -4060,7 +4144,30 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setEditing(item.id);
   };
   const undo = (direction: number) => {
-    if (gesture.current || !canEdit) return;
+    if (gesture.current || !canEdit || boardResumePendingRef.current) return;
+    if(isStudent&&!isBoardOwner){
+      const stack=personalHistory.current;
+      const step=direction<0?stack.cursor-1:stack.cursor;
+      if(step<0||step>=stack.entries.length)return;
+      const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo");
+      if(!outcome.changed){
+        setNotice("Это действие уже изменено другим участником. Чужие правки не затронуты.");
+        return;
+      }
+      if(blockedBoardItemRemovals(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length){
+        setNotice("Отмена не может изменить защищённую работу другого участника.");
+        return;
+      }
+      stack.cursor=direction<0?step:step+1;
+      display(outcome.items);
+      if(snapshot.current&&!saveBlocked)
+        snapshot.current=packDocumentInk({...snapshot.current,items:outcome.items});
+      history.current=[outcome.items];index.current=0;
+      setSelected([]);
+      if(outcome.conflicts)setNotice("Отменены только ваши изменения. Более поздние чужие правки сохранены.");
+      return;
+    }
     const next = index.current + direction;
     if (next < 0 || next >= history.current.length) return;
     // History snapshots describe our change, not a license to replace the
@@ -4329,7 +4436,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       : [item.id];
 
   useEffect(()=>{
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel=connectAttachmentApprovalChannel(
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
@@ -4352,7 +4459,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       pendingAttachmentTimers.current.clear();
       pendingAttachmentStarted.current.clear();
     };
-  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode]);
+  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode,boardRealtimeAwake]);
 
   const addMediaFile = async (file: File, position?: Point, offset = 0) => {
     if (!canEdit) throw new Error("У вас доступ только для просмотра");
@@ -8027,7 +8134,35 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{
-    if(demoMode||layoutEditing)return;
+    if(!boardRealtimeAwake||!boardResumePending||demoMode||layoutEditing)return;
+    let cancelled=false;
+    boardResumeRequestRunning.current=true;
+    const refresh=async()=>{
+      try{
+        // Force an authenticated revision check even when the realtime socket
+        // reconnects before a change notification reaches this device.
+        const row=selfhostMode
+          ? await selfhostReadDocument(boardSummary.id)
+          : await getRemoteBoardDocument(boardSummary.id);
+        if(cancelled)return;
+        if(!row)throw new Error("Серверный документ недоступен");
+        if(row.document)receiveRemote.current({
+          board_id:row.board_id,version:row.version,document:row.document,
+          updated_at:row.updated_at??"",updated_by:row.updated_by
+        });
+        boardResumePendingRef.current=false;
+        setBoardResumePending(false);
+      }catch{
+        if(!cancelled)setNotice("Не удалось сверить доску с сервером. Повторите касание, чтобы подключиться снова.");
+      }finally{
+        if(!cancelled)boardResumeRequestRunning.current=false;
+      }
+    };
+    void refresh();
+    return()=>{cancelled=true;boardResumeRequestRunning.current=false};
+  },[boardRealtimeAwake,boardResumePending,boardResumeAttempt,selfhostMode,boardSummary.id,demoMode,layoutEditing]);
+  useEffect(()=>{
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     if(selfhostMode){
       return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
         if(!latest.document)return;
@@ -8041,19 +8176,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return subscribeBoardDocument(
       boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus
     );
-  },[boardSummary.id,layoutEditing,selfhostMode,demoMode]);
+  },[boardSummary.id,layoutEditing,selfhostMode,demoMode,boardRealtimeAwake]);
 
-  useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible]);
+  useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible||!boardRealtimeAwake?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible,boardRealtimeAwake]);
 
-  useEffect(() => demoMode||layoutEditing?()=>{}:subscribeBoardPresence(
+  useEffect(() => demoMode||layoutEditing||!boardRealtimeAwake?()=>{}:subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
     setPresenceUsers,
     !adminHidden,
-  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
+  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     let active=true;
     if(acknowledgedBoardData.current)acknowledgeRemoteInk(acknowledgedBoardData.current);
     const channel = connectBoardCursorChannel(
@@ -8094,10 +8229,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       remoteInkStore.reset();
       remoteEraseStore.reset();remoteEraseTargets.current.clear();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel = connectBoardViewControl(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name },
@@ -8122,7 +8257,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       viewControlChannel.current = null;
       channel.close();
     };
-  }, [boardSummary.id, authUser.id, authUser.name,demoMode]);
+  }, [boardSummary.id, authUser.id, authUser.name,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
     followTeacherRef.current = followTeacher;
@@ -8149,7 +8284,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     });
   },[itemById]);
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel = connectBoardWorkChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
@@ -8254,7 +8389,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setRemoteObjectPoses({});
       setRemoteWork({});
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
     if(!adminHidden) workChannel.current?.publish(selected,
@@ -8597,8 +8732,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
-                <button type="button" disabled={index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
-                <button type="button" disabled={index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
+                <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
               </div>
               <div className="topbar-menu-section">
                 {!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
@@ -8647,6 +8782,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </div>
       </header>
       <main className={`workspace ${!objectEditorOpen && !presentation && selectedItems.length===0 && (tool==="pen" || tool==="marker" || tool==="eraser") ? "board-ink-dock-open" : ""} lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+        {(!boardRealtimeAwake||boardResumePending)&&<div className="lektrus-board-idle-indicator" role="status" aria-live="polite">
+          {boardResumePending?"Подключаемся и сверяем изменения доски…":"Соединение приостановлено · коснитесь доски для продолжения"}
+        </div>}
         {controlSettingsOpen&&<div className="access-backdrop"
          onPointerDown={e=>{if(e.target===e.currentTarget)setControlSettingsOpen(false)}}>
          <section className="access-modal lektrus-control-settings" role="dialog" aria-modal="true"
@@ -8746,8 +8884,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
 
         <div className="mobile-undo-redo" aria-label="История изменений">
-          <button type="button" disabled={index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
-          <button type="button" disabled={index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
         </div>
         {presentation && (
           <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>

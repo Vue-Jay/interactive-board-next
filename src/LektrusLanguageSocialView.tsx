@@ -18,20 +18,58 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
  const [preview,setPreview]=useState<WordPreview|null>(null);
  const partsRef=useRef<HTMLDivElement|null>(null);
  const gestureRef=useRef<WordGesture|null>(null);
+ const dropSlotRef=useRef<number|null>(null);
  useEffect(()=>{
-  gestureRef.current=null;setOrder(initial);setChecked(false);setPreview(null);
+  gestureRef.current=null;dropSlotRef.current=null;setOrder(initial);setChecked(false);setPreview(null);
  },[initial]);
  const dictionary=new Map(d.parts.map(p=>[p.id,p]));
  const correct=d.parts.every((p,i)=>order[i]===p.id);
- const reset=()=>{gestureRef.current=null;setPreview(null);setOrder([...initial]);setChecked(false)};
+ const reset=()=>{gestureRef.current=null;dropSlotRef.current=null;setPreview(null);setOrder([...initial]);setChecked(false)};
  const stop=(event:SyntheticEvent)=>event.stopPropagation();
  const pattern=sentencePatternById(d.patternId);
 
+ // Keep following the finger even if Android WebView loses capture on the
+ // original chip; the window-level pointerup commits the reorder once.
+ useEffect(()=>{
+  const move=(event:PointerEvent)=>{
+   const gesture=gestureRef.current;
+   if(!gesture||gesture.pointerId!==event.pointerId)return;
+   if(!gesture.active&&Math.hypot(event.clientX-gesture.startX,event.clientY-gesture.startY)<5)return;
+   if(event.cancelable)event.preventDefault();
+   gesture.active=true;
+   setPreview({id:gesture.id,left:event.clientX-gesture.offsetX,
+    top:event.clientY-gesture.offsetY,width:gesture.width});
+   const siblings=Array.from(partsRef.current?.querySelectorAll<HTMLButtonElement>("[data-sentence-word]")??[])
+    .filter(element=>element.dataset.sentenceWord!==gesture.id);
+   dropSlotRef.current=sentenceWordDropSlot(event.clientX,event.clientY,
+    siblings.map(element=>element.getBoundingClientRect()));
+   setChecked(false);
+  };
+  const finish=(event:PointerEvent)=>{
+   const gesture=gestureRef.current;
+   if(!gesture||gesture.pointerId!==event.pointerId)return;
+   gestureRef.current=null;
+   const slot=dropSlotRef.current;
+   dropSlotRef.current=null;
+   if(event.type==="pointerup"&&gesture.active&&slot!==null)
+    setOrder(moveSentenceWord(gesture.origin,gesture.id,slot));
+   setPreview(null);
+  };
+  window.addEventListener("pointermove",move,{capture:true,passive:false});
+  window.addEventListener("pointerup",finish,true);
+  window.addEventListener("pointercancel",finish,true);
+  return()=>{
+   window.removeEventListener("pointermove",move,true);
+   window.removeEventListener("pointerup",finish,true);
+   window.removeEventListener("pointercancel",finish,true);
+  };
+ },[]);
  const beginDrag=(event:ReactPointerEvent<HTMLButtonElement>,id:string)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
   event.preventDefault();event.stopPropagation();
   if(gestureRef.current)return;
   const rect=event.currentTarget.getBoundingClientRect();
+  dropSlotRef.current=null;
   gestureRef.current={
    id,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,
    offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,width:rect.width,
@@ -52,7 +90,10 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
    .filter(element=>element.dataset.sentenceWord!==gesture.id);
   const slot=sentenceWordDropSlot(event.clientX,event.clientY,
    siblings.map(element=>element.getBoundingClientRect()));
-  setOrder(current=>moveSentenceWord(current,gesture.id,slot));
+  // On Android tablets, moving the captured DOM chip during a pointer gesture
+  // can dispatch lostpointercapture before pointerup. Keep the DOM stable
+  // until release, then apply the insertion exactly once.
+  dropSlotRef.current=slot;
   setChecked(false);
  };
  const endDrag=(event:ReactPointerEvent<HTMLButtonElement>,cancel=false)=>{
@@ -60,7 +101,10 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   if(!gesture||gesture.pointerId!==event.pointerId)return;
   event.stopPropagation();
   gestureRef.current=null;
-  if(cancel&&gesture.active)setOrder(gesture.origin);
+  const slot=dropSlotRef.current;
+  dropSlotRef.current=null;
+  if(!cancel&&gesture.active&&slot!==null)
+   setOrder(moveSentenceWord(gesture.origin,gesture.id,slot));
   setPreview(null);
   if(event.currentTarget.hasPointerCapture(event.pointerId))
    event.currentTarget.releasePointerCapture(event.pointerId);
@@ -68,7 +112,8 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
  const releaseLostCapture=(event:ReactPointerEvent<HTMLButtonElement>)=>{
   const gesture=gestureRef.current;
   if(!gesture||gesture.pointerId!==event.pointerId)return;
-  gestureRef.current=null;setPreview(null);
+  // Do not discard the gesture: window pointerup/pointercancel will finish it
+  // even after a tablet browser releases the chip's pointer capture.
  };
  const reorderWithKeyboard=(event:ReactKeyboardEvent<HTMLButtonElement>,id:string)=>{
   const at=order.indexOf(id);
@@ -80,7 +125,7 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   setChecked(false);
  };
  return <>
-  <div className="lektrus-sentence-on-board" role="group" aria-label={d.title}
+  <div className="lektrus-sentence-on-board" role="group" aria-label={d.title} data-board-interactive="true"
    onPointerDown={stop} onPointerMove={stop} onPointerUp={stop} onClick={stop}>
    <strong>{d.title}</strong>
    <p className="lektrus-sentence-task">{d.instructions}</p>

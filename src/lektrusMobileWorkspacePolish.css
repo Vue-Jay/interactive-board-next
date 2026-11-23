@@ -318,3 +318,19 @@ html.lektrus-native-board body .topbar:not(.update-banner) {
     max-width:calc(100vw - 14px)!important;
   }
 }
+
+/* Readable but nonblocking indicator while a sleeping whiteboard reconnects. */
+.workspace .lektrus-board-idle-indicator {
+ position:absolute;z-index:26;
+ top:max(10px,env(safe-area-inset-top,0px));left:50%;
+ transform:translateX(-50%);
+ box-sizing:border-box;max-width:min(560px,calc(100% - 20px));
+ border:1px solid var(--lt-border,#cad7e5);border-radius:12px;
+ padding:8px 12px;background:var(--lt-surface,#fff);
+ color:var(--lt-text,#253c54);box-shadow:0 5px 22px #0c223a1b;
+ font:600 12px/1.4 system-ui,sans-serif;text-align:center;
+ pointer-events:none;
+}
+@media(max-width:700px){
+ .workspace .lektrus-board-idle-indicator{font-size:11px;padding:6px 10px;}
+}
