@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-24",
+  "status": "release-blocked-work-active",
+  "repository": "Vue-Jay/interactive-board-next",
+  "pullRequest": "https://github.com/Vue-Jay/interactive-board-next/pull/364",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "implementationCommit": "82d00f449fe17c091e92f20074ccfc3349bff551",
+  "mergeCommit": "3de74cc8",
+  "mergedMain": "8213046f09a3548def91c189c0facd91d2e0ebdc",
+  "preservedDeployBranch": "deploy/amvera-lektrus",
+  "deployBranchHead": "8213046f09a3548def91c189c0facd91d2e0ebdc",
+  "source": {
+    "name": "Cliopatria",
+    "version": "0.2.1",
+    "url": "https://raw.githubusercontent.com/Seshat-Global-History-Databank/cliopatria/5f433377139a6eeaeacbdc894b70f8805b72c8b5/cliopatria.geojson.zip",
+    "license": "CC BY 4.0",
+    "sha256": "fc6f0d1e4cc42f45da83522b3696db6f2cc85ec0d12259a85c89b31347b8fc0a"
+  },
+  "generated": {
+    "from": -3400,
+    "to": 2024,
+    "zeroYear": false,
+    "packs": 79,
+    "counts": {
+      "sourcePolities": 12064,
+      "sourceComposites": 1348,
+      "sourceRelations": 385,
+      "zeroBoundaryRecords": 6,
+      "revisions": 14874,
+      "uniqueGeometries": 11800,
+      "rejectedRevisions": 59,
+      "reviewedNames": 935
+    },
+    "gzipBytes": 53586506,
+    "maxPackGzip": 2038190
+  },
+  "annualTechnicalAudit": {
+    "years": 5424,
+    "recordYears": 257688,
+    "emptyYears": 0,
+    "packCount": 79,
+    "yearsWithIdentityCollisions": 0,
+    "yearsWithSharedGeometry": 0,
+    "admissionWarnings": 1,
+    "auditLedger": {
+      "territorial": {
+        "total": 6486,
+        "resolved": 5627,
+        "open": 859,
+        "openRegionYears": 780,
+        "openByGroup": {
+          "Тяньцзинь — концессия": {
+            "componentYears": 98,
+            "sourceYears": 98
+          },
+          "Коморы": {
+            "componentYears": 209,
+            "sourceYears": 213
+          },
+          "Кохинхина — поэтапная уступка": {
+            "componentYears": 14,
+            "sourceYears": 14
+          },
+          "Луайоте — местные вождества": {
+            "componentYears": 17,
+            "sourceYears": 17
+          },
+          "Кохинхина — кампания 1859 года": {
+            "componentYears": 2,
+            "sourceYears": 2
+          },
+          "Давао — местные правители": {
+            "componentYears": 236,
+            "sourceYears": 236
+          },
+          "Горе — материковый контур": {
+            "componentYears": 11,
+            "sourceYears": 11
+          },
+          "Corsica": {
+            "componentYears": 11,
+            "sourceYears": 22
+          },
+          "Сен-Мартен — раздел острова": {
+            "componentYears": 33,
+            "sourceYears": 33
+          },
+          "Тобаго — колониальные поселения": {
+            "componentYears": 12,
+            "sourceYears": 12
+          },
+          "Цейлон — война VOC": {
+            "componentYears": 24,
+            "sourceYears": 24
+          },
+          "Малакка": {
+            "componentYears": 7,
+            "sourceYears": 10
+          },
+          "Mindanao": {
+            "componentYears": 97,
+            "sourceYears": 158
+          },
+          "Дения — материковый контур": {
+            "componentYears": 9,
+            "sourceYears": 9
+          }
+        }
+      },
+      "exactPairs": {
+        "total": 82,
+        "resolved": 74,
+        "confirmed": 73,
+        "provisional": 1,
+        "provisionalComponentYears": 3,
+        "open": 8,
+        "openComponentYears": 94,
+        "openSourceYears": 188,
+        "openByGroup": {
+          "Корсика — переход 1768 года": {
+            "componentYears": 1,
+            "sourceYears": 2
+          },
+          "Золотой Берег — область восточнее Кейп-Коста": {
+            "componentYears": 3,
+            "sourceYears": 6
+          },
+          "Маскат — португальско-османское соперничество": {
+            "componentYears": 4,
+            "sourceYears": 8
+          },
+          "Южный Пьемонт — спорные владения": {
+            "componentYears": 11,
+            "sourceYears": 22
+          },
+          "Южная Аравия — аксумско-сасанидский переход": {
+            "componentYears": 4,
+            "sourceYears": 8
+          },
+          "Хорезм — кидариты и эфталиты": {
+            "componentYears": 66,
+            "sourceYears": 132
+          },
+          "Икария — война Филиппа V": {
+            "componentYears": 5,
+            "sourceYears": 10
+          }
+        }
+      },
+      "partialReconstructions": {
+        "componentYears": 15,
+        "byGroup": {
+          "cap-corse": 8,
+          "malacca-fort": 7
+        }
+      },
+      "groupLinks": {
+        "openGroups": 7,
+        "openAnnualOccurrences": 29
+      }
+    }
+  },
+  "checks": [
+    {
+      "command": "npm run test:atlas",
+      "result": "passed"
+    },
+    {
+      "command": "npm run build",
+      "result": "passed",
+      "includes": "tsc -b; Vite web build",
+      "warning": "Existing large-chunk warning remains"
+    },
+    {
+      "command": "LEKTRUS_NATIVE_BUILD=true npm run build; node scripts/test-native-pdf-worker.mjs",
+      "result": "passed",
+      "scope": "Native-compatible JS, worker fallback export, real 1/3-page PDFs"
+    },
+    {
+      "command": "node scripts/test-lektrus-historical-timeline.mjs TIMELINE SOURCE",
+      "result": "passed",
+      "years": 5424,
+      "recordYears": 257688
+    },
+    {
+      "command": "node scripts/audit-lektrus-historical-changes.mjs TIMELINE SOURCE",
+      "result": "passed",
+      "changePeriods": 644,
+      "reviewUnits": 12924,
+      "politicalExactComponentPairs": 0
+    },
+    {
+      "command": "node scripts/test-lektrus-atlas-every-country-browser.mjs",
+      "result": "passed",
+      "years": [
+        2026,
+        1945,
+        1900,
+        -3000
+      ],
+      "syntheticCards": 892,
+      "sampledMouseClicks": 4,
+      "sampledEmulatedTouchTaps": 4,
+      "notice": "Sampled physical probes; not physical acceptance of every polygon"
+    },
+    {
+      "command": "node scripts/test-lektrus-annual-atlas-browser.mjs (focused synthetic mode)",
+      "result": "passed",
+      "years": [
+        1986,
+        1947,
+        1944,
+        1943,
+        1921,
+        1918,
+        1908,
+        1848,
+        1847
+      ],
+      "syntheticCards": 1027,
+      "technicalIssues": 0
+    },
+    {
+      "command": "LEKTRUS_ATLAS_PHYSICAL_INPUT=1 node scripts/test-lektrus-annual-atlas-browser.mjs",
+      "result": "passed-focused-years",
+      "years": [
+        -3000,
+        -3400
+      ],
+      "syntheticCards": 5,
+      "trustedMouseClicks": 5,
+      "emulatedTouchTaps": 5
+    },
+    {
+      "command": "python scripts/audit-historical-unique-geometries.py TIMELINE ARCHIVE REPORT SOURCE",
+      "result": "running",
+      "notice": "Earlier failures exposed outdated repair classification, missing temporal-witness handling and the documented 1e-6 grid fallback; no full pass claimed yet"
+    },
+    {
+      "command": "LEKTRUS_ATLAS_PHYSICAL_INPUT=1 node scripts/test-lektrus-annual-atlas-browser.mjs (1944,1847)",
+      "result": "running-with-retained-first-pass-findings",
+      "notice": "Initial fractional-pixel run found two 1944 pointer failures; an exact integer-pixel rerun is active. Raw failed receipts are retained; no full year accepted yet"
+    },
+    {
+      "command": "atlas-global-layers; atlas-school-facts; atlas-labels; historical-references; service-unavailable; github-agent-guard",
+      "result": "passed"
+    },
+    {
+      "command": "node scripts/test-lektrus-atlas-mineral-overview.mjs",
+      "result": "passed-after-updating-stale-style-assertion",
+      "notice": "Preserves .56 mineral opacity check while allowing .65 historical documented-core opacity"
+    }
+  ],
+  "historicalSources": [
+    {
+      "topic": "Tianjin Austrian administration ended in 1917, not 1919",
+      "url": "https://history.state.gov/historicaldocuments/frus1917Supp02v01/d614"
+    },
+    {
+      "topic": "Tianjin Russian concession under Chinese administration from 25 September 1920",
+      "url": "https://history.state.gov/historicaldocuments/frus1920v01/d481"
+    },
+    {
+      "topic": "British concession occupied in December 1941",
+      "url": "https://api.parliament.uk/historic-hansard/commons/1941/dec/11/china-british-residents"
+    },
+    {
+      "topic": "British legal relinquishment: signature 11 January 1943; ratification exchange 20 May",
+      "url": "https://treaties.fcdo.gov.uk/data/Library2/pdf/1943-TS0002.pdf"
+    },
+    {
+      "topic": "French concession: Vichy transfer under Japanese control in May 1943",
+      "url": "https://history.state.gov/historicaldocuments/frus1945v07/d99"
+    },
+    {
+      "topic": "Italian administration lost after September 1943 armistice",
+      "url": "https://doi.org/10.1080/1354571X.2010.501979"
+    },
+    {
+      "topic": "Chinese municipal administration and outstanding asset transfer in November 1945",
+      "url": "https://history.state.gov/historicaldocuments/frus1945v07/d1028"
+    },
+    {
+      "topic": "Italian lease cancellation, Article 25 of 1947 peace treaty; entry into force 15 September",
+      "url": "https://treaties.un.org/doc/Publication/UNTS/Volume%2049/v49.pdf"
+    },
+    {
+      "topic": "Existing Davao 1848/1849 chronology rechecked; geometry not established by settlement conquest",
+      "url": "https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf"
+    },
+    {
+      "topic": "Existing Comoros 1908 administration versus 1912 colonial law rechecked",
+      "url": "https://mjp.univ-perp.fr/constit/km1896.htm"
+    }
+  ],
+  "releaseBlockers": [
+    {
+      "kind": "territorial-reconstruction",
+      "openSourceCases": 859,
+      "distinctRegionYears": 780,
+      "notice": "No historical geometry case closed by code tests or chronology/card improvements"
+    },
+    {
+      "kind": "exact-conflict-queue",
+      "openPairs": 8,
+      "openComponentYears": 94
+    },
+    {
+      "kind": "group-links",
+      "openGroups": 7,
+      "openAnnualOccurrences": 29
+    },
+    {
+      "kind": "missing-dated-geometry",
+      "years": [
+        2025,
+        2026
+      ],
+      "notice": "2026 remains an explicitly labelled archival overview, not a dated 2026 map"
+    },
+    {
+      "kind": "complete-annual-trusted-pointer-and-touch-acceptance",
+      "status": "unfinished"
+    },
+    {
+      "kind": "independent-historical-and-visual-acceptance",
+      "status": "unfinished"
+    }
+  ],
+  "ciRunsStarted": 0,
+  "tinyFishUsed": false,
+  "mergedToMain": false,
+  "deployed": false,
+  "codeSha256": {
+    "src/LektrusMapAtlas.tsx": "afb4db82c41955dd20818071fb9c93068c458dc1e68fafbb03d6e01b375f6ffa",
+    "src/lektrusHistoricalUnresolvedCenters.ts": "4578f6930b0229d637afdd0be414629e24a07076a0db4e117c88d30a9922da1a",
+    "vite.config.ts": "6952128bb9dc4552f2f8f5deef63c16ff3475a843ccdeddaa2343090c51ad3ba",
+    "scripts/atlas-physical-input.mjs": "8c6af461c72b7fdc5354c9bf2033601d3ca26667e65eaf45969b334554175322",
+    "scripts/test-lektrus-annual-atlas-browser.mjs": "e5cd6f91d1dd9dc7b9efb09ae6ecd68cc32b4651614726dc395a028b7dd8bc9e",
+    "scripts/audit-historical-unique-geometries.py": "f4a38a3cbb01b37b4ae0ef4bcdb3d73e58d6ee60d4ed9a1729644510b7904989"
+  }
+}
