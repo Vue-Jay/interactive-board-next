@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,tianjinConcessionChronology,tianjinConcessionStatus} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,historicalYearSourcesComparable,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -115,6 +115,17 @@ assert.deepEqual(delhi.records.find(r=>r.from===1451&&r.role==='composite').sour
 const zhou=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Later Zhou',-750,-451,square(),'Q1154556'),feature('Later Zhou',960,960,square(),'Q1154556'),feature('(Spring and Autumn States)',-750,-481,square(),'','POLITY','Later Zhou')]});
 assert.equal(independentIslands.states.find(s=>s.iso==='MHL').recognitionFrom,1986);
 assert.equal(independentIslands.states.find(s=>s.iso==='MHL').from,1990);
+for(let year=1986;year<=1989;year++){
+  const gaps=documentedStateCoverageGaps(year,[],true);
+  assert.equal(gaps.length,1,'Missing statehood gap '+year);
+  assert.equal(gaps[0].kind,'documented-state');
+  assert.equal(gaps[0].date,'1986-10-21');
+  assert.equal(gaps[0].source,'https://history.state.gov/countries/marshall-islands');
+  assert.deepEqual(documentedStateCoverageGaps(year,[{sourceWikidata:'Q709',name:'Legacy source'}],true),[]);
+  assert.deepEqual(documentedStateCoverageGaps(year,[{name:'Republic of the Marshall Islands'}],true),[]);
+  assert.deepEqual(documentedStateCoverageGaps(year,[],false),[],'Small fixtures have no reviewed island supplementation');
+}
+for(const year of [1985,1990,1991])assert.deepEqual(documentedStateCoverageGaps(year,[],true),[]);
 assert.equal(zhou.records[0].name,'Eastern Zhou');assert.equal(zhou.records[1].name,'Later Zhou');assert.deepEqual(zhou.records[2].components,['Eastern Zhou']);assert.deepEqual(zhou.records[2].sourceComponents,['Later Zhou']);
 assert.throws(()=>normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Bad',1,2,{type:'Polygon',coordinates:[[[0,0],[1,0],[0,1],[1,1]]]})]}));
 const fixtureDir=mkdtempSync(path.join(tmpdir(),'lektrus-timeline-fixture-'));
