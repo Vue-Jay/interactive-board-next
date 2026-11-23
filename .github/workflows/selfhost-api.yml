@@ -48,9 +48,9 @@ jobs:
       - name: Compile source
         run: python -m compileall -q server/app.py server/materials.py server/notifications.py server/organization.py server/direct_chats.py server/share_links.py server/pilot_objects.py server/pilot_operations.py server/realtime_events.py server/assets.py server/invitations.py server/registration.py server/education.py server/admin.py server/comments.py server/test_admin.py server/test_registration.py server/test_comments.py server/test_pilot_objects.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_education.py server/test_realtime_permissions.py server/test_live_frames.py server/test_ws_e2e.py
       - name: Test public asset retention
-        run: python -m pytest -q server/test_retain_web_assets.py
+        run: python -m pytest -q server/test_retain_web_assets.py server/test_android_updates.py
       - name: Integration tests against disposable PostgreSQL
-        run: python -m pytest -q -rP server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py server/test_guest_history_visits.py
+        run: python -m pytest -q -rP server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py server/test_guest_history_visits.py server/test_participant_roles.py
       - name: Build minimal production image
         run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
       - name: Boot actual API container and test private disk permissions
@@ -114,6 +114,11 @@ jobs:
           # Amvera forwards the public Host to Caddy. Do not redirect the
           # platform health probe, the canonical domain, or existing API clients.
           curl -fsS -H 'Host: lektrus.ru' http://127.0.0.1:8080/app | grep -q '/assets/'
+          studio='/board/00000000-0000-4000-8000-00000000a11a'
+          curl -fsSI "http://127.0.0.1:8080$studio?layout-editor=1&layout-preview=1&device=phonePortrait" | grep -qi 'x-frame-options: SAMEORIGIN'
+          curl -fsSI "http://127.0.0.1:8080$studio?layout-editor=1&layout-preview=1" | grep -qi "content-security-policy: frame-ancestors 'self'"
+          curl -fsSI "http://127.0.0.1:8080$studio?layout-editor=1" | grep -qi 'x-frame-options: DENY'
+          curl -fsSI "http://127.0.0.1:8080/board/00000000-0000-4000-8000-000000000004?layout-editor=1&layout-preview=1" | grep -qi 'x-frame-options: DENY'
           for host in www.lektrus.ru lectrus.ru www.lectrus.ru lektrus-vuejay.msk1.amvera.tech; do
             for path in / /app '/join/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?source=invite' '/board/00000000-0000-4000-8000-000000000004?tab=1' '/confirm-email?token=example' '/tools/laboratory'; do
               test "$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' -H "Host: $host" "http://127.0.0.1:8080$path")" = "308 https://lektrus.ru$path"

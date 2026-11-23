@@ -1,20 +1,23 @@
 import {useEffect,useState} from "react";
-import {getPlan,limitLabel,plans} from "./billingStore";
-import {getAccountAccess,type AccountAccess} from "./accountRoleStore";
+import {plans} from "./billingStore";
+import {isSelfhostBackendEnabled,selfhostRequest} from "./selfhostApi";
 import "./BillingScreen.css";
 
+type Billing={plan:"free"|"pro";is_admin:boolean;unlimited:boolean;until:string|null;usage:{boards:number;students:number;groups:number;templates:number;storage_bytes:number};boards:{id:string;title:string;active:boolean}[]};
+const limits=[["boards","Собственные доски",5],["students","Ученики в базе",5],["groups","Группы и классы",1],["templates","Личные шаблоны",3],["storage_bytes","Хранилище",250]] as const;
 export default function BillingScreen({onBack}:{onBack:()=>void}){
-  const [access,setAccess]=useState<AccountAccess>({role:"student",teacherStatus:"none",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null});
-  useEffect(()=>{const sync=()=>void getAccountAccess().then(setAccess);sync();window.addEventListener("onlinerepetitor:account-access",sync);window.addEventListener("focus",sync);return()=>{window.removeEventListener("onlinerepetitor:account-access",sync);window.removeEventListener("focus",sync)}},[]);
-  const currentPlan=getPlan(access.subscriptionPlan);
+  const [data,setData]=useState<Billing|null>(null),[selected,setSelected]=useState<string[]>([]),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
+  const sync=async()=>{try{const next=await selfhostRequest<Billing>("/api/v1/billing");setData(next);return next}catch(e){setNotice(e instanceof Error?e.message:"Не удалось получить тариф")}};
+  useEffect(()=>{if(!isSelfhostBackendEnabled())return;void sync().then(x=>x&&setSelected(x.boards.filter(b=>b.active).map(b=>b.id)));const focus=()=>void sync();window.addEventListener("focus",focus);window.addEventListener("onlinerepetitor:account-access",focus);const timer=setInterval(focus,30000);return()=>{window.removeEventListener("focus",focus);window.removeEventListener("onlinerepetitor:account-access",focus);clearInterval(timer)}},[]);
+  const save=async()=>{setBusy(true);try{await selfhostRequest("/api/v1/billing/active-boards",{method:"PUT",body:JSON.stringify({board_ids:selected})});await sync();setNotice("Активные доски обновлены.")}catch(e){setNotice(e instanceof Error?e.message:"Не удалось сохранить выбор")}finally{setBusy(false)}};
+  const plan=data?.plan??"free";
   return <main className="billing-page">
-    <header className="billing-head"><button onClick={onBack}>← Назад</button><div><h1>Тарифы</h1><p>Возможности вашего аккаунта и доступные тарифы.</p></div></header>
-    <section className="billing-current"><span>Текущий тариф</span><strong>{currentPlan.name}</strong><em>{access.subscriptionPlan==="free"?"Бесплатный":access.subscriptionUntil?`Активен до ${new Date(access.subscriptionUntil).toLocaleDateString("ru-RU")}`:"Активен"}</em></section>
-    <section className="billing-grid">{plans.map(plan=><article className={`billing-card ${access.subscriptionPlan===plan.id?"current":""}`} key={plan.id}>
-      <div><h2>{plan.name}</h2><p>{plan.description}</p></div><strong>{plan.priceLabel}</strong>
-      <ul>{plan.features.map(x=><li key={x}>✓ {x}</li>)}</ul>
-      <div className="billing-limit-strip"><span>Доски: <b>{limitLabel(plan.limits.boards)}</b></span><span>Участники: <b>{limitLabel(plan.limits.collaboratorsPerBoard)}</b></span></div>
-      <button disabled>{access.subscriptionPlan===plan.id?"Текущий тариф":"Недоступно"}</button>
-    </article>)}</section>
+    <header className="billing-head"><button onClick={onBack}>← Назад</button><div><h1>Тарифы и использование</h1><p>Ваши возможности, текущие лимиты и подписка.</p></div></header>
+    <section className="billing-current"><div><span>Текущий тариф</span><h2>{data?.is_admin?"Администратор":plan==="pro"?"Pro":"Free"}</h2><p>{data?.is_admin?"Полный доступ администратора":plan==="pro"&&data?.until?`Активен до ${new Date(data.until).toLocaleDateString("ru-RU")}`:"Бесплатный доступ"}</p></div><span className="billing-badge">{data?.is_admin?"Без лимитов":"Активен"}</span></section>
+    {notice&&<p className="billing-status" role="status">{notice}</p>}
+    {data&&<section className="billing-usage"><h2>Использование</h2><div className="billing-usage-grid">{limits.map(([key,label,max])=>{const n=key==="storage_bytes"?data.usage[key]/1048576:data.usage[key];const cap=key==="storage_bytes"&&data.plan==="pro"?5120:max;const limited=!data.is_admin&&(!data.unlimited||key==="storage_bytes");const shown=key==="storage_bytes"?n.toFixed(1)+" МБ":n;return <article key={key}><span>{label}</span><strong>{shown} <small>/ {!limited?"∞":key==="storage_bytes"&&data.plan==="pro"?"5 ГБ":cap+(key==="storage_bytes"?" МБ":"")}</small></strong>{limited&&<><progress value={Math.min(n,cap)} max={cap} className={n>=cap?"full":""}/><small>{n>=cap?"Лимит достигнут":`Доступно ещё ${Math.max(0,cap-n).toFixed(key==="storage_bytes"?1:0)}`}</small></>}</article>})}</div></section>}
+    {data&&!data.unlimited&&data.boards.length>5&&<section className="billing-usage"><h2>Активные доски</h2><p>Выберите 5 досок для редактирования. Остальные сохраняются в режиме просмотра, без удаления.</p><div className="billing-board-picker">{data.boards.map(b=><label key={b.id}><input type="checkbox" checked={selected.includes(b.id)} disabled={!selected.includes(b.id)&&selected.length>=5} onChange={e=>setSelected(old=>e.target.checked?[...old,b.id]:old.filter(id=>id!==b.id))}/>{b.title}</label>)}</div><button className="billing-save" disabled={busy||selected.length!==5} onClick={()=>void save()}>Сохранить выбор · {selected.length}/5</button></section>}
+    <section className="billing-grid">{plans.map(p=><article key={p.id} className={`billing-card ${p.id===plan?"current":""}`}><div className="billing-card-top"><h2>{p.name}</h2>{p.id===plan?<span className="billing-badge">Ваш тариф</span>:p.id==="pro"?<span className="billing-badge">Скоро</span>:<span className="billing-badge">Бесплатно</span>}</div><p>{p.description}</p><strong>{p.priceLabel}</strong><ul>{p.features.map(x=><li key={x}>✓ {x}</li>)}</ul><button disabled>{p.id===plan?"Текущий тариф":p.id==="pro"?"Подключение скоро":"Бесплатный тариф"}</button></article>)}</section>
+    <p className="billing-disclaimer">Платежи пока отключены. Pro может выдать администратор — вручную, без оплаты. Доступ участников общей доски определяется правами и тарифом её владельца.</p>
   </main>
 }

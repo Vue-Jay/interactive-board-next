@@ -789,6 +789,60 @@
  min-width:0;box-sizing:border-box;padding:5px 8px;
 }
 .lektrus-ink-tool-name{font-size:11px;white-space:nowrap;color:#526986}
+/* The legacy quick-properties rule hides .ink-settings. Touch layouts must
+   expose the direct strip, except during presentation. Presentation mode lives
+   on the .app ancestor, NOT on .workspace: guard the correct DOM element. */
+@media(max-width:1100px),(pointer:coarse){
+ .app:not(.presentation-mode) .workspace .ink-settings.lektrus-ink-settings-direct{display:flex!important}
+ .app.presentation-mode .workspace .ink-settings.lektrus-ink-settings-direct{display:none!important}
+}
+@media(max-width:630px) and (orientation:portrait){
+ .workspace .ink-settings.lektrus-ink-settings-direct:has(.lektrus-eraser-modes){
+  align-items:center!important;justify-content:center!important;
+  flex-wrap:wrap!important;overflow-x:visible!important;overflow-y:visible!important;
+  max-width:calc(100vw - 12px)!important;white-space:normal!important;
+ }
+ .workspace .ink-settings.lektrus-ink-settings-direct:has(.lektrus-eraser-modes)>.lektrus-ink-tool-name{display:none}
+ .workspace .ink-settings.lektrus-ink-settings-direct:has(.lektrus-eraser-modes)>.lektrus-direct-ink-widths{flex-basis:100%!important}
+}
+/* Compact illustrated eraser modes: broken line = erase part, crossed line = erase all. */
+.lektrus-eraser-modes{display:flex;align-items:center;gap:5px;min-width:0;flex:0 0 auto}
+.workspace .lektrus-eraser-modes>button{
+ position:relative;box-sizing:border-box;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:1px;
+ width:66px;min-width:66px;min-height:60px;padding:5px 5px 4px;
+ border:1px solid var(--lt-line,#cbd8e9);border-radius:10px;background:var(--lt-raised,#fff);color:var(--lt-secondary,#405674);
+ white-space:nowrap;cursor:pointer;touch-action:manipulation;
+ transition:background .12s,border-color .12s,box-shadow .12s;
+}
+.workspace .lektrus-eraser-modes>button>svg{display:block;width:40px;height:27px;flex:0 0 27px}
+.lektrus-eraser-mode-label{font-size:10px;line-height:1.2;font-weight:730;color:inherit}
+.lektrus-eraser-mode-check{
+ position:absolute;top:3px;right:3px;display:grid;place-items:center;
+ width:13px;height:13px;border-radius:50%;background:var(--lt-primary,#3165ba);color:var(--lt-on-primary,#fff);
+ font-size:9px;font-weight:800;opacity:0;transform:scale(.8);
+ transition:opacity .12s,transform .12s;
+}
+.workspace .lektrus-eraser-modes>button[aria-pressed="true"]{
+ border-color:var(--lt-primary,#427bd6);background:var(--lt-selected,#e8f2ff);color:var(--lt-selected-ink,#1e56a2);
+ box-shadow:inset 0 0 0 1px var(--lt-line-strong,#80a7e7);
+}
+.workspace .lektrus-eraser-modes>button[aria-pressed="true"] .lektrus-eraser-mode-check{opacity:1;transform:scale(1)}
+.workspace .lektrus-eraser-modes>button:hover:not([aria-pressed="true"]){background:var(--lt-hover,#f2f7ff);border-color:var(--lt-line-strong,#9cb9e4)}
+.workspace .lektrus-eraser-modes>button:focus-visible{outline:3px solid var(--lt-focus,#3165ba);outline-offset:2px}
+@media(max-width:700px),(pointer:coarse){
+ .workspace .lektrus-eraser-modes>button{width:60px;min-width:60px;min-height:54px;padding:3px}
+ .workspace .lektrus-eraser-modes>button>svg{width:36px;height:25px;flex-basis:25px}
+ .workspace .lektrus-ink-settings-direct:has(.lektrus-eraser-modes){flex-wrap:wrap}
+}
+@media(max-width:950px) and (orientation:landscape){
+ .workspace .lektrus-eraser-modes>button{width:54px;min-width:54px;min-height:46px;padding:2px}
+ .workspace .lektrus-eraser-modes>button>svg{width:32px;height:22px;flex-basis:22px}
+ .lektrus-eraser-mode-label{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .workspace .lektrus-eraser-modes>button,.lektrus-eraser-mode-check{transition:none}
+}
 .lektrus-direct-ink-widths{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
 .lektrus-direct-ink-widths>button{
  box-sizing:border-box;display:flex;justify-content:center;align-items:center;
@@ -807,7 +861,7 @@
 .lektrus-ink-swatch-value{display:block;font-size:9px;font-weight:650;letter-spacing:-.1px;line-height:11px;color:#405674;white-space:nowrap;font-variant-numeric:tabular-nums}
 .lektrus-direct-ink-widths>button[aria-pressed="true"] .lektrus-ink-swatch-value{color:#1e56a2}
 @media(max-width:1100px),(pointer:coarse){
- .lectris-quick-properties.is-ink-properties{display:none!important}
+ /* The original bottom ink dock is the only toolbar on touch devices. */
  .lektrus-ink-settings-direct{max-width:100%;gap:6px;padding:3px 5px}
  .lektrus-ink-settings-direct :is(button,input,[role="button"]){touch-action:manipulation}
  .lektrus-ink-settings-direct .lektrus-direct-ink-widths>button{min-width:44px;width:44px;min-height:50px}

@@ -17,15 +17,66 @@ const chromePath=process.env.CHROME_PATH||[
 ].find(existsSync);
 assert.ok(chromePath,"Chrome required for integrated release browser smoke");
 const homeOnly=process.argv.includes("--home-only");
-if(homeOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
+const pwaOnly=process.argv.includes("--pwa-only");
+const keyboardOnly=process.argv.includes("--keyboard-only");
+const tabletToolsOnly=process.argv.includes("--tablet-tools-only");
+const landscapeOnly=process.argv.includes("--landscape-only")||tabletToolsOnly;
+const interfaceOnly=process.argv.includes("--interface-only");
+const educationOnly=process.argv.includes("--education-only");
+if(homeOnly||keyboardOnly||landscapeOnly||pwaOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
+if(interfaceOnly||educationOnly){
+ process.env.VITE_LEKTRUS_BACKEND="selfhost";
+ delete process.env.VITE_LEKTRUS_API_ORIGIN;
+}
+const studioBoard="/board/00000000-0000-4000-8000-00000000a11a?layout-editor=1";
+const studioUser={id:"00000000-0000-4000-8000-000000000001",email:"admin@example.test",user_metadata:{display_name:"Admin"},account_role:"teacher",teacher_status:"approved",is_admin:true};
+let publishedLayout=null;
+const linkedTeacher="00000000-0000-4000-8000-000000000002";
+const linkedBoard="00000000-0000-4000-8000-000000000003";
+let assignmentFailure=false;
+const educationRows=[
+ {id:"outgoing",teacher_id:studioUser.id,student_id:linkedTeacher,teacher_name:"Admin",student_name:"Ученик Тест",title:"Выданное задание",description:"",board_id:null,max_score:10,created_at:"2026-11-21T10:00:00Z",submissions:null},
+ {id:"incoming",teacher_id:linkedTeacher,student_id:studioUser.id,teacher_name:"Учитель Тест",student_name:"Admin",title:"Полученное задание",description:"",board_id:linkedBoard,max_score:10,created_at:"2026-11-21T10:00:00Z",submissions:null},
+];
 const server=await createServer({configFile:"./vite.config.ts",
+ plugins:educationOnly?[{name:"education-api-fixture",configureServer(server){
+  server.middlewares.use((req,res,next)=>{
+   const path=req.url?.split('?')[0];if(!path?.startsWith("/api/v1/"))return next();
+   res.setHeader("Content-Type","application/json");
+   const send=(value,status=200)=>{res.statusCode=status;res.end(JSON.stringify(value))};
+   if(path==="/api/v1/health")return send({ok:true,service:"lektrus-selfhost"});
+   if(path==="/api/v1/maintenance")return send({state:"off",access_allowed:true});
+   if(path==="/api/v1/auth/me")return send(studioUser);
+   if(path==="/api/v1/boards"||path==="/api/v1/students")return send({detail:"Fixture unavailable"},503);
+   if(path==="/api/v1/assignments")return assignmentFailure?send({detail:"Fixture unavailable"},503):send(educationRows);
+   if(path==="/api/v1/teachers")return send([{user_id:linkedTeacher,name:"Учитель Тест",boards:[{id:linkedBoard,title:"Математика"}]}]);
+   if(path==="/api/v1/account/profile")return send({display_name:"Admin",theme:"light",compact_ui:true,default_board_zoom:100});
+   if(path==="/api/v1/organization")return send({categories:[],boards:[]});
+   if(path==="/api/v1/interface-layout")return send({layout:null});
+   return send([]);
+  });
+ }}]:interfaceOnly?[{name:"interface-studio-fixture",configureServer(server){
+  server.middlewares.use(async(req,res,next)=>{
+   if(!req.url?.startsWith("/api/v1/"))return next();
+   res.setHeader("Content-Type","application/json");
+   if(req.url==="/api/v1/admin/interface-layout"&&req.method==="PUT"){
+    let raw="";for await(const chunk of req)raw+=chunk;
+    publishedLayout=JSON.parse(raw).layout;res.end('{"ok":true}');return;
+   }
+   if(req.url==="/api/v1/interface-layout"){res.end(JSON.stringify({layout:publishedLayout}));return;}
+   if(req.url==="/api/v1/auth/me"){res.end(JSON.stringify(studioUser));return;}
+   res.end("[]");
+  });
+ }}]:[{name:"qa-release-board-fixture-only",transform(code,id){
+  if(id.endsWith("/src/App.tsx"))return code.replace('import("./PublicDemoBoard")','import("../scripts/qa-release-board-fixture")');
+ }}],
  server:{host:"127.0.0.1",port:0,strictPort:false}});
 let profile,chrome,socket;
 const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly?"/app":"/demo/board?scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||educationOnly||keyboardOnly||landscapeOnly||pwaOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -70,7 +121,7 @@ try{
  });
  const evaluate=async expression=>{
   const result=await call("Runtime.evaluate",{expression,awaitPromise:true,returnByValue:true,userGesture:true});
-  if(result.exceptionDetails)throw new Error("Browser evaluation: "+result.exceptionDetails.text);
+  if(result.exceptionDetails)throw new Error("Browser evaluation: "+(result.exceptionDetails.exception?.description||result.exceptionDetails.text));
   return result.result?.value;
  };
  const wait=async (expression,message,timeout=12000)=>{
@@ -101,17 +152,533 @@ try{
   assert.ok(result,"Missing element geometry: "+selector);
   return result;
  };
- const mouse=async(type,x,y,{pressed=false}={})=>call("Input.dispatchMouseEvent",{
+ const mouse=async(type,x,y,{pressed=false,clickCount=1}={})=>call("Input.dispatchMouseEvent",{
   type,x,y,
   button:pressed||type==="mouseReleased"?"left":"none",
   buttons:pressed?1:0,
-  clickCount:type==="mousePressed"||type==="mouseReleased"?1:0
+  clickCount:type==="mousePressed"||type==="mouseReleased"?clickCount:0
  });
  await call("Runtime.enable");
  await call("Page.enable");
+ const inkDockGeometry=`(()=>{const w=window.__originalFrame||window,d=w.document,p=d.querySelector('.lectris-quick-properties.is-ink-properties');if(!p)return null;const r=p.getBoundingClientRect(),board=d.querySelector('section.board')?.getBoundingClientRect(),bounds=s=>{const b=d.querySelector(s)?.getBoundingClientRect();return b?.width&&b.height?b:null},overlaps=b=>b&&r.left<b.right&&r.right>b.left&&r.top<b.bottom&&r.bottom>b.top;return {width:r.width,height:r.height,gap:w.innerHeight-r.bottom,left:r.left,right:r.right,screen:w.innerWidth,upper:p.dataset.inkUpperRow,canvasClearance:board?r.top-board.bottom:null,docks:d.querySelectorAll('.lectris-quick-properties.is-ink-properties').length,topDocks:d.querySelectorAll('.ink-settings.lektrus-ink-settings-direct').length,overlap:Boolean(overlaps(bounds('.board-controls'))||overlaps(bounds('.minimap'))||overlaps(bounds('nav.mobile-board-tools'))),widths:[...p.querySelectorAll('.lektrus-ink-width-button')].map(b=>{const q=b.getBoundingClientRect();return q.width>=36&&q.height>=38&&b.contains(d.elementFromPoint(q.x+q.width/2,q.y+q.height/2))})}})()`;
+ const assertInkDock=(dock,wide)=>{
+  assert.ok(dock&&dock.docks===1&&dock.topDocks===0&&dock.width<=Math.min(530,dock.screen-10)&&dock.height<=112&&!dock.overlap&&dock.canvasClearance>=-2&&dock.left>=0&&dock.right<=dock.screen&&dock.widths.length===5&&dock.widths.every(Boolean),JSON.stringify(dock));
+  if(wide)assert.ok(dock.gap<=90,'Ink dock too high: '+JSON.stringify(dock));
+ };
+
+ if(pwaOnly){
+  await call("Emulation.setUserAgentOverride",{userAgent:"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",platform:"Linux armv8l"});
+  await call("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:2,mobile:true});
+  await call("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:5});
+  // Suppress real browser install events so the QA case controls their timing.
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`window.addEventListener("beforeinstallprompt",event=>{if(event.isTrusted){event.preventDefault();event.stopImmediatePropagation()}},true);Object.defineProperty(navigator,"getInstalledRelatedApps",{configurable:true,value:async()=>sessionStorage.getItem("qa-pwa-existing")==="1"?[{platform:"webapp",url:"https://lektrus.ru/manifest.webmanifest"}]:[]})`});
+  const waitPwa=async(expression,message,timeout=30000)=>{
+   const deadline=Date.now()+timeout;
+   while(Date.now()<deadline){try{if(await evaluate(expression))return}catch{} await delay(100)}
+   throw new Error(message);
+  };
+  const homeAt=async(stage)=>{
+   const pageUrl=`http://127.0.0.1:${port}/app?qa-pwa-stage=${stage}`;
+   await call("Page.navigate",{url:pageUrl});
+   await waitPwa(`location.href===${JSON.stringify(pageUrl)}&&!!document.querySelector(".lektrus-calendar-grid")`,"PWA workspace did not render");
+  };
+  const signal=(outcome)=>evaluate(`(()=>{window.dispatchEvent(Object.assign(new Event("beforeinstallprompt",{cancelable:true}),{prompt:async()=>{},userChoice:Promise.resolve({outcome:${JSON.stringify(outcome)}})}));return true})()`);
+  const offer='!!document.querySelector(".lektrus-pwa-offer")';
+  const feedback='!!document.querySelector(".lektrus-pwa-feedback")';
+  await homeAt("fresh");
+  assert.equal(await evaluate(offer),false,"no automatic offer without a browser install signal");
+  await signal("accepted");
+  await wait(offer,"Mobile installation offer did not appear");
+  await click(".lektrus-pwa-offer .lektrus-pwa-install-action");
+  await wait(feedback,"Success notification disappeared with the offer");
+  assert.equal(await evaluate(offer),false,"offer disappears immediately after accepted installation");
+  assert.match(await evaluate('document.querySelector(".lektrus-pwa-feedback")?.textContent'),/Приложение установлено/);
+  const bounds=await rect(".lektrus-pwa-feedback");
+  assert.ok(bounds.left>=0&&bounds.right<=390&&bounds.top>=0&&bounds.bottom<=844,"toast must fit mobile viewport");
+  await wait("!"+feedback,"success notification did not expire",6000);
+  await homeAt("returning");
+  assert.equal(await evaluate(offer),false,"installed PWA must not be offered on repeat visit");
+  assert.equal(await evaluate(feedback),false,"no fake success on reload");
+  // Discover an earlier installation even without a local stored marker.
+  await evaluate('localStorage.removeItem("lektrus.pwa-installed.v1");sessionStorage.setItem("qa-pwa-existing","1")');
+  await homeAt("existing");
+  await waitPwa('localStorage.getItem("lektrus.pwa-installed.v1")==="1"',"related app detection did not remember existing installation");
+  assert.equal(await evaluate(offer),false,"related-app detection suppresses the prompt");
+  assert.equal(await evaluate(feedback),false,"detection does not announce a new installation");
+  console.log("✓ PWA workspace: accepted install, visible success notification, expiry, persisted install and existing app detection");
+  // The website shares the same state but has its own independent entry root.
+  await evaluate('localStorage.removeItem("lektrus.pwa-installed.v1");sessionStorage.removeItem("qa-pwa-existing")');
+  await call("Page.navigate",{url:`http://127.0.0.1:${port}/`});
+  await waitPwa('location.pathname==="/"&&!!document.querySelector(".marketing-actions .lektrus-pwa-button-wrap button")',"Public site install button did not render");
+  await signal("accepted");
+  await click(".marketing-actions .lektrus-pwa-button-wrap button");
+  await wait(feedback,"Public site missing success notification");
+  assert.equal(await evaluate('!!document.querySelector(".marketing-actions .lektrus-pwa-button-wrap button")'),false);
+  console.log("✓ PWA public site: successful installation confirmation survives button removal");
+ }else if(landscapeOnly){
+  const viewport=async(width,height)=>{
+   await call('Emulation.setDeviceMetricsOverride',{width,height,screenWidth:width,screenHeight:height,deviceScaleFactor:2,mobile:true,screenOrientation:{type:height>width?'portraitPrimary':'landscapePrimary',angle:height>width?0:90}});
+   await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});await delay(300);
+  };
+  await viewport(390,844);
+  await wait('!!document.querySelector(".lektrus-calendar-grid")','Workspace did not render',30000);
+  // Emulate a browser denying orientation lock to exercise the fallback.
+  await evaluate(`Object.defineProperty(document,'fullscreenEnabled',{configurable:true,value:false});Object.defineProperty(screen.orientation,'lock',{configurable:true,value:async()=>{throw new Error('Orientation lock denied')}});true`);
+  await click('.lectris-mobile-bottom button[aria-label="Доски"]');
+  await wait('!!document.querySelector(".lectris-library-new")','Board library did not render');
+  await click('.lectris-library-new');
+  await wait('!!document.querySelector(".lektrus-create-dialog")','Create board dialog did not render');
+  const titleInput=await rect('.lektrus-create-dialog input');
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:titleInput.x,y:titleInput.y,id:1}]});
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await call('Input.insertText',{text:'Landscape browser QA'});
+  assert.equal(await evaluate('document.activeElement.value'),'Landscape browser QA','Title input must remain focused before submit');
+  await evaluate(`(()=>{window.__loaderFrames=[];window.__sampleLoader=true;window.__createSubmitEvents=0;document.querySelector('.lektrus-create-dialog').addEventListener('submit',()=>window.__createSubmitEvents++);const sample=()=>{if(!window.__sampleLoader)return;const e=document.querySelector('.lektrus-browser-board-logical > .lektrus-board-loading');if(e)window.__loaderFrames.push([e.offsetWidth,e.offsetHeight]);requestAnimationFrame(sample)};requestAnimationFrame(sample)})()`);
+  const submitButton=await rect('.lektrus-create-dialog button[type="submit"]');
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:submitButton.x,y:submitButton.y,id:1}]});
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  const boardReady='!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector("section.board")';
+  await wait(boardReady,'Landscape frame did not render the actual created board',45000);
+  assert.equal(await evaluate('window.__createSubmitEvents'),1,'One touch must submit exactly once');
+  const state=()=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),w=f.contentWindow,d=f.contentDocument,r=f.getBoundingClientRect();return {width:w.innerWidth,height:w.innerHeight,rotated:f.parentElement.dataset.rotated==='true',bounds:[r.left,r.top,r.right,r.bottom],title:d.querySelector('.board-title')?.value,tool:d.querySelector('section.board')?.className}})()`);
+  const first=await state();
+  assert.equal(first.title,'Landscape browser QA');
+  assert.equal(first.rotated,true);assert.ok(first.width>first.height,JSON.stringify(first));
+  const loader=await evaluate('window.__sampleLoader=false;window.__loaderFrames');
+  assert.ok(loader.length&&loader.every(([w,h])=>w>h),'First loader must be landscape: '+JSON.stringify(loader.slice(0,5)));
+  await evaluate('window.__originalFrame=document.querySelector(".lektrus-browser-board-frame").contentWindow;window.__originalBoard=window.__originalFrame.document.querySelector("section.board");window.__boardPath=location.pathname');
+  const point=async(selector)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,e=[...d.querySelectorAll(${JSON.stringify(selector)})].find(b=>b.getBoundingClientRect().width>0&&b.getBoundingClientRect().height>0&&d.elementFromPoint(b.getBoundingClientRect().x+b.getBoundingClientRect().width/2,b.getBoundingClientRect().y+b.getBoundingClientRect().height/2)?.closest(${JSON.stringify(selector)}));if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+  const physical=async(points)=>evaluate(`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),r=f.getBoundingClientRect(),rotated=f.parentElement.dataset.rotated==='true';return ${JSON.stringify(points)}.map(p=>rotated?{x:r.right-p.y,y:r.top+p.x}:{x:r.left+p.x,y:r.top+p.y})})()`);
+  const touch=async(points)=>{const mapped=await physical(points);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...mapped[0],id:1}]});if(mapped.length>1)await delay(100);for(const p of mapped.slice(1)){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...p,id:1}]});await delay(30)}await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(250)};
+  if(tabletToolsOnly){
+   const boardExpr=expression=>`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),d=f.contentDocument,w=f.contentWindow;return (${expression})})()`;
+   const boardEval=expression=>evaluate(boardExpr(expression));
+   const boardWait=(expression,message)=>wait(boardExpr(expression),message);
+   const tap=async selector=>{const p=await point(selector);assert.ok(p,"Inaccessible tool: "+selector);await touch([p])};
+   const plus='nav.mobile-board-tools .mobile-tools-more';
+   const groups=".mobile-tools-groups";
+   const close='.mobile-tools-sheet-head button[aria-label="Закрыть"]';
+   const catalogue=()=>boardEval(`[...d.querySelectorAll('.mobile-tools-group')].map(g=>({label:g.querySelector('span').textContent,tools:[...g.querySelectorAll('button')].map(b=>b.getAttribute('aria-label')||b.textContent.trim())}))`);
+   const swipe=async selector=>{
+    const region=await boardEval(`(()=>{const s=d.querySelector(${JSON.stringify(selector)}),r=s.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height*.76,distance:r.height*.55,top:s.scrollTop,max:s.scrollHeight-s.clientHeight,hit:!!d.elementFromPoint(r.x+r.width/2,r.y+r.height*.76)?.closest(${JSON.stringify(selector)})}})()`);
+    assert.ok(region.max>10&&region.hit,'No scrollable touch area: '+JSON.stringify(region));
+    await touch(Array.from({length:9},(_,i)=>({x:region.x,y:region.y-region.distance*i/8})));
+    await boardWait(`d.querySelector(${JSON.stringify(selector)}).scrollTop>${region.top}`,'Real swipe did not scroll '+selector);
+   };
+   await viewport(844,390);
+   await tap(plus);
+   await boardWait(`!!d.querySelector('${groups}')`,'Phone catalogue failed to open');
+   const phone=await catalogue();
+   assert.equal(phone.length,7,JSON.stringify(phone));
+   await tap(close);
+   const assertSubjectSize=async()=>{
+    const geometry=await boardEval(`(()=>{const s=d.querySelector('nav.mobile-board-tools>.lektrus-mobile-subject-trigger'),p=d.querySelector('${plus}'),a=s.getBoundingClientRect(),b=p.getBoundingClientRect(),i=s.querySelector('svg').getBoundingClientRect();return {subject:[a.width,a.height],plus:[b.width,b.height],icon:[i.width,i.height]}})()`);
+    assert.ok(geometry.subject.every((v,i)=>Math.abs(v-geometry.plus[i])<=1),'Subject button differs from other buttons: '+JSON.stringify(geometry));
+    assert.ok(geometry.icon.every(v=>v>=18&&v<=22),'Oversized subject icon: '+JSON.stringify(geometry));
+   };
+   const flickCatalogue=async()=>{
+    const before=await boardEval(`(()=>{const g=d.querySelector('${groups}'),r=g.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height*.7,room:g.scrollHeight-g.clientHeight-g.scrollTop}})()`);
+    assert.ok(before.room>100,'Catalogue needs room for a flick');
+    const mapped=await physical([{x:before.x,y:before.y},{x:before.x,y:before.y-15},{x:before.x,y:before.y-32},{x:before.x,y:before.y-50}]);
+    await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...mapped[0],id:1}]});
+    for(const p of mapped.slice(1)){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...p,id:1}]});await delay(18)}
+    await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    const released=await boardEval(`d.querySelector('${groups}').scrollTop`);
+    await delay(160);
+    assert.ok(await boardEval(`d.querySelector('${groups}').scrollTop>${released+5}`),'Catalogue must keep scrolling smoothly after a flick');
+    assert.ok(await point(close),'Catalogue header must remain accessible during inertia');
+   };
+   await assertSubjectSize();
+   const checkDock=async()=>{
+    await boardWait("d.documentElement.hasAttribute('data-tablet-tool-dock')",'Tablet dock not selected');
+    assert.ok(await point(plus),'Tablet plus inaccessible');
+    await assertSubjectSize();
+    assert.equal(await boardEval("w.getComputedStyle(d.querySelector('.toolbar.compact-toolbar')).display"),"none");
+    await tap(plus);
+    await boardWait(`!!d.querySelector('${groups}')`,'Tablet catalogue failed to open');
+    assert.deepEqual(await catalogue(),phone,'Tablet must expose all phone tool groups and buttons');
+    await flickCatalogue();
+    await tap(close);
+    await tap(plus);
+    await boardWait(`!!d.querySelector('${groups}')`,'Catalogue did not reopen after flick');
+    await swipe(groups);
+    assert.ok(await point(close),'Catalogue header scrolled out of reach');
+    await tap(close);
+   };
+   await viewport(768,1024);
+   await checkDock();
+   await viewport(1024,768);
+   await checkDock();
+   await tap(plus);
+   await tap('.mobile-tools-sheet-head button[aria-label="Настроить основные инструменты"]');
+   await boardWait("!!d.querySelector('.lectris-tools-customize')",'Toolbar customization did not open');
+   await boardEval("(()=>{d.querySelectorAll('.lectris-tools-customize-section:nth-child(2) button:not(:disabled)').forEach(b=>b.click());return true})()");
+   await boardWait("d.querySelectorAll('.lectris-tools-customize-section:nth-child(2) button:not(:disabled)').length===0",'Tools were not pinned');
+   await boardEval("(()=>{d.querySelector('.lectris-toolbar-save').click();return true})()");
+   await boardWait("!d.querySelector('.lectris-tools-customize')",'Toolbar customization did not close');
+   await viewport(1280,800);
+   await checkDock();
+   const middle='nav.mobile-board-tools .mobile-tool-cluster-create';
+   const beforeTool=await boardEval("d.querySelector('section.board').className");
+   await swipe(middle);
+   assert.equal(await boardEval("d.querySelector('section.board').className"),beforeTool,'Swiping the toolbar must not select a tool');
+   assert.ok(await point(plus),'Plus disappeared after scrolling pinned tools');
+   await tap(plus);
+   assert.deepEqual(await catalogue(),phone);
+   await tap(close);
+   console.log('✓ Tablet tool catalogue matches phone; real touch scrolls catalogue and pinned tools in portrait and landscape up to 1280px');
+  }else{
+  const pen=await point('nav.mobile-board-tools button[data-interface-control="pen"],.toolbar-pinned button[data-interface-control="pen"]');
+  assert.ok(pen,'No visible pencil on the landscape board');await touch([pen]);
+  await wait('document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector("section.board").classList.contains("board-tool-pen")','Rotated touch did not activate pencil');
+  const path=await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,b=d.querySelector('section.board').getBoundingClientRect();for(const fy of [.48,.6,.73,.35])for(const fx of [.35,.45,.55]){const p=Array.from({length:9},(_,i)=>({x:Math.round(b.left+b.width*fx)+10*i,y:Math.round(b.top+b.height*fy)}));if(p.every(q=>{const hit=d.elementFromPoint(q.x,q.y);return hit?.closest('section.board')&&!hit.closest('.board-object,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen')}))return p}return null})()`);
+  assert.ok(path,'Cannot find a clear drawing path');await touch(path);
+  const storedPen=`(()=>{const key=Object.keys(localStorage).find(k=>k.endsWith(window.__boardPath.split('/').pop())&&k.includes('document'));try{return JSON.parse(localStorage.getItem(key))?.items?.find(i=>i.kind==='pen')}catch{return null}})()`;
+  const ink=await wait(storedPen,'Real rotated touch stroke was not saved',15000);
+  assert.ok(ink.points.length>1,'Incomplete stroke');
+  const dx=ink.points.at(-1).x-ink.points[0].x,dy=ink.points.at(-1).y-ink.points[0].y;
+  assert.ok(dx>40&&Math.abs(dy)<4,'A logical horizontal stroke was transposed: '+JSON.stringify({dx,dy}));
+  console.log('✓ First loader horizontal; real rotated touch pencil drew logical horizontal ink');
+  // Drawing settings share the lowest row with zoom and navigator when they
+  // fit. Verify real hit targets, including the fifth width, after rotation.
+  for(const [w,h] of [[844,390],[932,430],[720,360],[667,375],[390,844]]){
+   await viewport(w,h);
+   await wait(`Math.abs((${inkDockGeometry})?.screen-${Math.max(w,h)})<=2`,'Ink dock did not rotate');
+   await delay(150);
+   const dock=await evaluate(inkDockGeometry);
+   assertInkDock(dock,w>=844||h>=844);
+   const widest=await point('.lectris-quick-properties.is-ink-properties .lektrus-ink-width-button:last-child');
+   assert.ok(widest,'22 px pen inaccessible');await touch([widest]);
+   await wait(`window.__originalFrame.document.querySelector('.lectris-quick-properties .lektrus-ink-width-button:last-child').getAttribute('aria-pressed')==='true'`,'22 px pen did not activate');
+   console.log(`✓ ${w}×${h}: compact ink dock, bottom gap ${dock.gap}px, five reachable widths`);
+  }
+  const color=await point('.lectris-quick-properties.is-ink-properties .lektrus-color-current');assert.ok(color,'Color picker inaccessible');await touch([color]);
+  await wait(`!!window.__originalFrame.document.querySelector('.lektrus-colors-popup')`,'Color popup did not open');
+  const popup=await evaluate(`(()=>{const w=window.__originalFrame,r=w.document.querySelector('.lektrus-colors-popup').getBoundingClientRect();return r.top>=0&&r.bottom<=w.innerHeight&&r.left>=0&&r.right<=w.innerWidth})()`);
+  assert.ok(popup,'Color popup outside landscape viewport');
+  await touch([color]);
+  const select=await point('nav.mobile-board-tools button[data-interface-control="select"],.toolbar-pinned button[data-interface-control="select"]');
+  assert.ok(select,'No visible select tool');await touch([select]);
+  const zoom=()=>evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent`);
+  const beforeZoom=await zoom(),center=path[4];
+  let pinch=await physical([{x:center.x-16,y:center.y},{x:center.x+16,y:center.y}]);
+  await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:pinch.map((p,id)=>({...p,id}))});
+  for(let i=1;i<=9;i++){
+   pinch=await physical([{x:center.x-16-i*4,y:center.y},{x:center.x+16+i*4,y:center.y}]);
+   await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:pinch.map((p,id)=>({...p,id}))});await delay(35);
+  }
+  await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await wait(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.zoom-value').textContent!==${JSON.stringify(beforeZoom)}`,'Two-finger pinch did not zoom the rotated board');
+  const title=await point('.board-title');assert.ok(title,'Board title inaccessible while rotated');await touch([title]);
+  const titleFocused=`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;return d.activeElement===d.querySelector('.board-title')})()`;
+  await wait(titleFocused,'Rotated touch did not focus the title field');
+  await call('Input.insertText',{text:'!'});
+  const edited=await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.board-title').value`);
+  assert.ok(edited.includes('!'),'Real browser typing was not received inside landscape board');
+  await touch([center]);await wait('!'+titleFocused,'Outside touch did not blur the title editor');
+  assert.equal(await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentDocument.querySelector('.board-title').value`),edited);
+  console.log('✓ Real two-finger zoom, keyboard input and outside-tap dismissal in rotated board');
+  // Emulate an unusually short IME viewport in the landscape frame. The
+  // controls themselves are exercised using real rotated touch coordinates.
+  for(const [kind,tool,field] of [
+   ['checklist','button[aria-label^="Чек-лист / задание"]','.checklist-title-input input'],
+   ['flashcard','button[aria-label^="Карточка вопрос–ответ"]','.flashcard-editor-compose textarea'],
+   ['quiz','button[aria-label^="Вопрос / мини-тест"]','.quiz-question-editor textarea'],
+   // Table is created immediately and can occupy the full zoomed-in board;
+   // the other three create no object when Cancel is pressed.
+   ['table','.lektrus-elements-data-action','.table-editor-grid textarea'],
+  ]){
+   const more=await point('.mobile-tools-more');assert.ok(more,'Tool catalogue unavailable');await touch([more]);
+   await wait('!!window.__originalFrame.document.querySelector(".mobile-tools-sheet")','Tool catalogue did not open');
+   await evaluate(`window.__originalFrame.document.querySelector('.mobile-tools-sheet '+${JSON.stringify(tool)}).scrollIntoView({block:'center'})`);
+   const item=await point('.mobile-tools-sheet '+tool);assert.ok(item,kind+' catalogue tool inaccessible');await touch([item]);
+   const empty=await evaluate(`(()=>{const d=window.__originalFrame.document,b=d.querySelector('section.board').getBoundingClientRect();for(const fy of [.48,.6,.73,.35])for(const fx of [.35,.45,.55,.7]){const p={x:b.left+b.width*fx,y:b.top+b.height*fy};const e=d.elementFromPoint(p.x,p.y);if(e?.closest('section.board')&&!e.closest('.board-object,button,input,textarea,.toolbar,.board-controls,.mobile-board-tools,.selection-toolbar-screen'))return p}return null})()`);
+   assert.ok(empty,'No unobstructed editor placement');await touch([empty]);
+   await wait(`!!window.__originalFrame.document.querySelector('.lektrus-touch-editor-portal .${kind}-editor-modal')`,kind+' touch editor did not open');
+   if(kind==='checklist'){
+    assert.equal(await evaluate(`window.__originalFrame.document.querySelectorAll('.checklist-editor-row').length`),1,'Placement tap accidentally added a checklist row');
+    // Older WebViews can retarget the compatibility click after the board's
+    // pointerdown mounted the editor. It has no preceding editor pointerdown.
+    await evaluate(`(()=>{const w=window.__originalFrame;w.document.querySelector('.checklist-add-row').dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}))})()`);
+    assert.equal(await evaluate(`window.__originalFrame.document.querySelectorAll('.checklist-editor-row').length`),1,'Retargeted placement click added a checklist row');
+   }
+   await evaluate(`window.__originalFrame.document.querySelector(${JSON.stringify(field)}).scrollIntoView({block:'center'})`);
+   const fieldPoint=await point(field);assert.ok(fieldPoint,kind+' input inaccessible');await touch([fieldPoint]);
+   await call('Input.insertText',{text:'QA'});
+   await evaluate(`(()=>{const w=window.__originalFrame,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:165,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
+   await wait(`window.__originalFrame.document.querySelector('.lektrus-touch-editor-portal').dataset.compactHeight==='true'`,kind+' editor ignored short viewport');
+   const geometry=await evaluate(`(()=>{const d=window.__originalFrame.document,m=d.querySelector('.${kind}-editor-modal'),h=m.querySelector('.${kind}-editor-header').getBoundingClientRect(),f=m.querySelector('.${kind}-editor-footer').getBoundingClientRect();return {top:h.top,headerBottom:h.bottom,footerTop:f.top,bottom:f.bottom}})()`);
+   assert.ok(geometry.top>=0&&geometry.bottom<=166&&geometry.footerTop-geometry.headerBottom>=42,kind+' keyboard viewport clipping: '+JSON.stringify(geometry));
+   const header=await point('.'+kind+'-editor-header strong');assert.ok(header,kind+' clipped header');await touch([header]);
+   await wait(`window.__originalFrame.document.activeElement!==window.__originalFrame.document.querySelector(${JSON.stringify(field)})`,kind+' outside touch did not blur input');
+   await evaluate(`delete window.__originalFrame.visualViewport;window.__originalFrame.dispatchEvent(new window.__originalFrame.Event('resize'))`);
+   if(kind==='checklist'){
+    const rows=()=>evaluate(`window.__originalFrame.document.querySelectorAll('.checklist-editor-row').length`);
+    assert.equal(await rows(),1,'Outside tap accidentally added a checklist row');
+    await evaluate(`window.__originalFrame.document.querySelector('.checklist-add-row').scrollIntoView({block:'center'})`);
+    const add=await point('.checklist-add-row');assert.ok(add,'Checklist add row inaccessible');await touch([add]);
+    assert.equal(await rows(),2,'One touch must add exactly one checklist row');
+   }
+   const cancel=await point('.'+kind+'-editor-footer button.secondary'+(kind==='checklist'?':nth-child(3)':''));assert.ok(cancel,kind+' cancel inaccessible');await touch([cancel]);
+   await wait(`!window.__originalFrame.document.querySelector('.${kind}-editor-modal')`,kind+' editor did not close');
+   console.log('✓ '+kind+' editor: input, header and footer accessible with short landscape keyboard');
+  }
+  for(const [w,h,rotated] of [[844,390,false],[768,1024,true],[1024,768,false],[390,844,true]]){
+   await viewport(w,h);
+   await wait(`document.querySelector('.lektrus-browser-board-frame').parentElement.dataset.rotated===String(${rotated})`,'Incorrect orientation after physical rotation');
+   const s=await state();assert.ok(s.width>s.height&&s.bounds[0]>=-1&&s.bounds[1]>=-1&&s.bounds[2]<=w+1&&s.bounds[3]<=h+1,JSON.stringify(s));
+   assert.ok(await evaluate(`document.querySelector('.lektrus-browser-board-frame').contentWindow===window.__originalFrame&&window.__originalFrame.document.querySelector('section.board')===window.__originalBoard`),'Board remounted during rotation');
+   assert.equal((await evaluate(storedPen)).id,ink.id);
+   console.log(`✓ ${w}×${h}: landscape viewport, same board instance and retained ink`);
+  }
+  const back=await point('.board-home-button');assert.ok(back,'Back button unavailable');await touch([back]);
+  // BoardApp may present a return confirmation; answer through the real UI.
+  await wait('!document.querySelector(".lektrus-browser-board-frame")','Back action did not return to portrait workspace',15000);
+  assert.ok(await evaluate('!document.documentElement.classList.contains("lektrus-browser-board-active")&&innerHeight>innerWidth'));
+  const directPath=await evaluate('window.__boardPath');
+  await call('Page.navigate',{url:new URL(directPath,url).href});
+  await wait(boardReady,'Direct link did not reopen landscape board',45000);
+  // A full navigation can replace the renderer. Reapply touch emulation so
+  // subsequent menu actions exercise touch rather than compatibility clicks.
+  await call('Emulation.setTouchEmulationEnabled',{enabled:false});
+  await viewport(390,844);
+  await evaluate(`window.__boardPath=${JSON.stringify(directPath)}`);
+  assert.equal((await evaluate(storedPen)).id,ink.id);
+  console.log('✓ Return to portrait workspace and direct-link reopen preserve saved ink');
+  // Reproduce the old native WebView where CSS viewport units fail to
+  // constrain the menu. Inline geometry must win over the legacy rule.
+  await evaluate(`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument,s=d.createElement('style');s.id='legacy-menu-viewport';s.textContent='html body .topbar .topbar-right .topbar-more-menu[open]>.topbar-more-popover{max-height:none!important;overflow:visible!important}';d.head.append(s)})()`);
+  const menu=await point('.topbar-more-menu>summary');assert.ok(menu,'Board actions menu unavailable');await touch([menu]);
+  await wait('!!document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector(".topbar-more-menu[open] .lektrus-board-menu-pager")','Rotated action menu pager not created');
+  const settings=await point('.topbar-more-popover .lektrus-controls-menu-entry');assert.ok(settings,'First action menu button is not visible');
+  await touch([settings]);
+  await wait('!!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Rotated action menu tap did not open board controls');
+  const closeSettings=await point('.lektrus-control-settings button[aria-label="Закрыть настройки"]');assert.ok(closeSettings,'Board control settings close is not accessible');await touch([closeSettings]);
+  await wait('!document.querySelector(".lektrus-browser-board-frame")?.contentDocument?.querySelector(".lektrus-control-settings")','Board control settings did not close');
+  await touch([menu]);
+  await wait('!!document.querySelector(".lektrus-browser-board-frame").contentDocument.querySelector(".topbar-more-menu[open] .lektrus-board-menu-pager")','Rotated menu pager did not return');
+  const menuGeometry=`(()=>{const f=document.querySelector('.lektrus-browser-board-frame'),element=f?.contentDocument?.querySelector('.topbar-more-menu[open] .topbar-more-popover');if(!element)return null;const r=element.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:f.contentWindow.innerHeight,scrollable:element.scrollHeight>element.clientHeight,overflow:f.contentWindow.getComputedStyle(element).overflowY,inline:element.style.maxHeight,scrollTop:element.scrollTop}})()`;
+  const menuBounds=await evaluate(menuGeometry);
+  assert.ok(menuBounds&&menuBounds.top>=0&&menuBounds.bottom<=menuBounds.height+1&&menuBounds.scrollable&&menuBounds.overflow==='auto'&&menuBounds.inline.endsWith('px'),JSON.stringify(menuBounds));
+  const scrollX=(menuBounds.left+menuBounds.right)/2;
+  // Start in the middle, not at the physical browser/OS back-gesture edge.
+  const scrollStart=menuBounds.top+(menuBounds.bottom-menuBounds.top)*.66,scrollEnd=menuBounds.top+28;
+  assert.ok(await evaluate(`!!document.querySelector('.lektrus-browser-board-frame').contentDocument.elementFromPoint(${scrollX},${scrollStart})?.closest('.topbar-more-popover')`),'Menu is visually bounded but does not receive touches');
+  await touch(Array.from({length:9},(_,i)=>({x:scrollX,y:scrollStart+(scrollEnd-scrollStart)*i/8})));
+  const swipeScrolled=(await evaluate(menuGeometry)).scrollTop>0;
+  console.log(`Rotated menu swipe: ${swipeScrolled?'delivered':'browser intercepted; explicit paging available'}`);
+  // Verify actual touch reachability of every action, including the final one,
+  // even in browsers that consume the physical swipe before dispatching it.
+  const page=async direction=>{const p=await point(`.lektrus-board-menu-pager button[data-menu-page="${direction}"]`);assert.ok(p,'Menu paging control inaccessible');await touch([p]);};
+  for(let i=0;i<12&&(await evaluate(menuGeometry)).scrollTop>0;i++)await page('previous');
+  assert.equal((await evaluate(menuGeometry)).scrollTop,0,'Previous action paging failed');
+  const reachable=`(()=>{const d=document.querySelector('.lektrus-browser-board-frame').contentDocument;return [...d.querySelectorAll('.topbar-more-popover button:not([data-menu-page])')].map((b,i)=>{const r=b.getBoundingClientRect();return {i,hit:b.contains(d.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}})})()`;
+  const seen=new Set();
+  let actions=await evaluate(reachable);for(const a of actions)if(a.hit)seen.add(a.i);
+  for(let i=0;i<16&&seen.size<actions.length;i++){const before=(await evaluate(menuGeometry)).scrollTop;await page('next');actions=await evaluate(reachable);for(const a of actions)if(a.hit)seen.add(a.i);assert.ok((await evaluate(menuGeometry)).scrollTop>before||seen.size===actions.length,'Next action paging did not advance');}
+  assert.equal(seen.size,actions.length,'Some board actions remain unreachable');
+  await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow,v=new w.EventTarget();Object.assign(v,{width:w.innerWidth,height:185,offsetLeft:0,offsetTop:0});Object.defineProperty(w,'visualViewport',{configurable:true,value:v});w.dispatchEvent(new w.Event('resize'))})()`);
+  await wait(`(${menuGeometry})?.bottom<=185`,'Menu did not adapt to a reduced visual viewport');
+  await evaluate(`(()=>{const w=document.querySelector('.lektrus-browser-board-frame').contentWindow;delete w.visualViewport;w.document.querySelector('#legacy-menu-viewport').remove();w.dispatchEvent(new w.Event('resize'))})()`);
+  console.log('✓ Rotated board menu fits even with legacy CSS viewport failure, all actions reachable by real touch paging, and adapts to a reduced viewport');
+  await call('Page.navigate',{url:new URL('/demo/board?scene=math',url).href});
+  await wait(boardReady,'Public demo did not open in landscape',45000);
+  const demoState=await state();assert.equal(demoState.rotated,true);assert.ok(demoState.width>demoState.height);
+  console.log('✓ Public demo board uses the same landscape viewport');
+  }
+ }else
+ if(keyboardOnly){
+  await wait('!!document.querySelector(".lektrus-calendar-grid")',"Application did not render",30000);
+  // A fixture inside the actual app documents the shared startup behavior even
+  // for canvas/gesture targets that suppress the browser's default focus change.
+  await evaluate(`(()=>{const f=document.createElement('div');f.id='keyboard-fixture';f.style.cssText='position:fixed;inset:12px;z-index:2147483647;background:white;padding:12px;touch-action:none;display:flex;flex-direction:column;align-items:flex-start;gap:12px';f.innerHTML='<label for="qa-one">First</label><input id="qa-one" value="Retained" style="position:static;width:200px;height:40px"><textarea id="qa-two" style="position:static;width:200px;height:60px"></textarea><div id="qa-outside" style="width:200px;height:160px;touch-action:none">Outside</div>';document.body.append(f);f.querySelector('#qa-outside').addEventListener('pointerdown',e=>e.preventDefault());})()`);
+  const tap=async(selector,dy=0)=>{const p=await rect(selector);assert.ok(await evaluate(`!!document.elementFromPoint(${p.x},${p.y})?.closest(${JSON.stringify(selector)})`),`Touch target obscured: ${selector}`);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y,id:1}]});if(dy)await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p.x,y:p.y+dy,id:1}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(400);};
+  const focused=()=>evaluate('document.activeElement.id');
+  for(const [width,height] of [[390,844],[768,1024],[1024,768]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+   await delay(200);
+   await tap('#qa-one');assert.equal(await focused(),'qa-one');
+   await tap('#qa-two');assert.equal(await focused(),'qa-two','A different input must retain focus');
+   await tap('label[for="qa-one"]');assert.equal(await focused(),'qa-one','A field label must retain focus');
+   await tap('#qa-outside',40);assert.equal(await focused(),'qa-one','A drag must not dismiss the keyboard');
+   await tap('#qa-outside');assert.notEqual(await focused(),'qa-one','An outside tap must dismiss the keyboard');
+   assert.equal(await evaluate('document.querySelector("#qa-one").value'),'Retained');
+   console.log(`✓ ${width}×${height}: outside tap, drag, field switch, label and preserved text`);
+  }
+  await evaluate(`document.querySelector('#keyboard-fixture').remove()`);
+  // Reproduce the WebKit keyboard case: the layout viewport stays full size,
+  // while the visual viewport shrinks. This is not a native keyboard test;
+  // the Appium run independently taps the real button with the IME open.
+  for(const [width,height,visibleHeight] of [[390,844,480],[768,1024,600],[1024,768,400]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await delay(200);
+   await evaluate(`(()=>{const v=Object.assign(new EventTarget(),{width:${width},height:${height},offsetTop:0,offsetLeft:0,scale:1});Object.defineProperty(window,'visualViewport',{configurable:true,value:v});})()`);
+   await evaluate(`document.querySelector('.lectris-mobile-bottom button[aria-label="Доски"],.lectris-nav-link[aria-label="Доски"]').click()`);
+   await wait('!!document.querySelector(".lectris-library-new")','Board library did not open');
+   await evaluate('document.querySelector(".lectris-library-new").click()');
+   await wait('!!document.querySelector(".lektrus-create-dialog")','Create board dialog did not render');
+   await evaluate(`visualViewport.height=${visibleHeight};visualViewport.dispatchEvent(new Event('resize'))`);
+   await delay(200);
+   const submit=await rect('.lektrus-create-dialog button[type="submit"]');
+   assert.ok(submit.top>=0&&submit.bottom<=visibleHeight,`Create button obscured by keyboard: ${JSON.stringify(submit)}`);
+   await tap('.lektrus-create-dialog>footer button[type="button"]');
+   await wait('!document.querySelector(".lektrus-create-dialog")','Cancel action inaccessible');
+   await evaluate('delete window.visualViewport');
+   console.log(`✓ ${width}×${height}: create board footer stays above reduced visual viewport (${visibleHeight}px)`);
+  }
+  await evaluate(`(async()=>{const {mountPdfFixture}=await import('/scripts/qa-pdf-browser-fixture.tsx');window.__disposePdfFixture=mountPdfFixture();return true})()`);
+  const pdfReady=()=>wait('document.querySelector(".lektrus-pdf-canvas-stage")?.dataset.pdfStatus==="ready"',"Embedded PDF page did not render",30000);
+  const pdfPixel=()=>evaluate(`(()=>{const c=document.querySelector('.lektrus-pdf-canvas'); return Array.from(c.getContext('2d').getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data)})()`);
+  await pdfReady();assert.deepEqual(await pdfPixel(),[255,0,0,255],"Actual PDF first page pixels");
+  for(const [width,height] of [[390,844],[768,1024],[1024,768]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+   await delay(200);
+   const bounds=await rect('.lektrus-pdf-canvas');assert.ok(bounds.left>=0&&bounds.top>=0&&bounds.right<=width+1&&bounds.bottom<=height+1,JSON.stringify(bounds));
+   await tap('.lektrus-pdf-page-controls button[aria-label="Следующая страница PDF"]');await pdfReady();assert.deepEqual(await pdfPixel(),[0,255,0,255],"Actual PDF second page pixels");
+   await tap('.lektrus-pdf-page-controls button[aria-label="Предыдущая страница PDF"]');await pdfReady();assert.deepEqual(await pdfPixel(),[255,0,0,255],"Actual PDF first page after return");
+   console.log(`✓ ${width}×${height}: PDF canvas rendered actual page pixels, touch pagination stays in viewport`);
+  }
+  const exportPixel=await evaluate(`(async()=>{const {renderPdfPageCanvas}=await import('/src/pdfPagination.ts');const blob=await fetch(document.querySelector('#pdf-fixture').dataset.source).then(r=>r.blob());const c=await renderPdfPageCanvas(blob,3);return Array.from(c.getContext('2d').getImageData(c.width>>1,c.height>>1,1,1).data)})()`);
+  assert.deepEqual(exportPixel,[0,0,255,255],"PNG export rasterizer must render actual third-page pixels");
+  console.log('✓ PDF rasterizer: actual third-page pixels for board PNG export');
+  await evaluate('window.__disposePdfFixture()');
+ }else
+ if(educationOnly){
+  const session={access_token:"test-education-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))});localStorage.setItem('onlinerepetitor.profile-settings.v51','{"compactUi":true}')`});
+  await call("Page.navigate",{url});
+  await wait('!!document.querySelector(".lectris-hub-tiles")&&!!document.querySelector(".lectris-mode-option")',"Teaching home did not open",30000);
+  const tiles=()=>evaluate('[...document.querySelectorAll(".lectris-hub-tile strong")].map(x=>x.textContent)');
+  assert.deepEqual(await tiles(),["Ученики","Предметы","Группы и классы","Задания"]);
+  const nav=label=>click(`.lectris-workspace-sidebar button[aria-label="${label}"]`);
+  await nav("Задания");
+  await wait('document.querySelector(".assignment-list")?.textContent.includes("Выданное задание")',"Teaching assignments were blocked by failed references",30000);
+  assert.ok(!(await evaluate('document.querySelector(".assignment-list").textContent')).includes("Полученное задание"));
+  await click('.lectris-brand');
+  await wait('!!document.querySelector(".lectris-mode-option:nth-child(2)")',"Home did not reopen");
+  await click('.lectris-mode-option:nth-child(2)');
+  await wait('!!document.querySelector(".lectris-hub-tiles-learner")',"Learning mode did not open");
+  assert.deepEqual(await tiles(),["Преподаватели","Предметы","Задания"]);
+  assert.equal(await evaluate('!!document.querySelector(\'.lectris-workspace-sidebar button[aria-label="Ученики"]\')'),false);
+  await nav("Преподаватели");
+  await wait('document.querySelector(".lektrus-teacher-card")?.textContent.includes("Учитель Тест")',"Teacher directory did not load");
+  assert.ok((await evaluate('document.querySelector(".lektrus-teacher-card").textContent')).includes("Математика"));
+  assignmentFailure=true;
+  await nav("Задания");
+  await wait('document.querySelector(".assignments-content [role=alert]")?.textContent.includes("Задания не загрузились")',"No explicit assignment failure state");
+  assert.ok(!(await evaluate('document.querySelector(".assignments-content").textContent')).includes("Заданий пока нет"));
+  assignmentFailure=false;
+  await click('.assignments-content [role=alert] button');
+  await wait('document.querySelector(".assignment-list")?.textContent.includes("Полученное задание")',"Learning assignments failed to recover",30000);
+  assert.ok(!(await evaluate('document.querySelector(".assignment-list").textContent')).includes("Выданное задание"));
+  assert.equal(await evaluate('!!document.querySelector(".assignments-shell .boards-create")'),false);
+  await click('.lectris-brand');
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await wait('!!document.querySelector(".lectris-hub-tiles-learner")',"Mobile home did not open");
+  assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'),true,"Mobile learner home overflow");
+  await click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]');
+  await wait('!!document.querySelector(".lektrus-more-page")',"Mobile More did not open");
+  assert.ok((await evaluate('document.querySelector(".lektrus-more-page").textContent')).includes("Преподаватели"));
+  await evaluate('[...document.querySelectorAll(".lektrus-more-page-item")].find(b=>b.textContent.includes("Настройки")).click()');
+  await wait('!!document.querySelector(".settings-shell")',"Settings did not open");
+  assert.ok(!(await evaluate('document.querySelector(".settings-shell").textContent')).includes("Компактный интерфейс"));
+  assert.equal(await evaluate('document.documentElement.classList.contains("compact-ui")'),false);
+  console.log("✓ Teaching and learning assignments with failed references, retry, private teacher directory, mobile navigation and obsolete setting");
+ }else if(interfaceOnly){
+  const session={access_token:"test-admin-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))})`});
+  await call("Page.navigate",{url:new URL(studioBoard,url).href});
+  await wait('!!document.querySelector(".lektrus-live-layout-actions")',"Admin interface studio did not open",30000);
+  const select=async label=>evaluate(`[...document.querySelectorAll('.lektrus-live-layout-device-switch button')].find(b=>b.textContent===${JSON.stringify(label)}).click()`);
+  const check=async(profile,width,height,touch)=>{
+   await wait(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame');return f?.contentDocument?.documentElement?.dataset.interfaceLayoutDevice===${JSON.stringify(profile)}&&getComputedStyle(f).visibility==='visible'&&!!f.contentDocument.querySelector('.workspace .board')})()`,"Real profile did not load: "+profile,30000);
+   const state=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame'),w=f.contentWindow,r=f.getBoundingClientRect(),dock=document.querySelector('.lektrus-live-layout-actions').getBoundingClientRect();return {width:w.innerWidth,height:w.innerHeight,coarse:w.matchMedia('(pointer:coarse)').matches,hover:w.matchMedia('(hover:hover)').matches,recursive:!!f.contentDocument.querySelector('.lektrus-live-layout-editor'),fits:r.bottom<=dock.top&&r.width<=w.innerWidth+1}})()`);
+   assert.deepEqual(state,{width,height,coarse:touch,hover:!touch,recursive:false,fits:true},profile);
+   const bounds=await evaluate(`(()=>{const d=document.querySelector('.lektrus-layout-device-frame').contentDocument;const b=d.querySelector('.board-home-button').getBoundingClientRect(),l=d.querySelector('.topbar-left').getBoundingClientRect(),h=d.querySelector('.topbar').getBoundingClientRect(),rail=d.querySelector('nav.mobile-board-tools')?.getBoundingClientRect();return {button:b.width>0&&b.left>=Math.max(l.left,h.left)-0.5&&b.right<=Math.min(l.right,h.right)+0.5&&b.top>=h.top&&b.bottom<=h.bottom,rail:rail?.left??null}})()`);
+   assert.ok(bounds.button,profile+": board back button is clipped");
+   if(touch&&width>height) assert.ok(bounds.rail>=10&&bounds.rail<=18,profile+": rail must be near the left safe edge: "+bounds.rail);
+  };
+  await select("ПК");await check("desktop",1920,1080,false);
+  const target=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame');const b=f.contentDocument.querySelector('.toolbar-pinned [data-interface-control="marker"]').getBoundingClientRect(),r=f.getBoundingClientRect(),k=r.width/f.clientWidth;return {x:r.left+(b.x+b.width/2)*k,y:r.top+(b.y+b.height/2)*k}})()`);
+  await mouse("mousePressed",target.x,target.y,{pressed:true});
+  await mouse("mouseMoved",target.x+36,target.y,{pressed:true});
+  await mouse("mouseReleased",target.x+36,target.y);
+  await select("Ноутбук");await check("laptop",1366,768,false);
+  await select("Планшет");await check("tablet",1024,768,true);
+  await evaluate(`[...document.querySelectorAll('.lektrus-live-layout-actions button')].find(b=>b.textContent.includes('Повернуть')).click()`);
+  await check("tabletPortrait",768,1024,true);
+  await select("Телефон");await check("phonePortrait",390,844,true);
+  await evaluate(`[...document.querySelectorAll('.lektrus-live-layout-actions button')].find(b=>b.textContent.includes('Повернуть')).click()`);
+  await check("phone",844,390,true);
+  // Reproduce both physical landscape orientations, including a side system
+  // navigation bar, and verify native insets are applied to actual controls.
+  for(const [left,right,systemLeft,systemRight] of [[38,0,0,26],[0,38,26,0]]){
+   const safe=await evaluate(`(()=>{const f=document.querySelector('.lektrus-layout-device-frame'),d=f.contentDocument,r=d.documentElement;r.classList.add('lektrus-native-app','lektrus-android-app');for(const [key,value] of Object.entries(${JSON.stringify({"cutout-left":left,"cutout-right":right,"system-left":systemLeft,"system-right":systemRight,"system-top":24})}))r.style.setProperty('--lektrus-'+key,value+'px');const b=d.querySelector('.board-home-button').getBoundingClientRect(),rail=d.querySelector('nav.mobile-board-tools').getBoundingClientRect(),z=d.querySelector('.board-controls').getBoundingClientRect();return {button:b.left,buttonTop:b.top,rail:rail.left,railTop:rail.top,railBottom:rail.bottom,zoomRight:z.right}})()`);
+   assert.ok(safe.button>=Math.max(left,systemLeft)+7&&safe.buttonTop>=24,"Native back button crosses the safe area: "+JSON.stringify(safe));
+   assert.ok(safe.rail>=Math.max(left,systemLeft)+10&&safe.railTop>=96&&safe.railBottom<=390,"Native rail crosses the safe area: "+JSON.stringify(safe));
+   assert.ok(safe.zoomRight<=844-Math.max(right,systemRight)-11,"Native zoom crosses the safe area: "+JSON.stringify(safe));
+  }
+  await evaluate(`(()=>{const r=document.querySelector('.lektrus-layout-device-frame').contentDocument.documentElement;r.classList.remove('lektrus-native-app','lektrus-android-app');for(const key of ['cutout-left','cutout-right','system-left','system-right','system-top'])r.style.removeProperty('--lektrus-'+key)})()`);
+  await select("ПК");await check("desktop",1920,1080,false);
+  await click(".lektrus-live-layout-actions .primary");
+  await wait('!document.querySelector(".lektrus-live-layout-editor")',"Published layout did not close editor",15000);
+  assert.ok(publishedLayout?.controls?.desktop?.marker?.x>0,"Desktop marker move was not published");
+  assert.equal(publishedLayout.controls.phone.marker.x,0,"Phone was changed by desktop edit");
+  assert.equal(publishedLayout.controls.phonePortrait.marker.x,0,"Portrait was changed by desktop edit");
+  console.log("✓ Actual device preview: six viewports, touch CSS media, independent profile placements, published API payload");
+  process.exitCode=0;
+ }else
 
  if(homeOnly){
   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Home did not render",30000);
+  // Seed the isolated local-test store, never the live user account. Previously
+  // this test covered an empty dashboard and missed the squeezed mobile cards.
+  const ownerId="00000000-0000-4000-8000-00000000a11f";
+  const longId="00000000-0000-4000-8000-00000000b101",shortId="00000000-0000-4000-8000-00000000b102";
+  const longTitle="Математика: подробное объяснение решения задач по алгебре и геометрии для подготовительной группы";
+  const subject="Иностранный язык и дополнительная подготовка к экзаменам";
+  const group="Группа углублённого изучения иностранного языка";
+  const fixture=[{id:longId,title:longTitle,ownerId,role:"owner",createdAt:"2026-11-20T09:00:00Z",updatedAt:"2026-11-22T09:00:00Z"},
+   {id:shortId,title:"Алгебра",ownerId,role:"owner",createdAt:"2026-11-20T09:00:00Z",updatedAt:"2026-11-21T09:00:00Z"}];
+  await evaluate(`localStorage.setItem('lesson-board.local-test.boards.v1',${JSON.stringify(JSON.stringify(fixture))});localStorage.setItem(${JSON.stringify('lectris.board-organization.v1.'+ownerId)},${JSON.stringify(JSON.stringify({[longId]:{subject,group}}))});true`);
+  await call('Page.reload');
+  await wait('document.querySelectorAll(".lektrus-recent-board").length===2',"Recent board fixtures did not render",30000);
+  const boardGeometry=()=>evaluate(`(()=>{
+   const all=[...document.querySelectorAll('.lektrus-recent-board')];
+   const box=e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}};
+   return all.map(card=>{
+    const title=card.querySelector('.lektrus-recent-board-title'),text=title.firstElementChild,cover=card.querySelector('.lectris-hub-board-cover'),info=card.querySelector('.lectris-hub-board-info'),menu=card.querySelector('.lectris-hub-board-edit');
+    const b=box(card),t=box(title),c=box(cover),i=box(info),m=box(menu);
+    const rows=[...info.querySelectorAll('.lectris-hub-board-kind,.lektrus-recent-board-group,.lektrus-recent-board-role,time')];
+    return {title:text.textContent,scrolling:text.classList.contains('is-scrolling'),travel:parseFloat(text.style.getPropertyValue('--title-travel')),expected:Math.max(0,text.scrollWidth-title.clientWidth),
+     columns:getComputedStyle(card.querySelector('.lectris-hub-board-main')).flexDirection,ordered:t.bottom<=c.top+1&&c.bottom<=i.top+1,fullCover:c.width>=b.width-3,menuClear:t.right<=m.left+1,
+     inside:[t,c,i,m,...rows.map(box)].every(x=>x.left>=b.left-1&&x.right<=b.right+1&&x.top>=b.top-1&&x.bottom<=b.bottom+1),
+     readable:rows.every(e=>e.scrollWidth<=e.clientWidth+1&&e.scrollHeight<=e.clientHeight+1&&getComputedStyle(e).whiteSpace==='normal'),details:rows.map(e=>e.textContent)};
+   });
+  })()`);
+  for(const [width,height] of [[320,640],[360,800],[390,844],[430,932],[768,1024],[1024,768],[1440,900]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<=768});
+   await delay(180);
+   const cards=await boardGeometry();
+   assert.equal(cards.length,2);
+   for(const card of cards)assert.ok(card.columns==='column'&&card.ordered&&card.fullCover&&card.menuClear&&card.inside&&card.readable,`Recent board card squeezed at ${width}: ${JSON.stringify(card)}`);
+   assert.ok(cards[0].scrolling&&Math.abs(-cards[0].travel-cards[0].expected)<=1,`Long title must scroll exactly its overflow at ${width}`);
+   assert.equal(cards[1].scrolling,false,'Short title must stay still');
+   assert.deepEqual(cards[0].details.slice(0,2),[subject,group]);
+   console.log(`✓ Recent board cards ${width}×${height}: title above full-width preview, wrapped metadata and separate menu`);
+  }
+  const motion=await evaluate(`(()=>{const text=document.querySelector('.lektrus-recent-board-title .is-scrolling'),a=text.getAnimations()[0];if(!a)return null;a.pause();const d=a.effect.getTiming().duration;a.currentTime=0;const start=new DOMMatrixReadOnly(getComputedStyle(text).transform).m41;a.currentTime=d*.55;const end=new DOMMatrixReadOnly(getComputedStyle(text).transform).m41;a.currentTime=d*.99;const back=new DOMMatrixReadOnly(getComputedStyle(text).transform).m41;a.play();return {start,end,back,travel:parseFloat(text.style.getPropertyValue('--title-travel'))}})()`);
+  assert.ok(motion&&Math.abs(motion.start)<1&&Math.abs(motion.end-motion.travel)<1&&Math.abs(motion.back)<2,'Title must travel to its end and back: '+JSON.stringify(motion));
+  await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  await delay(120);
+  assert.ok(await evaluate(`(()=>{const e=document.querySelector('.lektrus-recent-board-title'),t=e.firstElementChild;return t.getAnimations().length===0&&getComputedStyle(t).whiteSpace==='normal'&&t.scrollWidth<=e.clientWidth+1&&t.scrollHeight<=e.clientHeight+1})()`),'Reduced-motion title should wrap rather than clip');
+  await call('Emulation.setEmulatedMedia',{features:[]});
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await click('.lektrus-recent-board .lectris-hub-board-edit');
+  assert.ok(await evaluate(`(()=>{const m=document.querySelector('.lektrus-home-board-actions');if(!m)return false;m.scrollIntoView({block:'center'});const b=m.lastElementChild.getBoundingClientRect();return b.width>0&&m.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2))})()`),'Recent-board action menu must not be clipped by its card');
+  await click('.lektrus-recent-board .lectris-hub-board-edit');
+  console.log('✓ Long title pans in both directions, reduced motion wraps, owner actions remain accessible');
   const snapshot=()=>evaluate(`(() => {
    const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
    const one=s=>document.querySelector(s), all=s=>[...document.querySelectorAll(s)];
@@ -162,6 +729,52 @@ try{
    await wait(`location.pathname==="/app"&&new URLSearchParams(location.search).get("section")===${JSON.stringify(id)}&&!!document.querySelector(${JSON.stringify(selector)})`,
     "Wrong workspace section: "+id);
   };
+  // A real tablet has two independent scrolling regions, and its layout
+  // follows the remaining workspace width in both orientations.
+  await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+  for(const [width,height] of [[768,1024],[1024,768],[1280,800]]){
+   await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:true});
+   await click('.lectris-brand');
+   await wait('!!document.querySelector(".lektrus-calendar-grid")',"Tablet home did not render");
+   await wait('!!document.querySelector(".lectris-workspace-stage[data-tablet-width]")',"Tablet stage has no measured width");
+   const geometry=()=>evaluate(`(()=>{
+    const stage=document.querySelector('.lectris-workspace-stage'),sidebar=document.querySelector('.lectris-workspace-sidebar'),shell=document.querySelector('.lectris-workspace'),b=stage.getBoundingClientRect(),s=sidebar.getBoundingClientRect(),r=shell.getBoundingClientRect();
+    const controls=[...stage.querySelectorAll('.lectris-library-sort select,.lectris-library-search,.lectris-palette-options>button,.assignment-stats>button,.students-header button,.lektrus-category-strip>button,.schedule-calendar .lektrus-schedule-day-select,.lektrus-feedback-screen-grid>section')].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden');
+    return {stageWidth:b.width,viewport:innerWidth,profile:stage.dataset.tabletWidth,sidebarWidth:s.width,fullWidth:r.width>=innerWidth-2&&b.right>=innerWidth-2,fullHeight:b.bottom<=innerHeight+2&&b.bottom>=innerHeight-2&&s.bottom<=innerHeight+2,sideBySide:s.right<=b.left+2,vertical:getComputedStyle(stage).overflowY,sidebarScroll:getComputedStyle(sidebar).overflowY,overflow:controls.filter(e=>{const c=e.getBoundingClientRect();return c.left<b.left-2||c.right>b.right+2}).map(e=>e.className||e.tagName),documentWidth:document.documentElement.scrollWidth,heroHeight:stage.querySelector('.lectris-hub-hero')?.getBoundingClientRect().height||0};
+   })()`);
+   const assertTablet=async name=>{
+    const g=await geometry();
+    assert.ok(g.fullWidth&&g.fullHeight&&g.sideBySide&&g.sidebarWidth>50&&g.vertical==='auto'&&g.sidebarScroll==='auto'&&g.documentWidth<=g.viewport+2&&!g.overflow.length,`${name} ${width}×${height}: ${JSON.stringify(g)}`);
+    assert.equal(g.profile,g.stageWidth<630?'compact':g.stageWidth<880?'medium':'wide',`Wrong tablet width profile: ${JSON.stringify(g)}`);
+    return g;
+   };
+   const home=await assertTablet('Home');
+   assert.ok(home.heroHeight>0&&home.heroHeight<340,'Tablet hero has excessive empty space: '+JSON.stringify(home));
+   // Actual touch gesture, not assigning scrollTop from JS.
+   const scroll=await evaluate(`(()=>{const e=document.querySelector('.lectris-workspace-stage'),r=e.getBoundingClientRect();return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height*.8),travel:Math.round(r.height*.55),available:e.scrollHeight-e.clientHeight}})()`);
+   if(scroll.available>60){
+    await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:scroll.x,y:scroll.y}]});
+    for(let step=1;step<=7;step++){await call('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:scroll.x,y:scroll.y-Math.round(scroll.travel*step/7)}]});await delay(30);}
+    await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await wait('document.querySelector(".lectris-workspace-stage").scrollTop>40',"Tablet touch could not scroll the home page");
+   }
+   for(const [label,id,selector] of sections){
+    // Native touch navigation needs to reach items below the visible sidebar.
+    await evaluate(`document.querySelector(${JSON.stringify('.lectris-workspace-sidebar button[aria-label="'+label+'"]')}).scrollIntoView({block:"nearest"})`);
+    await click('.lectris-workspace-sidebar button[aria-label="'+label+'"]');
+    await checkSection(id,selector);
+    await assertTablet(id);
+    if(id==="feedback"){
+     await evaluate(`document.querySelector('.lektrus-feedback-screen button[type=submit]').scrollIntoView({block:'center',behavior:'instant'})`);
+     await delay(180);
+     const feedback=await evaluate(`(()=>{const e=document.querySelector('.lektrus-feedback-screen button[type=submit]'),s=document.querySelector('.lectris-workspace-stage'),b=e.getBoundingClientRect(),r=s.getBoundingClientRect();return {top:b.top,bottom:b.bottom,stageTop:r.top,stageBottom:r.bottom,viewport:innerHeight,scroll:s.scrollTop,scrollHeight:s.scrollHeight,clientHeight:s.clientHeight,visible:b.bottom<=Math.min(r.bottom,innerHeight)+2&&b.top>=r.top-2}})()`);
+     assert.ok(feedback.visible,"Tablet feedback submit is unreachable: "+JSON.stringify(feedback));
+    }
+   }
+   console.log(`✓ Tablet ${width}×${height}: all 13 routes, full screen, independent scrolling and controls within the stage`);
+  }
+  await call('Emulation.setTouchEmulationEnabled',{enabled:false});
+  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   for(const [label,id,selector] of sections){
    await click('.lectris-workspace-sidebar button[aria-label="'+label+'"]');
    await checkSection(id,selector);
@@ -232,25 +845,211 @@ try{
   await wait('!!document.querySelector(".notification-settings")',"Notification settings did not open");
   await click('.notification-settings .access-head button');
   await wait('!document.querySelector(".notification-settings")',"Notification settings did not close");
-  await click('.lectris-header-search');
-  await wait('!!document.querySelector(".lectris-command-dialog")',"Command search did not open");
-  await evaluate('[...document.querySelectorAll(".lectris-command-results button")].find(b=>b.textContent.includes("Шаблоны")).click()');
+  await wait('!document.querySelector(".lectris-header-search")',"Unneeded desktop header search is visible");
+  await click('.lectris-workspace-sidebar button[aria-label="Шаблоны"]');
   await checkSection("templates",".templates-shell");
   await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
+  await wait('!document.querySelector(".lectris-header-search")',"Unneeded mobile header search is visible");
   await click('.lectris-mobile-bottom button[aria-label="Ещё разделы"]');
   await wait('!!document.querySelector(".lektrus-more-page")',"Mobile More did not open");
   await evaluate('[...document.querySelectorAll(".lektrus-more-page-item")].find(b=>b.textContent.includes("Настройки")).click()');
   await checkSection("settings",".settings-shell");
-  console.log('✓ Desktop tiles, schedule controls, progress tabs, board-only AI routing, billing, notifications dialog, command search and mobile More');
+  console.log('✓ Desktop tiles, schedule controls, progress tabs, board-only AI routing, billing, notifications dialog, header without search and mobile More');
  }else{
 
- // Initial lesson must actually render the board with math, text and table objects.
+ // Public demo: verify absence of seed content, no persisted board, no double outline.
+ const demoUrl=new URL("/demo/board?scene=geometry&capture=1",url).href;
+ const demoRequests=[];
+ const observeDemo=event=>{const data=JSON.parse(event.data);if(data.method==="Network.requestWillBeSent"||data.method==="Network.webSocketCreated"){const requestUrl=data.params.request?.url??data.params.url??"";if(/(?:\/api\/v1\/|\/rest\/v1\/|\/auth\/v1\/|\/storage\/v1\/|\/realtime\/v1\/)/.test(requestUrl))demoRequests.push(requestUrl)}};
+ socket.addEventListener("message",observeDemo);
+ await call("Network.enable");
+ await call("Page.navigate",{url:demoUrl});
+ await wait('document.querySelector(".board-title")?.value==="Демо-версия доски"',"Fresh demo did not open",45000);
+ assert.equal(await evaluate('document.querySelectorAll(".board-object[data-object]").length'),0);
+ await evaluate('document.querySelector(".board-title").focus()');
+ assert.deepEqual(await evaluate('(()=>{const s=getComputedStyle(document.querySelector(".board-title"));return [s.outlineStyle,s.boxShadow]})()'),["none","none"],"Duplicate focus ring");
+ await click('.toolbar-pinned button[aria-label^="Карандаш"]');
+ const demoCanvas=await rect("section.board");
+ await mouse("mousePressed",demoCanvas.x,demoCanvas.y,{pressed:true});
+ for(let dx=12;dx<=84;dx+=12)await mouse("mouseMoved",demoCanvas.x+dx,demoCanvas.y+20,{pressed:true});
+ await mouse("mouseReleased",demoCanvas.x+84,demoCanvas.y+20);
+ await wait('!!document.querySelector(".viewer-ink-canvas")',"Demo pencil did not render");
+ // Sticker ink is part of the card, not an independent canvas object.
+ await click('.lektrus-desktop-sections button[aria-label="Текст"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-group--create")',"Text tool catalogue did not open");
+ assert.ok(await evaluate('(()=>{const b=[...document.querySelectorAll(".lektrus-tool-overflow-group--create button")].find(b=>b.textContent.trim()==="Стикер");b?.click();return !!b})()'),"Sticker tool missing");
+ await wait('document.querySelector("section.board")?.classList.contains("board-tool-sticky")',"Sticker tool not selected");
+ await mouse("mousePressed",demoCanvas.x-180,demoCanvas.y-120,{pressed:true});
+ await mouse("mouseReleased",demoCanvas.x-180,demoCanvas.y-120);
+ await wait('!!document.querySelector(".object-sticky.selected")',"Sticker was not created");
+ assert.equal(await evaluate('!!document.querySelector(".object-sticky .text-editor,.object-sticky .text-placeholder,.selection-toolbar-screen .selection-edit-action")'),false,"Sticker must not expose a text editor");
+ const cardBefore=await rect(".object-sticky");
+ await click('.toolbar-pinned button[aria-label^="Карандаш"]');
+ await mouse("mousePressed",cardBefore.x-30,cardBefore.y-10,{pressed:true});
+ for(let dx=-20;dx<=30;dx+=10)await mouse("mouseMoved",cardBefore.x+dx,cardBefore.y+dx/3,{pressed:true});
+ await mouse("mouseReleased",cardBefore.x+30,cardBefore.y+10);
+ await wait('!!document.querySelector(".sticker-ink-layer polyline")',"Drawing did not attach to sticker");
+ const attached=await evaluate('document.querySelector(".sticker-ink-layer polyline").getAttribute("points")');
+ await click(".toolbar-pinned button:first-child");
+ await mouse("mousePressed",cardBefore.x,cardBefore.y,{pressed:true});
+ await mouse("mouseMoved",cardBefore.x+80,cardBefore.y+40,{pressed:true});
+ await mouse("mouseReleased",cardBefore.x+80,cardBefore.y+40);
+ await wait(`document.querySelector(".object-sticky").getBoundingClientRect().left>${cardBefore.left+40}`,"Sticker with drawing did not move");
+ assert.equal(await evaluate('document.querySelector(".sticker-ink-layer polyline").getAttribute("points")'),attached,"Sticker moved independently of its ink");
+ assert.equal(await evaluate('document.querySelector(".snap-toggle")?.getAttribute("aria-pressed")'),"false","Grid snapping must be disabled initially");
+ await click('.snap-toggle');
+ assert.equal(await evaluate('document.querySelector(".snap-toggle")?.getAttribute("aria-pressed")'),"true");
+ await click('.snap-toggle');
+ await click('.toolbar-pinned button[aria-label^="Петля"]');
+ const lassoCard=await rect('.object-sticky');
+ await mouse('mousePressed',lassoCard.x,lassoCard.y,{pressed:true});
+ await mouse('mouseMoved',lassoCard.x-35,lassoCard.y+20,{pressed:true});
+ await mouse('mouseReleased',lassoCard.x-35,lassoCard.y+20);
+ await wait(`document.querySelector('.object-sticky').getBoundingClientRect().left<${lassoCard.left-15}`,"Lasso must move the already selected sticker");
+ const resizeCard=await rect('.object-sticky');
+ const resizeHandle=await rect('.screen-handle-se');
+ await mouse('mousePressed',resizeHandle.x,resizeHandle.y,{pressed:true});
+ await mouse('mouseMoved',resizeHandle.x+48,resizeHandle.y+36,{pressed:true});
+ await mouse('mouseReleased',resizeHandle.x+48,resizeHandle.y+36);
+ await wait(`document.querySelector('.object-sticky').getBoundingClientRect().width>${resizeCard.right-resizeCard.left+20}`,"Lasso must resize selected objects");
+ const resizedInk=await evaluate('document.querySelector(".sticker-ink-layer polyline").getAttribute("points")');
+ const coords=s=>s.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi).map(Number);
+ assert.ok(coords(attached).every((n,i)=>Math.abs(n-coords(resizedInk)[i])<.01),"Resizing the sticker must not scale its ink");
+ await click('.toolbar-pinned button[aria-label^="Карандаш"]');
+ const grownCard=await rect('.object-sticky');
+ await mouse('mousePressed',grownCard.x,grownCard.y,{pressed:true});
+ await mouse('mouseMoved',grownCard.right+36,grownCard.y,{pressed:true});
+ await mouse('mouseReleased',grownCard.right+36,grownCard.y);
+ await wait('document.querySelectorAll(".sticker-ink-layer polyline").length===2',"Cross-boundary ink must be stored as one sticker stroke");
+ const overhang=await evaluate(`(()=>{const card=document.querySelector('.object-sticky'),svg=card.querySelector('.sticker-ink-layer'),line=svg.querySelectorAll('polyline')[1],p=line.points.getItem(line.points.numberOfItems-1),s=new DOMPoint(p.x,p.y).matrixTransform(svg.getScreenCTM());return {points:line.getAttribute('points'),outside:s.x>card.getBoundingClientRect().right+15,visible:getComputedStyle(svg).overflow==='visible'&&getComputedStyle(card).overflow==='visible',x:s.x,y:s.y}})()`);
+ assert.ok(overhang.outside&&overhang.visible,"The entire tail must remain visible outside the paper");
+ await click('.toolbar-pinned button:first-child');
+ await mouse('mousePressed',grownCard.x,grownCard.y-25,{pressed:true});
+ await mouse('mouseMoved',grownCard.x-40,grownCard.y-5,{pressed:true});
+ await mouse('mouseReleased',grownCard.x-40,grownCard.y-5);
+ await wait(`document.querySelector('.object-sticky').getBoundingClientRect().left<${grownCard.left-20}`,"Sticker with outside ink did not move");
+ const movedTail=await evaluate(`(()=>{const svg=document.querySelector('.sticker-ink-layer'),line=svg.querySelectorAll('polyline')[1],p=line.points.getItem(line.points.numberOfItems-1),s=new DOMPoint(p.x,p.y).matrixTransform(svg.getScreenCTM());return {points:line.getAttribute('points'),x:s.x,y:s.y}})()`);
+ assert.equal(movedTail.points,overhang.points,"Outside ink was detached or distorted by movement");
+ assert.ok(Math.abs(movedTail.x-overhang.x+40)<2&&Math.abs(movedTail.y-overhang.y-20)<2,"Outside tail must follow the paper");
+ console.log('✓ Grid toggle, lasso move and resize, fixed-size sticker ink and complete attached overhang');
+ assert.equal(await evaluate('!!document.querySelector(".lektrus-direct-comment,.edit-selected")'),false,"Removed tool or overlapping edit chip still visible");
+ const panelFits=`(()=>{const el=document.querySelector(".selection-toolbar-screen"),b=document.querySelector("section.board");
+  if(!el||!b)return false;const p=el.getBoundingClientRect(),r=b.getBoundingClientRect();
+  return p.left>=r.left-1&&p.right<=r.right+1&&p.top>=r.top-1&&p.bottom<=r.bottom+1&&
+   [...el.children].every(child=>{const c=child.getBoundingClientRect();return !c.width||(c.left>=p.left-1&&c.right<=p.right+1&&c.top>=p.top-1&&c.bottom<=p.bottom+1)});
+ })()`;
+ const waitPanelFits=async message=>{
+  try{await wait(panelFits,message)}catch(error){
+   console.error("Selection geometry:",JSON.stringify(await evaluate(`(()=>{
+    const el=document.querySelector(".selection-toolbar-screen"),board=document.querySelector("section.board");
+    const bounds=node=>node?.getBoundingClientRect().toJSON();
+    return {board:bounds(board),panel:bounds(el),editor:!!document.querySelector(".text-editor"),
+     selected:[...document.querySelectorAll(".board-object.selected")].map(node=>node.dataset.object),
+     children:el?[...el.children].map(node=>({className:node.className,title:node.title,bounds:bounds(node)})):[]};
+   })()`)));throw error;
+  }
+ };
+ await waitPanelFits("Sticker action panel extends outside its background or board");
+ await click('.lektrus-desktop-sections button[aria-label="Текст"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-group--create")',"Text tool catalogue did not open");
+ assert.ok(await evaluate('(()=>{const b=[...document.querySelectorAll(".lektrus-tool-overflow-group--create button")].find(b=>b.textContent.trim()==="Текст");b?.click();return !!b})()'),"Text tool missing");
+ await wait('document.querySelector("section.board")?.classList.contains("board-tool-text")',"Text tool not selected");
+ await mouse("mousePressed",demoCanvas.x+190,demoCanvas.y-100,{pressed:true});
+ await mouse("mouseReleased",demoCanvas.x+190,demoCanvas.y-100);
+ await wait('!!document.querySelector(".object-text textarea.text-editor")',"Text editor did not open");
+ await wait('document.activeElement===document.querySelector(".object-text textarea.text-editor")',"New text editor did not receive keyboard focus");
+ await call("Input.insertText",{text:"Проверка текста"});
+ await wait('document.querySelector(".object-text textarea.text-editor")?.value==="Проверка текста"',"Text input was not received");
+ assert.deepEqual(await evaluate('(()=>{const s=getComputedStyle(document.querySelector(".object-text textarea.text-editor"));return [s.outlineStyle,s.boxShadow]})()'),["none","none"],"Text editor has an unnecessary focus ring");
+ await evaluate('document.querySelector(".object-text textarea.text-editor").blur()');
+ await wait('!document.querySelector(".object-text textarea.text-editor")&&document.querySelector(".object-text .text-display")?.textContent==="Проверка текста"',"Text editor did not save and close after losing focus");
+ await waitPanelFits("Text action panel extends outside its background or board");
+ await click('.selection-toolbar-screen summary[aria-label="Ещё действия"]');
+ await wait('!!document.querySelector(".selection-more[open] .selection-text-format-section")',"Text formatting was not moved into More");
+ await click('.selection-toolbar-screen summary[aria-label="Ещё действия"]');
+ await delay(550);
+ assert.equal(await evaluate('Object.keys(localStorage).some(k=>k.includes("lektrus-demo-"))'),false,"Demo content persisted");
+ await call("Page.navigate",{url:new URL("/demo/board?scene=math",url).href});
+ await wait('document.querySelector(".board-title")?.value==="Демо-версия доски"',"Demo did not reopen",45000);
+ assert.equal(await evaluate('document.querySelectorAll(".board-object[data-object]").length'),0);
+ assert.equal(await evaluate('!!document.querySelector(".viewer-ink-canvas")'),false,"Demo ink survived reload");
+ await click('button[aria-label="Фото / PDF"]');
+ await wait('!!document.querySelector(".lektrus-tool-overflow-content")',"Demo media menu unavailable");
+ assert.equal(await evaluate('!!document.querySelector(\'button[aria-label="Видео"]\')'),false,"Video shown in demo");
+ await click('button[aria-label="Закрыть меню инструментов"]');
+ await click(".lektrus-desktop-subject-trigger");
+ await wait('!!document.querySelector("#lektrus-subject-tools-panel select")',"Demo subject tools unavailable");
+ await evaluate(`(()=>{const s=document.querySelector("#lektrus-subject-tools-panel select");Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(s,"История");s.dispatchEvent(new Event("change",{bubbles:true}))})()`);
+ await wait('document.querySelectorAll("#lektrus-subject-tools-panel .lektrus-subject-tools-list button").length===1',"Demo should offer only the subject board");
+ assert.equal(await evaluate('document.querySelector("#lektrus-subject-tools-panel .lektrus-subject-tools-list button")?.getAttribute("aria-label")'),"Задания на доске");
+ assert.deepEqual(demoRequests,[],"Demo made backend requests");
+ socket.removeEventListener("message",observeDemo);
+ // A new coordinate plane and number line snap independently from the board.
+ await call("Page.navigate",{url:new URL("/demo/board?qa-release-fixture=1&scene=coordinates&capture=1",url).href});
+ await wait('!!document.querySelector(\'[data-object="qa-plane"] .graph-view > svg\')',"Coordinate fixture did not open");
+ await click('.fit-all-button');
+ await delay(350);
+ const svgPoint=async(id,x,y)=>evaluate(`(()=>{const svg=document.querySelector('[data-object="${id}"] .graph-view > svg'),p=new DOMPoint(${x},${y}).matrixTransform(svg.getScreenCTM());return {x:p.x,y:p.y}})()`);
+ const doubleClick=async p=>{for(const count of [1,2]){await mouse("mousePressed",p.x,p.y,{pressed:true,clickCount:count});await mouse("mouseReleased",p.x,p.y,{clickCount:count});}};
+ const planeHeight=await evaluate('document.querySelector(\'[data-object="qa-plane"] .graph-view > svg\').viewBox.baseVal.height');
+ assert.equal(await evaluate('document.querySelector(\'[data-object="qa-plane"] .lektrus-grid-control[aria-label*="привязку"]\').getAttribute("aria-pressed")'),"true");
+ await doubleClick(await svgPoint("qa-plane",351,planeHeight/2+37));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===1',"Double-click did not add a point");
+ const planeVertex=await evaluate('(()=>{const c=document.querySelector(\'[data-object="qa-plane"] .graph-point circle:not(.graph-point-hit)\');return {x:Number(c.getAttribute("cx")),y:Number(c.getAttribute("cy"))}})()');
+ assert.ok(Math.abs(planeVertex.x-360)<.01&&Math.abs(planeVertex.y-(planeHeight/2+30))<.01,"Point did not snap to the integer grid");
+ await doubleClick(await svgPoint("qa-plane",planeVertex.x,planeVertex.y));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===0',"Double-click did not delete the point");
+ assert.equal(await evaluate('!!document.querySelector(".graph-editor-backdrop,.lektrus-graph-dialog")'),false,"Point gestures opened the settings editor");
+ const linePoint=await svgPoint("qa-line",351,180);
+ await doubleClick(linePoint);
+ await wait('document.querySelectorAll(\'[data-object="qa-line"] .graph-point\').length===3',"Number line point was not added");
+ const lineVertex=await evaluate('(()=>{const c=[...document.querySelectorAll(\'[data-object="qa-line"] .graph-point circle:not(.graph-point-hit)\')].at(-1);return {x:Number(c.getAttribute("cx")),y:Number(c.getAttribute("cy"))}})()');
+ assert.equal(lineVertex.x,360);assert.equal(lineVertex.y,180);
+ await doubleClick(await svgPoint("qa-line",lineVertex.x,lineVertex.y));
+ await wait('document.querySelectorAll(\'[data-object="qa-line"] .graph-point\').length===2',"Number line point was not deleted");
+ await call("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:5});
+ const doubleTap=async p=>{for(let i=0;i<2;i++){
+  await call("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:p.x,y:p.y,id:1}]});
+  await call("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+  if(i===0)await delay(90);
+ }};
+ await doubleTap(await svgPoint("qa-plane",231,planeHeight/2-37));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===1',"Double tap did not add a coordinate point");
+ await delay(700); // separate gestures, including the browser's native double-click suppression
+ await doubleTap(await svgPoint("qa-plane",240,planeHeight/2-30));
+ await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===0',"Double tap did not delete the coordinate point");
+ await delay(350);
+ assert.equal(await evaluate('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length'),0,"Synthetic double click recreated the deleted point");
+ await call("Emulation.setTouchEmulationEnabled",{enabled:false});
+ console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion");
+ await call("Page.navigate",{url});
+ console.log("✓ Empty public demo, ephemeral ink, subject tools and text input focus");
+
+ // Test-only fixture: the initial lesson must actually render the board with math, text and table objects.
  await wait('document.querySelectorAll(".board-object[data-object]").length>=8',
   "Mathematics demo did not render its objects");
  for(const type of ["text","sticky","formula","table","graph"])
   assert.ok(await evaluate(`!!document.querySelector(".board-object.object-${type}")`),
    "Board lost "+type+" objects");
  console.log("✓ Demo board: math lessons and five object types rendered");
+ // The toolbar is shared by all kinds. Exercise the long/short action
+ // sets and real screen bounds at a fitted zoom, not a fixed mock width.
+ await click('.fit-all-button');
+ await delay(300);
+ for(const id of ["math-title","math-note","math-equation","math-graph","math-values"]){
+  const point=await evaluate(`(()=>{const el=document.querySelector('[data-object="${id}"]');if(!el)return null;
+   const r=el.getBoundingClientRect();for(const fy of [.2,.5,.8])for(const fx of [.2,.5,.8]){
+    const x=r.left+r.width*fx,y=r.top+r.height*fy,hit=document.elementFromPoint(x,y);
+    if(hit?.closest('[data-object]')===el&&!hit.closest('button,input,textarea,[data-board-interactive]'))return {x,y};
+   }return null;})()`);
+  assert.ok(point,"No visible selection surface for "+id);
+  await mouse("mousePressed",point.x,point.y,{pressed:true});await mouse("mouseReleased",point.x,point.y);
+  await wait(`document.querySelector('[data-object="${id}"]')?.classList.contains("selected")`,"Could not select "+id);
+  await waitPanelFits("Action toolbar overflow for "+id);
+ }
+ await call("Page.navigate",{url});
+ await wait('document.querySelectorAll(".board-object[data-object]").length>=8',"Math fixture did not restore after selection layout checks");
+ console.log("✓ Selection action geometry across text, sticker, formula, graph and table");
 
  // A fresh profile zooms with the wheel; the alternate mode and reset must
  // work immediately, and the selected mode is kept across reloads.
@@ -507,7 +1306,95 @@ try{
  await click('.toolbar-pinned button[aria-label^="Ластик"]');
  await wait('document.querySelector("section.board")?.classList.contains("board-tool-eraser")',
   "Eraser could not be activated");
- console.log("✓ Ink: real pencil stroke rendered and saved; eraser activates");
+ const eraserModeButton=async (mode)=>{
+  const found=await evaluate(`(()=>{const button=[...document.querySelectorAll('.lektrus-eraser-modes button')].find(b=>b.dataset.eraserMode===${JSON.stringify(mode)}&&b.getBoundingClientRect().width>0);if(!button)return false;button.click();return true})()`);
+  assert.ok(found,"Both eraser modes must be available");
+ };
+ const savedInkIds=`(()=>{const doc=JSON.parse(localStorage.getItem('lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0'));return doc.items.filter(i=>i.kind==='pen').map(i=>i.id)})()`;
+ const originalInk=await evaluate(savedInkIds);
+ const lineId=originalInk.at(-1);
+ assert.ok(lineId,"Saved stroke ID missing");
+ await eraserModeButton("partial");
+ const hitX=canvasPoint.x+48,hitY=canvasPoint.y+Math.sin(48/30)*12;
+ await mouse("mousePressed",hitX,hitY,{pressed:true});
+ await mouse("mouseReleased",hitX,hitY);
+ await wait(`${savedInkIds}.length===${originalInk.length+1}&&!${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Partial eraser must split the real stroke into two fragments");
+ await click('button[aria-label="Отменить"]');
+ await wait(`${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Undo must restore the entire original stroke");
+ await eraserModeButton("stroke");
+ await mouse("mousePressed",hitX,hitY,{pressed:true});
+ await wait('document.querySelector("section.board").classList.contains("eraser-live")',"Whole stroke must disappear in the live preview before pointer release");
+ await mouse("mouseReleased",hitX,hitY);
+ await wait(`${savedInkIds}.length===${originalInk.length-1}&&!${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Whole stroke eraser must remove the complete line without fragments");
+ console.log("✓ Real pencil, partial eraser, whole stroke eraser and undo");
+
+ // Drop actual decoded files of different dimensions and encodings. The
+ // pointer resize must keep their source aspect and fill the visible frame.
+ for(const [mime,w,h] of [["image/png",480,90],["image/jpeg",90,480],["image/webp",320,160]]){
+  const name=`resize-${mime.split('/')[1]}`;
+  await evaluate(`(async()=>{const b=document.querySelector('section.board'),r=b.getBoundingClientRect(),c=document.createElement('canvas');c.width=${w};c.height=${h};const ctx=c.getContext('2d');ctx.fillStyle='#2275ce';ctx.fillRect(0,0,c.width,c.height);const file=new File([await new Promise(resolve=>c.toBlob(resolve,${JSON.stringify(mime)}))],${JSON.stringify(name)},{type:${JSON.stringify(mime)}});const dataTransfer=new DataTransfer();dataTransfer.items.add(file);b.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer,clientX:Math.round(r.left+r.width*.55),clientY:Math.round(r.top+r.height*.42)}));return true})()`);
+  const selector=`.object-image:has(img[alt="${name}"])`;
+  await wait(`(()=>{const img=document.querySelector(${JSON.stringify(selector)}+' img');return img?.complete&&img.naturalWidth>0})()`,"Image did not load: "+mime,10000);
+  const ratio=await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});return el.offsetWidth/el.offsetHeight})()`);
+  assert.ok(Math.abs(ratio-w/h)/(w/h)<.05,"Initial frame must preserve image proportions for "+mime);
+  const beforeWidth=await evaluate(`document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().width`);
+  const grip=await rect('.screen-handle-e');
+  await mouse('mousePressed',grip.x,grip.y,{pressed:true});
+  await mouse('mouseMoved',grip.x+24,grip.y,{pressed:true});
+  await mouse('mouseReleased',grip.x+24,grip.y);
+  await wait(`document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().width>${beforeWidth+10}`,"Side grip must actually resize the image: "+mime);
+  const resized=await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)}),img=el.querySelector('img');return {ratio:parseFloat(el.style.width)/parseFloat(el.style.height),fit:getComputedStyle(img).objectFit}})()`);
+  assert.ok(Math.abs(resized.ratio-w/h)/(w/h)<.015&&resized.fit==='fill',"Side grip must preserve aspect and avoid padding for "+mime);
+  await click('button[aria-label="Отменить"]'); // resize
+  await click('button[aria-label="Отменить"]'); // insertion, free the same board area
+  await wait(`!document.querySelector(${JSON.stringify(selector)})`,"Undo must remove the inserted image");
+ }
+ console.log("✓ PNG, JPEG and WebP: real image insertion and proportional side resize without padding");
+
+ // Large white bars around scans must be excluded BEFORE first resize,
+ // without manually opening the crop editor.
+ const paddedName="qa-padded-worksheet";
+ await evaluate(`(async()=>{
+  const b=document.querySelector("section.board"),r=b.getBoundingClientRect();
+  const c=document.createElement("canvas");c.width=600;c.height=800;
+  const ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,600,800);
+  ctx.fillStyle="#2275ce";ctx.fillRect(215,20,170,760);
+  const blob=await new Promise(resolve=>c.toBlob(resolve,"image/png"));
+  const file=new File([blob],${JSON.stringify(paddedName)},{type:"image/png"});
+  const transfer=new DataTransfer();transfer.items.add(file);
+  b.dispatchEvent(new DragEvent("drop",{bubbles:true,cancelable:true,dataTransfer:transfer,
+   clientX:r.left+r.width*.55,clientY:r.top+r.height*.42}));
+  return true;
+ })()`);
+ const paddedSelector=`.object-image:has(img[alt="${paddedName}"])`;
+ await wait(`document.querySelector(${JSON.stringify(paddedSelector)})?.querySelector("img")?.naturalWidth>0`,
+   "Padded worksheet did not load");
+ await wait(`(()=>{
+   const saved=JSON.parse(localStorage.getItem("lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0")||'{"items":[]}');
+   return saved.items.some(i=>i.name===${JSON.stringify(paddedName)}&&i.imageCrop?.width<.4);
+  })()`,"Automatically cropped image must also persist in the saved board",15000);
+ const beforeCrop=await evaluate(`(()=>{
+  const element=document.querySelector(${JSON.stringify(paddedSelector)});
+  const saved=JSON.parse(localStorage.getItem("lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0"));
+  const item=saved.items.find(i=>i.name===${JSON.stringify(paddedName)});
+  return {ratio:element.offsetWidth/element.offsetHeight,crop:item?.imageCrop};
+ })()`);
+ assert.ok(beforeCrop.crop?.width<.4&&beforeCrop.crop.x>.3&&beforeCrop.ratio<.4,
+  "Blank source margins must not be scaled as content: "+JSON.stringify(beforeCrop));
+ const oldWidth=await evaluate(`document.querySelector(${JSON.stringify(paddedSelector)}).getBoundingClientRect().width`);
+ const gripPadded=await rect(".screen-handle-e");
+ await mouse("mousePressed",gripPadded.x,gripPadded.y,{pressed:true});
+ await mouse("mouseMoved",gripPadded.x+24,gripPadded.y,{pressed:true});
+ await mouse("mouseReleased",gripPadded.x+24,gripPadded.y);
+ await wait(`document.querySelector(${JSON.stringify(paddedSelector)}).getBoundingClientRect().width>${oldWidth+10}`,
+  "The scanned content itself must enlarge on side grip");
+ const afterRatio=await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(paddedSelector)});return el.offsetWidth/el.offsetHeight})()`);
+ assert.ok(Math.abs(afterRatio-beforeCrop.ratio)<.025,"Automatic image crop aspect drifted during resize");
+ await click('button[aria-label="Отменить"]');
+ await click('button[aria-label="Отменить"]');
+ await wait(`!document.querySelector(${JSON.stringify(paddedSelector)})`,"Undo must remove the fitted image");
+ console.log("✓ White-margin scan is fitted on insertion and truly enlarges on drag");
+
 
  // The release catalogue must show the real 'Задания на доске' option.
  // Existing subject diagrams are never deleted by this menu filter.
@@ -596,6 +1483,29 @@ try{
  await click('.lektrus-data-chart-dialog footer .primary');
  await wait('!!document.querySelector(\'.board-object .lektrus-data-chart[aria-label*="-10"]\')',"Negative chart data lost on save");
  console.log("✓ Chart: negative values preserved, pie validation and actual line chart save");
+ // Run the compact dock regression in the ordinary PR browser smoke as well
+ // as the dedicated rotated-frame/mobile acceptance suite.
+ await call('Emulation.setDeviceMetricsOverride',{width:844,height:390,deviceScaleFactor:2,mobile:true});
+ await call('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+ await call('Page.navigate',{url});
+ await wait('!!document.querySelector("section.board")&&!!document.querySelector(".minimap")','Mobile fixture not ready');
+ await click('nav.mobile-board-tools button[data-interface-control="pen"]');
+ await wait('!!document.querySelector(".lectris-quick-properties.is-ink-properties")','Ink settings did not appear');
+ const touchInk=async selector=>{const p=await rect(selector);assert.ok(await evaluate(`!!document.elementFromPoint(${p.x},${p.y})?.closest(${JSON.stringify(selector)})`),'Ink target obscured: '+selector);await call('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y,id:1}]});await call('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await delay(150);};
+ for(const [width,height] of [[844,390],[932,430],[720,360],[667,375]]){
+  await call('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:2,mobile:true});
+  await delay(250);
+  const dock=await evaluate(inkDockGeometry);assertInkDock(dock,width>=844);
+  for(const n of [1,5]){
+   const selector=`.lectris-quick-properties.is-ink-properties .lektrus-ink-width-button:nth-child(${n})`;
+   await touchInk(selector);
+   await wait(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-pressed')==='true'`,'Ink width did not activate');
+  }
+  console.log(`✓ ${width}×${height}: ink dock ${Math.round(dock.width)}×${Math.round(dock.height)}, bottom gap ${dock.gap}px, all five hit targets`);
+ }
+ await touchInk('.lectris-quick-properties.is-ink-properties .lektrus-color-current');
+ await wait('!!document.querySelector(".lektrus-colors-popup")','Mobile color popup did not open');
+ assert.ok(await evaluate(`(()=>{const r=document.querySelector('.lektrus-colors-popup').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth})()`),'Color popup outside mobile viewport');
  console.log("Lektrus release smoke passed: actual browser interactions and curated subjects.");
  }
  }

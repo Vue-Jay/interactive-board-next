@@ -18,18 +18,88 @@ const load=(code)=>{
  return exports;
 };
 
-const {resizedRect,preserveRotatedAnchor}=load(transpile("src/lektrusRotateResize.ts"));
+const {resizedRect,resizedImageRect,initialImageSize,preserveRotatedAnchor}=load(transpile("src/lektrusRotateResize.ts"));
+const {detectImageContentCrop,fitImageFrameAspect}=load(transpile("src/imageAutoCrop.ts"));
+const raster=(width,height,paint)=>{
+ const data=new Uint8ClampedArray(width*height*4);
+ for(let i=0;i<data.length;i+=4)data.set([255,255,255,255],i);
+ const pixel=(x,y,color=[24,51,97,255])=>{
+  const k=(y*width+x)*4;data.set(color,k);
+ };
+ paint(pixel);
+ return data;
+};
+const padded=raster(600,800,pixel=>{
+ for(let y=20;y<780;y++)for(let x=215;x<385;x++)pixel(x,y);
+});
+const trimmed=detectImageContentCrop(padded,600,800);
+assert.ok(trimmed&&trimmed.width<.34&&trimmed.x>.30,
+ "Wide white bars on both sides of a worksheet must be cropped before scaling");
+const transparent=raster(800,300,pixel=>{
+ for(let y=100;y<200;y++)for(let x=50;x<750;x++)pixel(x,y);
+ for(let y=0;y<300;y++)for(let x=0;x<800;x++){
+  if(y<90||y>210)pixel(x,y,[0,0,0,0]);
+ }
+});
+const vertical=detectImageContentCrop(transparent,800,300);
+assert.ok(vertical&&vertical.height<.48&&vertical.y>.25,
+ "Transparent top and bottom bars are content-free");
+const normal=raster(480,720,pixel=>{
+ for(let y=25;y<695;y++)for(let x=26;x<454;x++)pixel(x,y);
+});
+assert.equal(detectImageContentCrop(normal,480,720),null,
+ "Ordinary white page margins must not be cropped");
+const full=raster(320,180,pixel=>{
+ for(let y=0;y<180;y++)for(let x=0;x<320;x++)pixel(x,y);
+});
+assert.equal(detectImageContentCrop(full,320,180),null,
+ "Full-bleed photos and drawings must keep their framing");
+const oldFrame={x:20,y:40,width:383,height:748};
+const fixed=fitImageFrameAspect(oldFrame,1/6);
+assert.ok(Math.abs(fixed.width/fixed.height-1/6)<1e-9&&fixed.width<140&&fixed.x>130,
+ "Legacy frames must shed side bars without enlarging their outer bounds");
+assert.equal(fitImageFrameAspect({x:0,y:0,width:100,height:100},1).width,100,
+ "Already fitted objects must be left untouched");
+
 const model=load(transpile("src/boardModel.ts"));
 const app=read("src/BoardApp.tsx");
 const geometry=read("src/GeometryInstruments.tsx");
+const {instrumentPivot,rotateInstrumentAboutPivot}=load(transpile("src/instrumentPivot.ts"));
+for(const scale of [.5,1,2]){
+ const original={x:300,y:400,rotation:25};
+ const pivot=instrumentPivot(original,"protractor",scale);
+ for(const angle of [0,45,90,180,270]){
+  const next=rotateInstrumentAboutPivot(original,"protractor",scale,angle);
+  const measured=instrumentPivot(next,"protractor",scale);
+  assert.ok(Math.hypot(measured.x-pivot.x,measured.y-pivot.y)<1e-8,"the baseline midpoint remains stationary during rotation");
+ }
+}
 transpile("src/GeometryInstruments.tsx");
 transpile("src/BoardApp.tsx");
+assert.match(app,/onAutoFit=\{autoFitExistingImage\}/,
+ "Old padded images must be repaired on selection");
+assert.match(app,/imageCrop=natural\.crop/,
+ "Newly uploaded image gets a non-destructive automatic crop");
 
 const base={x:100,y:120,width:200,height:100};
 const outward={
  nw:[-30,-20],n:[0,-20],ne:[30,-20],e:[30,0],
  se:[30,20],s:[0,20],sw:[-30,20],w:[-30,0]
 };
+for(const [width,height] of [[500,120],[90,750],[1600,900],[200,200],[8,35],[2500,5]]){
+ const size=initialImageSize(width,height);
+ assert.ok(Math.abs(size.width/size.height-width/height)<1e-8,"image insertion must preserve its original ratio");
+ assert.ok(size.width<=420.00001&&size.height<=320.00001);
+ const image={x:70,y:90,...size};
+ for(const [handle,[dx,dy]] of Object.entries(outward)){
+  const next=resizedImageRect(image,handle,dx,dy);
+  assert.ok(Math.abs(next.width/next.height-width/height)<1e-8,"all image grips preserve ratio: "+handle);
+  assert.ok(next.width>=image.width&&next.height>=image.height-1e-8);
+  const tiny=resizedImageRect(image,handle,-dx*1000,-dy*1000);
+  assert.ok(tiny.width>0&&tiny.height>0&&Math.abs(tiny.width/tiny.height-width/height)<1e-8);
+ }
+}
+assert.equal(resizedImageRect({x:0,y:0,width:100,height:100},"e",100,0,4).height,50,"old padded frames restore source aspect");
 for(const [handle,[dx,dy]] of Object.entries(outward)){
  const result=resizedRect(base,handle,dx,dy,30,25,false);
  assert.ok(result.width>=base.width-(handle==="n"||handle==="s"?0:0));

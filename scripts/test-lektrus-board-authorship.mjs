@@ -17,7 +17,7 @@ new Function("exports","require",compile("src/lektrusBoardObjectAuth.ts"))(
   assert.equal(id,"./lektrusBoardRolePreview");
   return roles;
  });
-const {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals,isLockableBoardItem,withoutInkLock}=policy;
+const {stampNewBoardItemAuthors,canRemoveBoardItem,blockedBoardItemRemovals,isLockableBoardItem,withoutInkLock,canCropBoardImage,blockedBoardImageCrops}=policy;
 const item=(id,createdBy,kind="shape")=>({
  id,createdBy,kind,x:0,y:0,width:110,height:30,text:"test",
 });
@@ -27,6 +27,20 @@ const guest=item("guest","guest-B");
 const legacy=item("old",undefined);
 const task=item("task","student-A","quiz");
 const locked={...student,id:"locked",locked:true};
+const photo={...teacher,kind:"image"};
+const ownPhoto={...student,kind:"image"};
+const legacyPhoto={...legacy,kind:"image"};
+const crop={x:.1,y:.1,width:.8,height:.8};
+for(const foreign of [photo,legacyPhoto,{...guest,kind:"image"}]){
+ assert.equal(canCropBoardImage(foreign,"student-A",true),false);
+ assert.equal(canCropBoardImage(foreign,"guest-other",true),false);
+ assert.equal(canCropBoardImage(foreign,"teacher-A",false),true);
+ assert.deepEqual(blockedBoardImageCrops([foreign],[{...foreign,imageCrop:crop,createdBy:"student-A"}],"student-A",true).map(v=>v.id),[foreign.id]);
+ assert.deepEqual(blockedBoardImageCrops([foreign],[{...foreign,x:50,width:200}],"student-A",true),[]);
+}
+assert.equal(canCropBoardImage(ownPhoto,"student-A",true),true);
+assert.equal(canCropBoardImage({...ownPhoto,locked:true},"student-A",true),false);
+assert.deepEqual(blockedBoardImageCrops([ownPhoto],[{...ownPhoto,imageCrop:crop}],"student-A",true),[]);
 
 assert.equal(canRemoveBoardItem(student,"student-A",true),true);
 for(const other of [teacher,guest,legacy,task,locked])

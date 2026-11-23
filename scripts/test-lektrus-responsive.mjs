@@ -32,15 +32,32 @@ assert.ok(styles.includes("pointer:coarse")&&styles.includes("orientation:landsc
   "touch landscape layout must have its own bounds");
 
 const safeControls=source("src/lektrusMobileSafeControls.css");
+const mobileDialogs=source("src/lektrusMobileDialogs.css");
+assert.match(mobileDialogs,/\.topbar-more-menu\[open\]>\.topbar-more-popover,[\s\S]*?max-height:calc\(100vh - 108px/,"Legacy Chromium menus require an explicit selector and vh fallback");
 // A browser-level 844×390 coarse-pointer acceptance exposed a real overlap:
-// the selection toolbar intercepted the rightmost zoom action (974 px²).
+// the selection toolbar intercepted the zoom action (974 px²).
 // These source guards complement, but do not replace, that DOM hit test.
 assert.match(safeControls,
   /@media screen and \(max-width:1100px\) and \(max-height:450px\) and \(orientation:landscape\)/);
 assert.match(safeControls,
-  /body \.workspace \.board-controls\s*\{\s*left:auto!important;\s*right:max\(12px,env\(safe-area-inset-right,0px\)\)!important/);
+  /body \.workspace \.board-controls\s*\{\s*left:calc\(var\(--lektrus-rail-left\) \+ 72px\)!important;\s*right:auto!important/);
 assert.match(safeControls,
-  /html\.lektrus-android-app body \.workspace \.board-controls\s*\{\s*left:auto!important/);
+  /--lektrus-safe-right:max\(env\(safe-area-inset-right,0px\),var\(--lektrus-cutout-right,0px\),var\(--lektrus-system-right,0px\)\)/);
+assert.match(safeControls,/\.board-home-button\s*\{\s*margin-left:0!important/);
+assert.match(safeControls,/left:var\(--lektrus-rail-left\)!important/);
+assert.match(safeControls,/\.selection-toolbar-screen\s*\{[^}]*top:auto!important[^}]*bottom:calc\(68px \+ var\(--lektrus-safe-bottom\)\)!important[^}]*right:calc\(var\(--lektrus-safe-right\) \+ var\(--lektrus-minimap-width,224px\) \+ 20px\)!important[^}]*max-width:calc\(100vw - var\(--lektrus-rail-left\) - var\(--lektrus-safe-right\) - var\(--lektrus-minimap-width,224px\) - 82px\)!important/s);
+assert.match(safeControls,/\.selection-toolbar-screen\.is-more-open\s*\{[^}]*overflow:visible!important/s);
+assert.match(board,/classList\.toggle\("is-more-open",details\.open\)/);
+
+// Native WebView 83 has no dvh/modern :is() support. A fixed panel must be
+// constrained on both edges, and only its inner catalogue should scroll.
+assert.match(safeControls,/section\.mobile-tools-sheet\s*\{[^}]*bottom:calc\(16px \+ var\(--lektrus-safe-bottom\)\)!important[^}]*max-height:none!important/s);
+assert.match(safeControls,/\.mobile-tools-groups\s*\{[^}]*flex:1 1 0px!important[^}]*height:0!important[^}]*overflow-y:auto!important/s);
+const labEditor=source("src/LektrusChemistryBenchEditor.tsx");
+assert.match(labEditor,/classList\.contains\("lektrus-native-app"\)&&w<=1100/);
+for(const drawer of ["reagents","glassware","equipment","indicators","equations"]){
+ assert.ok(safeControls.includes(":not(.is-drawer-"+drawer+")"),"Closed native lab drawer must be hidden on legacy WebView: "+drawer);
+}
 
 assert.ok(shell.includes("Lektrus"));
 assert.ok(base.includes(".lektrus-category-strip"));

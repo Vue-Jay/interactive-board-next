@@ -1,9 +1,12 @@
+import {PublicMaintenanceNotice} from "./MaintenanceGate";
+import {PwaInstallButton} from "./PwaInstallOffer";
 import {useEffect,useState,type CSSProperties,type MouseEvent,type ReactNode} from "react";
 import {defaultSiteDocument,loadPublishedSiteDocument,normalizeSiteDocument,SITE_PREVIEW_MESSAGE,type SiteDocument} from "./marketingSiteConfig";
 import {SiteCustomPage,SiteAnchorSlot} from "./SiteEditableSections";
 import {SiteObjectLayer} from "./SiteObjectLayer";
 import {commandFromKeyboard,type StudioCommand} from "./siteStudioCommands";
 import LektrusFeedbackForm from "./LektrusFeedbackForm";
+import LektrusNews from "./LektrusNews";
 import {plans,limitLabel} from "./billingStore";
 import "./lektrusMarketing.css";
 import "./lektrusMarketingTypography.css";
@@ -13,6 +16,8 @@ const navigation:{id:Page;title:string}[]=[
  {id:"home",title:"Главная"},
  {id:"features",title:"Возможности"},
  {id:"pricing",title:"Тарифы"},
+ {id:"news",title:"Новости и обновления"},
+ {id:"download",title:"Скачать приложение"},
  {id:"help",title:"Помощь и контакты"}
 ];
 const featureGroups=[
@@ -55,7 +60,7 @@ const questions=[
  {q:"Что такое Lektrus?",a:"Это образовательная платформа с интерактивной доской, предметными инструментами и возможностями совместной работы."},
  {q:"Можно ли попробовать доску без аккаунта?",a:"Да. На сайте есть отдельная гостевая демонстрация. Изменения в ней не затрагивают рабочие доски других пользователей."},
  {q:"Какие инструменты доступны отдельно?",a:"Интерактивный атлас и химическую лабораторию можно открыть напрямую, без создания доски."},
- {q:"Какие тарифы есть в Lektrus?",a:"В приложении определены Free, Teacher и Pro. Free бесплатный, а условия платных тарифов пока имеют тестовый статус."},
+ {q:"Какие тарифы есть в Lektrus?",a:"Free уже доступен бесплатно. Pro — 299 ₽ в месяц или 2 990 ₽ в год; оформление подписки появится позже."},
  {q:"Куда отправить предложение или сообщение об ошибке?",a:"Используйте форму обратной связи ниже. Можно указать тему обращения и адрес для ответа."}
 ];
 function readPage():Page{
@@ -63,8 +68,8 @@ function readPage():Page{
  if(["teachers","students","tools","how","about"].includes(hash))return "home";
  return /^[a-z][a-z0-9-]{0,39}$/.test(hash)?hash:"home";
 }
-function DemoLink({scene="math",children,className=""}:{scene?:string;children:ReactNode;className?:string}){
- return <a className={className} href={"/demo/board?scene="+encodeURIComponent(scene)}>{children}</a>;
+function DemoLink({children,className=""}:{children:ReactNode;className?:string}){
+ return <a className={className} href="/demo/board">{children}</a>;
 }
 
 function SiteMenuIcon({name}:{name:string}){
@@ -74,6 +79,11 @@ function SiteMenuIcon({name}:{name:string}){
   tools:<><path d="M9 3v7l-5 8.2A2 2 0 0 0 5.7 21h12.6a2 2 0 0 0 1.7-2.8L15 10V3"/><path d="M8 3h8M6.5 15h11"/></>,
   how:<><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></>,
   pricing:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></>,
+  news:<><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h3M14 15h2M8 18h8"/></>,
+  download:<><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></>,
+  phone:<><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 5.5h4M11 18.5h2"/></>,
+  monitor:<><rect x="3" y="3.5" width="18" height="13" rx="2"/><path d="M12 17v4M8 21h8"/></>,
+  shield:<><path d="m12 3 8 3v6c0 4-3.5 7.5-8 9-4.5-1.5-8-5-8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></>,
   about:<><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></>,
   help:<><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.6 2.6 0 0 1 5 1c0 1.8-2.5 2.1-2.5 3.8M12 17h.01"/></>,
   atlas:<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></>,
@@ -103,6 +113,7 @@ export default function LektrusPublicSite(){
  const [previewInteractive,setPreviewInteractive]=useState(false);
  const [page,setPage]=useState<Page>(readPage);
  const siteNavigation=(config.navigation.length?config.navigation:navigation.map(item=>({...item,hidden:false}))).filter(item=>(!item.hidden||item.id==="home")&&!["teachers","students","tools","how","about"].includes(item.id));
+ const downloadNavigation=siteNavigation.find(item=>item.id==="download");
  const customPage=config.customPages.find(item=>item.id===page)??(config.pages[page]?.replaceDefault?config.pages[page]:undefined);
  const copy=config.pages[page];
  const [menuOpen,setMenuOpen]=useState(false);
@@ -222,6 +233,7 @@ export default function LektrusPublicSite(){
      <span className="marketing-brand-icon"><img src="/lektrus-icon-192.png" width="40" height="40" alt=""/></span>
      <span><strong>Lektrus</strong><small>Пространство для обучения</small></span>
     </a>
+    {downloadNavigation&&<a className="marketing-mobile-download" href="#download" aria-label="Скачать Lektrus" aria-current={page==="download"?"page":undefined} onClick={event=>navigate("download",event)}><SiteMenuIcon name="download"/></a>}
     <button type="button" className="marketing-menu-toggle" aria-label={menuOpen?"Закрыть меню":"Открыть меню"} aria-expanded={menuOpen} aria-controls="marketing-sidebar-content" onClick={()=>setMenuOpen(v=>!v)}>
      <SiteMenuIcon name="features"/><span>{menuOpen?"Закрыть":"Меню"}</span>
     </button>
@@ -229,7 +241,7 @@ export default function LektrusPublicSite(){
      <div className="marketing-sidebar-group">
       <span className="marketing-sidebar-caption">Разделы сайта</span>
       <nav id="marketing-nav" className="marketing-nav" aria-label="Разделы сайта">
-       {siteNavigation.map(item=><NavLink key={item.id} {...item} icon/>)}
+       {siteNavigation.filter(item=>item.id!=="download").map(item=><NavLink key={item.id} {...item} icon/>)}
       </nav>
      </div>
      <div className="marketing-sidebar-group marketing-sidebar-tools">
@@ -238,6 +250,7 @@ export default function LektrusPublicSite(){
       <a href="/tools/laboratory"><SiteMenuIcon name="laboratory"/><span>Химическая лаборатория</span><span className="marketing-sidebar-external" aria-hidden="true">↗</span></a>
      </div>
      <div className="marketing-sidebar-bottom">
+      {downloadNavigation&&<a className="marketing-download-entry" href="#download" aria-current={page==="download"?"page":undefined} onClick={event=>navigate("download",event)}><span className="marketing-download-entry-icon"><SiteMenuIcon name="phone"/></span><span className="marketing-download-entry-copy"><strong>{downloadNavigation.title}</strong><small>Android · APK</small></span><SiteMenuIcon name="download"/></a>}
       <a className="marketing-app-entry" href="/app"><span className="marketing-app-entry-symbol"><SiteMenuIcon name="home"/></span><span>Войти в Lektrus</span><span aria-hidden="true">↗</span></a>
      </div>
     </div>
@@ -245,6 +258,7 @@ export default function LektrusPublicSite(){
   </header>
   {menuOpen&&<button type="button" className="marketing-sidebar-backdrop" onClick={()=>setMenuOpen(false)} aria-label="Закрыть боковое меню"/>}
   <main id="marketing-main" tabIndex={-1}>
+   <PublicMaintenanceNotice/>
    {page==="home"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
     <section data-site-section-id="native-0" data-site-page-hero className="marketing-hero marketing-container marketing-hero-split" aria-labelledby="marketing-title">
@@ -256,7 +270,7 @@ export default function LektrusPublicSite(){
       </div>
       {!copy?.heading&&<span className="marketing-hero-tagline">Онлайн-платформа для обучения</span>}
       <p className="marketing-hero-lead">{copy?.lead||"Lektrus — интерактивное пространство для уроков в классе и онлайн. Объясняйте на общей доске, исследуйте учебные модели, решайте задачи вместе и сохраняйте результаты в одном месте."}</p>
-      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink></div>
+      <div className="marketing-actions"><a className="marketing-primary" href="/app">Начать работу <span aria-hidden="true">↗</span></a><DemoLink className="marketing-secondary">Демо-версия доски <span aria-hidden="true">→</span></DemoLink><PwaInstallButton className="marketing-secondary" label="Установить веб-приложение"/></div>
      </div>
      <div className="marketing-showcase" aria-label="Автоматическая презентация настоящих экранов Lektrus" data-site-showcase>
       <div className="marketing-showcase-screen" role="img" aria-label="Примеры реальных экранов приложения Lektrus">
@@ -336,9 +350,37 @@ export default function LektrusPublicSite(){
    </>}
    {page==="pricing"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
-    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-pricing-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Тарифы Lektrus"}</span><h1>{copy?.heading||<>Выберите формат работы <span>под свои задачи</span></>}</h1><p>{copy?.lead||"Ниже указаны тарифы и ограничения, которые сейчас определены в приложении. Платные тарифы находятся в тестовом состоянии, оформление подписки пока недоступно."}</p></section>
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-page-hero marketing-container marketing-pricing-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Тарифы Lektrus"}</span><h1>{copy?.heading||<>Выберите формат работы <span>под свои задачи</span></>}</h1><p>{copy?.lead||"Все основные инструменты доступны бесплатно. Pro убирает ограничения по доскам, участникам и группам и увеличивает хранилище до 5 ГБ — подключение скоро."}</p></section>
     {placed("before-1")}
-    <section data-site-section-id="native-1" className="marketing-container marketing-pricing-grid" aria-label="Сравнение тарифов">{plans.map((plan,i)=><article className={"marketing-plan"+(i===1?" marketing-plan-highlight":"")} key={plan.id}><div className="marketing-plan-top"><span className="marketing-eyebrow">{i===0?"Для знакомства":i===1?"Для занятий":"Для групп"}</span><h2>{plan.name}</h2><p>{plan.description}</p></div><strong className="marketing-price">{plan.priceLabel}</strong><dl><div><dt>Доски</dt><dd>{limitLabel(plan.limits.boards)}</dd></div><div><dt>Участники на доске</dt><dd>{limitLabel(plan.limits.collaboratorsPerBoard)}</dd></div><div><dt>Материалы</dt><dd>{plan.limits.storageMb===100?"100 МБ":plan.limits.storageMb===2048?"2 ГБ":plan.limits.storageMb===10240?"10 ГБ":limitLabel(plan.limits.storageMb," МБ")}</dd></div></dl><ul>{plan.features.map(feature=><li key={feature}>{feature}</li>)}</ul><div className="marketing-plan-foot">{i===0?<a href="/app" className="marketing-primary">Начать бесплатно ↗</a>:<span>Тестовый тариф · оформление недоступно</span>}</div></article>)}</section>
+    <section data-site-section-id="native-1" className="marketing-container marketing-pricing-grid" aria-label="Сравнение тарифов">{plans.map((plan,i)=><article className={"marketing-plan"+(i===1?" marketing-plan-highlight":"")} key={plan.id}><div className="marketing-plan-top"><span className="marketing-eyebrow">{i===0?"Бесплатно":"Скоро"}</span><h2>{plan.name}</h2><p>{plan.description}</p></div><strong className="marketing-price">{plan.priceLabel}</strong><dl><div><dt>Доски</dt><dd>{limitLabel(plan.limits.boards)}</dd></div><div><dt>Участники на доске</dt><dd>{limitLabel(plan.limits.collaboratorsPerBoard)}</dd></div><div><dt>Материалы</dt><dd>{plan.id==="pro"?"5 ГБ":limitLabel(plan.limits.storageMb," МБ")}</dd></div></dl><ul>{plan.features.map(feature=><li key={feature}>{feature}</li>)}</ul><div className="marketing-plan-foot">{i===0?<a href="/app" className="marketing-primary">Начать бесплатно ↗</a>:<span>Скоро · подключение пока недоступно</span>}</div></article>)}</section>
+   </>}
+   {page==="news"&&!copy?.replaceDefault&&<>
+    {placed("before-0")}
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-container marketing-page-hero marketing-news-intro"><span className="marketing-eyebrow">{copy?.eyebrow||"Журнал Lektrus"}</span><h1>{copy?.heading||"Новости и обновления"}</h1><p>{copy?.lead||"Следите за развитием Lektrus: новые возможности, улучшения и анонсы будущих функций."}</p></section>
+    {placed("before-1")}
+    <LektrusNews/>
+    {placed("before-2")}
+   </>}
+   {page==="download"&&!copy?.replaceDefault&&<>
+    {placed("before-0")}
+    <section data-site-section-id="native-0" data-site-page-hero className="marketing-container marketing-page-hero marketing-download-intro">
+     <span className="marketing-eyebrow">{copy?.eyebrow||"Мобильное приложение"}</span>
+     <h1>{copy?.heading||"Lektrus всегда под рукой"}</h1>
+     <p>{copy?.lead||"Ваши доски, задания и учебные материалы — на телефоне и планшете. Установите Lektrus напрямую с официального сайта."}</p>
+    </section>
+    {placed("before-1")}
+    <section data-site-section-id="native-1" className="marketing-container marketing-download-layout" aria-label="Скачать и установить Lektrus">
+     <article className="marketing-download-card">
+      <div className="marketing-download-card-top"><img src="/lektrus-icon-192.png" alt="" width="72" height="72"/><div><span className="marketing-download-platform">Приложение для Android</span><h2>Lektrus</h2><p>Android 7.0 и новее</p></div></div>
+      <p>Полноценное мобильное приложение с синхронизацией досок и адаптивным интерфейсом. Войдите в свой аккаунт и продолжайте работу.</p>
+      <div className="marketing-download-device"><span><SiteMenuIcon name="phone"/> Телефон и планшет</span><span><SiteMenuIcon name="shield"/> Подписано Lektrus</span></div>
+      <a className="marketing-primary marketing-download-button" href="https://github.com/Vue-Jay/interactive-board-next/releases/latest/download/Lektrus-Android.apk"><SiteMenuIcon name="download"/><span>Скачать APK</span><span className="marketing-download-format" aria-hidden="true">.apk</span></a>
+      <div className="marketing-download-meta"><span>Официальная сборка · бесплатно</span><a href="https://github.com/Vue-Jay/interactive-board-next/releases/latest/download/Lektrus-Android.apk.sha256">SHA-256</a></div>
+     </article>
+     <article className="marketing-download-guide"><span className="marketing-download-kicker">Три простых шага</span><h2>Как установить</h2><ol><li><span>01</span><div><strong>Скачайте файл</strong><p>Откройте APK после завершения загрузки.</p></div></li><li><span>02</span><div><strong>Разрешите установку</strong><p>Если Android запросит разрешение для браузера, подтвердите установку из этого источника. Не отключайте Play Защиту.</p></div></li><li><span>03</span><div><strong>Войдите в Lektrus</strong><p>Обновления устанавливаются поверх предыдущей версии с той же подписью.</p></div></li></ol></article>
+     <article className="marketing-download-other"><span className="marketing-download-other-icon"><SiteMenuIcon name="monitor"/></span><div><h3>На другом устройстве?</h3><p>Установите веб-приложение на телефон, планшет или компьютер без APK.</p></div><a href="/app" className="marketing-secondary marketing-download-web">Открыть веб-версию <span aria-hidden="true">↗</span></a><PwaInstallButton className="marketing-primary" label="Установить веб-приложение"/></article>
+    </section>
+    {placed("before-2")}
    </>}
    {page==="help"&&!copy?.replaceDefault&&<>
     {placed("before-0")}
@@ -393,6 +435,7 @@ export default function LektrusPublicSite(){
        <span className="marketing-footer-home-label">На сайте</span>
        <NavLink id="features" title="Возможности"/>
        <NavLink id="pricing" title="Тарифы"/>
+       <NavLink id="news" title="Новости и обновления"/>
        <NavLink id="help" title="Помощь и контакты"/>
       </nav>
       <nav className="marketing-footer-home-links" aria-label="Учебные инструменты">
@@ -408,7 +451,7 @@ export default function LektrusPublicSite(){
     </div>:
     <div className="marketing-container">
      <span>© {new Date().getFullYear()} Lektrus</span>
-     <div className="marketing-footer-end"><NavLink id="features" title="Возможности"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
+     <div className="marketing-footer-end"><NavLink id="features" title="Возможности"/><NavLink id="news" title="Новости"/><NavLink id="help" title="Помощь"/><a href="/app">Открыть приложение ↗</a></div>
     </div>}
   </footer>
   {isPreview&&(previewSelection||previewObject)&&<div className="site-canvas-selection-actions" role="toolbar" aria-label="Действия над выделенным элементом">

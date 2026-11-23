@@ -5,8 +5,14 @@ import ts from "typescript";
 const source=fs.readFileSync(new URL("../src/lektrusAtlasLabels.ts",import.meta.url),"utf8");
 const moduleSource=ts.transpileModule(source,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const regionSource=ts.transpileModule(fs.readFileSync(new URL("../src/regionDisplayNames.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const regions={};
+new Function("exports",regionSource)(regions);
 const api={};
-new Function("exports",moduleSource)(api);
+new Function("exports","require",moduleSource)(api,name=>{
+ assert.equal(name,"./regionDisplayNames","Atlas labels must load the real region names module");
+ return regions;
+});
 const {schoolCountryName,layoutAtlasLabels}=api;
 const aliases=[
  ["Китайская Народная Республика","Китай"],
@@ -27,6 +33,12 @@ assert.equal(schoolCountryName("Китай", "CN"),"Китай");
 assert.equal(schoolCountryName("Конго", "CD"),"ДР Конго");
 assert.equal(schoolCountryName("Республика Армения","AM"),"Армения");
 assert.equal(schoolCountryName("Королевство Испания","ES"),"Испания");
+const legacyRegions={},legacyApi={};
+new Function("exports","Intl",regionSource)(legacyRegions,{});
+new Function("exports","require",moduleSource)(legacyApi,name=>{
+ assert.equal(name,"./regionDisplayNames");return legacyRegions;
+});
+assert.equal(legacyApi.schoolCountryName("Королевство Испания","ES"),"Испания");
 const label=(id,text,x,y,priority=0)=>({id,kind:"country",text,x,y,priority,fontSize:12,align:"middle"});
 const pair=[
  label("china","Китай",200,200,0),

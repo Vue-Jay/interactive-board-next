@@ -16,9 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,7 +38,7 @@ jobs:
       - name: Verify native configuration
         run: npm run native:check
       - name: Build same web bundle as VS Code
-        run: npm run build
+        run: npm run native:build
       - name: Sync Capacitor into Android project
         run: npx cap sync android
       - name: Assemble the same Gradle debug variant as VS Code

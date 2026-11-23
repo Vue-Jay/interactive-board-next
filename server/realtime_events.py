@@ -107,20 +107,26 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
                 "seq": seq, "object_revision": revision, "x": frame["x"],
                 "y": frame["y"], "sent_at": int(time.time() * 1000)}
 
-    if kind == "live_ink":
+    if kind in ("live_ink", "live_erase"):
         if role not in ("owner", "editor"):
             raise InvalidLiveEvent("read_only")
         required = {"type", "client_id", "stroke_id", "kind", "color",
                     "weight", "offset", "points", "finished"}
+        if kind == "live_erase":
+            required.update(("cancelled", "cut_ids"))
+            if "erase_mode" in frame:
+                required.add("erase_mode")
+                if frame["erase_mode"] not in ("partial", "stroke"):
+                    raise InvalidLiveEvent("invalid_erase_mode")
         if set(frame) != required:
             raise InvalidLiveEvent("invalid_ink_fields")
         client_id, stroke_id = frame["client_id"], frame["stroke_id"]
         if not _identifier(client_id, MAX_CLIENT_ID) or not _identifier(stroke_id, MAX_STROKE_ID):
             raise InvalidLiveEvent("invalid_client_or_stroke")
         tool, color, weight = frame["kind"], frame["color"], frame["weight"]
-        if tool not in ("pen", "marker") or not isinstance(color, str) or not COLOR_RE.fullmatch(color):
+        if tool not in (("eraser",) if kind == "live_erase" else ("pen", "marker")) or not isinstance(color, str) or not COLOR_RE.fullmatch(color):
             raise InvalidLiveEvent("invalid_tool")
-        if type(weight) not in (int, float) or not math.isfinite(weight) or not 0.5 <= weight <= 60:
+        if type(weight) not in (int, float) or not math.isfinite(weight) or not 0.5 <= weight <= (1000 if kind == "live_erase" else 60):
             raise InvalidLiveEvent("invalid_weight")
         offset, finished, points = frame["offset"], frame["finished"], frame["points"]
         if type(offset) is not int or not 0 <= offset <= MAX_OFFSET or type(finished) is not bool:
@@ -140,9 +146,19 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
             validated.append({"x": x, "y": y})
         if offset + len(points) > MAX_OFFSET:
             raise InvalidLiveEvent("invalid_points_offset")
+        if kind == "live_erase" and (type(frame["cancelled"]) is not bool or (frame["cancelled"] and not finished)):
+            raise InvalidLiveEvent("invalid_erase_cancel")
+        if kind == "live_erase":
+            cut_ids = frame["cut_ids"]
+            if (not isinstance(cut_ids, list) or len(cut_ids) > 500 or
+                    any(not _identifier(value, MAX_STROKE_ID) for value in cut_ids) or
+                    (cut_ids and (not finished or frame["cancelled"]))):
+                raise InvalidLiveEvent("invalid_erase_targets")
         return {"type": kind, **identity, "client_id": client_id,
                 "stroke_id": stroke_id, "kind": tool, "color": color,
                 "weight": weight, "offset": offset, "points": validated,
+                **({"cancelled": frame["cancelled"], "cut_ids": frame["cut_ids"]} if kind == "live_erase" else {}),
+                **({"erase_mode": frame["erase_mode"]} if kind == "live_erase" and "erase_mode" in frame else {}),
                 "finished": finished, "sent_at": int(time.time() * 1000)}
 
     if kind == "work_state":
@@ -322,6 +338,7 @@ class EventRateLimit:
         self.ink: deque[float] = deque()
         self.objects: deque[float] = deque()
         self.work: deque[float] = deque()
+        self.mutations: deque[float] = deque()
         self.views: deque[float] = deque()
         self.attachments: deque[float] = deque()
         self.violations = 0
@@ -332,10 +349,12 @@ class EventRateLimit:
             window, limit = self.cursors, 20
         elif event_type == "object_preview":
             window, limit = self.objects, 24
-        elif event_type == "live_ink":
+        elif event_type in ("live_ink", "live_erase"):
             window, limit = self.ink, 30
-        elif event_type in ("work_state", "editor_mutation", "object_transform"):
-            window, limit = self.work, 30 if event_type == "work_state" else 24
+        elif event_type == "work_state":
+            window, limit = self.work, 30
+        elif event_type in ("editor_mutation", "object_transform"):
+            window, limit = self.mutations, 24
         elif event_type in ("focus_view", "teacher_view", "guided_follow"):
             window, limit = self.views, 10
         else:
@@ -347,3 +366,4 @@ class EventRateLimit:
             return False
         window.append(now)
         return True
+

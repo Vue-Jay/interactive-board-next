@@ -1,18 +1,99 @@
 /* Mobile board chrome, after all legacy responsive overrides.
    Preserve board actions on phones and account for Android camera cutouts. */
+:root {
+  --lektrus-safe-left:max(env(safe-area-inset-left,0px),var(--lektrus-cutout-left,0px),var(--lektrus-system-left,0px));
+  --lektrus-safe-right:max(env(safe-area-inset-right,0px),var(--lektrus-cutout-right,0px),var(--lektrus-system-right,0px));
+  --lektrus-safe-top:max(env(safe-area-inset-top,0px),var(--lektrus-cutout-top,0px),var(--lektrus-system-top,0px));
+  --lektrus-safe-bottom:max(env(safe-area-inset-bottom,0px),var(--lektrus-cutout-bottom,0px));
+  --lektrus-rail-left:calc(var(--lektrus-safe-left) + clamp(10px,1.5vw,16px));
+}
+/* Invalid CSS functions inside custom properties invalidate every consumer
+   on Chromium 69/74, so fixed navigation controls otherwise all land at 0,0.
+   Android exports the same maximum in CSS pixels directly for these engines. */
+@supports not (width:max(1px,2px)) {
+  html.lektrus-native-app {
+    --lektrus-safe-left:var(--lektrus-legacy-safe-left,0px);
+    --lektrus-safe-right:var(--lektrus-legacy-safe-right,0px);
+    --lektrus-safe-top:var(--lektrus-legacy-safe-top,0px);
+    --lektrus-safe-bottom:var(--lektrus-legacy-safe-bottom,0px);
+    --lektrus-rail-left:calc(var(--lektrus-safe-left) + 12px);
+  }
+  html.lektrus-native-app body .workspace .lektrus-chemistry-bench-on-board>.lektrus-lab-open-editor {
+    right:20%!important;
+    top:10%!important;
+  }
+}
+/* Keyboard can shrink only the visual viewport (iOS Safari/WKWebView).
+   Keep the create action pinned above it on phones and touch tablets. */
+@media screen and (max-width:1100px), screen and (any-pointer:coarse) {
+  html .lektrus-create-backdrop {
+    box-sizing:border-box;
+    inset:var(--lektrus-dialog-visible-top,0px) auto auto var(--lektrus-dialog-visible-left,0px);
+    width:var(--lektrus-dialog-visible-width,100vw);
+    height:var(--lektrus-dialog-visible-height,100vh);
+    grid-template-rows:minmax(0,1fr);
+    padding:12px;
+    padding:max(12px,var(--lektrus-safe-top)) max(12px,var(--lektrus-safe-right)) max(12px,var(--lektrus-safe-bottom)) max(12px,var(--lektrus-safe-left));
+    overflow:hidden;
+  }
+  html .lektrus-create-dialog {
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    max-height:100%;
+    max-width:100%;
+    overflow:hidden;
+  }
+  html .lektrus-create-dialog>header {flex:none;margin-bottom:12px;}
+  html .lektrus-create-fields {
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding:2px;
+    flex:1 1 auto;
+  }
+  html .lektrus-create-dialog>footer {
+    flex:none;
+    margin-top:12px;
+    padding-top:12px;
+  }
+}
+/* Short native landscape: expose complete pinned controls, with scrolling
+   inside the creation group and a second safety scroll for extreme cutouts. */
+@media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) {
+  html body .workspace nav.mobile-board-tools {
+    overflow-y:auto!important;
+  }
+  html body .workspace nav.mobile-board-tools .mobile-tool-cluster-create {
+    flex:0 0 auto!important;
+    max-height:75px!important;
+    scrollbar-width:thin!important;
+    scroll-snap-type:y mandatory;
+  }
+}
+@media screen and (max-width:1100px) and (max-height:380px) and (orientation:landscape) {
+  html body .workspace nav.mobile-board-tools .mobile-tool-cluster-create {
+    max-height:36px!important;
+  }
+}
 @media screen and (max-width:1100px) {
   html body .topbar:not(.update-banner) {
     box-sizing:border-box!important;
-    padding-left:max(4px,env(safe-area-inset-left,0px))!important;
-    padding-right:max(18px,env(safe-area-inset-right,0px))!important;
+    padding-left:calc(var(--lektrus-safe-left) + 8px)!important;
+    /* Reserve a real corner margin in addition to the reported screen inset. */
+    padding-right:calc(var(--lektrus-safe-right) + 18px)!important;
   }
   html body .topbar .topbar-right {
     margin-right:0!important;
     padding-right:0!important;
-    max-width:calc(54vw - 12px)!important;
+    /* Let the right group take its real intrinsic width; the board title is
+       the flexible part. A capped group could paint its last button outside. */
+    max-width:none!important;
   }
   html body .topbar .board-home-button {
-    margin-left:-8px!important;
+    margin-left:0!important;
+    flex-shrink:0!important;
   }
   body .workspace .board-controls {
     display:flex!important;
@@ -60,17 +141,141 @@
 }
 /* Landscape mobile: toolbar starts below header and moves toward the safe left edge. */
 @media screen and (max-width:1100px) and (orientation:landscape) {
-  body .workspace nav.mobile-board-tools {
-    left:63px!important;
-    top:calc(72px + env(safe-area-inset-top,0px))!important;
-    max-height:calc(100dvh - 88px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+  html body .topbar:not(.update-banner) {
+    height:calc(48px + var(--lektrus-safe-top))!important;
+    min-height:calc(48px + var(--lektrus-safe-top))!important;
+    max-height:calc(48px + var(--lektrus-safe-top))!important;
+    padding-top:var(--lektrus-safe-top)!important;
   }
-  body .workspace section.mobile-tools-sheet {
-    top:calc(72px + env(safe-area-inset-top,0px))!important;
+  html body .workspace nav.mobile-board-tools {
+    left:var(--lektrus-rail-left)!important;
+    right:auto!important;
+    top:calc(72px + var(--lektrus-safe-top))!important;
+    max-height:calc(100vh - 88px - var(--lektrus-safe-top) - var(--lektrus-safe-bottom))!important;
+    max-height:calc(100dvh - 88px - var(--lektrus-safe-top) - var(--lektrus-safe-bottom))!important;
   }
-  body .workspace .board-controls {
-    left:146px!important;
+  html body .workspace section.mobile-tools-sheet {
+    left:calc(var(--lektrus-rail-left) + 60px)!important;
+    top:calc(72px + var(--lektrus-safe-top))!important;
+    width:510px!important;
+    width:min(510px,calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 74px))!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 74px)!important;
+    bottom:calc(16px + var(--lektrus-safe-bottom))!important;
+    height:auto!important;
+    min-height:0!important;
+    transform:none!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+    max-height:none!important;
+    touch-action:pan-y!important;
   }
+  html body .workspace section.mobile-tools-sheet .mobile-tools-groups {
+    flex:1 1 0px!important;
+    height:0!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    touch-action:pan-y!important;
+    overscroll-behavior:contain;
+    scroll-padding-bottom:8px;
+  }
+  /* The selection's screen-space corner handle sits above object content.
+     Reserve proportional clearance for the lab expansion button so it is
+     reachable even when the whole object is scaled down on a phone. */
+  html.lektrus-native-app body .workspace .lektrus-chemistry-bench-on-board>.lektrus-lab-open-editor {
+    right:20%!important;
+    top:10%!important;
+    right:max(14px,12%)!important;
+    top:max(14px,10%)!important;
+  }
+  html body .workspace .board-controls {
+    left:calc(var(--lektrus-rail-left) + 82px)!important;
+    bottom:calc(14px + var(--lektrus-safe-bottom))!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - 96px)!important;
+  }
+  html body .workspace :is(.minimap,.zoom-controls) {
+    right:calc(var(--lektrus-safe-right) + 12px)!important;
+  }
+  /* Embedded Android WebViews may report a fine pointer after rotation.
+     The mobile history buttons must not disappear at widths above 900px. */
+  html.lektrus-native-app body .workspace .mobile-undo-redo {
+    display:flex!important;
+    position:absolute;
+    z-index:90;
+    top:8px;
+    right:calc(12px + var(--lektrus-safe-right));
+    gap:6px;
+    pointer-events:auto;
+  }
+  html.lektrus-native-app body .workspace .mobile-undo-redo button {
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    border:1px solid var(--border,#cbd5e1);
+    background:var(--surface,#fff);
+    color:var(--text,#263343);
+    display:grid;
+    place-items:center;
+    touch-action:manipulation;
+  }
+  html.lektrus-native-app body .workspace .mobile-undo-redo button:disabled { opacity:.35; }
+}
+/* Give the editor its own bounded scroll area on short native screens,
+   including Android 11 WebViews without :is() or dynamic viewport units. */
+@media screen and (max-width:1100px) and (max-height:540px) {
+  /* Portal is attached directly to body; use a legacy viewport fallback. */
+  html.lektrus-native-app body>.lektrus-subject-tools-panel {
+    max-height:min(540px,calc(100vh - 88px))!important;
+    max-height:min(540px,calc(100dvh - 88px))!important;
+    box-sizing:border-box;
+  }
+  html.lektrus-native-app .lektrus-subject-tools-head {flex:none;}
+  html.lektrus-native-app .lektrus-subject-tools-body {min-height:0;flex:1 1 auto;}
+  html.lektrus-native-app body .workspace .table-editor-backdrop {
+    position:fixed!important;
+    inset:0!important;
+    z-index:500!important;
+    display:grid!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    place-items:center!important;
+    box-sizing:border-box!important;
+    padding:6px calc(var(--lektrus-safe-right) + 8px) 6px calc(var(--lektrus-safe-left) + 8px)!important;
+  }
+  html.lektrus-native-app body .workspace .table-editor-modal {
+    position:relative!important;
+    inset:auto!important;
+    transform:none!important;
+    box-sizing:border-box!important;
+    width:min(620px,100%)!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  html.lektrus-native-app body .workspace .table-editor-header {
+    flex:none;min-height:36px!important;padding:4px 8px!important;
+  }
+  html.lektrus-native-app body .workspace .table-editor-controls {
+    flex:none;flex-wrap:nowrap!important;min-height:36px!important;
+    overflow-x:auto!important;padding:4px 8px!important;
+  }
+  html.lektrus-native-app body .workspace .table-editor-controls>* {flex-shrink:0;}
+  html.lektrus-native-app body .workspace .table-editor-column-tools {
+    flex:none;min-height:24px;overflow-x:auto;
+  }
+  html.lektrus-native-app body .workspace .table-editor-grid {
+    flex:1 1 auto;min-height:0;overflow:auto!important;padding:4px;
+  }
+  html.lektrus-native-app body .workspace .table-editor-row-tools {
+    flex:none;min-height:24px;
+  }
+  html.lektrus-native-app body .workspace .table-editor-footer {
+    flex:none;min-height:40px!important;padding:4px 8px!important;
+  }
+  html.lektrus-native-app body .workspace .table-editor-footer>span {display:none;}
+  html.lektrus-native-app body .workspace .table-editor-footer>div {margin-left:auto;}
 }
 /* Portrait phones: zoom and remaining board actions above the bottom tool dock. */
 @media screen and (max-width:700px) and (orientation:portrait) {
@@ -82,71 +287,105 @@
   }
 }
 
-/* Landscape phone: position the rail and flyout clear of the camera cutout. */
-@media screen and (max-width:1100px) and (orientation:landscape) {
-  body .workspace section.mobile-tools-sheet {
-    left:123px!important;
-    width:min(510px,calc(100vw - 135px - env(safe-area-inset-right,0px)))!important;
-    max-width:calc(100vw - 135px)!important;
-  }
-  body .workspace .board-controls {
-    max-width:calc(100vw - 145px - env(safe-area-inset-right,0px))!important;
-  }
-}
-
-/* Native Android: real cutout geometry comes from WindowInsets in MainActivity.
-   env() remains a fallback for other WebViews. The canvas stays full-width,
-   only its floating controls are kept in the device's interactive safe area. */
-html.lektrus-android-app {
-  --lektrus-cutout-left: env(safe-area-inset-left, 0px);
-  --lektrus-cutout-right: env(safe-area-inset-right, 0px);
-  --lektrus-cutout-top: env(safe-area-inset-top, 0px);
-  --lektrus-cutout-bottom: env(safe-area-inset-bottom, 0px);
-  --lektrus-edge-gap: clamp(12px, 1.45vw, 22px);
-  --lektrus-tool-gap: clamp(10px, 2.6vw, 40px);
-}
-@media screen and (max-width:1100px) and (orientation:landscape) {
-  html.lektrus-android-app body .topbar:not(.update-banner) {
-    padding-left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-edge-gap))!important;
-    padding-right:calc(max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
-  }
-  html.lektrus-android-app body .topbar .board-home-button {
-    margin-left:0!important;
-  }
-  html.lektrus-android-app body .workspace nav.mobile-board-tools {
-    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap))!important;
-    right:auto!important;
-    top:calc(72px + max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)))!important;
-    max-height:calc(100dvh - 88px - max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)) - max(var(--lektrus-cutout-bottom), env(safe-area-inset-bottom,0px)))!important;
-  }
-  html.lektrus-android-app body .workspace section.mobile-tools-sheet {
-    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap) + 60px)!important;
-    top:calc(72px + max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)))!important;
-    width:min(510px,calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 74px))!important;
-    max-width:calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 74px)!important;
-    max-height:calc(100dvh - 88px - max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)) - max(var(--lektrus-cutout-bottom), env(safe-area-inset-bottom,0px)))!important;
-  }
-  html.lektrus-android-app body .workspace .board-controls {
-    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap) + 82px)!important;
-    max-width:calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 96px)!important;
-  }
-  html.lektrus-android-app body .workspace .minimap,
-  html.lektrus-android-app body .workspace .zoom-controls {
-    right:calc(max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
-  }
-}
-
-/* Short landscape: the bottom-left zoom bar overlapped the action strip of
-   a selected object (844×390: 974 px²). Return zoom controls to the lower
-   right, away from the touch rail and the usual selection-action position.
-   Keep the native Android right cutout outside the touch targets. */
+/* Short landscape: zoom and map have separate lower corners. A selection
+   uses a second lane above them rather than relocating the scale panel. */
 @media screen and (max-width:1100px) and (max-height:450px) and (orientation:landscape) {
-  body .workspace .board-controls {
-    left:auto!important;
-    right:max(12px,env(safe-area-inset-right,0px))!important;
+  html body .workspace .board-controls {
+    left:calc(var(--lektrus-rail-left) + 72px)!important;
+    right:auto!important;
   }
-  html.lektrus-android-app body .workspace .board-controls {
-    left:auto!important;
-    right:calc(max(var(--lektrus-cutout-right),env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
+  /* A moving selection can reach the bottom-right corner after rotation or
+     duplication. Give its action strip a separate, bounded bottom lane so
+     neither the trash button nor the zoom controls can intercept each other.
+     Explicit top:auto also overrides the React object's inline position. */
+  html.lektrus-native-app body .workspace .selection-toolbar-screen {
+    position:fixed!important;
+    top:auto!important;
+    bottom:calc(68px + var(--lektrus-safe-bottom))!important;
+    left:calc(var(--lektrus-rail-left) + 62px)!important;
+    right:calc(var(--lektrus-safe-right) + var(--lektrus-minimap-width,224px) + 20px)!important;
+    width:max-content!important;
+    max-width:calc(100vw - var(--lektrus-rail-left) - var(--lektrus-safe-right) - var(--lektrus-minimap-width,224px) - 82px)!important;
+    margin:0 auto!important;
+    transform:none!important;
+    translate:none!important;
+    scale:none!important;
+    touch-action:pan-x!important;
+  }
+  html.lektrus-native-app body .workspace .selection-toolbar-screen[data-more-direction] .selection-more-menu {
+    top:auto!important;
+    bottom:calc(100% + 8px)!important;
+    max-height:calc(100vh - var(--lektrus-safe-top) - var(--lektrus-safe-bottom) - 126px);
+  }
+  /* Chromium 83 cannot evaluate :has(.selection-more[open]). */
+  html.lektrus-native-app body .workspace .selection-toolbar-screen.is-more-open {
+    overflow:visible!important;
+    z-index:2500!important;
+  }
+  /* Keep the miniature navigation clickable, never behind the zoom bar.
+     The fixed positions share the same viewport and safe-area coordinate space. */
+  html body .workspace .minimap {
+    position:fixed!important;
+    bottom:calc(14px + var(--lektrus-safe-bottom))!important;
+    right:calc(12px + var(--lektrus-safe-right))!important;
+    width:var(--lektrus-minimap-width,224px)!important;
+    box-sizing:border-box!important;
+    padding:6px!important;
+  }
+  html body .workspace .minimap-header {
+    flex-direction:row;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:2px 6px 7px;
+    margin:0;
+    font-size:13px;
+    letter-spacing:0;
+    line-height:1.35;
+  }
+  html body .workspace .minimap-world {height:112px!important;margin:0;}
+}
+@media screen and (max-width:1100px) and (max-height:390px) and (orientation:landscape) {
+  html body .workspace .minimap-world {height:100px!important;}
+  html body .workspace .minimap-header {padding:2px 6px 6px;}
+}
+@media screen and (max-width:1100px) and (max-height:335px) and (orientation:landscape) {
+  html body .workspace .minimap-world {height:86px!important;}
+  html body .workspace .minimap-header {padding:1px 6px 5px;}
+}
+/* Board mode hides Android's status bar; only the real display cutout has to
+   be reserved. The native WebView itself starts at y=0 on this route. */
+html.lektrus-android-app.lektrus-native-board {--lektrus-safe-top:var(--lektrus-cutout-top,0px);}
+/* Fixed native viewport, including Chromium versions without dvh. The
+   full-screen lab is a portal attached to body rather than the board. */
+html.lektrus-native-app .lektrus-lab-editor-overlay.is-board-identical {
+  position:fixed!important;inset:0!important;width:100%!important;height:100%!important;
+}
+html.lektrus-native-app .lektrus-lab-editor.is-board-identical {
+  width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+  max-width:100%!important;max-height:100%!important;box-sizing:border-box!important;
+}
+/* WebView 83 cannot parse the modern :is() selector used to hide the old
+   laboratory shelves. Match each closed drawer explicitly, leaving the
+   active drawer's detailed layout rules untouched. */
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-reagents) .lektrus-lab-reagent-furniture,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-glassware) .lektrus-lab-glass-cupboard,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-equipment) .lektrus-lab-device-cupboard,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-indicators) .lektrus-lab-indicator-cupboard,
+html.lektrus-native-app .lektrus-lab-bench.is-compact-fullscreen:not(.is-drawer-equations) .lektrus-lab-chalkboard {
+  display:none!important;
+}
+
+/* Larger native tablets use the desktop tool rail; keep both docking sides safe. */
+@media screen and (min-width:1101px) and (orientation:landscape) {
+  html.lektrus-native-app body .topbar:not(.update-banner) {
+    padding-left:calc(var(--lektrus-safe-left) + 16px)!important;
+    padding-right:calc(var(--lektrus-safe-right) + 20px)!important;
+  }
+  html.lektrus-native-app body .workspace.lectris-tools-left .toolbar.compact-toolbar {
+    left:calc(var(--lektrus-safe-left) + 12px)!important;
+  }
+  html.lektrus-native-app body .workspace.lectris-tools-right .toolbar.compact-toolbar {
+    right:calc(var(--lektrus-safe-right) + 12px)!important;
   }
 }

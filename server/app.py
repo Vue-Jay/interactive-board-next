@@ -30,9 +30,14 @@ from document_delta import (
     encoded_bytes, document_bytes_from_parts,
 )
 from schema import apply_schema
+from billing import MESSAGES, limit_detail, make_billing_router
+from finance import make_finance_router
+from fastapi.responses import JSONResponse
 from board_history import ensure_baseline, record_revision, make_history_router
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
+from telegram_editor import telegram_enabled, run_telegram_editor, make_telegram_router
+from android_updates import router as android_updates_router
 
 ISSUER = "lektrus-selfhost"
 AUDIENCE = "lektrus"
@@ -54,9 +59,12 @@ def jwt_secret() -> str:
     return value
 
 def allowed_origins() -> list[str]:
-    return list(dict.fromkeys(x.strip().rstrip("/") for setting_name in (
+    # Capacitor bundles are served from exact local origins. The API and
+    # WebSocket handlers still require valid bearer/session credentials.
+    configured = (x.strip().rstrip("/") for setting_name in (
         "LEKTRUS_ALLOWED_ORIGINS", "LEKTRUS_DEPLOYMENT_ORIGINS"
-    ) for x in os.getenv(setting_name, "").split(",") if x.strip()))
+    ) for x in os.getenv(setting_name, "").split(",") if x.strip())
+    return list(dict.fromkeys([*configured, "https://localhost", "capacitor://localhost"]))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -68,6 +76,7 @@ async def lifespan(app: FastAPI):
     app.state.document_deltas = DeltaHistory()
     app.state.feedback_mail_wakeup = asyncio.Event()
     mail_task = None
+    telegram_task = None
     try:
         async with app.state.pool.acquire() as conn:
             if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
@@ -76,8 +85,13 @@ async def lifespan(app: FastAPI):
                 await conn.fetchval("SELECT 1")
         if os.getenv("LEKTRUS_SMTP_HOST", "").strip():
             mail_task = asyncio.create_task(run_feedback_mail(app.state.pool, app.state.feedback_mail_wakeup))
+        if telegram_enabled():
+            telegram_task = asyncio.create_task(run_telegram_editor(app.state.pool))
         yield
     finally:
+        if telegram_task:
+            telegram_task.cancel()
+            await asyncio.gather(telegram_task, return_exceptions=True)
         if mail_task:
             mail_task.cancel()
             await asyncio.gather(mail_task, return_exceptions=True)
@@ -90,13 +104,15 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan
 )
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins(),
-    allow_credentials=False,
-    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
-)
+app.include_router(android_updates_router)
+
+@app.exception_handler(asyncpg.PostgresError)
+async def handle_database_error(request: Request, exc: asyncpg.PostgresError):
+    resource = exc.message.removeprefix('LEKTRUS_PLAN:')
+    if exc.sqlstate == 'PT409' and resource in MESSAGES:
+        return JSONResponse(status_code=409, content={'detail': limit_detail(resource)})
+    raise exc
+
 
 
 
@@ -173,7 +189,7 @@ def account_view(row: asyncpg.Record) -> dict[str, Any]:
         "is_admin": row["is_admin"],
         "requested_at": row["teacher_requested_at"].isoformat() if row.get("teacher_requested_at") else None,
         "reviewed_at": row["teacher_reviewed_at"].isoformat() if row.get("teacher_reviewed_at") else None,
-        "subscription_plan": row["subscription_plan"],
+        "subscription_plan": "pro" if row["subscription_plan"] == "pro" and row["subscription_until"] and row["subscription_until"] > datetime.now(timezone.utc) else "free",
         "subscription_until": row["subscription_until"].isoformat() if row["subscription_until"] else None,
     }
 
@@ -358,6 +374,31 @@ async def logout(request: Request, authorization: str | None = Header(None)):
 async def me(user=Depends(current_user)):
     return account_view(user)
 
+from maintenance import install_maintenance
+install_maintenance(app, lookup_session, current_user)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-File-Name", "X-Material-Title", "X-Material-Folder"],
+)
+
+
+def billing_seat_available(board_id: UUID, owner: UUID, actor: UUID) -> bool:
+    if actor == owner:
+        return True
+    peers = []
+    for peer_token in _subscribers.get(board_id, {}).values():
+        try:
+            peer = jwt_claims(peer_token)["sub"]
+        except HTTPException:
+            continue
+        if peer != str(owner) and peer not in peers:
+            peers.append(peer)
+    return str(actor) in peers[:5] if len(peers)>=5 else True
+
+
 async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
                        lock: bool = False):
     # Board row lock serializes the initial save against concurrent clients.
@@ -385,12 +426,28 @@ async def board_access(conn: asyncpg.Connection, board_id: UUID, user_id: UUID,
     if role not in ("editor", "viewer"):
         # Do not reveal whether the board ID exists to outsiders.
         error(404, "Доска не найдена.")
+    if lock and not billing_seat_available(board_id, board["owner_id"], user_id) and not await conn.fetchval("SELECT billing_unlimited($1)",board["owner_id"]):
+        raise HTTPException(409, limit_detail("participants"))
     return board, role
 
-def board_view(row, role: str) -> dict[str, Any]:
+async def board_participant(conn, board_id, user, role):
+    if role == "owner":
+        return "owner"
+    if role == "viewer":
+        return "observer"
+    participant = await conn.fetchval(
+        "SELECT participant_role FROM board_members WHERE board_id=$1 AND user_id=$2", board_id, user["id"]
+    )
+    if participant == "co_teacher" and (user["account_role"] != "teacher" or user["teacher_status"] != "approved"):
+        return "student"
+    return participant
+
+
+def board_view(row, role: str, participant: str | None = None, plan_read_only: bool = False) -> dict[str, Any]:
     return {
         "id": str(row["id"]), "owner_id": str(row["owner_id"]),
-        "title": row["title"], "role": role,
+        "title": row["title"], "role": role, "plan_read_only": bool(row.get("plan_read_only", plan_read_only)),
+        "participant_role": participant or ("owner" if role == "owner" else "observer" if role == "viewer" else "student"),
         "created_at": row["created_at"].isoformat(),
         "updated_at": row["updated_at"].isoformat(),
         "deleted_at": row["deleted_at"].isoformat() if row["deleted_at"] else None,
@@ -401,14 +458,20 @@ async def list_boards(request: Request, user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT b.id,b.owner_id,b.title,b.created_at,b.updated_at,b.deleted_at,
-                      CASE WHEN b.owner_id=$1 THEN 'owner' ELSE m.role END AS role
+                      billing_readonly(b.id) AND NOT $3::boolean AS plan_read_only,
+                      CASE WHEN b.owner_id=$1 THEN 'owner' ELSE m.role END AS role,
+                      CASE WHEN b.owner_id=$1 THEN 'owner'
+                           WHEN m.role='viewer' THEN 'observer'
+                           WHEN m.participant_role='co_teacher' AND $2::boolean THEN 'co_teacher'
+                           ELSE 'student' END AS participant_role
                  FROM boards b LEFT JOIN board_members m
                    ON m.board_id=b.id AND m.user_id=$1
                 WHERE b.deleted_at IS NULL
                   AND (b.owner_id=$1 OR m.user_id IS NOT NULL)
                 ORDER BY b.updated_at DESC LIMIT 500""", user["id"],
+            user["account_role"] == "teacher" and user["teacher_status"] == "approved", user["is_admin"],
         )
-    return [board_view(row, row["role"]) for row in rows]
+    return [board_view(row, row["role"], row["participant_role"]) for row in rows]
 
 @app.post("/api/v1/boards", status_code=201)
 async def create_board(data: NewBoardInput, request: Request,
@@ -479,7 +542,8 @@ async def permanently_delete_board(board_id: UUID, data: PermanentBoardDeleteInp
 async def get_board(board_id: UUID, request: Request, user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         board, role = await board_access(conn, board_id, user["id"])
-        return board_view(board, role)
+        participant = await board_participant(conn, board_id, user, role)
+        return board_view(board, role, participant, not user["is_admin"] and await conn.fetchval("SELECT billing_readonly($1)", board_id))
 
 
 @app.patch("/api/v1/boards/{board_id}")
@@ -583,11 +647,18 @@ async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT u.id, s.id AS session_id, u.display_name,
-                      b.is_pilot, COALESCE(d.version, 0) AS version,
+                      b.is_pilot, b.owner_id, billing_unlimited(b.owner_id) AS unlimited, COALESCE(d.version, 0) AS version,
                       CASE WHEN b.id IS NULL THEN NULL
+                           WHEN billing_readonly(b.id) AND NOT u.is_admin AND (b.owner_id=u.id OR m.user_id IS NOT NULL) THEN 'viewer'
                            WHEN b.owner_id = u.id THEN 'owner'
                            WHEN u.is_admin THEN 'viewer'
-                           ELSE m.role END AS role
+                           ELSE m.role END AS role,
+                      CASE WHEN billing_readonly(b.id) AND NOT u.is_admin THEN 'observer'
+                           WHEN b.owner_id=u.id THEN 'owner'
+                           WHEN u.is_admin OR m.role='viewer' THEN 'observer'
+                           WHEN m.participant_role='co_teacher' AND u.account_role='teacher' AND u.teacher_status='approved' THEN 'co_teacher'
+                           WHEN m.participant_role IS NOT NULL THEN 'student'
+                           ELSE NULL END AS participant_role
                  FROM unnest($2::uuid[], $3::uuid[]) AS requested(user_id, session_id)
                  JOIN account_users u ON u.id = requested.user_id
                  JOIN account_sessions s ON s.id = requested.session_id AND s.user_id = u.id
@@ -596,7 +667,12 @@ async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
                  LEFT JOIN board_documents d ON $4::boolean AND d.board_id = b.id
                 WHERE s.revoked_at IS NULL AND s.expires_at > now()
                   AND (u.email_confirmed_at IS NOT NULL OR u.guest_expires_at>now())
-                  AND (u.guest_board_id IS NULL OR (u.guest_board_id=$1 AND u.guest_expires_at>now()))""",
+                  AND (u.guest_board_id IS NULL OR (u.guest_board_id=$1 AND u.guest_expires_at>now()))
+                  AND NOT EXISTS (
+                    SELECT 1 FROM service_maintenance sm
+                    WHERE sm.starts_at<=now() AND (sm.ends_at IS NULL OR sm.ends_at>now())
+                      AND NOT (u.guest_board_id IS NULL AND (u.is_admin OR u.id=ANY(sm.allowed_accounts)))
+                  )""",
             board_id, [pair[0] for pair in pairs], [pair[1] for pair in pairs], include_version,
         )
     by_identity = {(row["id"], row["session_id"]): row for row in rows}
@@ -634,7 +710,7 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
     # Modern ink-only classrooms need only the compact representation. Use a
     # fixed encoding choice for each socket throughout this fan-out.
     compact_peers = ({peer for peer in peers if peer in _compact_ink_subscribers}
-                     if event["type"] == "live_ink" else set())
+                     if event["type"] in ("live_ink", "live_erase") else set())
     payload = (json.dumps(event, ensure_ascii=False, separators=(",", ":"))
                if len(compact_peers) != len(peers) else "")
     compact_payload = (json.dumps({**event, "points": [[p["x"], p["y"]] for p in event["points"]]},
@@ -750,7 +826,7 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
 # These frames need no additional asynchronous validation between checking
 # permissions and starting peer delivery. Target/pilot events still perform
 # their separate database checks and use a fresh recipient lookup afterwards.
-INLINE_RELAY_TYPES = ("cursor", "live_ink", "work_state", "editor_mutation",
+INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "work_state", "editor_mutation",
                       "object_transform", "teacher_view", "guided_follow", "attachment_request")
 
 
@@ -878,6 +954,8 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             board, role = await board_access(conn, board_id, user["id"], lock=True)
             if role not in ("owner", "editor") and not user["is_admin"]:
                 error(403, "Недостаточно прав для изменения доски.")
+            participant = await board_participant(conn, board_id, user, role)
+            restricted = participant == "student" and not user["is_admin"]
             if delta is not None:
                 # An obsolete autosave needs only the current revision, not
                 # reconstruction/transfer of a potentially 24 MB board.
@@ -889,7 +967,7 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                               version,item_bytes,document_metadata IS NOT NULL AS normalized
                          FROM board_documents d WHERE board_id=$1""", board_id,
                     expected_version if expected_version <= 2**63-1 else -1,
-                    version_only and not board["is_pilot"],
+                    version_only and not board["is_pilot"] and not restricted,
                 )
             else:
                 previous = await conn.fetchrow("SELECT version FROM board_documents WHERE board_id=$1", board_id)
@@ -912,6 +990,22 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             elif previous:
                 base = decode_document(await conn.fetchval(
                     "SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id))
+            if restricted:
+                # Check the actual complete candidate before any document/asset/history mutation.
+                # An empty new board permits student ink and own objects, not teacher metadata.
+                student_base = base
+                if student_base is None:
+                    if document.get("title", board["title"]) != board["title"] or document.get("subject", "") != "" or document.get("backgroundShared", True) is not True or document.get("background", {"mode":"dots","color":"#f7f7f8","opacity":100}) != {"mode":"dots","color":"#f7f7f8","opacity":100}:
+                        error(403, "Ученик не может менять настройки новой доски.")
+                    student_base = {key: value for key, value in document.items() if key in ("version", "title", "subject", "view", "preview", "background", "backgroundShared")}
+                    student_base["items"] = []
+                    if "ink" in document:
+                        student_base["ink"] = []
+                if not await conn.fetchval(
+                    "SELECT lektrus_private.student_document_delta_allowed($1::jsonb,$2::jsonb,$3)",
+                    json.dumps(student_base), json.dumps(document), user["id"]
+                ):
+                    error(403, "Роль ученика не разрешает это изменение доски.")
             normalized_delta = False
             if delta is not None and not board["is_pilot"]:
                 try:
@@ -1007,10 +1101,16 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         if len(_subscribers[board_id]) >= 100:
             await websocket.close(code=4429)
             return
+        # Reserve one seat for the owner; multiple tabs count once.
+        if not user["unlimited"] and not billing_seat_available(board_id,user["owner_id"],user["id"]):
+            await websocket.send_json({"type": "plan_limit", **limit_detail("participants")})
+            await websocket.close(code=4409)
+            return
         user_meta = {
             "user_id": str(user["id"]),
             "name": str(user["display_name"] or "Участник")[:100],
             "role": current_role,
+            "participant_role": user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student"),
             "online_at": str(int(time.time() * 1000)),
         }
         already_present = any(
@@ -1055,9 +1155,24 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 refreshed_user, checked_peers, checked_rows = await authorize_live_frame(
                     websocket.app.state.pool, board_id, websocket, token, message.get("type")
                 )
+                if not refreshed_user["unlimited"] and not billing_seat_available(board_id,refreshed_user["owner_id"],refreshed_user["id"]):
+                    await websocket.send_json({"type":"plan_limit", **limit_detail("participants")})
+                    await websocket.close(code=4409)
+                    return
                 current_role = refreshed_user["role"]
+                participant_role = refreshed_user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student")
+                updated_presence = []
+                for meta in _subscriber_users.get(board_id, {}).values():
+                    if meta["user_id"] == str(refreshed_user["id"]) and (meta["role"] != current_role or meta.get("participant_role") != participant_role):
+                        meta.update(role=current_role, participant_role=participant_role)
+                        updated_presence.append(meta)
+                if updated_presence:
+                    await announce_presence(board_id, joins=[updated_presence[0]], pool=websocket.app.state.pool)
                 if message.get("type") == "ping":
                     await websocket.send_json({"type": "pong", "version": refreshed_user["version"]})
+                    continue
+                if refreshed_user["participant_role"] == "student" and message.get("type") in ("focus_view", "teacher_view", "guided_follow", "attachment_result"):
+                    await websocket.send_json({"type": "event_error", "reason": "teacher_participant_required"})
                     continue
                 try:
                     event = validate_live_event(
@@ -1127,7 +1242,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                                             checked_peers, authorized=checked_rows)
                 else:
                     await relay_live_event(board_id, websocket, event, websocket.app.state.pool)
-                if event["type"] == "live_ink":
+                if event["type"] in ("live_ink", "live_erase"):
                     # An ack confirms delivery to the server's relay, not that
                     # the stroke is saved in the durable board document.
                     await websocket.send_json({
@@ -1165,6 +1280,11 @@ from education import make_education_router
 app.include_router(make_education_router(current_user, board_access))
 from admin import make_admin_router
 app.include_router(make_admin_router(current_user))
+app.include_router(make_billing_router(current_user))
+app.include_router(make_finance_router(current_user))
+from site_news import make_news_router
+app.include_router(make_news_router(current_user))
+app.include_router(make_telegram_router(current_user))
 from comments import make_comments_router
 app.include_router(make_comments_router(current_user, board_access, announce_comments))
 from materials import make_material_router

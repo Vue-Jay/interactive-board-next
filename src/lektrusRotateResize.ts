@@ -4,6 +4,26 @@
  */
 export type ResizeBounds={x:number;y:number;width:number;height:number};
 
+/** Fit source pixels into the initial board frame using one scale, regardless
+ * of file format, orientation or the dimensions of a very narrow image. */
+export function initialImageSize(width:number,height:number){
+ const scale=Math.min(420/width,320/height,Math.max(1,120/width,80/height));
+ return {width:width*scale,height:height*scale};
+}
+
+/** Images always scale proportionally. Side grips preserve the opposite edge
+ * midpoint; corner grips preserve the diagonally opposite corner. */
+export function resizedImageRect(base:ResizeBounds,handle:string,dx:number,dy:number,ratio=base.width/base.height):ResizeBounds{
+ const east=handle.includes("e"),west=handle.includes("w"),north=handle.includes("n"),south=handle.includes("s");
+ const horizontal=east||west,vertical=north||south;
+ const w=base.width+(east?dx:west?-dx:0),h=base.height+(south?dy:north?-dy:0);
+ const useWidth=horizontal&&(!vertical||Math.abs(dx)>=Math.abs(dy)*ratio);
+ // The longer side must remain usable without squashing very tall/wide files.
+ const width=Math.max(24*Math.min(1,ratio),useWidth?w:h*ratio),height=width/ratio;
+ return {x:west?base.x+base.width-width:east?base.x:base.x+(base.width-width)/2,
+  y:north?base.y+base.height-height:south?base.y:base.y+(base.height-height)/2,width,height};
+}
+
 export function resizedRect(
  base:ResizeBounds,handle:string,dx:number,dy:number,
  minW:number,minH:number,keepRatio:boolean

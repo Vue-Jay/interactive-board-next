@@ -33,23 +33,22 @@ export async function saveProfileSettings(s:ProfileSettings){
     p_display_name:s.displayName,p_theme:s.theme,p_compact_ui:s.compactUi,p_default_board_zoom:s.defaultBoardZoom,
   })});
 }
-function paintProfileAppearance(_preference:ProfileSettings["theme"],compactUi:boolean){
+function paintProfileAppearance(_preference:ProfileSettings["theme"]){
   document.documentElement.dataset.theme="light";
   document.documentElement.dataset.themePreference="light";
-  document.documentElement.classList.toggle("compact-ui",compactUi);
+  // Older clients may still send compact_ui; current layouts are responsive.
+  document.documentElement.classList.remove("compact-ui");
 }
 export function initProfileAppearance(){
   let preference:ProfileSettings["theme"]="system";
-  let compactUi=false;
   try{
     const saved=JSON.parse(localStorage.getItem(KEY)||"{}") as Partial<ProfileSettings>;
     if(saved.theme==="dark"||saved.theme==="light"||saved.theme==="system")preference=saved.theme;
-    compactUi=saved.compactUi===true;
   }catch{/* Private mode, blocked storage or invalid older settings. */}
-  paintProfileAppearance(preference,compactUi);
+  paintProfileAppearance(preference);
 
 }
 export function applyProfileAppearance(s:ProfileSettings){
-  paintProfileAppearance(s.theme,s.compactUi);
+  paintProfileAppearance(s.theme);
   try{localStorage.setItem(KEY,JSON.stringify(s))}catch{/* Visual choice still applies without storage. */}
 }

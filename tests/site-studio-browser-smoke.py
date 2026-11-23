@@ -179,7 +179,8 @@ with sync_playwright() as p:
     showcase = visitor.locator(".marketing-showcase")
     showcase.wait_for()
     nav = visitor.locator("#marketing-nav a").all_inner_texts()
-    assert nav == ["Главная", "Возможности", "Тарифы", "Помощь и контакты"], f"Site must have four public tabs: {nav}"
+    assert nav == ["Главная", "Возможности", "Тарифы", "Новости и обновления", "Помощь и контакты"], f"Site navigation: {nav}"
+    assert visitor.locator(".marketing-download-entry").get_attribute("href") == "#download"
     assert visitor.locator(".marketing-sidebar-caption").last.text_content().strip() == "Инструменты"
     assert visitor.locator(".marketing-sidebar-tools a").count() == 2
     shortcuts = visitor.locator(".marketing-sidebar-tools a")
@@ -256,7 +257,9 @@ with sync_playwright() as p:
     visitor.screenshot(path=str(root / "07-features-prose.png"), full_page=True)
 
     visitor.goto("http://127.0.0.1:5173/#pricing", wait_until="domcontentloaded")
-    assert visitor.locator(".marketing-plan").count() == 3
+    assert visitor.locator(".marketing-plan").count() == 2
+    assert visitor.locator(".marketing-plan").nth(1).get_by_text("Скоро",exact=True).is_visible()
+    assert "299 ₽" in visitor.locator(".marketing-plan").nth(1).inner_text()
     assert visitor.locator(".marketing-pricing-note").count() == 0, "Pricing disclaimer must not be shown"
     visitor.screenshot(path=str(root / "08-pricing-compact.png"), full_page=True)
     visitor.goto("http://127.0.0.1:5173/#help", wait_until="domcontentloaded")
@@ -340,7 +343,8 @@ with sync_playwright() as p:
     visitor.locator(".marketing-menu-toggle").click()
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "true"
     assert shortcuts.first.is_visible() and shortcuts.nth(1).is_visible()
-    assert visitor.locator("#marketing-nav a").count() == 4
+    assert visitor.locator("#marketing-nav a").count() == 5
+    assert visitor.locator(".marketing-download-entry").count() == 1
     visitor.keyboard.press("Escape")
     assert visitor.locator(".marketing-menu-toggle").get_attribute("aria-expanded") == "false"
     visitor.locator(".marketing-menu-toggle").click()
@@ -365,4 +369,4 @@ with sync_playwright() as p:
     visitor.close()
     browser.close()
 
-print("Site studio browser PASS: four compact public tabs, faster genuine capture animation, project story on Home, prose-only Features, old URLs redirected, responsive desktop/mobile, and existing Site Studio editing.")
+print("Site studio browser PASS: five compact public tabs, faster genuine capture animation, project story on Home, prose-only Features, old URLs redirected, responsive desktop/mobile, and existing Site Studio editing.")

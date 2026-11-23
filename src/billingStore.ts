@@ -1,4 +1,4 @@
-export type PlanId="free"|"teacher"|"pro";
+export type PlanId="free"|"pro";
 export type SubscriptionStatus="trial"|"active"|"past_due"|"canceled";
 export type PlanLimits={
   boards:number|null;
@@ -24,9 +24,8 @@ export type LocalSubscription={
 const KEY="onlinerepetitor.billing.local.v187";
 
 export const plans:PlanDefinition[]=[
-  {id:"free",name:"Free",description:"Для знакомства и личной работы",priceLabel:"Бесплатно",limits:{boards:3,collaboratorsPerBoard:2,storageMb:100},features:["До 3 досок","До 2 участников на доске","100 МБ материалов","Локальный помощник по заданиям без оплаты за генерации"]},
-  {id:"teacher",name:"Teacher",description:"Для регулярных индивидуальных занятий",priceLabel:"Тестовый тариф",limits:{boards:50,collaboratorsPerBoard:10,storageMb:2048},features:["До 50 досок","До 10 участников","2 ГБ материалов","Локальный помощник по заданиям без оплаты за генерации"]},
-  {id:"pro",name:"Pro",description:"Для активной практики и групп",priceLabel:"Тестовый тариф",limits:{boards:null,collaboratorsPerBoard:null,storageMb:10240},features:["Без лимита досок","Без лимита участников","10 ГБ материалов","Локальный помощник по заданиям без оплаты за генерации"]},
+  {id:"free",name:"Free",description:"Для знакомства и индивидуальных занятий",priceLabel:"0 ₽",limits:{boards:5,collaboratorsPerBoard:6,storageMb:250},features:["5 собственных досок","6 участников одновременно, включая владельца","5 учеников в базе · 1 группа","250 МБ хранилища · до 25 МБ на файл","3 личных шаблона · 25 последних версий истории","Все инструменты, экспорт, локальный помощник","Занятия без ограничения времени"]},
+  {id:"pro",name:"Pro",description:"Для регулярных занятий без ограничений по доскам и участникам",priceLabel:"299 ₽ / мес.",limits:{boards:null,collaboratorsPerBoard:null,storageMb:5120},features:["Доски, участники и ученики — без тарифного лимита","Неограниченно групп и личных шаблонов","5 ГБ хранилища · до 50 МБ на файл","100 последних версий истории","Все возможности Free","2 990 ₽ в год · экономия 598 ₽","Действуют общие технические пределы безопасности"]},
 ];
 
 const defaultSubscription=():LocalSubscription=>({planId:"free",status:"active",trialEndsAt:null,periodEndsAt:null,updatedAt:new Date().toISOString()});
@@ -37,7 +36,7 @@ export function getLocalSubscription():LocalSubscription{
     const raw=localStorage.getItem(KEY);
     if(!raw)return defaultSubscription();
     const x=JSON.parse(raw) as Partial<LocalSubscription>;
-    if(!["free","teacher","pro"].includes(String(x.planId))||!["trial","active","past_due","canceled"].includes(String(x.status)))return defaultSubscription();
+    if(!["free","pro"].includes(String(x.planId))||!["trial","active","past_due","canceled"].includes(String(x.status)))return defaultSubscription();
     return {planId:x.planId as PlanId,status:x.status as SubscriptionStatus,trialEndsAt:x.trialEndsAt??null,periodEndsAt:x.periodEndsAt??null,updatedAt:x.updatedAt||new Date().toISOString()};
   }catch{return defaultSubscription()}
 }

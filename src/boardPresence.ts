@@ -1,11 +1,12 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
 import { isSelfhostBackendEnabled, selfhostSubscribeBoard, type SelfhostPresenceUser } from "./selfhostApi";
-import type { BoardRole } from "./authStore";
+import { participantRoleFor, type BoardRole, type BoardParticipantRole } from "./authStore";
 
 export type BoardPresenceUser = {
   userId: string;
   name: string;
   role: BoardRole;
+  participantRole?: BoardParticipantRole;
   onlineAt: string;
 };
 
@@ -88,6 +89,7 @@ export function subscribeBoardPresence(
       userId: user.user_id,
       name: user.name || "Пользователь",
       role: validRole(user.role) ? user.role : "viewer",
+      participantRole: participantRoleFor(validRole(user.role) ? user.role : "viewer",user.participant_role),
       onlineAt: user.online_at || "",
     });
     const emitSelfhost = () => {

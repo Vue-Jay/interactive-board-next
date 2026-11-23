@@ -9,6 +9,10 @@ import {createRemoteInkStore} from '/src/boardLiveInk.ts';
 import {RemoteInkOverlay} from '/src/RemoteInkOverlay.tsx';
 import {createRemoteCursorStore} from '/src/boardRemoteCursors.ts';
 import {RemoteCursorOverlay,RemoteCursorCount} from '/src/RemoteCursorOverlay.tsx';
+import {previewRemoteErasures} from '/src/remoteEraserPreview.ts';
+import {fitLanguageFlashcardItem} from '/src/languageFlashcardSize.ts';
+import '/src/lektrusThemes.css';
+import {BOARD_SELECTION_ARROW_PATH} from '/src/lektrusSelectionCursor.ts';
 
 const store=createRemoteInkStore();
 const cursorStore=createRemoteCursorStore();
@@ -17,11 +21,11 @@ let parentRenders=0,publications=0;
 store.subscribe(()=>publications++);
 const root=createRoot(document.getElementById('root'));
 const empty=new Set();
-const parent=({x=30,y=40,zoom=2,persistedItemIds=empty})=>{
+const parent=({x=30,y=40,zoom=2,persistedItemIds=empty,erasures,eraseTargets})=>{
   parentRenders++;
   return React.createElement(React.Fragment,null,
     React.createElement('div',{'data-board-content':true},'Board content'),
-    React.createElement(RemoteInkOverlay,{store,x,y,zoom,persistedItemIds}),
+    React.createElement(RemoteInkOverlay,{store,x,y,zoom,persistedItemIds,erasures,eraseTargets}),
     React.createElement(RemoteCursorOverlay,{store:cursorStore,x,y,zoom}),
     React.createElement('div',{id:'cursor-count'},React.createElement(RemoteCursorCount,{store:cursorStore})));
 };
@@ -57,15 +61,36 @@ try{
   assert(publications===20,'Duplicate completion repainted');
   store.push(packet('dot',0,1,true,'marker'));await nextFrame();
   const dot=document.querySelector('.remote-live-ink-layer circle');
-  assert(dot.getAttribute('opacity')==='0.32','Marker transparency lost');
+  assert(dot.parentElement.getAttribute('opacity')==='0.32','Marker transparency lost');
   render({x:10,y:20,zoom:0.1});
   assert(paths()[0]===finalPath&&finalPath.getAttribute('points')===coordinates,'Camera recreated stroke');
   assert(Number(dot.getAttribute('r'))*0.1===0.5,'Single-point minimum screen radius lost');
   assert(document.querySelector('.remote-live-ink-layer g').getAttribute('transform')==='translate(10 20) scale(0.1)','Camera transform incorrect');
   render({persistedItemIds:new Set(['peer-0'])});
   assert(paths().length===29&&!finalPath.isConnected,'Persisted stroke was drawn twice');
+  store.acknowledge(['peer-0']);render();
+  store.push(packet('peer-0',395,5,true));await nextFrame();
+  assert(paths().length===29,'Late preview resurrected an erased authoritative stroke');
+  const stroke={id:'original',kind:'marker',x:0,y:0,width:100,height:4,weight:4,points:[{x:0,y:0},{x:100,y:0}]};
+  const erase={...packet('erase',0,1,false,'eraser'),weight:12,points:[{x:50,y:0}]};
+  const targets=new Map([['erase',new Set(['original'])]]);
+  const cut=previewRemoteErasures([stroke],new Map([['erase',erase]]),targets);
+  assert(cut.length===2&&cut.every(x=>x.id.startsWith('original:remote-erase:')),'Live eraser did not cut while pointer was held');
+  const final=cut.map((x,i)=>({...x,id:'saved-'+i}));
+  assert(previewRemoteErasures(final,new Map([['erase',erase]]),targets).every((x,i)=>x===final[i]),'Confirmed fragments were erased twice');
+  const deck={id:'card',kind:'graph',graphFigureId:'language-flashcards',x:0,y:0,width:810,height:450,schoolDiagram:{kind:'flashcards',cards:[{term:'cat',translation:'кот',transcription:''}],showTranslation:true,showTranscription:true,direction:'foreign-first'}};
+  const fitted=fitLanguageFlashcardItem(deck);
+  assert(fitted.width<450&&fitted.height<350,'Compact vocabulary card was not fitted');
+  const long=fitLanguageFlashcardItem({...deck,schoolDiagram:{...deck.schoolDiagram,cards:[{term:'a much longer phrase with many words',translation:'очень длинная фраза с множеством слов',transcription:''}]}},deck);
+  assert(long.width>fitted.width&&long.height>fitted.height,'Long vocabulary did not expand the card');
   store.reset();await nextFrame();
   assert(paths().length===0&&!dot.isConnected,'Board switch left preview geometry');
+  store.push({...packet('original',0,2,true,'marker'),points:[{x:0,y:0},{x:100,y:0}],weight:4});await nextFrame();
+  render({erasures:new Map([['erase',erase]]),eraseTargets:targets});
+  assert(paths().length===2,'Eraser must cut an unsaved live stroke, not merely the persisted canvas');
+  store.acknowledge(['original']);await nextFrame();
+  assert(paths().length===0,'Final erase did not retire unsaved original preview');
+  store.reset();render();
   const cursorStart=parentRenders;
   const cursor=(peer,x)=>({userId:`cursor-${peer}`,name:`Peer ${peer}`,role:'editor',x,y:x*2,updatedAt:0});
   const cursors=()=>[...document.querySelectorAll('.remote-cursor')];
@@ -82,6 +107,15 @@ try{
   assert(document.querySelector('#cursor-count').textContent==='30','Cursor diagnostics mismatch');
   const firstCursor=cursors()[0];
   assert(firstCursor.style.transform==='translate(188px, 356px)','Latest cursor position incorrect');
+  const pointer=firstCursor.querySelector('svg'),arrow=pointer.querySelector('path'),label=firstCursor.querySelector('span');
+  assert(arrow.getAttribute('d')===BOARD_SELECTION_ARROW_PATH,'Peer pointer differs from the Lektrus cursor family');
+  assert(getComputedStyle(pointer).width==='22px'&&getComputedStyle(pointer).height==='22px','Peer pointer lost its compact screen size');
+  assert(getComputedStyle(arrow).fill==='rgb(255, 255, 255)'&&getComputedStyle(arrow).stroke==='rgb(48, 86, 200)','Peer cursor uses obsolete colors');
+  assert(getComputedStyle(label).backgroundColor==='rgb(48, 86, 200)'&&getComputedStyle(label).fontSize==='11px','Peer name label is not styled');
+  assert(getComputedStyle(firstCursor).pointerEvents==='none','Peer cursor intercepts drawing or erasing');
+  document.documentElement.dataset.theme='dark';document.documentElement.dataset.lectrisPalette='jade';
+  assert(getComputedStyle(label).backgroundColor==='rgb(8, 120, 107)'&&getComputedStyle(arrow).stroke==='rgb(8, 120, 107)','Peer cursor ignores active theme palette');
+  delete document.documentElement.dataset.theme;delete document.documentElement.dataset.lectrisPalette;
   cursorStore.push(cursor(0,79));await nextFrame();
   assert(cursorPublications===20,'Stationary cursor repainted');
   render({x:10,y:20,zoom:1});

@@ -1,0 +1,210 @@
+import asyncio
+import threading
+from urllib.error import HTTPError
+from urllib.parse import urlsplit
+
+import pytest
+from fastapi import HTTPException
+import android_updates
+from android_updates import AndroidUpdateCatalog, LAST_VERIFIED_RELEASE, apply_policy, select_android_release
+
+
+def release(version, **overrides):
+    tag = f"android-v{version}"
+    base = f"https://github.com/Vue-Jay/interactive-board-next/releases/download/{tag}/"
+    return {
+        "tag_name": tag, "draft": False, "prerelease": False,
+        "assets": [
+            {"name": name, "browser_download_url": base + name, "state": "uploaded", "size": size}
+            for name, size in [("Lektrus-Android.apk", 15_000_000), ("Lektrus-Android.apk.sha256", 91)]
+        ], **overrides,
+    }
+
+
+def test_only_published_complete_official_releases():
+    invalid = release("1.0.5000")
+    invalid["assets"][0]["browser_download_url"] = "https://other.example/file.apk"
+    selected = select_android_release([
+        release("1.0.4669"), release("1.0.99"), release("1.0.4671", draft=True),
+        release("1.0.4672", prerelease=True), release("1.0.4673", assets=[]),
+        invalid, {"tag_name": "windows-v1.0.9999"}, release("1.0.01"),
+    ])
+    assert selected["version"] == "1.0.4669"
+    assert selected["size_bytes"] == 15_000_000
+    assert selected["download_url"].endswith("/android-v1.0.4669/Lektrus-Android.apk")
+    assert select_android_release([invalid]) is None
+
+
+def test_policy_never_requires_unpublished_version():
+    selected = select_android_release([release("1.0.4669")])
+    assert apply_policy(selected, "1.0.4600")["minimum_version"] == "1.0.4600"
+    assert apply_policy(selected, "1.0.4670")["minimum_version"] == "1.0.0"
+    assert apply_policy(selected, "invalid")["minimum_version"] == "1.0.0"
+
+
+def test_skipped_releases_select_newest_complete_apk_directly():
+    selected = select_android_release([release("1.0.4691"), release("1.0.4706"),
+                                      release("1.0.4710"), release("1.0.4711", draft=True)])
+    assert selected["version"] == "1.0.4710"
+    assert apply_policy(selected, "1.0.4700")["download_url"].endswith("android-v1.0.4710/Lektrus-Android.apk")
+
+
+def test_catalog_cache_refresh_and_fail_open(monkeypatch):
+    now = [100.0]
+    calls = []
+    def loader():
+        calls.append(now[0])
+        if now[0] >= 400:
+            raise OSError("upstream unavailable")
+        return [release("1.0.4669")]
+
+    async def scenario():
+        catalog = AndroidUpdateCatalog(loader=loader, clock=lambda: now[0])
+        monkeypatch.setenv("LEKTRUS_ANDROID_MINIMUM_VERSION", "1.0.4600")
+        first, second = await asyncio.gather(catalog.get(), catalog.get())
+        assert first == second and len(calls) == 1
+        assert first["minimum_version"] == "1.0.4600"
+        now[0] = 400
+        for _ in range(2):
+            assert await catalog.get() == {**first, "catalog_stale": True}
+        assert len(calls) == 2
+    asyncio.run(scenario())
+
+
+def test_cold_start_fallback_then_live_recovery(monkeypatch):
+    now = [100.0]
+    def loader():
+        if now[0] < 160 or now[0] >= 460:
+            raise OSError("upstream unavailable")
+        return [release("1.0.4712")]
+
+    async def scenario():
+        monkeypatch.setenv("LEKTRUS_ANDROID_MINIMUM_VERSION", "1.0.0")
+        catalog = AndroidUpdateCatalog(loader=loader, clock=lambda: now[0], fallback=LAST_VERIFIED_RELEASE)
+        cold = await catalog.get()
+        assert cold["version"] == LAST_VERIFIED_RELEASE["version"] and cold["catalog_stale"] is True
+        now[0] = 160
+        live = await catalog.get()
+        assert live["version"] == "1.0.4712" and "catalog_stale" not in live
+        now[0] = 460
+        assert (await catalog.get())["version"] == "1.0.4712"
+    asyncio.run(scenario())
+
+
+def test_latest_api_and_non_android_latest(monkeypatch):
+    calls = []
+    def load(url):
+        calls.append(url)
+        if url == android_updates.LATEST_RELEASE:
+            return release("1.0.4712")
+        pytest.fail("Routine check must not download the full catalog")
+    monkeypatch.setattr(android_updates, "fetch_api_json", load)
+    assert select_android_release(android_updates.fetch_releases())["version"] == "1.0.4712"
+    assert calls == [android_updates.LATEST_RELEASE]
+    monkeypatch.setattr(android_updates, "fetch_api_json", lambda url: {"tag_name": "windows-v1"}
+                        if url == android_updates.LATEST_RELEASE else [release("1.0.4712")])
+    assert select_android_release(android_updates.fetch_releases())["version"] == "1.0.4712"
+
+
+def test_rate_limited_api_uses_independent_public_source(monkeypatch):
+    def limited(url):
+        raise HTTPError(url, 429, "Rate limited", {}, None)
+    monkeypatch.setattr(android_updates, "fetch_api_json", limited)
+    monkeypatch.setattr(android_updates, "fetch_public_release", lambda: [release("1.0.4712")])
+    assert select_android_release(android_updates.fetch_releases())["version"] == "1.0.4712"
+
+
+def test_missing_latest_checks_empty_catalog_before_using_fallback(monkeypatch):
+    def load(url):
+        if url == android_updates.LATEST_RELEASE:
+            raise HTTPError(url, 404, "No latest release", {}, None)
+        return []
+    monkeypatch.setattr(android_updates, "fetch_api_json", load)
+    monkeypatch.setattr(android_updates, "fetch_public_release", lambda: pytest.fail("Catalog is confirmed empty"))
+    assert android_updates.fetch_releases() == []
+
+
+def fake_asset_head(version="1.0.4712", checksum_version=None, CDN="release-assets.githubusercontent.com", missing=False):
+    def route(url, opener):
+        parsed = urlsplit(url)
+        name = parsed.path.rsplit("/", 1)[-1]
+        if "/latest/" in url:
+            tag = checksum_version if name.endswith(".sha256") and checksum_version else version
+            return 302, {"Location": android_updates.PUBLIC_RELEASES + f"download/android-v{tag}/{name}"}
+        if parsed.hostname == "github.com":
+            return 302, {"Location": f"https://{CDN}/{name}"}
+        if missing and name.endswith(".sha256"):
+            return 404, {}
+        return 200, {"Content-Length": "86" if name.endswith(".sha256") else "14728878"}
+    return route
+
+
+def test_public_source_validates_both_assets(monkeypatch):
+    monkeypatch.setattr(android_updates, "head_asset", fake_asset_head())
+    selected = select_android_release(android_updates.fetch_public_release())
+    assert selected["version"] == "1.0.4712" and selected["size_bytes"] == 14728878
+
+
+@pytest.mark.parametrize("options", [
+    {"checksum_version": "1.0.4713"}, {"CDN": "other.example"}, {"missing": True}, {"version": "invalid"},
+])
+def test_public_source_rejects_unsafe_or_incomplete_release(monkeypatch, options):
+    monkeypatch.setattr(android_updates, "head_asset", fake_asset_head(**options))
+    with pytest.raises(ValueError):
+        android_updates.fetch_public_release()
+
+
+def test_head_asset_does_not_download_body():
+    class Response:
+        status = 200
+        headers = {"Content-Length": "14728878"}
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+    class Opener:
+        def open(self, request, timeout):
+            assert request.get_method() == "HEAD"
+            return Response()
+    assert android_updates.head_asset("https://github.com/file.apk", Opener()) == (200, Response.headers)
+
+
+def test_slow_catalog_returns_cached_immediately_at_deadline_and_refreshes_once(monkeypatch):
+    monkeypatch.setattr(android_updates, "RESPONSE_DEADLINE", 0.02)
+    release_loader = threading.Event()
+    calls = []
+
+    def loader():
+        calls.append(True)
+        assert release_loader.wait(2)
+        return [release("1.0.4712")]
+
+    async def scenario():
+        catalog = AndroidUpdateCatalog(loader=loader, fallback=LAST_VERIFIED_RELEASE)
+        try:
+            first, second = await asyncio.gather(catalog.get(), catalog.get())
+            assert first == second and first["catalog_stale"] is True
+            assert first["version"] == LAST_VERIFIED_RELEASE["version"]
+            assert len(calls) == 1
+        finally:
+            release_loader.set()
+        await catalog.refresh_task
+        assert (await catalog.get())["version"] == "1.0.4712"
+        assert "catalog_stale" not in await catalog.get()
+
+    asyncio.run(scenario())
+
+
+def test_empty_successful_catalog_never_offers_removed_release():
+    now = [100.0]
+    def loader():
+        if now[0] >= 160:
+            raise OSError("upstream unavailable")
+        return []
+
+    async def scenario():
+        catalog = AndroidUpdateCatalog(loader=loader, clock=lambda: now[0], fallback=LAST_VERIFIED_RELEASE)
+        for moment in (100, 160):
+            now[0] = moment
+            with pytest.raises(HTTPException) as error:
+                await catalog.get()
+            assert error.value.status_code == 503
+    asyncio.run(scenario())

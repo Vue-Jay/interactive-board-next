@@ -110,13 +110,51 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                         received=json.loads(await asyncio.wait_for(receiver.recv(),3))
                         assert received["type"]=="live_ink" and received["points"]==packet["points"]
                         assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
+                        erase={**packet,"type":"live_erase","kind":"eraser","stroke_id":"native_eraser",
+                               "weight":120,"cancelled":False,"cut_ids":[]}
+                        await sender.send(json.dumps(erase))
+                        preview=json.loads(await asyncio.wait_for(receiver.recv(),3))
+                        assert preview["type"]=="live_erase" and preview["finished"] is False
+                        assert preview["points"]==erase["points"]
+                        assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
+                        await sender.send(json.dumps({**erase,"finished":True,"cut_ids":["native_stroke"]}))
+                        final=json.loads(await asyncio.wait_for(receiver.recv(),3))
+                        assert final["finished"] is True and final["cut_ids"]==["native_stroke"]
+                        assert json.loads(await asyncio.wait_for(sender.recv(),3))["type"]=="ink_ack"
                     saved=await http.put(f"/api/v1/boards/{native}/document?version_only=true",headers=owner,
-                        json={"expected_version":0,"document":{"items":[],"ink":[]}})
+                        json={"expected_version":0,"document":{"version":1,"items":[],"ink":[]}})
                     assert saved.status_code==200,saved.text
                     for ws in (first,second):
                         assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"document_changed","version":1}
                     version=await http.get(f"/api/v1/boards/{native}/document?version_only=true",headers=student)
                     assert version.json()=={"version":1}
+                    # Exercise durable collaboration through real sockets
+                    # and the same incremental HTTP read used by browsers.
+                    from document_delta import apply_delta
+                    url=f"/api/v1/boards/{native}/document"
+                    peer=(await http.get(url,headers=student)).json()["document"]
+                    kinds=("sticky","text","shape","pen","marker","image","pdf","frame","connector","comment",
+                           "table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument")
+                    objects=[{"id":"sync-"+kind,"kind":kind,"x":0,"y":0,"text":"","createdBy":str(TEACHER)} for kind in kinds]
+                    moved=[{**item,"x":100,"y":50} for item in objects]
+                    edited=[{**item,"text":"updated"} for item in moved]
+                    for revision,delta in enumerate((
+                        {"items":{"upsert":objects}},
+                        {"items":{"upsert":moved}},
+                        {"items":{"upsert":edited}},
+                        {"items":{"remove":[item["id"] for item in objects]}},
+                    ),1):
+                        saved=await http.patch(url+"?version_only=true",headers=owner,
+                            json={"expected_version":revision,"delta":delta})
+                        assert saved.status_code==200,saved.text
+                        for ws in (first,second):
+                            assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"document_changed","version":revision+1}
+                        update=(await http.get(url+f"?since_version={revision}",headers=student)).json()
+                        assert update["version"]==revision+1
+                        for patch in update["patches"]:
+                            peer=apply_delta(peer,patch)
+                        assert peer==(await http.get(url,headers=owner)).json()["document"]
+                    assert peer["items"]==[]
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass
@@ -146,6 +184,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     assert {u["user_id"] for u in student_presence["users"]}=={str(TEACHER),str(STUDENT)}
                     assert owner_join["type"]=="presence_diff"
                     assert [u["user_id"] for u in owner_join["joins"]]==[str(STUDENT)]
+                    assert owner_presence["users"][0]["participant_role"]=="owner"
+                    assert owner_join["joins"][0]["participant_role"]=="observer"
 
                     # View-only participants can show their cursor but cannot
                     # pretend to be the teacher or publish drawing strokes.
@@ -339,6 +379,16 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                             }
 
                     async with app.state.pool.acquire() as db:
+                        await db.execute("UPDATE board_members SET role='editor',participant_role='student' WHERE board_id=$1 AND user_id=$2",board_id,STUDENT)
+                    await ws_student.send(json.dumps({"type":"ping"}))
+                    for ws in (ws_owner,ws_student):
+                        changed=json.loads(await asyncio.wait_for(ws.recv(),3))
+                        assert changed["type"]=="presence_diff"
+                        assert changed["joins"][0]["participant_role"]=="student"
+                        assert changed["joins"][0]["role"]=="editor"
+                    assert json.loads(await asyncio.wait_for(ws_student.recv(),3))=={"type":"pong","version":2}
+
+                    async with app.state.pool.acquire() as db:
                         await db.execute(
                             "DELETE FROM board_members WHERE board_id=$1 AND user_id=$2",
                             board_id,STUDENT,
@@ -398,6 +448,7 @@ async def test_thirty_socket_sustained_classroom_load(monkeypatch):
             "INSERT INTO account_sessions(id,user_id,refresh_sha256,expires_at) VALUES($1,$2,$3,now()+interval '1 hour')",
             [(sid, uid, str(sid)) for uid, sid in identities],
         )
+        await conn.execute("UPDATE account_users SET subscription_plan='pro',subscription_until=now()+interval '1 day' WHERE id=$1", identities[0][0])
         await conn.execute("INSERT INTO boards(id,owner_id,title) VALUES($1,$2,'Load test')", board_id, identities[0][0])
         await conn.executemany("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,$3)",
                                [(board_id, uid, "editor" if i < active else "viewer")

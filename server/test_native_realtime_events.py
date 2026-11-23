@@ -117,5 +117,31 @@ def test_native_event_rate_budgets_are_separate():
     assert limiter.check("work_state") is False
     assert all(limiter.check("editor_mutation") for _ in range(24))
     assert limiter.check("editor_mutation") is False
+    assert limiter.check("object_transform") is False
+    # Transform and editor mutations share a bounded budget, but neither
+    # is starved by work-state traffic.
+    limiter=EventRateLimit()
+    assert all(limiter.check("object_transform") for _ in range(24))
+    assert limiter.check("editor_mutation") is False
+    assert all(limiter.check("work_state") for _ in range(30))
     assert all(limiter.check("focus_view") for _ in range(10))
     assert limiter.check("focus_view") is False
+
+
+def test_live_erase_is_editor_only_and_validates_cancellation():
+    frame = {"type":"live_erase", "client_id":"client_1", "stroke_id":"erase_1",
+             "kind":"eraser", "color":"#000000", "weight":180, "offset":0,
+             "points":[{"x":10,"y":20}, {"x":20,"y":20}], "finished":False, "cancelled":False, "cut_ids":[]}
+    assert accept(frame)["points"] == frame["points"]
+    assert accept({**frame,"erase_mode":"stroke"})["erase_mode"] == "stroke"
+    assert "erase_mode" not in accept(frame)  # Older clients remain compatible.
+    with pytest.raises(InvalidLiveEvent,match="invalid_erase_mode"):
+        accept({**frame,"erase_mode":"invalid"})
+    assert accept({**frame,"finished":True,"cancelled":True})["cancelled"] is True
+    with pytest.raises(InvalidLiveEvent,match="read_only"):
+        accept(frame,role="viewer")
+    assert accept({**frame,"finished":True,"cut_ids":["old_stroke"]})["cut_ids"] == ["old_stroke"]
+    for bad in [{**frame,"cancelled":True}, {**frame,"kind":"marker"}, {**frame,"weight":1001}, {**frame,"cut_ids":["old_stroke"]}]:
+        with pytest.raises(InvalidLiveEvent):
+            accept(bad)
+

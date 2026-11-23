@@ -2,12 +2,12 @@ import { LEKTRUS_LOCAL_TEST_MODE } from "./lektrusLocalTestMode";
 import { getCachedRemoteSession, isRemoteBackendEnabled,remoteRequest } from "./backend";
 import {
  getCachedSelfhostSession,isSelfhostBackendEnabled,selfhostMe,
- selfhostRequestTeacherAccess,selfhostSetStudentRole,selfhostAdminUsers,
+ selfhostRequestTeacherAccess,selfhostEnableTeacherRole,selfhostSetStudentRole,selfhostAdminUsers,
  selfhostAdminTeacherRequests,selfhostReviewTeacherRequest,selfhostAdminSetSubscription,selfhostAdminDeleteUser,
 } from "./selfhostApi";
 export type AccountRole="teacher"|"student";
 export type TeacherStatus="none"|"pending"|"approved"|"rejected";
-export type SubscriptionPlan="free"|"teacher"|"pro";
+export type SubscriptionPlan="free"|"pro";
 export type AccountAccess={role:AccountRole;teacherStatus:TeacherStatus;isAdmin:boolean;requestedAt:string|null;reviewedAt:string|null;subscriptionPlan:SubscriptionPlan;subscriptionUntil:string|null};
 export type TeacherApplication={phone:string;city:string;organization:string;focusArea:string;experience:string;motivation:string};
 export type TeacherRequest={userId:string;name:string;email:string;status:TeacherStatus;requestedAt:string|null;reviewedAt:string|null;application:TeacherApplication|null};
@@ -20,7 +20,7 @@ const PERSISTENT_CACHE_PREFIX="onlinerepetitor.account-access.v244.";
 let cache:{userId:string;at:number;value:AccountAccess}|null=null;
 let inFlight:{userId:string;promise:Promise<AccountAccess>}|null=null;
 let cacheGeneration=0;
-const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":x==="teacher"||x==="basic"?"teacher":"free";
+const plan=(x:any):SubscriptionPlan=>x==="pro"?"pro":"free";
 const LOCAL_ROLE_PREFIX="lektrus.local-account-role.v1.";
 const currentLocalUserId=():string=>{
  try { return String(JSON.parse(localStorage.getItem("lesson-board.auth.session.v1")||"{}")?.userId||""); }
@@ -120,6 +120,12 @@ export async function getAccountAccess():Promise<AccountAccess>{
  }
 }
 export async function getAccountRole():Promise<AccountRole>{return (await getAccountAccess()).role}
+export async function enableTeacherRole():Promise<AccountAccess>{
+ if(!isSelfhostBackendEnabled())throw new Error("Подключение преподавательских функций доступно на основном сервере Lektrus.");
+ clearAccountAccessCache();
+ return mapAccess(await selfhostEnableTeacherRole());
+}
+
 export async function requestTeacherAccess(application:TeacherApplication):Promise<AccountAccess>{
  if(isSelfhostBackendEnabled()){
   clearAccountAccessCache();

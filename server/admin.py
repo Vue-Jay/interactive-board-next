@@ -39,7 +39,7 @@ class TeacherReviewInput(BaseModel):
 
 
 class SubscriptionInput(BaseModel):
-    plan: Literal["free", "teacher", "pro"]
+    plan: Literal["free", "pro"]
     until: datetime | None = None
 
 
@@ -67,6 +67,10 @@ class FeedbackReplyInput(BaseModel):
 class TestMailInput(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     kinds: list[Literal["confirmation", "password_reset", "notification", "reply"]] = Field(min_length=1, max_length=4)
+
+
+class InterfaceLayoutInput(BaseModel):
+    layout: dict
 
 
 # Bound test traffic without preventing administrators from checking templates
@@ -108,9 +112,9 @@ def access_view(row):
         bool(row["is_admin"]) or
         (row["account_role"] == "teacher" and row["teacher_status"] == "approved")
     ) else "student"
-    plan = row["subscription_plan"] or "free"
+    plan = "pro" if row["subscription_plan"] == "pro" else "free"
     until = row["subscription_until"]
-    if plan != "free" and until is not None and until < datetime.now(timezone.utc):
+    if plan != "pro" or until is None or until <= datetime.now(timezone.utc):
         plan, until = "free", None
     return {
         "role": role,
@@ -125,6 +129,32 @@ def access_view(row):
 
 def make_admin_router(current_user) -> APIRouter:
     router = APIRouter()
+
+    @router.get("/api/v1/interface-layout")
+    async def read_interface_layout(request: Request):
+        # Shared UI settings contain no account or board data, including for guests.
+        async with request.app.state.pool.acquire() as conn:
+            value = await conn.fetchval("select layout from global_interface_layout where singleton")
+        return {"layout": json_object(value) if value is not None else None}
+
+    @router.put("/api/v1/admin/interface-layout")
+    async def publish_interface_layout(data: InterfaceLayoutInput, request: Request,
+                                       user=Depends(current_user)):
+        require_admin(user)
+        try:
+            serialized = json.dumps(data.layout, ensure_ascii=False, allow_nan=False)
+        except (ValueError, TypeError):
+            raise HTTPException(422, "Некорректный формат интерфейса.")
+        if (data.layout.get("version") != 1 or
+            any(not isinstance(data.layout.get(key), dict) for key in ("profiles", "controls", "extras")) or
+            len(serialized.encode("utf-8")) > 1_000_000):
+            raise HTTPException(422, "Некорректный формат интерфейса.")
+        async with request.app.state.pool.acquire() as conn:
+            await conn.execute("""
+                insert into global_interface_layout (singleton, layout) values (true, $1::jsonb)
+                on conflict (singleton) do update set layout=excluded.layout, updated_at=now()
+            """, serialized)
+        return {"ok": True}
 
     @router.post("/api/v1/account/teacher-request")
     async def request_teacher_access(data: TeacherApplicationInput, request: Request,
@@ -161,6 +191,25 @@ def make_admin_router(current_user) -> APIRouter:
                 phone, application["city"], application["organization"],
                 application["focusArea"],
             )
+        return access_view(row)
+
+    @router.post("/api/v1/account/role/teacher")
+    async def enable_teacher_role(request: Request, user=Depends(current_user)):
+        # Same eligibility as registering directly as a teacher: verified,
+        # non-guest account. Never touches board_members or administrator rights.
+        async with request.app.state.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE account_users SET account_role='teacher',teacher_status='approved',
+                           teacher_requested_at=COALESCE(teacher_requested_at,now()),
+                           teacher_reviewed_at=COALESCE(teacher_reviewed_at,now())
+                     WHERE id=$1 AND email_confirmed_at IS NOT NULL
+                       AND guest_board_id IS NULL AND teacher_status<>'rejected'
+                    RETURNING id,email,account_role,teacher_status,is_admin,
+                              teacher_requested_at,teacher_reviewed_at,subscription_plan,subscription_until""",
+                user["id"],
+            )
+        if row is None:
+            raise HTTPException(403, "Не удалось подключить преподавательские функции. Обратитесь в поддержку.")
         return access_view(row)
 
     @router.post("/api/v1/account/role/student")

@@ -84,7 +84,8 @@ assert.match(app,/workChannel\.current\?\.publishTransform\(poses\)/);
 assert.match(app,/workChannel\.current\?\.publishTransform\(poses,true\)/);
 assert.match(app,/remoteObjectPoses\[entry\.item\.id\]/);
 assert.match(app,/transition:pose\?/);
-assert.match(app,/const item=pose\?/);
+assert.match(app,/const posed=pose\?/);
+assert.match(app,/resizeStickerInk\(base,posed,true\)/);
 assert.match(app,/pose\.origin===objectPoseOrigin\(stored\)/,
  "A late broadcast cannot supersede already-saved object geometry");
 assert.match(app,/objectPoseMatches\(pose,byId\.get\(id\)!\)/,

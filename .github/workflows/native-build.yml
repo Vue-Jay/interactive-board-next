@@ -1,7 +1,7 @@
 name: Lektrus native Android APK and iOS simulator
 on:
   pull_request:
-    branches: [main]
+    branches: [main, qa/mobile-native-base-20261117]
   push:
     branches: [main]
   workflow_dispatch:
@@ -9,15 +9,44 @@ on:
 permissions:
   contents: read
 
+# Ordinary PRs exercise the signed APK UI and isolated API workflows; only
+# release candidates/main submit the reserved invalid login to production.
+# Queue release runs globally: one active run, no overlapping production logins.
+concurrency:
+  group: ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 'lektrus-native-production-login' || format('lektrus-native-{0}', github.run_id) }}
+  queue: max
+  cancel-in-progress: false
+
+env:
+  LEKTRUS_ANDROID_LOGIN_MODE: ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 'production' || 'ui' }}
+
 jobs:
+  tls-chain:
+    name: Verify production HTTPS chain with embedded Android public roots
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify live certificate and hostname (without insecure flags)
+        shell: bash
+        run: |
+          mkdir -p artifacts/android-login
+          openssl s_client -connect lektrus.ru:443 -servername lektrus.ru \
+            -verify_hostname lektrus.ru -verify_return_error -showcerts \
+            -CAfile android/app/src/main/res/raw/lektrus_isrg_roots.pem \
+            -no-CApath -no-CAstore </dev/null 2>&1 | tee artifacts/android-login/tls-chain.txt
+          grep -F 'Verify return code: 0 (ok)' artifacts/android-login/tls-chain.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Lektrus-HTTPS-chain-diagnostics
+          path: artifacts/android-login/tls-chain.txt
   android:
     name: Build permanently signed Android update APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
       LEKTRUS_SIGNING_STORE_BASE64: ${{ secrets.LEKTRUS_SIGNING_STORE_BASE64 }}
       LEKTRUS_SIGNING_STORE_PASSWORD: ${{ secrets.LEKTRUS_SIGNING_STORE_PASSWORD }}
       LEKTRUS_SIGNING_KEY_ALIAS: ${{ secrets.LEKTRUS_SIGNING_KEY_ALIAS }}
@@ -43,15 +72,23 @@ jobs:
           ls "${ANDROID_HOME}/platforms" | tail -5
       - run: npm ci --no-audit --no-fund
       - name: Verify native project
-        run: npm run native:check
-      - name: Explain missing production connection
-        shell: bash
         run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::warning::Supabase build secrets are missing. This test APK runs in local-only mode; set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable account synchronization."
-          fi
+          npm run native:check
+          node scripts/test-android-update-policy.mjs
+      - name: Verify Android API transport and authentication state
+        run: node scripts/test-selfhost-client.mjs
       - name: Build bundled Lektrus
-        run: npm run build
+        run: npm run native:build
+      - name: Authentication viewport and visual geometry acceptance
+        run: |
+          node scripts/test-auth-viewport.mjs
+          CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node scripts/test-auth-layout-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Auth-layout-screenshots
+          path: artifacts/auth-layout
+          if-no-files-found: ignore
       - name: Sync Android native files
         run: npx cap sync android
       - name: Require persistent Android signing credentials
@@ -84,6 +121,25 @@ jobs:
           # apksigner verify exits nonzero for an invalid APK signature.
           # Don't hard-code one signing scheme: valid releases can vary by SDK.
           cat signing-report.txt
+          # Public certificate fingerprint, verified on the previous working APK.
+          # Reject accidentally rotated or temporary keys before any publication.
+          grep -Fiq 'certificate SHA-256 digest: ff311eb58be2e59932c28933f1d47f4b14220c64a0764dcefaaff96490fb7c88' signing-report.txt
+          # Inspect the signed archive itself, not just source resources.
+          AAPT="$(dirname "$APK_SIGNER")/aapt"
+          "$AAPT" dump badging Lektrus-Android.apk > apk-badging.txt
+          unzip -Z1 Lektrus-Android.apk > apk-files.txt
+          grep -E "^application:.*icon='res/drawable[^']*/icon\.png'" apk-badging.txt
+          grep -E "^launchable-activity:.*icon='res/drawable[^']*/icon\.png'" apk-badging.txt
+          grep -Fx 'res/drawable/icon.png' apk-files.txt
+          grep -Fx 'res/drawable/icon_round.png' apk-files.txt
+          for density in ldpi mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            for icon in ic_launcher ic_launcher_round; do
+              grep -Eq "^res/mipmap-${density}(-v[0-9]+)?/${icon}\.png$" apk-files.txt
+            done
+            for icon in icon icon_round; do
+              grep -Eq "^res/drawable-${density}(-v[0-9]+)?/${icon}\.png$" apk-files.txt
+            done
+          done
           echo "Package ru.lektrus.board, versionCode $LEKTRUS_ANDROID_VERSION_CODE"
           test -s Lektrus-Android.apk
       - uses: actions/upload-artifact@v4
@@ -93,6 +149,48 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  android-network:
+    name: Signed Android API ${{ matrix.api }} APK — ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 'production HTTPS login' || 'auth UI smoke test' }}
+    needs: [android, tls-chain]
+    runs-on: ubuntu-latest
+    # One permitted ten-minute cooldown after a real production HTTP 429.
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      # Production uses one emulator at a time; ordinary PR UI tests can run in parallel.
+      max-parallel: ${{ ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))) && 1 || 3 }}
+      matrix:
+        # Actual signed artifact on the oldest, Redmi/Android 11 and newest OS.
+        # The separate runtime workflow exercises every intermediate API.
+        api: [24, 30, 36]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lektrus-Android-Update-APK
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercise the signed release APK on Android API ${{ matrix.api }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.api >= 32 && 'default' || 'google_apis' }}
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu ${{ matrix.api >= 36 && 'swangle' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim
+          script: python3 scripts/test-signed-android-login.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Signed-Android-API-${{ matrix.api }}-login-evidence
+          path: artifacts/android-login
+          if-no-files-found: warn
+          retention-days: 14
+
   ios:
     name: Compile iOS simulator application
     # The standard macOS 26 ARM pool can remain unallocated during runner-capacity incidents.
@@ -100,9 +198,7 @@ jobs:
     runs-on: macos-26-intel
     timeout-minutes: 45
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      VITE_LEKTRUS_API_ORIGIN: https://lektrus.ru
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -112,7 +208,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run native:check
       - name: Build bundled Lektrus
-        run: npm run build
+        run: npm run native:build
       - name: Sync iOS native files
         run: npx cap sync ios
       - name: Build simulator app without Apple signing
@@ -132,3 +228,48 @@ jobs:
           path: ios/DerivedData/Build/Products/Debug-iphonesimulator/App.app
           if-no-files-found: error
           retention-days: 14
+
+  publish-android:
+    name: Publish verified Android APK for the official download page
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [android-network, ios]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: lektrus-android-public-release
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lektrus-Android-Update-APK
+      - name: Publish the exact signed, smoke-tested artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$LEKTRUS_ANDROID_LOGIN_MODE" = production
+          expected="$(git rev-parse HEAD)"
+          [[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected" ]] || { echo 'Superseded release; skip publication'; exit 0; }
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk | tee signing-report.txt
+          grep -Fiq 'certificate SHA-256 digest: ff311eb58be2e59932c28933f1d47f4b14220c64a0764dcefaaff96490fb7c88' signing-report.txt
+          sha256sum Lektrus-Android.apk > Lektrus-Android.apk.sha256
+          version="1.0.${GITHUB_RUN_NUMBER}"
+          tag="android-v${version}"
+          # Never replace a public version with bytes from a different build.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release view "$tag" --json isDraft --jq '.isDraft' | grep -qx false
+            mkdir -p "$RUNNER_TEMP/existing-release"
+            gh release download "$tag" --pattern 'Lektrus-Android.apk.sha256' --dir "$RUNNER_TEMP/existing-release"
+            cmp Lektrus-Android.apk.sha256 "$RUNNER_TEMP/existing-release/Lektrus-Android.apk.sha256"
+            exit 0
+          fi
+          gh release create "$tag" --target "$expected" --title "Lektrus Android $version" --draft \
+            --notes "Official signed Android APK. Source: $expected. Verified on Android API 24, 30 and 36. SHA-256 checksum attached." \
+            Lektrus-Android.apk Lektrus-Android.apk.sha256
+          [[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected" ]] || { echo 'Superseded release; leaving draft unpublished'; exit 0; }
+          gh release edit "$tag" --draft=false --latest

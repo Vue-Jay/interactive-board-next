@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from document_delta import apply_delta, encode, item_map
 
 HISTORY_LIMIT = 100
+FREE_HISTORY_LIMIT = 25
 CHECKPOINT_INTERVAL = 10
 
 
@@ -55,10 +56,11 @@ async def record_revision(conn, board_id, revision, user, base, document, delta)
         None if checkpoint else encode(delta), revision["updated_at"], user["id"], user["display_name"],
         str(document.get("title") or "Доска")[:160], len(document["items"]), len(document.get("ink", [])),
         added, changed, removed)
-    if version > HISTORY_LIMIT:
+    limit = await conn.fetchval("SELECT CASE WHEN billing_unlimited(owner_id) THEN $2::int ELSE $3::int END FROM boards WHERE id=$1",board_id,HISTORY_LIMIT,FREE_HISTORY_LIMIT)
+    if version > limit:
         await conn.execute("""DELETE FROM board_history WHERE board_id=$1 AND version < (
             SELECT max(version) FROM board_history WHERE board_id=$1 AND checkpoint IS NOT NULL AND version<=$2
-        )""", board_id, version-HISTORY_LIMIT+1)
+        )""", board_id, version-limit+1)
 
 
 async def load_history_document(conn, board_id, version):
@@ -98,7 +100,8 @@ def make_history_router(current_user, board_access):
                     COALESCE(jsonb_array_length(COALESCE(d.document_metadata,d.document)->'ink'),0),0,0,0
                 FROM current d LEFT JOIN account_users u ON u.id=d.updated_by
                 WHERE NOT EXISTS(SELECT 1 FROM board_history h WHERE h.board_id=$1 AND h.version=d.version)
-            ) SELECT * FROM revisions WHERE version >= COALESCE((SELECT version FROM current),0)-99
+            ) SELECT * FROM revisions WHERE version >= COALESCE((SELECT version FROM current),0) -
+              CASE WHEN billing_unlimited((SELECT owner_id FROM boards WHERE id=$1)) THEN 99 ELSE 24 END
               ORDER BY version DESC LIMIT $2""", board_id, limit)
         return [{**dict(row), "id": row["version"]} for row in rows]
 
@@ -108,6 +111,7 @@ def make_history_router(current_user, board_access):
             _, role = await board_access(conn, board_id, user["id"])
             if role != "owner" and not user["is_admin"] and not (
                 role == "editor" and user["account_role"] == "teacher" and user["teacher_status"] == "approved"
+                and await conn.fetchval("SELECT participant_role FROM board_members WHERE board_id=$1 AND user_id=$2",board_id,user["id"]) == "co_teacher"
             ):
                 raise HTTPException(403, "Восстановление версии доступно преподавателю.")
             current = await conn.fetchval("SELECT version FROM board_documents WHERE board_id=$1", board_id)
@@ -115,6 +119,10 @@ def make_history_router(current_user, board_access):
                 raise HTTPException(404, "Версия не найдена.")
             if version == current:
                 return decode(await conn.fetchval("SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id))
+            unlimited = await conn.fetchval("SELECT billing_unlimited(owner_id) FROM boards WHERE id=$1",board_id)
+            if not unlimited and version < current-FREE_HISTORY_LIMIT+1:
+                from billing import limit_detail
+                raise HTTPException(409, limit_detail("history"))
             return await load_history_document(conn,board_id,version)
 
     return router

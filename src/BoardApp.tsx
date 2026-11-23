@@ -1,21 +1,25 @@
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
+import {pwaInstall,usePwaInstall} from "./pwaInstall";
 import UserAvatar from "./UserAvatar";
-import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, type PointerEvent as PE, type CSSProperties } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, useSyncExternalStore, type PointerEvent as PE, type CSSProperties } from "react";
 import { compileGraphExpression } from "./lektrusGraphExpression";
 import { boardWorldTransform, boardOverlayTransform, fitBoardCamera } from "./boardPanTransform";
+import { minimapViewport, minimapExtent, minimapViewBox, minimapTarget, minimapContentBounds, type MinimapRect } from "./boardMinimap";
 import { planCompositeBoardDrag, connectorDragEndpoints, paintBoardDeformedConnector, canCompositeBoardRotation, translatedBoardDragItems, paintBoardDragTranslation, clearBoardDragTranslation, paintBoardRotationPreview, clearBoardRotationPreview, type ConnectorDragTarget } from "./boardDragCompositor";
 import { canCompositeGroupRotation, rotatedGroupItems, paintGroupRotationFrame, clearGroupRotationFrame, type GroupRotationTarget } from "./boardGroupRotationCompositor";
 import { canCompositeBoardResize, paintBoardResizePreview, type ResizePreviewTarget } from "./boardResizeCompositor";
 import { boardGridTransform } from "./boardBackgroundPan";
 import { chemistryBoardHasContent } from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
+import MobileBoardEditorPortal, { dismissEditorBackdropInput, fitMobileEditorViewport } from "./MobileBoardEditorPortal";
+import { useTouchBoardMenuViewport } from "./useTouchBoardMenuViewport";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import { boardObjectAtInertPointerTarget } from "./boardObjectDragSurface";
 import { buildBoardDragSnapIndex, snapBoardDrag, type BoardDragSnapIndex } from "./boardDragSnapIndex";
 import { applyBoardSelectionCursor, clearBoardSelectionCursor, selectionCursorForGesture, selectionCursorForTarget } from "./lektrusSelectionCursor";
 import "./App.css";
 import GeometryInstruments, { type InstrumentType } from "./GeometryInstruments";
-import { resizedRect, preserveRotatedAnchor } from "./lektrusRotateResize";
+import { resizedRect, resizedImageRect, initialImageSize, preserveRotatedAnchor } from "./lektrusRotateResize";
 import LektrusBoardGeometryPanel, { type BoardGeometryMode } from "./LektrusBoardGeometryPanel";
 import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
 import { addBoardGeometryPoint, linkBoardGeometry, adjustBoardGeometry, constrainBoardGeometry, releaseBoardGeometryConstraint, schoolBoardGeometry, removeBoardGeometryElement, removeBoardGeometrySchoolGroup, editBoardGeometryPoint, type BoardGeometryResult } from "./lektrusBoardGeometry";
@@ -32,6 +36,7 @@ import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import { fitGeoMatchingItem } from "./lektrusGeoMatchingLayout";
+import { fitLanguageFlashcardItem } from "./languageFlashcardSize";
 import { boardObjectTypeName } from "./boardObjectNames";
 import { isSchoolDiagramId, isSchoolDiagram } from "./lektrusSchoolDiagramModel";
 // Load heavy chemistry/physics editors only when a teacher opens one.
@@ -79,8 +84,9 @@ import { formatPiRadians, makeMathPresetItem } from "./lektrusMathPresets";
 import { isSolidFigure, projectSolid, projectSolidAxis, projectSolidSurfaces, projectSolidEdges, solidDimensionEdgePairs } from "./lektrusSolid3d";
 import { useAdaptiveBoardToolbar } from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
-import { LectrisQuickProperties, LectrisObjectInspector, InkWidthSample, INK_WIDTHS } from "./LectrisObjectEditor";
+import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
 import { placeImageCrop } from "./imageCropGeometry";
+import { detectImageContentCropFromElement, fitImageFrameAspect } from "./imageAutoCrop";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
@@ -94,9 +100,9 @@ import { type AccountRole } from "./accountRoleStore";
 import { materialBlob, markMaterialUsed, type Material } from "./materialsStore";
 import ShareDialog from "./ShareDialog";
 import { Capacitor } from "@capacitor/core";
-import { BOARD_ROLE_LABELS, type AuthUser } from "./authStore";
+import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
-import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
+import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
@@ -110,6 +116,7 @@ import { connectBoardCursorChannel, type BoardCursorChannel } from "./boardBroad
 import { createRemoteCursorStore } from "./boardRemoteCursors";
 import { RemoteCursorOverlay, RemoteCursorCount } from "./RemoteCursorOverlay";
 import { createRemoteInkStore } from "./boardLiveInk";
+import { previewRemoteErasures } from "./remoteEraserPreview";
 import { RemoteInkOverlay } from "./RemoteInkOverlay";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
@@ -120,10 +127,13 @@ import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
-import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem } from "./lektrusBoardObjectAuth";
+import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
+import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
-import { eraseInkAlongPath } from "./inkEraser";
+import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
+import { eraseStickerInk, makeStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
+import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planePointFromClient} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
@@ -136,6 +146,11 @@ import { createBoardComment, listBoardComments, listBoardCommentParticipants, se
 import { subscribeBoardComments } from "./commentRealtime";
 import { LinkMediaPlayer, resolveLinkMedia } from "./linkMedia";
 import { safeBackupName, validatePortableBundle, type PortableBoardBundle } from "./backupStore";
+import { saveExport } from "./nativeFileExport";
+import { usesEmbeddedPdf } from "./embeddedPdf";
+import type { AttachmentPreview } from "./AttachmentPreviewDialog";
+const PdfPageCanvas=lazy(()=>import("./PdfPageCanvas"));
+const AttachmentPreviewDialog=lazy(()=>import("./AttachmentPreviewDialog"));
 
 const createId = (): string => {
   const native = globalThis.crypto?.randomUUID;
@@ -276,7 +291,7 @@ const iconBody = (name: IconName) => {
     case "label": return <><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 10h8M8 14h5"/></>;
     case "zoom-in": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="M10.5 8v5M8 10.5h5M15 15l4 4"/></>;
     case "zoom-out": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="M8 10.5h5M15 15l4 4"/></>;
-    case "snap": return <><path d="M5 4v7a4 4 0 0 0 8 0V4M5 8h4M13 8h4"/><path d="M17 5v6"/></>;
+    case "snap": return <><path d="M5 4v10a7 7 0 0 0 14 0V4h-5v10a2 2 0 0 1-4 0V4H5Z"/><path d="M5 9h5M14 9h5"/></>;
     case "chevron-left": return <path d="m15 5-7 7 7 7"/>;
     case "chevron-right": return <path d="m9 5 7 7-7 7"/>;
     case "templates": return <><rect x="4" y="4" width="7" height="7" rx="1.2"/><rect x="13" y="4" width="7" height="7" rx="1.2"/><rect x="4" y="13" width="7" height="7" rx="1.2"/><path d="M13 16.5h7M16.5 13v7"/></>;
@@ -376,7 +391,9 @@ type Gesture = {
   transformItem?: Item;
   transformItems?: Item[];
   transformBounds?: Bounds;
+  imageAspect?:number;
   ink?: { id: string; kind: "pen" | "marker"; color: string; weight: number };
+  sticker?: Item;
   additive: boolean;
   connectorStartBinding?: ConnectorBinding;
   connectorEndBinding?: ConnectorBinding;
@@ -392,7 +409,6 @@ const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }
   { id: "eraser", icon: "eraser", label: "Ластик · E / У", dividerAfter: true },
   { id: "connector", icon: "connector", label: "Связь / стрелка · C / С" },
   { id: "frame", icon: "frame", label: "Фрейм / раздел · F / А" },
-  { id: "comment", icon: "comment", label: "Комментарий · N / Т", dividerAfter: true },
   { id: "text", icon: "text", label: "Текст · T / Е" },
   { id: "sticky", icon: "sticky", label: "Стикер · S / Ы" },
   { id: "shape", icon: "shape", label: "Фигуры · R / К" },
@@ -437,7 +453,6 @@ const keyTools: Record<string, Tool> = {
   KeyE: "eraser",
   KeyC: "connector",
   KeyF: "frame",
-  KeyN: "comment",
   KeyB: "table",
   KeyX: "formula",
   KeyY: "graph",
@@ -470,6 +485,8 @@ const boundsOf = (list: Item[]): Bounds | null => {
   const bottom = Math.max(...list.map((i) => i.y + i.height));
   return { x, y, width: right - x, height: bottom - y };
 };
+const visualBoundsOf=(list:Item[])=>minimapContentBounds(list.map(item=>
+  item.kind==="sticky"&&item.stickerInk?.length?stickerVisualBounds(item):item));
 
 const containedByFrame = (frame: Item, source: Item[]): Item[] => source.filter((item) => {
   if (item.id === frame.id || item.hidden || item.kind === "frame") return false;
@@ -528,10 +545,11 @@ const blobToDataUrl = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
-const fitItemToRect = (base: Item, rect: Bounds): Item => {
+const fitItemToRect = (base: Item, rect: Bounds, keepWorldInk=false): Item => {
   const sx = rect.width / Math.max(1, base.width);
   const sy = rect.height / Math.max(1, base.height);
   const scaled = { ...base, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  if(base.kind==="sticky")return resizeStickerInk(base,scaled,keepWorldInk);
   if (base.kind === "connector" && base.connectorStart && base.connectorEnd) {
     return {
       ...scaled,
@@ -736,11 +754,15 @@ function AttachmentRequestPreview({request,boardId}:{request:AttachmentApprovalR
  const [url,setUrl]=useState<string|null>(null);
  useEffect(()=>{let active=true;let objectUrl="";void getAsset(request.assetId,boardId).then(blob=>{if(!active||!blob)return;objectUrl=URL.createObjectURL(blob);setUrl(objectUrl)});return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl)}},[request.assetId,boardId]);
  if(!url)return <div className="teacher-media-request-preview teacher-media-request-loading">Загрузка предпросмотра…</div>;
- return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
+ return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:usesEmbeddedPdf()?<Suspense fallback={<span>Загрузка PDF…</span>}><PdfPageCanvas src={url} title={request.name} maxPixels={250000}/></Suspense>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
 }
 
-const Media = memo(function Media({ item, boardId }: { item: Item; boardId: string }) {
+const Media = memo(function Media({ item, boardId, selected, autoFitEnabled, onAutoFit }: {
+  item: Item; boardId: string; selected: boolean; autoFitEnabled: boolean;
+  onAutoFit: (id:string,crop:Item["imageCrop"],sourceAspect:number)=>void;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const measuredSource = useRef("");
   const [nearViewport, setNearViewport] = useState(false);
   const [src, setSrc] = useState("");
 
@@ -776,12 +798,32 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
     };
   }, [nearViewport, item.assetId, boardId]);
 
+  // Existing boards can contain images that predate proportional insertion.
+  // Correct their source aspect or substantial intrinsic white margins the
+  // first time the owner selects them. Leave original asset pixels untouched.
+  useEffect(()=>{
+    if(!selected||!autoFitEnabled||item.kind!=="image"||item.imageCrop||!src)return;
+    const image=hostRef.current?.querySelector<HTMLImageElement>(".media-image");
+    if(!image)return;
+    const key=(item.assetId??item.id)+":"+src;
+    if(measuredSource.current===key)return;
+    const measure=()=>{
+      if(!image.complete||!image.naturalWidth||!image.naturalHeight)return;
+      measuredSource.current=key;
+      onAutoFit(item.id,detectImageContentCropFromElement(image)??undefined,
+        image.naturalWidth/image.naturalHeight);
+    };
+    if(image.complete&&image.naturalWidth)measure();
+    else image.addEventListener("load",measure,{once:true});
+    return()=>image.removeEventListener("load",measure);
+  },[selected,autoFitEnabled,item.id,item.assetId,item.kind,item.imageCrop,src,onAutoFit]);
+
   const crop=item.kind==="image"?item.imageCrop:undefined;
-  const imageStyle:CSSProperties|undefined=crop?{
+  const imageStyle:CSSProperties=crop?{
     position:"absolute",objectFit:"fill",
     width:`${100/crop.width}%`,height:`${100/crop.height}%`,
     left:`${-100*crop.x/crop.width}%`,top:`${-100*crop.y/crop.height}%`
-  }:undefined;
+  }:{objectFit:"fill"};
   return <div ref={hostRef} className="media-host">
     {!nearViewport
       ? <div className="media-missing">Вложение</div>
@@ -789,7 +831,9 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
         ? <div className="media-missing">Загрузка…</div>
         : item.kind === "image"
           ? <img className="media-image" style={imageStyle} src={src} alt={item.name??"Изображение"} loading="lazy" decoding="async"/>
-          : <iframe
+          : usesEmbeddedPdf()
+            ? <Suspense fallback={<div className="media-missing">Загрузка PDF…</div>}><PdfPageCanvas src={src} page={item.pdfPage??1} title={item.name}/></Suspense>
+            : <iframe
               key={`${item.assetId}-${item.pdfPage ?? 1}`}
               className="media-pdf"
               src={`${src}#page=${Math.max(1, item.pdfPage ?? 1)}&view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
@@ -799,6 +843,8 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
   </div>;
 }, (previous, next) =>
   previous.boardId === next.boardId &&
+  previous.selected===next.selected &&
+  previous.autoFitEnabled===next.autoFitEnabled &&
   previous.item.assetId === next.item.assetId &&
   previous.item.kind === next.item.kind &&
   previous.item.name === next.item.name &&
@@ -1150,7 +1196,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const purpose = item.graphPurpose ?? (item.graphCircles?.length ? "unit-circle" : item.graphPolygons?.length ? "geometry" : expression ? "function" : "coordinates");
   const title = item.text?.trim() || (purpose === "unit-circle" ? "Единичная окружность" : purpose === "geometry" ? "Геометрическое построение" : purpose === "coordinates" ? "Координатная плоскость" : "График функции");
   const xMin = item.graphXMin ?? -10, xMax = item.graphXMax ?? 10, yMin = item.graphYMin ?? -10, yMax = item.graphYMax ?? 10;
-  const W = 600, H = 360;
+  const planeViewport=isCoordinatePlane(item)?coordinatePlaneViewport(item):null;
+  const W = planeViewport?.width??600, H = planeViewport?.height??360;
   // A single unit scale on both axes keeps circles circular and geometry measurable.
   const scale = Math.min(W / Math.max(.01,xMax-xMin), H / Math.max(.01,yMax-yMin));
   const cx = (xMin+xMax)/2, cy = (yMin+yMax)/2;
@@ -1177,15 +1224,19 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const distance = (a:{x:number;y:number},b:{x:number;y:number}) => Math.hypot(a.x-b.x,a.y-b.y);
   const curvePath=purpose==="function"&&item.graphShowCurve!==false&&evaluateCurve?graphCurvePath(evaluateCurve,xMin,xMax,yMin,yMax,sx,sy):"";
   const coord = (clientX:number,clientY:number,svg:SVGSVGElement,pointIndex=-1) => {
+    if(isCoordinatePointGraph(item)){
+      const local=planePointFromClient(item,svg,{x:clientX,y:clientY});
+      if(local)return local;
+    }
     const r=svg.getBoundingClientRect(),factor=Math.min(r.width/W,r.height/H)||1;
     const left=r.left+(r.width-W*factor)/2,top=r.top+(r.height-H*factor)/2;
     let x=ux((clientX-left)/factor),y=uy((clientY-top)/factor);
-    if((purpose==="geometry"?item.graphSnap===true:item.graphSnap!==false)&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
+    if(graphPointSnapEnabled(item)&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
     if(purpose==="geometry"&&item.graphMagneticSnap!==false&&pointIndex>=0){
       const aligned=magneticGeometrySnap(item.graphPoints??[],pointIndex,x,y,12/scale);
       x=aligned.x;y=aligned.y;
     }
-    return {x:Number(x.toFixed(4)),y:Number(y.toFixed(4))};
+    return {x:Number(x.toFixed(4)),y:purpose==="number-line"?0:Number(y.toFixed(4))};
 
   };
   const beginOrbit=(e:PE<SVGGElement>)=>{
@@ -1293,7 +1344,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
       </div>)}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
-      data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}
+      data-board-gesture-owner={onPickPoint||onAddPoint&&!isCoordinatePointGraph(item)?"true":undefined}
       onPointerDownCapture={event=>{
         if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
         if(onPickPoint){
@@ -1321,7 +1372,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           event.stopPropagation();
           return;
         }
-        if(onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&event.button===0&&event.isPrimary){
+        if(onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&!isCoordinatePointGraph(item)&&event.button===0&&event.isPrimary){
           if((event.target as SVGElement).closest?.(".lektrus-diagram-grid-toggle"))return;
           const box=event.currentTarget.getBoundingClientRect(),factor=Math.min(box.width/W,box.height/H)||1;
           const left=box.left+(box.width-W*factor)/2,top=box.top+(box.height-H*factor)/2;
@@ -1390,8 +1441,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           freePointGesture.current?.cancel();
         }
       }}
-      onDoubleClick={e=>{if(purpose==="geometry"){if((e.target as Element).closest(".graph-point")){e.preventDefault();e.stopPropagation()}return;}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
-      {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free")&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
+      onDoubleClick={e=>{if(purpose==="geometry"){if((e.target as Element).closest(".graph-point")){e.preventDefault();e.stopPropagation()}return;}if(onAddPoint&&purpose!=="unit-circle"){e.preventDefault();e.stopPropagation();if(Date.now()<=ignoreNativeDoubleClickUntil.current)return;if(!(e.target as Element).closest(".lektrus-diagram-grid-toggle,.graph-point")){const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}}>
+      {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&!isCoordinatePointGraph(item))&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
         {gridX.map(x=><line key={`x${x}`} className={motionAxes?(majorMotionX.has(x)?"graph-grid-major":undefined):Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
@@ -1724,8 +1775,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         const movable=!!(onPointMove||onPointMoveEnd)&&!selectable&&(purpose!=="unit-circle"||i>=5);
         const closesHere=closingVertex===i&&!!onCloseFreePolygon&&!selectable;
         const picked=pickedPoints?.includes(i)??false;
-        return <g data-board-interactive={movable&&item.graphFigureId?.startsWith("physics-")?"true":undefined} className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
-        onDoubleClick={onRemovePoint&&purpose==="geometry"?(e)=>{e.preventDefault();e.stopPropagation();if(Date.now()>ignoreNativeDoubleClickUntil.current)onRemovePoint(i);ignoreNativeDoubleClickUntil.current=0}:undefined}
+        return <g data-board-interactive={movable&&item.graphFigureId?.startsWith("physics-")||onRemovePoint&&isCoordinatePointGraph(item)?"true":undefined} className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
+        onDoubleClick={onRemovePoint&&(purpose==="geometry"||isCoordinatePointGraph(item))?(e)=>{e.preventDefault();e.stopPropagation();if(Date.now()>ignoreNativeDoubleClickUntil.current)onRemovePoint(i);ignoreNativeDoubleClickUntil.current=0}:undefined}
         onPointerDown={movable||closesHere||selectable||!!onRemovePoint?(e)=>{
           if(e.button!==0||!e.isPrimary||
             (item.graphFigureId==="free"||selectable||onPointMoveEnd)&&freeContacts.current.size>1)return;
@@ -1758,7 +1809,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             if(ev.pointerId!==id)return;
             cleanup();
             if(onPointMoveEnd){setLiveVertex(null);if(!cancelled&&didMove&&lastPosition)onPointMoveEnd(i,lastPosition.x,lastPosition.y);}
-            if(!cancelled&&!didMove&&ev.pointerType==="touch"&&onRemovePoint&&purpose==="geometry"){
+            if(!cancelled&&!didMove&&ev.pointerType==="touch"&&onRemovePoint&&(purpose==="geometry"||isCoordinatePointGraph(item))){
               const previous=pointDoubleTap.current,now=Date.now();
               pointDoubleTap.current={index:i,at:now,x:ev.clientX,y:ev.clientY};
               if(previous?.index===i&&now-previous.at<420&&Math.hypot(previous.x-ev.clientX,previous.y-ev.clientY)<26){
@@ -1794,8 +1845,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         {!((item.graphFigureId??"").startsWith("physics-")&&
           (item.graphSegments??[]).some(s=>s.scienceArrow&&s.b===i))&&
           <circle cx={sx(p.x)} cy={sy(p.y)}
-           r={(item.graphFigureId??"").startsWith("physics-")?2.5:movable?5:4}
-           style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>}
+           r={(item.graphFigureId??"").startsWith("physics-")?2.5:["line","segment","ray","parallel","perpendicular"].includes(item.graphFigureId??"")?2.8:movable?5:4}
+           style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor,strokeWidth:["line","segment","ray","parallel","perpendicular"].includes(item.graphFigureId??"")?1.2:undefined}}/>}
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&
           <g pointerEvents="none">
           {geometryCaptions?.[i]?.leader&&<line x1={sx(p.x)} y1={sy(p.y)} x2={geometryCaptions[i]!.x} y2={geometryCaptions[i]!.y} stroke="#788ba3" strokeWidth=".8" strokeDasharray="3 2"/>}
@@ -1804,7 +1855,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            textAnchor={geometryCaptions?.[i]?"middle":undefined} dominantBaseline={geometryCaptions?.[i]?"central":undefined}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text></g>}
       </g>})}
-      {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
+      {(purpose==="geometry"||isCoordinatePointGraph(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
         <g role="button" tabIndex={0} className="lektrus-grid-control"
           aria-label={item.graphGrid===false?"Показать сетку":"Скрыть сетку"}
           aria-pressed={item.graphGrid!==false}
@@ -1820,20 +1871,22 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           </g>
         </g>
         {onSnapChange&&<g transform="translate(35 0)" role="button" tabIndex={0}
-          className="lektrus-grid-control" aria-label={item.graphSnap===true?"Отключить привязку к сетке":"Включить привязку к сетке"}
-          aria-pressed={item.graphSnap===true}
+          className="lektrus-grid-control" aria-label={graphPointSnapEnabled(item)?"Отключить привязку к сетке":"Включить привязку к сетке"}
+          aria-pressed={graphPointSnapEnabled(item)}
           onPointerDown={event=>event.stopPropagation()}
           onPointerUp={event=>event.stopPropagation()}
-          onClick={event=>{event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}
-          onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}>
-          <title>{item.graphSnap===true?"Отключить привязку к сетке":"Включить привязку к сетке"}</title>
-          <rect width="30" height="25" rx="7" className={item.graphSnap===true?"is-on":""}/>
+          onClick={event=>{event.preventDefault();event.stopPropagation();onSnapChange(!graphPointSnapEnabled(item))}}
+          onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onSnapChange(!graphPointSnapEnabled(item))}}>
+          <title>{graphPointSnapEnabled(item)?"Отключить привязку к сетке":"Включить привязку к сетке"}</title>
+          <rect width="30" height="25" rx="7" className={graphPointSnapEnabled(item)?"is-on":""}/>
           <g stroke="currentColor" strokeWidth="1.15" fill="none" pointerEvents="none"
              strokeLinecap="round" strokeLinejoin="round">
             {/* Grid junction and a short arrow moving the loose point into it. */}
             <path d="M9 5.5v14M15 5.5v14M21 5.5v14M6 9.5h18M6 15.5h18" opacity=".42"/>
             <path d="M21 8.5l-5 5M16.4 10.5l-.4 3.1 3.1-.4" strokeWidth="1.65"/>
             <circle cx="15" cy="15.5" r="2.45" fill="currentColor" stroke="var(--lt-raised,#fff)" strokeWidth=".9"/>
+            {!graphPointSnapEnabled(item)&&<path d="M6 21L24 4" stroke="#fff" strokeWidth="3.2"/>}
+            {!graphPointSnapEnabled(item)&&<path d="M6 21L24 4" strokeWidth="1.6"/>}
           </g>
         </g>}
       </g>}
@@ -2076,11 +2129,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setSelfhostBoardMode(boardSummary.id,selfhostMode);
     return()=>setSelfhostBoardMode(boardSummary.id,false);
   },[boardSummary.id,selfhostMode]);
-  const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
+  const layoutEditing=!demoMode&&new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const [rolePreview,setRolePreview]=useState<BoardRolePreview>(globalRolePreview);
   useEffect(()=>setRolePreview(globalRolePreview),[boardSummary.id,globalRolePreview]);
   const roleCapabilities=boardRoleCapabilities({
-    preview:rolePreview,boardRole:boardSummary.role,accountRole,
+    preview:rolePreview,boardRole:boardSummary.role,accountRole,participantRole:boardSummary.participantRole,
     isAppAdmin,adminMaintenance:rolePreview==="actual"&&adminMaintenance,isGuest:authUser.isGuest===true
   });
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
@@ -2088,11 +2141,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
   const canSaveTemplate=isBoardOwner && accountRole==="teacher" && !isStudent && !authUser.isGuest && !demoMode && !layoutEditing;
   const adminHidden = showAdminControls && adminInvisible;
-  const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
+  const toolAllowedForRole = (id:Tool) => id!=="comment"&&(!demoMode||id!=="linkmedia")&&canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
   const canTransformBoardObject=(item:Item|null|undefined)=>
     !!item&&(!isLockableBoardItem(item)||!item.locked)&&canTransformStudentBoardObject(item.kind,roleCapabilities);
+  const canCropImage=(item:Item|null|undefined)=>
+    canEdit&&canCropBoardImage(item,authUser.id,isStudent,isBoardOwner);
   const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
   const rejectStudentStructuralEdit = () => {
     if(!studentSelectionHasProtected()) return false;
@@ -2175,6 +2230,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursorStore] = useState(createRemoteCursorStore);
   const [remoteInkStore] = useState(createRemoteInkStore);
+  const [remoteEraseStore] = useState(createRemoteInkStore);
+  const remoteEraseTargets=useRef(new Map<string,Set<string>>());
+  const remoteErasures=useSyncExternalStore(remoteEraseStore.subscribe,remoteEraseStore.getSnapshot,remoteEraseStore.getSnapshot);
+  const previousRemoteErasures=useRef<ReadonlyMap<string,unknown>>(new Map());
+  useEffect(()=>{
+    for(const id of previousRemoteErasures.current.keys())if(!remoteErasures.has(id))remoteEraseTargets.current.delete(id);
+    previousRemoteErasures.current=remoteErasures;
+  },[remoteErasures]);
+  const acknowledgeRemoteInk=useCallback((data:DocumentData)=>{
+    const ids=expandDocumentInk(data).filter(isInkItem).map(item=>item.id);
+    remoteInkStore.acknowledge(ids);
+    if(remoteEraseTargets.current.size){
+      const retained=new Set(ids);
+      for(const targets of remoteEraseTargets.current.values())
+        for(const id of targets)if(!retained.has(id)&&!remoteInkStore.getSnapshot().has(id))targets.delete(id);
+    }
+  },[remoteInkStore]);
   const inkDiagnostics=useRef("подключается");
   const inkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
   const settingsInkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
@@ -2201,7 +2273,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       return {wheel:v?.wheel==="scroll"?"scroll":defaultControlSettings.wheel,zoomSpeed:Math.max(.4,Math.min(3,Number(v?.zoomSpeed)||1)),panSpeed:Math.max(.4,Math.min(3,Number(v?.panSpeed)||1)),invertZoom:v?.invertZoom===true,horizontalShift:v?.horizontalShift!==false};
     }catch{return {...defaultControlSettings}}
   });
-  useEffect(()=>{try{localStorage.setItem(controlSettingsKey,JSON.stringify(controlSettings))}catch{}},[controlSettingsKey,controlSettings]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(controlSettingsKey,JSON.stringify(controlSettings))}catch{}},[controlSettingsKey,controlSettings]);
   const controlSettingsRef=useRef(controlSettings);
   controlSettingsRef.current=controlSettings;
   const [developerPrefs, setDeveloperPrefs] = useState(readDeveloperPreferences);
@@ -2261,6 +2333,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [remoteWork, setRemoteWork] = useState<Record<string, RemoteWorkState>>({});
   const workChannel = useRef<BoardWorkChannel | null>(null);
   const board = useRef<HTMLElement>(null);
+  // Older images may have been saved in a padded frame. Read their decoded
+  // aspect ratio once at the start of a resize, not on each pointer sample.
+  const imageAspect=(item:Item)=>{
+    const cropRatio=(item.imageCrop?.width??1)/(item.imageCrop?.height??1);
+    if(item.imageSourceAspect)return item.imageSourceAspect*cropRatio;
+    const img=board.current?.querySelector<HTMLImageElement>(`.board-object[data-object="${CSS.escape(item.id)}"] .media-image`);
+    if(!img?.naturalWidth||!img.naturalHeight)return item.width/item.height;
+    return img.naturalWidth/img.naturalHeight*cropRatio;
+  };
+  const selectionToolbarRef = useRef<HTMLDivElement>(null);
+  const [selectionToolbarSize,setSelectionToolbarSize] = useState({width:0,height:0,boardWidth:0,boardHeight:0});
   const [boardViewportSize,setBoardViewportSize]=useState({width:0,height:0});
   const globalHandlersRef = useRef<{
     keyDown:(event:KeyboardEvent)=>void; keyUp:(event:KeyboardEvent)=>void; blur:()=>void;
@@ -2271,6 +2354,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [initial] = useState(() => layoutEditing?
     {data:{version:1 as const,title:"Новая доска",view:{x:0,y:0,zoom:1},items:[] as Item[]},error:""}:
     demoInitialDocument?{data:demoInitialDocument,error:""}:loadInitial(storageKey,boardSummary.title));
+  const [initialAcknowledged]=useState<DocumentData|null>(()=>{
+    if(initialRemoteVersion===null)return null;
+    try{
+      if(localStorage.getItem(storageKey+".pending-sync")==="1"){
+        const base=localStorage.getItem(storageKey+".pending-base");
+        return base?parseDocument(base):null;
+      }
+    }catch{return null;}
+    return initial.data;
+  });
   const [saveBlocked, setSaveBlocked] = useState(!!initial.error);
   const fileInput = useRef<HTMLInputElement>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
@@ -2306,7 +2399,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [arrowHeadStyle,setArrowHeadStyle]=useState<ArrowHeadStyle>("triangle");
   const [arrowHeadSize,setArrowHeadSize]=useState(8);
   const [connectorRouting, setConnectorRouting] = useState<ConnectorRouting>("straight");
-  const [notice, setNoticeState] = useState({ message: "", sequence: 0 });
+  const [notice, setNoticeState] = useState(()=>{
+    let message="";
+    try{if(!demoMode&&localStorage.getItem(storageKey+".recovery-backup"))
+      message="Неподтверждённая старая копия сохранена отдельно; открыта актуальная общая доска.";}catch{}
+    return {message,sequence:0};
+  });
   const setNotice = useCallback((message: string) => {
     setNoticeState(previous => ({ message, sequence: previous.sequence + 1 }));
   }, []);
@@ -2325,7 +2423,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [templateCategory,setTemplateCategory]=useState("");
   const [templateBusy,setTemplateBusy]=useState(false);
   const [templateError,setTemplateError]=useState("");
-  const [commentsOpen, setCommentsOpen] = useState(false);
   const [tableEditorId, setTableEditorId] = useState<string | null>(null);
   const [tableDraft, setTableDraft] = useState<{ rows: number; cols: number; cells: string[]; header: boolean; fontSize: number; align: "left" | "center" | "right"; stripe: boolean; compact: boolean } | null>(null);
   const [pendingStudyItem, setPendingStudyItem] = useState<Item | null>(null);
@@ -2344,6 +2441,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [boardGeometryError,setBoardGeometryError]=useState("");
   const geometryCanvasTouch=useRef<{pointer:number;id:string;x:number;y:number}|null>(null);
   const lastGeometryCanvasTap=useRef<{id:string;x:number;y:number;time:number}|null>(null);
+  const coordinateDoubleTapUntil=useRef(0);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const provisionalChemistryBoards=useRef(new Set<string>());
   const provisionalChemistryWorksheets=useRef(new Set<string>());
@@ -2363,6 +2461,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [formulaPaletteTab, setFormulaPaletteTab] = useState<FormulaPaletteTab>("basic");
   const [formulaHistory, setFormulaHistory] = useState<string[]>(() => { try { const v=JSON.parse(localStorage.getItem("onlinerepetitor.formula-history.v54")||"[]"); return Array.isArray(v)?v.slice(0,12):[] } catch { return [] } });
   const formulaInput = useRef<HTMLTextAreaElement>(null);
+  const formulaWindow = useRef<HTMLDivElement>(null);
   const [frameNotesEditorId, setFrameNotesEditorId] = useState<string | null>(null);
   const [frameNotesDraft, setFrameNotesDraft] = useState("");
   const [presentationNotesOpen, setPresentationNotesOpen] = useState(false);
@@ -2385,6 +2484,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // A personal background is viewport preference, never part of the shared board document.
   const personalBackgroundKey="lektrus.personal-background.v1."+authUser.id+"."+boardSummary.id;
   const [personalBackground,setPersonalBackground]=useState<BoardBackground|null>(()=>{
+    if(demoMode)return null;
     try{
       const raw=localStorage.getItem("lektrus.personal-background.v1."+authUser.id+"."+boardSummary.id);
       return raw?normalizeBoardBackground(JSON.parse(raw)):null;
@@ -2407,10 +2507,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!shared && !personalBackground)setPersonalBackground(normalizeBoardBackground(boardBackground));
   };
   useEffect(()=>{
-    if(backgroundIsShared||!personalBackground)return;
+    if(demoMode||backgroundIsShared||!personalBackground)return;
     try{localStorage.setItem(personalBackgroundKey,JSON.stringify(personalBackground))}catch{/* Storage blocked */}
-  },[backgroundIsShared,personalBackground,personalBackgroundKey]);
+  },[backgroundIsShared,personalBackground,personalBackgroundKey,demoMode]);
   const [previous, setPrevious] = useState<DocumentData | null>(() => {
+    if(demoMode)return null;
     try {
       const raw = localStorage.getItem(storageKey + ".before-import");
       return raw ? parseDocument(raw) : null;
@@ -2433,9 +2534,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const setMarkerColor = (value: string) => setInkPreferences(current => withInkSetting(current, "marker", { color: value }));
   const setWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "pen", { size: value }));
   const setMarkerWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "marker", { size: value }));
-  useEffect(() => { writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
+  useEffect(() => { if(!demoMode)writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
   const [eraserSize, setEraserSize] = useState(22);
-  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [eraserMode,setEraserMode]=useState<EraserMode>("partial");
+  const [snapEnabled, setSnapEnabled] = useState(false);
   const guideX=useRef<HTMLDivElement>(null);
   const guideY=useRef<HTMLDivElement>(null);
   // Smart guides are purely transient DOM decorations. Updating their React
@@ -2460,6 +2562,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [commandPaletteQuery, setCommandPaletteQuery] = useState("");
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
+  const [attachmentPreview,setAttachmentPreview]=useState<AttachmentPreview|null>(null);
   // The active tool belongs to THIS viewer/tab, not to the shared document
   // or a collaborator's presence/editor state. Restore it after remounts.
   const [tool, setToolState] = useState<Tool>(()=>readBoardSessionTool(boardSummary.id,authUser.id));
@@ -2519,16 +2622,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }catch{return defaults}
   });
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
-  useEffect(()=>{try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
   const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent,canEdit]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
-  useEffect(()=>{try{localStorage.setItem(lectrisLayoutKey,lectrisLayout)}catch{}},[lectrisLayoutKey,lectrisLayout]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisLayoutKey,lectrisLayout)}catch{}},[lectrisLayoutKey,lectrisLayout]);
   const lectrisPanelsKey="lectris.panels.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const [lectrisPanelLayout,setLectrisPanelLayout]=useState<LectrisPanelLayout>(()=>readLectrisPanelLayout(lectrisPanelsKey));
   const [lectrisPanelSettingsOpen,setLectrisPanelSettingsOpen]=useState(false);
-  useEffect(()=>{try{localStorage.setItem(lectrisPanelsKey,JSON.stringify(lectrisPanelLayout))}catch{}},[lectrisPanelsKey,lectrisPanelLayout]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisPanelsKey,JSON.stringify(lectrisPanelLayout))}catch{}},[lectrisPanelsKey,lectrisPanelLayout]);
   const lectrisSavedLayoutKey="lectris.named-layouts.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const [lectrisSavedLayouts,setLectrisSavedLayouts]=useState<LectrisSavedLayout[]>(()=>{
     try{
@@ -2539,7 +2642,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }catch{return []}
   });
   const [lectrisLayoutName,setLectrisLayoutName]=useState("");
-  useEffect(()=>{try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(lectrisSavedLayouts))}catch{}},[lectrisSavedLayoutKey,lectrisSavedLayouts]);
+  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(lectrisSavedLayouts))}catch{}},[lectrisSavedLayoutKey,lectrisSavedLayouts]);
   const saveLectrisLayout=()=>{
     const name=lectrisLayoutName.trim().slice(0,40);
     if(!name)return;
@@ -2571,7 +2674,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!canManageBoard||boardSummary.ownerId!==authUser.id)return;
     const next={...lectrisBoardOrganization,subject:normalizeLektrusSubject(subject)};
     setLectrisBoardOrganization(next);
-    queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
+    if(!demoMode)queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
     // An untouched worksheet follows the classroom subject. The first written
     // exercise locks its subject and preserves the design and its editor types.
     const tone=subjectToneForSubject(next.subject);
@@ -2588,8 +2691,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
     }
   };
-  const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject),[lectrisBoardOrganization.subject]);
+  const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject).filter(entry=>!demoMode||entry.id.startsWith("subject-task-")),[lectrisBoardOrganization.subject,demoMode]);
   const [view, setView] = useState<View>(() => {
+    if (demoMode) return initial.data.view;
     try {
       const raw = localStorage.getItem(viewStorageKey);
       if (!raw) return initial.data.view;
@@ -2607,6 +2711,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const viewerWheelTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const viewerPendingPan = useRef<View | null>(null);
   const fastPanWorld = useRef<HTMLDivElement>(null);
+  const minimapSvg = useRef<SVGSVGElement>(null);
+  const minimapFrame = useRef<SVGRectElement>(null);
+  const minimapDragExtent = useRef<MinimapRect | null>(null);
   const fastPanOverlay = useRef<HTMLDivElement>(null);
   // Screen-space selection handles and actions must follow compositor-only panning.
   const fastPanSelection = useRef<HTMLDivElement>(null);
@@ -2618,7 +2725,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const panBoardBounds = useRef<{left:number;top:number}|null>(null);
   const viewRef = useRef(view);
   // Pointermove only schedules DOM camera transforms. No React render, ink
-  // tile repaint, minimap reconstruction or object culling during a drag.
+  // tile repaint, minimap marker reconstruction or object culling during a drag.
   const paintPendingPan = (next: View) => {
     if (fastPanWorld.current)
       fastPanWorld.current.style.transform=boardWorldTransform(next);
@@ -2633,6 +2740,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // translate by the remainder of a single grid period on the GPU.
     if (fastPanBackground.current)
       fastPanBackground.current.style.transform=boardGridTransform(next,viewRef.current);
+    // The small SVG camera rectangle follows the live compositor camera;
+    // the actual board and its hundreds of markers still do not rerender.
+    paintMinimap(next);
     fastPanDirty.current=true;
   };
   const scheduleViewerPan = (next: View) => {
@@ -2694,6 +2804,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
+  useEffect(()=>{
+    if(imageCropEditorId&&(!canEdit||!canCropBoardImage(items.find(item=>item.id===imageCropEditorId),authUser.id,isStudent,isBoardOwner))){
+      setImageCropEditorId(null);
+      imageCropApplyRef.current=null;
+    }
+  },[items,imageCropEditorId,canEdit,authUser.id,isStudent,isBoardOwner]);
   // A peer ink preview arrives independently of the server document. Avoid
   // scanning the entire board once per preview stroke (previously O(ink*items)
   // in JSX). Rebuild the ID index only when persisted items actually change.
@@ -2708,16 +2824,24 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [remoteObjectPoses,setRemoteObjectPoses]=useState<Record<string,RemotePose>>({});
   const remoteLiveBases=useRef(new Map<string,string>());
   const pendingEditorBases=useRef(new Map<string,Item>());
+  const modalEditorBase=useRef<Item|null>(null);
+  const mergeModalPatch=(latest:Item,patch:Partial<Item>)=>{
+    const base=modalEditorBase.current;
+    return base?.id===latest.id?mergeEditedValue(base,{...base,...patch},latest):{...latest,...patch};
+  };
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
-  // Keep live ink available as a fallback after its first server rendering.
-  // A later competing document revision may temporarily lack that stroke:
-  // immediately deleting the broadcast overlay made it visibly disappear.
-  // The renderer hides duplicate previews whenever the permanent ink exists.
-  // Per-stroke expiry below bounds memory without assuming a server-save time.
+  // A server-confirmed stroke belongs exclusively to the document. Keeping its
+  // live preview after confirmation can resurrect it when an eraser removes
+  // the original ID and replaces it with cut fragments.
 
   const itemsRef = useRef(items);
   const [getCurrentItemIndex] = useState(()=>createCurrentItemIndex<Item>());
-  const eraserSession = useRef<{pointer:number;last:Point;zoom:number;path:Point[]}|null>(null);
+  const eraserSession = useRef<{id:string;pointer:number;last:Point;zoom:number;weight:number;path:Point[];mode:EraserMode;hiddenIds:Set<string>;hiddenStickerInk:Set<SVGElement>}|null>(null);
+  const sendLiveEraser=(g:NonNullable<typeof eraserSession.current>,finished=false,cancelled=false,cutIds:string[]=[])=>{
+    const offset=Math.max(0,g.path.length-(cancelled?1:500));
+    cursorChannel.current?.sendInk({id:g.id,kind:"eraser",color:"#000000",weight:g.weight,
+      points:g.path.slice(offset),offset,finished,cancelled,cutIds,eraserMode:g.mode});
+  };
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
@@ -2736,12 +2860,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     canvas.width=Math.max(1,Math.round(rect.width*ratio));
     canvas.height=Math.max(1,Math.round(rect.height*ratio));
     canvas.style.display="block";
+    canvas.style.opacity=ink.kind==="marker"?"0.32":"1";
     const ctx=canvas.getContext("2d");
     if(!ctx)return;
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
-    ctx.globalAlpha=ink.kind==="marker"?.32:1;
+    // Composite the entire active stroke once. Alpha on each incremental
+    // batch would darken round caps and self-intersections on the sender.
+    ctx.globalAlpha=1;
     ctx.fillStyle=ink.color;
     ctx.beginPath();ctx.arc(point.x,point.y,ink.weight/2,0,Math.PI*2);ctx.fill();
     lastInkPreviewPoint.current=point;
@@ -2754,7 +2881,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!ctx)return;
     const ratio=inkPreviewRatio.current;
     ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
-    ctx.globalAlpha=ink.kind==="marker"?.32:1;
+    ctx.globalAlpha=1;
     ctx.strokeStyle=ink.color;ctx.fillStyle=ink.color;
     ctx.lineWidth=ink.weight;ctx.lineCap="round";ctx.lineJoin="round";
     const previous=lastInkPreviewPoint.current??points[0];
@@ -2845,9 +2972,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
-  const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
+  const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}].map(group=>demoMode&&group.id==="media"?{...group,label:"Фото / PDF"}:group);
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
+  const touchEditorViewport=isCoarsePointer||Capacitor.isNativePlatform();
+  useLayoutEffect(()=>{
+    if(!touchEditorViewport||!formulaEditorId||!formulaWindow.current)return;
+    return fitMobileEditorViewport(formulaWindow.current);
+  },[touchEditorViewport,formulaEditorId]);
+  useTouchBoardMenuViewport(isCoarsePointer||Capacitor.isNativePlatform());
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
   useEffect(()=>{
     const element=board.current;if(!element)return;
@@ -2857,7 +2990,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const observer=new ResizeObserver(update);observer.observe(element);return()=>observer.disconnect();
   },[boardSummary.id]);
   useEffect(()=>{
-    if(!isCoarsePointer)return;
+    if(!isCoarsePointer||window.parent!==window)return;
     // Never force browser fullscreen: Android/Chrome may create a persistent
     // "copy this app URL" notification for that app-like fullscreen session.
     // Installed PWA can lock orientation without entering browser fullscreen.
@@ -2872,8 +3005,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     void lockLandscape();
     return()=>{cancelled=true};
   },[isCoarsePointer]);
-  const [installPrompt,setInstallPrompt]=useState<Event|null>(null);
-  const [isStandalone,setIsStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
+  const installState=usePwaInstall();
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
@@ -2959,13 +3091,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return()=>clearBoardSelectionCursor(board.current);
   },[tool]);
   const previousInteractionTool=useRef(tool);
-  useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
+
   useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
   const applyUpdate=()=>{if(!updateReady?.waiting)return;window.dispatchEvent(new Event("lektrus:apply-update"));updateReady.waiting.postMessage({type:"SKIP_WAITING"})};
-  const installApp=async()=>{const p=installPrompt as (Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null;if(!p)return;await p.prompt();await p.userChoice;setInstallPrompt(null)};
+  const installApp=()=>pwaInstall.requestInstall();
   const clipboard = useRef<Item[]>([]);
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
   const index = useRef(0);
+  // The pupil's own operations survive incoming collaborator snapshots.
+  const personalHistory=useRef<{entries:PersonalBoardEdit[];cursor:number}>({entries:[],cursor:0});
+  const personalUndoAvailable=()=>personalHistory.current.cursor>0;
+  const personalRedoAvailable=()=>personalHistory.current.cursor<personalHistory.current.entries.length;
 
   const snapshot = useRef<DocumentData | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2996,21 +3132,38 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const remoteSaveFailures = useRef(0);
   const remoteRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const acknowledgedDocument = useRef<string | null>(
-    initialRemoteVersion == null || (()=>{
-      try{return localStorage.getItem(storageKey+".pending-sync")==="1"}catch{return false}
-    })()?null:documentFingerprint(initial.data));
+    initialAcknowledged===null?null:documentFingerprint(initialAcknowledged));
   const acknowledgedSharedContent = useRef<string | null>(
-    acknowledgedDocument.current===null?null:sharedBoardFingerprint(initial.data));
+    initialAcknowledged===null?null:sharedBoardFingerprint(initialAcknowledged));
   // Base for ALL unacknowledged local edits, including ink and ordinary
   // object transforms. Editor-specific bases alone cannot preserve them.
   const acknowledgedBoardData=useRef<DocumentData|null>(
-    acknowledgedDocument.current===null?null:initial.data);
+    initialAcknowledged);
   const deferredRemote = useRef<RemoteBoardDocument | null>(null);
   const pendingRemote = useRef<RemoteBoardDocument | null>(null);
   const lastAttempt = useRef<{ version: number; fingerprint: string } | null>(null);
   const [, setRemoteConflict] = useState<RemoteBoardDocument | null>(null);
   const [, setConflictLocalBackup] = useState<DocumentData | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("reconnecting");
+  // After ten minutes without a user action, close all board-specific sockets.
+  // A hidden app sleeps earlier. Auth stays intact; reconnection checks the
+  // server document version before accepting the next local edit.
+  const [boardRealtimeAwake,setBoardRealtimeAwake]=useState(true);
+  // Until the latest server revision is fetched, no interaction may edit a
+  // document that another participant updated while this board was asleep.
+  const [boardResumePending,setBoardResumePending]=useState(false);
+  const boardResumePendingRef=useRef(false);
+  const boardResumeRequestRunning=useRef(false);
+  const [boardResumeAttempt,setBoardResumeAttempt]=useState(0);
+  const boardLastAction=useRef(Date.now());
+  // Read live refs at timeout, not the last React render. A network save may
+  // finish without rerendering the board; stale busy=true would prevent sleep.
+  const boardIdleBusy=()=>Boolean(gesture.current||eraserSession.current||saveTimer.current||
+    remoteSaveInFlight.current||remoteSavePromise.current||remoteRetryTimer.current||
+    queuedRemoteSnapshot.current||deferredRemote.current||pendingRemote.current||
+    pendingAttachmentTimers.current.size||pendingAttachmentRequests.length||
+    objectEditorOpen||editing||boardAssistantBusy||boardAiGenerating);
+
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
   useEffect(() => {
@@ -3064,6 +3217,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // without broadcasting pan/zoom changes as document revisions.
   useEffect(() => {
     viewRef.current = view;
+    if (demoMode) return;
     if (viewSaveTimer.current) clearTimeout(viewSaveTimer.current);
     viewSaveTimer.current = setTimeout(() => {
       viewSaveTimer.current = null;
@@ -3078,9 +3232,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return () => {
       if (viewSaveTimer.current) clearTimeout(viewSaveTimer.current);
     };
-  }, [view, viewStorageKey]);
+  }, [view, viewStorageKey,demoMode]);
 
   useEffect(() => {
+    if (demoMode) return;
     const saveViewNow = () => {
       try {
         const serialized = JSON.stringify(viewRef.current);
@@ -3100,7 +3255,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       window.removeEventListener("pagehide", saveViewNow);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [viewStorageKey]);
+  }, [viewStorageKey,demoMode]);
   useEffect(() => {
     if (!presentation || !presentationTimerRunning) return;
     const id = window.setInterval(() => {
@@ -3158,7 +3313,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           );
           result={conflict:false,version:saved.version};
         }catch(error){
-          if(error instanceof SelfhostHttpError&&error.status===409){
+          if(error instanceof SelfhostHttpError&&error.status===409&&error.code!=="plan_limit"){
             const latest=await selfhostReadDocument(boardSummary.id);
             if(!boardMounted.current)return;
             if(latest.document&&latest.version>expectedVersion){
@@ -3190,11 +3345,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Reusing this hash avoids a second full document traversal per save.
       acknowledgedSharedContent.current = fingerprint;
       acknowledgedBoardData.current = data;
+      acknowledgeRemoteInk(data);
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
-        try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
+        try{localStorage.removeItem(storageKey+".pending-sync");localStorage.removeItem(storageKey+".pending-base")}catch{}
         pendingEditorBases.current.clear();
+      }else{
+        try{
+          localStorage.setItem(storageKey+".pending-base",JSON.stringify(data));
+        }catch{try{localStorage.removeItem(storageKey+".pending-base")}catch{}}
       }
       remoteSaveFailures.current = 0;
       saveFailure.current = null;
@@ -3210,6 +3370,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch (error) {
       const message=error instanceof Error?error.message:String(error);
       saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
+      if(error instanceof SelfhostHttpError&&error.code==="plan_limit"){
+        setSaveStatus("Лимит тарифа · изменения сохранены локально");
+        return;
+      }
       // A short Supabase/network hiccup must not permanently leave the board in
       // a scary "server unavailable" state. The local copy is already safe,
       // so retry the latest snapshot quietly with a small exponential backoff.
@@ -3228,18 +3392,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       remoteSaveInFlight.current = false;
       const deferred = deferredRemote.current;
       deferredRemote.current = null;
+      const needsRebase=!!deferred&&deferred.version>(remoteVersion.current??-1);
       if (boardMounted.current && deferred) receiveRemote.current(deferred);
       const queued = queuedRemoteSnapshot.current;
       queuedRemoteSnapshot.current = null;
       // A competing server revision must be rebased BEFORE starting another
       // save. Sending a previously queued, unrebased document overwrites ink.
-      if (queued && !deferred)
+      // An own/stale notification can be deferred during a save too. It is
+      // ignored by receiveRemote, so it must not swallow the next queued edit.
+      if (queued && !needsRebase)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
-  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
+  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance, acknowledgeRemoteInk]);
 
   const flushSave = useCallback(() => {
-    if (!canEdit || layoutEditing) return;
+    if (!canEdit || layoutEditing || demoMode) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
     labCheckpointStartedAt.current = null;
@@ -3255,7 +3422,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           lastLocalSerialized.current=serialized;
           localBackupValid.current=true;
           if(documentSyncEnabled){
-            try{localStorage.setItem(storageKey+".pending-sync","1")}catch{}
+            try{
+              localStorage.setItem(storageKey+".pending-sync","1");
+              if(acknowledgedBoardData.current)
+                localStorage.setItem(storageKey+".pending-base",JSON.stringify(acknowledgedBoardData.current));
+              else localStorage.removeItem(storageKey+".pending-base");
+            }catch{try{localStorage.removeItem(storageKey+".pending-base")}catch{}}
           }
         } catch(error) {
           // localStorage is often limited to 5 MB. A full quota must NEVER
@@ -3271,7 +3443,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
       )){
-        try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
+        try{localStorage.removeItem(storageKey+".pending-sync");localStorage.removeItem(storageKey+".pending-base")}catch{}
         setSaveStatus("Сохранено на сервере");
         return;
       }
@@ -3321,7 +3493,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         : itemsRef.current,
     });
     snapshot.current = data;
-    if (!canEdit) return;
+    if (!canEdit||demoMode) return;
     // Do not hash/stringify the entire board on every keystroke or React update.
     // The debounced flush performs both operations once after editing settles.
     setSaveStatus("Сохранение…");
@@ -3356,6 +3528,57 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [flushSave]);
+  // One timer per open board. User input wakes sockets, but the first action
+  // is consumed until a fresh server document has been fetched and reconciled.
+  useEffect(()=>{
+    if(demoMode||layoutEditing)return;
+    const ACTIVE_IDLE_MS=10*60*1000,HIDDEN_IDLE_MS=90*1000;
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    const arm=()=>{
+      clearTimeout(timeout);
+      if(!boardRealtimeAwake)return;
+      const limit=document.visibilityState==="hidden"?HIDDEN_IDLE_MS:ACTIVE_IDLE_MS;
+      const due=Math.max(50,boardLastAction.current+limit-Date.now());
+      timeout=setTimeout(()=>{
+        if(boardIdleBusy()){timeout=setTimeout(arm,1500);return;}
+        if(Date.now()-boardLastAction.current>=limit){
+          boardResumePendingRef.current=false;
+          setBoardResumePending(false);
+          flushSave();
+          setBoardRealtimeAwake(false);
+        }else arm();
+      },due);
+    };
+    const userAction=(event:Event)=>{
+      boardLastAction.current=Date.now();
+      if(!boardRealtimeAwake){
+        boardResumePendingRef.current=true;
+        setBoardResumePending(true);
+        setBoardRealtimeAwake(true);
+      }else if(boardResumePendingRef.current&&!boardResumeRequestRunning.current){
+        // A failed reconnect is retried only after another actual user action.
+        setBoardResumeAttempt(value=>value+1);
+      }else arm();
+      if(boardResumePendingRef.current){
+        if(event.cancelable)event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    // Mouse hover and passive network messages never keep the socket awake.
+    // Capture before React board handlers; passive:false is necessary to
+    // prevent a stale pointer or keystroke from changing the shared document.
+    const events=["pointerdown","pointerup","click","keydown","beforeinput","wheel","input"] as const;
+    for(const type of events)
+      document.addEventListener(type,userAction,{capture:true,passive:false});
+    const visibility=()=>{if(boardRealtimeAwake)arm()};
+    document.addEventListener("visibilitychange",visibility);
+    arm();
+    return()=>{
+      clearTimeout(timeout);
+      for(const type of events)document.removeEventListener(type,userAction,true);
+      document.removeEventListener("visibilitychange",visibility);
+    };
+  },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,objectEditorOpen,editing,boardAssistantBusy,boardAiGenerating,pendingAttachmentRequests.length]);
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
@@ -3366,13 +3589,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const chatOpenRef=useRef(chatOpen);
   chatOpenRef.current=chatOpen;
   useEffect(()=>{
-    if(layoutEditing||!discussionEnabled)return;
+    if(layoutEditing||!discussionEnabled||!boardRealtimeAwake)return;
     const refresh=()=>{void refreshDiscussions().catch(()=>{})};
     return subscribeBoardComments(boardSummary.id,()=>{
       if(!chatOpenRef.current)setChatUnread(value=>Math.min(99,value+1));
       refresh();
     },refresh);
-  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
+  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions,boardRealtimeAwake]);
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get("discussion");
     if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
@@ -3405,6 +3628,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const saveBeforeLeaving=async (logout=false)=>{
     if(leavingBoard)return;
+    if(demoMode){onBackToBoards();return;}
     setLeavingBoard(true);
     try{
       finishEdit();
@@ -3448,6 +3672,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(boardMounted.current)setLeavingBoard(false);
     }
   };
+
+  // Android's physical Back button must follow the same save path as «Доски».
+  useEffect(()=>{
+    const back=(event:Event)=>{event.preventDefault();void saveBeforeLeaving(false);};
+    window.addEventListener("lektrus:board-native-back",back);
+    return ()=>window.removeEventListener("lektrus:board-native-back",back);
+  });
 
   const openHistory=async()=>{
     if(!historyEnabled){setNotice("История версий доступна зарегистрированным участникам при серверной синхронизации");return}
@@ -3508,14 +3739,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         assets: assets.map(asset=>({ ...asset, size: Math.round((asset.data.length * 3) / 4) })),
       };
       validatePortableBundle(bundle);
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(bundle)], { type: "application/json" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = safeBackupName(title);
-      a.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const saved = await saveExport(new Blob([JSON.stringify(bundle)], { type: "application/octet-stream" }), safeBackupName(title));
+      if (!saved) { setNotice("Сохранение отменено"); return; }
       setNotice(assets.length ? `Копия скачана вместе с вложениями: ${assets.length}` : "Копия доски скачана");
     } catch {
       setNotice("Не удалось подготовить переносимую копию");
@@ -3561,7 +3786,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // The original SVG strokes are replaced with a lightweight, instant canvas
   // preview while erasing. This keeps the brush responsive on teacher boards
   // without forcing the entire React object tree to render on every pointermove.
-  const beginEraserPreview=()=>{
+  const beginEraserPreview=(hiddenIds?:ReadonlySet<string>)=>{
     const canvas=eraserPreviewCanvas.current;
     const host=board.current;
     if(!canvas||!host)return;
@@ -3580,7 +3805,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const right=(rect.width-view.x)/z,bottom=(rect.height-view.y)/z;
     ctx.setTransform(ratio*z,0,0,ratio*z,ratio*view.x,ratio*view.y);
     for(const item of itemsRef.current){
-      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length)continue;
+      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length||hiddenIds?.has(item.id))continue;
       const pad=(item.weight??3)/2;
       if(item.x+item.width+pad<left||item.x-pad>right||item.y+item.height+pad<top||item.y-pad>bottom)continue;
       ctx.save();
@@ -3611,6 +3836,28 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     host.classList.add("eraser-live");
   };
   const previewEraserSegment=(from:Point,to:Point)=>{
+    const g=eraserSession.current;
+    if(g?.mode==="stroke"){
+      const path=[world(from),world(to)];
+      let changed=false;
+      for(const item of itemsRef.current){
+        if(isInkItem(item)&&!g.hiddenIds.has(item.id)&&canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner)&&inkTouchesEraser(item,path,g.weight/2)){
+          g.hiddenIds.add(item.id);changed=true;
+        }else if(item.kind==="sticky"&&!item.hidden&&!item.locked&&canTransformBoardObject(item)&&item.stickerInk?.length){
+          const next=eraseStickerInk(item,path,g.weight/2,"stroke");
+          if(next===item)continue;
+          const remaining=new Set(next.stickerInk?.map(ink=>ink.id));
+          const node=board.current?.querySelector(`.board-object[data-object="${CSS.escape(item.id)}"]`);
+          for(const ink of item.stickerInk){
+            if(remaining.has(ink.id))continue;
+            const element=node?.querySelector<SVGElement>(`[data-sticker-ink="${CSS.escape(ink.id)}"]`);
+            if(element&&!g.hiddenStickerInk.has(element)){element.style.visibility="hidden";g.hiddenStickerInk.add(element);}
+          }
+        }
+      }
+      if(changed)beginEraserPreview(g.hiddenIds);
+      return;
+    }
     const canvas=eraserPreviewCanvas.current;
     if(!canvas||canvas.style.display!=="block")return;
     const ctx=canvas.getContext("2d");
@@ -3637,12 +3884,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const canvas=eraserPreviewCanvas.current;
     if(canvas)canvas.style.display="none";
   };
+  const cancelEraser=()=>{
+    const g=eraserSession.current;
+    if(g){sendLiveEraser(g,true,true);g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));}
+    eraserSession.current=null;
+    stopEraserPreview();
+  };
   const recordEraserPoint=(point:Point)=>{
     const g=eraserSession.current;
     if(!g)return;
     if(Math.hypot(point.x-g.last.x,point.y-g.last.y)>.1){
       g.path.push(point);
       g.last=point;
+      sendLiveEraser(g);
     }
   };
   const finishEraser=(point:Point|null)=>{
@@ -3652,15 +3906,29 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     eraserSession.current=null;
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
-    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom,
-      item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner));
+    const erased=eraseInkAlongPath(before,g.path,g.weight/2,
+      item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner),g.mode);
+    let stickerChanged=false;
+    const withStickers=erased.map(item=>{
+      if(item.kind!=="sticky"||item.hidden||item.locked||!canTransformBoardObject(item))return item;
+      const next=eraseStickerInk(item,g.path,g.weight/2,g.mode);
+      if(next!==item)stickerChanged=true;
+      return next;
+    });
+    const next=stickerChanged?withStickers:erased;
+    const remaining=next===before?null:new Set(next.map(item=>item.id));
+    const cutIds=remaining?before.filter(item=>isInkItem(item)&&!remaining.has(item.id)).map(item=>item.id).slice(0,500):[];
+    sendLiveEraser(g,true,next===before,cutIds);
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
-        commit(next);
+        commit(next,{immediatePaint:true});
         setItems(itemsRef.current);
       });
+      // Erasing should not wait for the generic document autosave debounce.
+      flushSave();
     }
+    g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));
     stopEraserPreview();
     if (!remoteSaveInFlight.current && deferredRemote.current) {
       const delayed = deferredRemote.current;
@@ -3706,6 +3974,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!fromRemote) flushSave();
   };
   const importBoard = async (file: File) => {
+    if (demoMode) return;
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if (isStudent&&!isBoardOwner) { setNotice("Импорт с заменой доски доступен только владельцу или преподавателю"); return; }
     try {
@@ -3783,6 +4052,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     const current=itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
@@ -3790,6 +4060,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(blocked.length){
       setNotice("Нельзя удалить чужую работу или задание преподавателя");
       return;
+    }
+    if(blockedBoardImageCrops(current,next,authUser.id,isStudent,isBoardOwner).length){
+      setNotice("Нельзя обрезать чужое изображение");return;
     }
     const normalized = stampNewBoardItemAuthors(current,syncBoundConnectors(next),authUser.id);
     // Most drawing gestures only add/remove strokes. Compare identities first,
@@ -3800,6 +4073,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           JSON.stringify(item) === JSON.stringify(baseline[pos])))
       return;
     const isLabSimulation=options?.labSimulation===true;
+    if(isStudent&&!isBoardOwner&&!isLabSimulation){
+      const own=personalBoardEdit(current,normalized);
+      if(own){
+        const stack=personalHistory.current;
+        stack.entries=[...stack.entries.slice(0,stack.cursor),own].slice(-80);
+        stack.cursor=stack.entries.length;
+      }
+    }
     labSimulationOnly.current=isLabSimulation;
     if(!isLabSimulation)labCheckpointStartedAt.current=null;
     history.current = history.current.slice(0, index.current + 1);
@@ -3810,7 +4091,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }else{
       history.current.push(normalized);
       // Preserve user undo history even during a long continuously running experiment.
-      const inkPoints = normalized.reduce((sum, item) => sum + (item.points?.length ?? 0), 0);
+      const inkPoints = normalized.reduce((sum, item) => sum + (item.points?.length ?? 0) + (item.stickerInk??[]).reduce((count,ink)=>count+ink.points.length,0), 0);
       const historyLimit = normalized.length > 1200 || inkPoints > 120_000 ? 30 : normalized.length > 500 || inkPoints > 50_000 ? 50 : 80;
       while (history.current.length > historyLimit) history.current.shift();
       index.current = history.current.length - 1;
@@ -3823,6 +4104,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       snapshot.current=packDocumentInk({...snapshot.current,
         subject:lectrisBoardOrganization.subject,items:normalized});
     }
+  };
+  const autoFitExistingImage=(id:string,crop:Item["imageCrop"],sourceAspect:number)=>{
+    const current=itemsRef.current.find(item=>item.id===id&&item.kind==="image");
+    if(!current||current.imageCrop||!canCropImage(current)||
+       !Number.isFinite(sourceAspect)||sourceAspect<=0)return;
+    const reframe=crop?placeImageCrop(current,crop):current;
+    const visibleRatio=sourceAspect*(crop?.width??1)/(crop?.height??1);
+    const fitted=fitImageFrameAspect(reframe,visibleRatio);
+    if(!crop&&fitted===current)return;
+    // Undo/redo and collaboration see one ordinary, reversible operation.
+    commit(itemsRef.current.map(item=>item.id===id?{
+      ...item,...fitted,imageSourceAspect:sourceAspect
+    }:item));
   };
   const finishEdit = () => {
     if (!editing) return;
@@ -3841,7 +4135,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const startEdit = (item: Item) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
-    if (item.kind !== "text" && item.kind !== "sticky" && item.kind !== "frame" && item.kind !== "comment") return;
+    if (item.kind !== "text" && item.kind !== "frame" && item.kind !== "comment") return;
     setSelected([item.id]);
     setTool("select");
     setSpace(false);
@@ -3850,7 +4144,30 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setEditing(item.id);
   };
   const undo = (direction: number) => {
-    if (gesture.current || !canEdit) return;
+    if (gesture.current || !canEdit || boardResumePendingRef.current) return;
+    if(isStudent&&!isBoardOwner){
+      const stack=personalHistory.current;
+      const step=direction<0?stack.cursor-1:stack.cursor;
+      if(step<0||step>=stack.entries.length)return;
+      const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo");
+      if(!outcome.changed){
+        setNotice("Это действие уже изменено другим участником. Чужие правки не затронуты.");
+        return;
+      }
+      if(blockedBoardItemRemovals(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length){
+        setNotice("Отмена не может изменить защищённую работу другого участника.");
+        return;
+      }
+      stack.cursor=direction<0?step:step+1;
+      display(outcome.items);
+      if(snapshot.current&&!saveBlocked)
+        snapshot.current=packDocumentInk({...snapshot.current,items:outcome.items});
+      history.current=[outcome.items];index.current=0;
+      setSelected([]);
+      if(outcome.conflicts)setNotice("Отменены только ваши изменения. Более поздние чужие правки сохранены.");
+      return;
+    }
     const next = index.current + direction;
     if (next < 0 || next >= history.current.length) return;
     // History snapshots describe our change, not a license to replace the
@@ -3859,6 +4176,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       history.current[index.current],history.current[next],itemsRef.current);
     if(blockedBoardItemRemovals(itemsRef.current,rebased,authUser.id,isStudent,isBoardOwner).length){
       setNotice("Отмена не может удалить чужую работу");return;
+    }
+    if(blockedBoardImageCrops(itemsRef.current,rebased,authUser.id,isStudent,isBoardOwner).length){
+      setNotice("Нельзя обрезать чужое изображение");return;
     }
     index.current = next;
     display(rebased);
@@ -3914,7 +4234,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const aiTransferHandledRef = useRef<string|null>(null);
   useEffect(()=>{
-    if(!canCreateAssignments)return;
+    if(demoMode||!canCreateAssignments)return;
     const transfer=peekAiBoardTransfer();
     if(!transfer||aiTransferHandledRef.current===transfer.queuedAt)return;
     const rect=board.current?.getBoundingClientRect();
@@ -3928,7 +4248,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setTool("select");
     clearAiBoardTransfer();
     setNotice(created.length===1?"AI-материал добавлен на доску":`AI-материалы добавлены на доску · ${created.length}`);
-  },[boardSummary.id,canCreateAssignments]);
+  },[boardSummary.id,canCreateAssignments,demoMode]);
 
   const zoom = (factor: number, anchor?: Point) => {
     if (gesture.current) return;
@@ -4075,11 +4395,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           respond(command.mediaType==="image"?"Выберите изображение на устройстве — после выбора я добавлю его на доску.":"Выберите PDF на устройстве — после выбора я добавлю его на доску.");
           input.click();
         }
-      }else if(command.kind==="create-sticky"||command.kind==="create-text"||command.kind==="create-checklist"||command.kind==="create-formula"||command.kind==="create-table"||command.kind==="create-chart"||command.kind==="create-quiz"||command.kind==="create-flashcard"||command.kind==="create-comment"||command.kind==="create-fraction"||command.kind==="create-linkmedia"||command.kind==="create-frame"||command.kind==="create-shape"||command.kind==="create-graph"||command.kind==="create-instrument"||command.kind==="create-cover"||command.kind==="create-connector"||command.kind==="create-ink"){
+      }else if(command.kind==="create-comment"){
+        respond("Инструмент комментариев удалён. Для заметок используйте текстовый объект.");
+      }else if(command.kind==="create-sticky"||command.kind==="create-text"||command.kind==="create-checklist"||command.kind==="create-formula"||command.kind==="create-table"||command.kind==="create-chart"||command.kind==="create-quiz"||command.kind==="create-flashcard"||command.kind==="create-fraction"||command.kind==="create-linkmedia"||command.kind==="create-frame"||command.kind==="create-shape"||command.kind==="create-graph"||command.kind==="create-instrument"||command.kind==="create-cover"||command.kind==="create-connector"||command.kind==="create-ink"){
         const rect=board.current?.getBoundingClientRect();
         if(!rect)throw new Error("Не удалось определить область доски");
         const center=world({x:rect.width/2,y:rect.height/2});
-        const created=createBoardAssistantObject(command,center,createId);
+        const created=createBoardAssistantObject(command.kind==="create-sticky"?{kind:"create-text",text:command.text}:command,center,createId);
         if(!created)respond(command.kind==="create-chart"?"Не получилось разобрать данные диаграммы. Запишите пары через точку с запятой: «создай столбчатую диаграмму Продажи: Январь | 12; Февраль | 18».":command.kind==="create-quiz"?"Не получилось собрать викторину. Укажите вопрос, от двух до шести вариантов и правильный ответ, например: «создай викторину: Сколько будет 2 + 2?; 3; 4; ответ: 2».":command.kind==="create-flashcard"?"Укажите обе стороны карточки через вертикальную черту: «создай карточку для повторения: Вопрос | Ответ».":command.kind==="create-fraction"?"Укажите дробь с числителем не больше знаменателя, например: «создай дробь: 3/4».":command.kind==="create-linkmedia"?"Нужна корректная ссылка http/https. Например: «добавь видео: Название | https://example.com/урок».":"Напишите содержание нового объекта после двоеточия. Например: «создай заметку: повторить урок».");
         else{
           if(created.kind==="frame")created.presentationOrder=Math.max(-1,...itemsRef.current.filter(item=>item.kind==="frame").map((item,indexValue)=>item.presentationOrder??indexValue))+1;
@@ -4114,7 +4436,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       : [item.id];
 
   useEffect(()=>{
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel=connectAttachmentApprovalChannel(
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
@@ -4137,7 +4459,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       pendingAttachmentTimers.current.clear();
       pendingAttachmentStarted.current.clear();
     };
-  },[boardSummary.id,authUser.id,authUser.name,isStudent]);
+  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode,boardRealtimeAwake]);
 
   const addMediaFile = async (file: File, position?: Point, offset = 0) => {
     if (!canEdit) throw new Error("У вас доступ только для просмотра");
@@ -4148,18 +4470,26 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
     let width = 360;
     let height = isPdf ? 500 : 260;
+    let imageSourceAspect:number|undefined;
+    let imageCrop:Item["imageCrop"];
     if (isImage) {
       const url = URL.createObjectURL(file);
       try {
-        const natural = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const natural = await new Promise<{ width: number; height: number; crop:Item["imageCrop"] }>((resolve, reject) => {
           const image = new Image();
-          image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+          image.onload = () => resolve({
+            width: image.naturalWidth, height: image.naturalHeight,
+            crop: detectImageContentCropFromElement(image)??undefined,
+          });
           image.onerror = () => reject(new Error("Не удалось определить размер изображения"));
           image.src = url;
         });
-        const scale = Math.min(420 / Math.max(1, natural.width), 320 / Math.max(1, natural.height), 1);
-        width = Math.max(120, natural.width * scale);
-        height = Math.max(80, natural.height * scale);
+        imageCrop=natural.crop??undefined;
+        ({width,height}=initialImageSize(
+          natural.width*(imageCrop?.width??1),
+          natural.height*(imageCrop?.height??1)
+        ));
+        imageSourceAspect=natural.width/natural.height;
       } finally {
         URL.revokeObjectURL(url);
       }
@@ -4176,6 +4506,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       y: center.y - height / 2 + offset,
       width,
       height,
+      imageSourceAspect,
+      imageCrop,
       text: "",
       assetId: id,
       name: file.name,
@@ -4201,10 +4533,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return item;
   };
 
-  const openLinkMediaEditor=(item?:Item)=>{setLinkMediaEditId(item?.kind==="linkmedia"?item.id:null);setLinkMediaUrl(item?.kind==="linkmedia"?item.mediaUrl??"":"");setLinkMediaTitle(item?.kind==="linkmedia"?item.mediaTitle??"":"");setLinkMediaOpen(true)};
-  const saveLinkMedia=()=>{if(!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){commit(itemsRef.current.map(i=>i.id===linkMediaEditId?{...i,mediaUrl:info.sourceUrl,mediaTitle:title}:i));setNotice("Ссылка мультимедиа обновлена")}else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
+  const openLinkMediaEditor=(item?:Item)=>{if(demoMode)return;setLinkMediaEditId(item?.kind==="linkmedia"?item.id:null);setLinkMediaUrl(item?.kind==="linkmedia"?item.mediaUrl??"":"");setLinkMediaTitle(item?.kind==="linkmedia"?item.mediaTitle??"":"");setLinkMediaOpen(true)};
+  const saveLinkMedia=()=>{if(demoMode||!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){commit(itemsRef.current.map(i=>i.id===linkMediaEditId?{...i,mediaUrl:info.sourceUrl,mediaTitle:title}:i));setNotice("Ссылка мультимедиа обновлена")}else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
 
-  useEffect(()=>{if(!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit]);
+  useEffect(()=>{if(demoMode||!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit,demoMode]);
 
   const approveAttachmentRequest=(request:AttachmentApprovalRequest)=>{
     if(isStudent)return;
@@ -4213,6 +4545,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const item:Item={
       id:createId(),kind:request.kind,x:center.x-request.width/2,y:center.y-request.height/2,
       width:request.width,height:request.height,text:"",assetId:request.assetId,name:request.name,mime:request.mime,
+      ...(request.kind==="image"?{imageSourceAspect:request.width/request.height}:{}),
     };
     commit([...itemsRef.current,item]);
     setSelected([item.id]);setTool("select");
@@ -4227,31 +4560,35 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice(`Вложение «${request.name}» отклонено`);
   };
   const openAttachmentRequest=async(request:AttachmentApprovalRequest)=>{
-    const blob=await getAsset(request.assetId,boardSummary.id);
-    if(!blob){setNotice("Не удалось загрузить вложение для предпросмотра");return}
-    const url=URL.createObjectURL(blob);window.open(request.kind==="pdf"?`${url}#page=1`:url,"_blank","noopener,noreferrer");window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    try {
+      const blob=await getAsset(request.assetId,boardSummary.id);
+      if(!blob){setNotice("Не удалось загрузить вложение для предпросмотра");return}
+      if(usesEmbeddedPdf()){setAttachmentPreview({blob,name:request.name,kind:request.kind});return;}
+      const url=URL.createObjectURL(blob);window.open(request.kind==="pdf"?`${url}#page=1`:url,"_blank","noopener,noreferrer");window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }catch{setNotice("Не удалось загрузить вложение для предпросмотра");}
   };
 
   const openMediaAsset = async (item: Item) => {
     if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
-    const blob = await getAsset(item.assetId, boardSummary.id);
-    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
-    const url = URL.createObjectURL(blob);
-    const targetUrl = item.kind === "pdf" ? `${url}#page=${Math.max(1, item.pdfPage ?? 1)}` : url;
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
-    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    try {
+      const blob = await getAsset(item.assetId, boardSummary.id);
+      if (!blob) { setNotice("Исходный файл не найден в хранилище"); return; }
+      if(usesEmbeddedPdf()){setAttachmentPreview({blob,name:item.name||(item.kind==="pdf"?"document.pdf":"Изображение"),kind:item.kind,page:item.pdfPage});return;}
+      const url = URL.createObjectURL(blob);
+      const targetUrl = item.kind === "pdf" ? `${url}#page=${Math.max(1, item.pdfPage ?? 1)}` : url;
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }catch{setNotice("Не удалось открыть исходный файл");}
   };
 
   const downloadMediaAsset = async (item: Item) => {
     if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
-    const blob = await getAsset(item.assetId, boardSummary.id);
-    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = item.name || (item.kind === "pdf" ? "document.pdf" : "image");
-    a.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    try {
+      const blob = await getAsset(item.assetId, boardSummary.id);
+      if (!blob) { setNotice("Исходный файл не найден в хранилище"); return; }
+      const saved = await saveExport(blob, item.name || (item.kind === "pdf" ? "document.pdf" : "image"));
+      setNotice(saved ? "Файл сохранён" : "Сохранение отменено");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Не удалось сохранить исходный файл"); }
   };
 
   const setPdfPage = (item: Item, page: number) => {
@@ -4354,7 +4691,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       consumedTouchIds.current.clear();
       pinchState.current=null;
       pinchSelectionSnapshot.current=null;
-      if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
+      if(eraserSession.current)cancelEraser();
       if(gesture.current)end(true);
       setPanning(false);
     }
@@ -4369,10 +4706,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       for(const id of touchPoints.current.keys())consumedTouchIds.current.add(id);
       // Two fingers always navigate. Discard an unfinished eraser preview
       // before zooming; otherwise its pointer capture outlives the gesture.
-      if(eraserSession.current){
-        eraserSession.current=null;
-        stopEraserPreview();
-      }
+      if(eraserSession.current)cancelEraser();
       // A pan keeps its current viewport; an object transform is cancelled.
       end(gesture.current?.mode!=="pan");
       // The first touch may have selected an object before the second arrived.
@@ -4477,7 +4811,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses,true);
     }
-    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),offset:Math.max(0,g.path.length-500),finished:true});
+    if (g.mode === "draw" && g.ink && !g.sticker) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),offset:Math.max(0,g.path.length-500),finished:true});
     if (cancel) {
       display(g.restore ?? g.before);
       setView(g.view);
@@ -4494,6 +4828,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(dragPreview||rotatePreview||groupRotatePreview||resizePreview)
             flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
       else commit(itemsRef.current);
+    }
+    else if (g.mode === "draw" && g.ink && g.sticker) {
+      const sticker=g.sticker;
+      const attached=makeStickerInk(sticker,g.ink,g.path,g.view.zoom);
+      flushSync(()=>commit([...g.before.map(item=>item.id===sticker.id?
+        {...item,stickerInk:[...(item.stickerInk??[]),attached]}:item)],{immediatePaint:true}));
     }
     else if (g.mode === "draw" && g.ink)
       flushSync(()=>commit([
@@ -4603,8 +4943,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(previousInteractionTool.current===tool)return;
     previousInteractionTool.current=tool;
     end(true);
-    eraserSession.current=null;
-    stopEraserPreview();
+    cancelEraser();
     touchPoints.current.clear();
     consumedTouchIds.current.clear();
     pinchState.current=null;
@@ -4615,7 +4954,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setPanning(false);
     setMarqueeRect(null);
     clearGuides();
-    if(tool!=="select")setSelected([]);
+    if(tool!=="select"&&tool!=="lasso")setSelected([]);
   },[tool]);
   // Some embedded widgets consume pointerup, and a captured element can be
   // removed mid-drag. A window-level fallback retires orphaned pointers.
@@ -4623,14 +4962,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const release=(event:PointerEvent)=>{
       if(touchPoints.current.has(event.pointerId)||consumedTouchIds.current.has(event.pointerId))touchEnd(event);
       if(eraserSession.current?.pointer===event.pointerId){
-        eraserSession.current=null;stopEraserPreview();
+        cancelEraser();
       }
       if(gesture.current?.pointer===event.pointerId)end(true);
     };
     const blur=()=>{
       end(true);
-      eraserSession.current=null;
-      stopEraserPreview();
+      cancelEraser();
       touchPoints.current.clear();
       consumedTouchIds.current.clear();
       pinchState.current=null;
@@ -4686,7 +5024,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (contextMenu && !target.closest("[data-context-menu]")) setContextMenu(null);
     const connectorEndpointEl = target.closest<HTMLElement>("[data-connector-endpoint]");
     const connectorEndpoint = connectorEndpointEl?.dataset.connectorEndpoint;
-    if ((tool === "select" || tool === "hand") && connectorEndpoint && selected.length === 1) {
+    if ((tool === "select" || tool === "hand" || tool === "lasso") && connectorEndpoint && selected.length === 1) {
       const connector = itemsRef.current.find((item) => item.id === selected[0] && item.kind === "connector");
       if (connector && canEdit && !connector.locked && canTransformBoardObject(connector)) {
         e.preventDefault();
@@ -4702,7 +5040,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // Moving the common selection grip works even for embedded maps,
     // formulas, media frames and other widgets that consume pointer events.
     const groupGrip=target.closest<HTMLElement>("[data-group-selection-drag]");
-    if((tool==="select"||tool==="hand")&&groupGrip&&canEdit&&selected.length>1){
+    if((tool==="select"||tool==="hand"||tool==="lasso")&&groupGrip&&canEdit&&selected.length>1){
       const movable=itemsRef.current.filter(item=>selected.includes(item.id)&&
         !item.locked&&canTransformBoardObject(item)).map(item=>item.id);
       if(movable.length){
@@ -4715,7 +5053,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const groupHandleEl = target.closest<HTMLElement>("[data-group-transform-handle]");
     const groupHandle = groupHandleEl?.dataset.groupTransformHandle;
-    if ((tool === "select" || tool === "hand") && groupHandle && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && i.locked)) {
+    if ((tool === "select" || tool === "hand" || tool === "lasso") && groupHandle && canEdit && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && (i.locked||!canTransformBoardObject(i)))) {
       const bases = itemsRef.current.filter((i) => selected.includes(i.id)).map((i) => ({ ...i, points: i.points?.map((p) => ({ ...p })) }));
       const groupBounds = boundsOf(bases);
       if (groupBounds) {
@@ -4739,7 +5077,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
     }
     let id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
-    if ((tool==="select"||tool==="hand") && !space &&
+    if ((tool==="select"||tool==="hand"||tool==="lasso") && !space &&
         !target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint]")) {
       // The Canvas layer is not a DOM object. Resolve a pen stroke only when
       // clicked, in its original stacking order above a hit DOM object.
@@ -4780,7 +5118,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         return;
       }
     }
-    if (e.pointerType === "touch" && hit?.kind === "image" && (tool === "select" || tool === "hand") && !space && canEdit && !hit.locked) {
+    if (e.pointerType === "touch" && hit?.kind === "image" && (tool === "select" || tool === "hand") && !space && canCropImage(hit)) {
       const now = performance.now();
       const previousTap = imageTapRef.current;
       const isDoubleTap = !!previousTap && previousTap.id === hit.id && now - previousTap.at <= 420 && Math.hypot(e.clientX - previousTap.x, e.clientY - previousTap.y) <= 28;
@@ -4796,7 +5134,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const handleEl = target.closest<HTMLElement>("[data-transform-handle]");
     const transformHandle = handleEl?.dataset.transformHandle;
-    if ((tool === "select" || tool === "hand") && transformHandle && hit && canEdit && !hit.locked && canTransformBoardObject(hit) && selected.length === 1 && selected[0] === hit.id) {
+    if ((tool === "select" || tool === "hand" || tool === "lasso") && transformHandle && hit && canEdit && !hit.locked && canTransformBoardObject(hit) && selected.length === 1 && selected[0] === hit.id) {
       e.preventDefault();
       e.stopPropagation();
       gesture.current = {
@@ -4804,6 +5142,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         mode: transformHandle === "rotate" ? "rotate" : "resize",
         handle: transformHandle,
         transformItem: { ...hit, points: hit.points?.map((p) => ({ ...p })) },
+        imageAspect:hit.kind==="image"?imageAspect(hit):undefined,
         start,
         view,
         before: itemsRef.current,
@@ -4820,7 +5159,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       !hit.locked &&
       !space &&
       e.button === 0 &&
-      (hit.kind === "text" || hit.kind === "sticky")
+      hit.kind === "text"
     ) {
       e.preventDefault();
       startEdit(hit);
@@ -4883,8 +5222,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       mode = "pan";
       setPanning(true);
     } else if (tool === "lasso") {
-      mode = "lasso";
-      setPath([p]);
+      if(hit&&selected.includes(hit.id)&&!e.shiftKey&&canEdit&&
+         !itemsRef.current.some(item=>selected.includes(item.id)&&(item.locked||!canTransformBoardObject(item)))){
+        mode="drag";
+      }else{
+        mode = "lasso";
+        setPath([p]);
+      }
     } else if (tool === "pen" || tool === "marker") {
       mode = "draw";
       setSelected([]);
@@ -4904,20 +5248,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setSelected([item.id]);
       setTool("select");
       window.setTimeout(() => startEdit(item), 0);
-      return;
-    } else if (tool === "comment") {
-      e.preventDefault();
-      const targetId = hit && hit.kind !== "comment" ? hit.id : undefined;
-      const item: Item = {
-        id: createId(), kind: "comment",
-        x: p.x + 18, y: p.y + 18, width: 250, height: 132,
-        text: "", color: "#fff8d6", resolved: false,
-        ...(targetId ? { commentTargetId: targetId } : {}),
-      };
-      commit([...itemsRef.current, item]);
-      setSelected([item.id]);
-      setTool("select");
-      // Keep the new frame movable immediately; edit its name using the selection bar.
       return;
     } else if (tool === "table") {
       e.preventDefault();
@@ -4972,13 +5302,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         height,
         text: "",
         ...(tool === "shape" ? { shapeType: shapeType ?? "rectangle", color: "#6064d4" } : {}),
-        ...(tool === "sticky" ? { color: "#fff3a6", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
+        ...(tool === "sticky" ? { color: "#fff3a6" } : {}),
         ...(tool === "text" ? { color: "#202124", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
       };
       commit([...itemsRef.current, item]);
       setSelected([item.id]);
       setTool("select");
-      if (item.kind === "text" || item.kind === "sticky") startEdit(item);
+      if (item.kind === "text") startEdit(item);
       return;
     } else if (id && hit) {
       const family = familyIdsFor(hit);
@@ -5032,6 +5362,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const gesturePoint = mode === "connector"
       ? (connectorStartHit?.point ?? p)
       : p;
+    const sticker=mode==="draw"?stickerAt(gestureBefore,p):undefined;
     gesture.current = {
       pointer: e.pointerId,
       mode,
@@ -5043,6 +5374,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       path: [gesturePoint],
       additive: e.shiftKey,
       connectorStartBinding: connectorStartHit?.binding,
+      sticker:sticker&&!sticker.locked&&canTransformBoardObject(sticker)?sticker:undefined,
       ink:
         tool === "pen" || tool === "marker"
           ? {
@@ -5056,7 +5388,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (mode === "draw") {
       const ink = gesture.current.ink!;
       beginInkPreview(gesture.current,p);
-      cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
+      if(!gesture.current.sticker)cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
     }
     if (mode === "connector") {
       setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding,undefined,"",arrowHeadStyle,arrowHeadSize));
@@ -5299,6 +5631,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           const snapped = snapBoardDrag(cache.moving,cache.snapIndex,worldDx,worldDy,7/g.view.zoom);
           worldDx = snapped.dx;
           worldDy = snapped.dy;
+            // The visible board grid is 24 world pixels. Prefer a nearby
+            // object alignment; otherwise use the closest grid intersection.
+            if(visibleBoardBackground.mode!=="plain"){
+              if(snapped.guides.x===undefined){
+                const x=cache.moving.x+worldDx,n=Math.round(x/24)*24;
+                if(Math.abs(n-x)<=7/g.view.zoom){worldDx+=n-x;snapped.guides.x=n;}
+              }
+              if(snapped.guides.y===undefined){
+                const y=cache.moving.y+worldDy,n=Math.round(y/24)*24;
+                if(Math.abs(n-y)<=7/g.view.zoom){worldDy+=n-y;snapped.guides.y=n;}
+              }
+            }
           setDragGuides(snapped.guides);
         }
       } else {
@@ -5343,14 +5687,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const wx = dx / g.view.zoom, wy = dy / g.view.zoom;
       if (g.transformItems && g.transformBounds) {
         const baseBounds = g.transformBounds;
-        const nextBounds = resizedRect(baseBounds, g.handle, wx, wy, 80, 60, e.shiftKey);
+        const nextBounds = g.transformItems.some(item=>item.kind==="image")
+          ?resizedImageRect(baseBounds,g.handle,wx,wy)
+          :resizedRect(baseBounds, g.handle, wx, wy, 80, 60, e.shiftKey);
         const sx = nextBounds.width / Math.max(1, baseBounds.width);
         const sy = nextBounds.height / Math.max(1, baseBounds.height);
         const resized=g.transformItems.map(base=>fitItemToRect(base,{
           x:nextBounds.x+(base.x-baseBounds.x)*sx,
           y:nextBounds.y+(base.y-baseBounds.y)*sy,
-          width:Math.max(8,base.width*sx),
-          height:Math.max(8,base.height*sy),
+          width:Math.max(base.kind==="image"?0.001:8,base.width*sx),
+          height:Math.max(base.kind==="image"?0.001:8,base.height*sy),
         }));
         if(!paintCompositorResize(g,resized)){
           const byId=new Map(resized.map(item=>[item.id,item] as const));
@@ -5365,9 +5711,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         const radians=-(base.rotation??0)*Math.PI/180;
         const localWx=wx*Math.cos(radians)-wy*Math.sin(radians);
         const localWy=wx*Math.sin(radians)+wy*Math.cos(radians);
-        const localRect = resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
+        const localRect = base.kind==="image"
+          ?resizedImageRect(base,g.handle,localWx,localWy,g.imageAspect)
+          :resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
         const rect = preserveRotatedAnchor(base,localRect,base.rotation??0);
-        const resized=fitItemToRect(base,rect);
+        const resized=fitItemToRect(base,rect,true);
         if(!paintCompositorResize(g,[resized]))
           display(g.before.map(item=>item.id===base.id?resized:item));
       }
@@ -5416,7 +5764,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Publish directly from the pointer stream, independently of cursor visibility
       // and React preview paint scheduling (including invisible admin sessions).
       if (g.mode === "draw" && g.ink) {
-        cursorChannel.current?.sendInk({
+        if(!g.sticker)cursorChannel.current?.sendInk({
           id: g.ink.id, kind: g.ink.kind, color: g.ink.color,
           weight: g.ink.weight, points: g.path.slice(-500),
           offset: Math.max(0,g.path.length-500), finished: false,
@@ -5475,7 +5823,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if (commandPaletteOpen) { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); return; }
         if (shortcutsOpen) { setShortcutsOpen(false); return; }
         if (templatesOpen) { setTemplatesOpen(false); return; }
-        if (commentsOpen) { setCommentsOpen(false); return; }
         if (searchOpen) { setSearchOpen(false); setSearchQuery(""); return; }
         if (contextMenu) {
           setContextMenu(null);
@@ -5501,7 +5848,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (gesture.current) return;
       if ((e.code === "Enter" || e.code === "F2") && selected.length === 1) {
         const item = itemsRef.current.find((i) => i.id === selected[0]);
-        if (item && !item.locked && (item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment" || item.kind === "formula" || item.kind === "table" || item.kind === "checklist" || item.kind === "quiz" || item.kind === "flashcard" || item.kind === "cover" || item.kind === "linkmedia")) {
+        if (item && !item.locked && (item.kind === "text" || item.kind === "frame" || item.kind === "comment" || item.kind === "formula" || item.kind === "table" || item.kind === "checklist" || item.kind === "quiz" || item.kind === "flashcard" || item.kind === "cover" || item.kind === "linkmedia")) {
           e.preventDefault();
           if (item.kind === "table") openTableEditor(item); else if (item.kind === "formula") openFormulaEditor(item); else if (item.kind === "checklist") openChecklistEditor(item); else if (item.kind === "quiz") openQuizEditor(item); else if (item.kind === "flashcard") openFlashcardEditor(item); else if (item.kind === "linkmedia") openLinkMediaEditor(item); else startEdit(item);
           return;
@@ -5737,16 +6084,34 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     width: selectionBounds.width * view.zoom,
     height: selectionBounds.height * view.zoom,
   } : null;
+  useLayoutEffect(()=>{
+    const toolbar=selectionToolbarRef.current, host=board.current;
+    if(!toolbar||!host)return;
+    const measure=()=>{
+      const next={width:toolbar.offsetWidth,height:toolbar.offsetHeight,boardWidth:host.clientWidth,boardHeight:host.clientHeight};
+      setSelectionToolbarSize(old=>Object.keys(next).every(key=>old[key as keyof typeof old]===next[key as keyof typeof next])?old:next);
+    };
+    measure();
+    const observer=new ResizeObserver(measure);
+    observer.observe(toolbar);observer.observe(host);
+    return ()=>observer.disconnect();
+  },[selected.length,objectEditorOpen,boardAiOpen]);
   const selectionToolbarTop = selectionScreenBounds
     ? (() => {
-        const boardHeight=board.current?.clientHeight ?? window.innerHeight;
+        const boardHeight=selectionToolbarSize.boardHeight||board.current?.clientHeight||window.innerHeight;
+        const height=selectionToolbarSize.height||48;
         const below=selectionScreenBounds.top+selectionScreenBounds.height+12;
-        const above=selectionScreenBounds.top-48;
-        return below>boardHeight-54 ? Math.max(8,above) : Math.max(8,below);
+        const above=selectionScreenBounds.top-height-12;
+        return Math.max(8,Math.min(boardHeight-height-8,below+height>boardHeight-8?above:below));
       })()
     : 0;
   const selectionToolbarLeft = selectionScreenBounds
-    ? Math.max(54,Math.min((board.current?.clientWidth??window.innerWidth)-54,selectionScreenBounds.left+selectionScreenBounds.width/2))
+    ? (() => {
+        const rightRail=lectrisPanelLayout.toolbarSide==="right";
+        const half=selectionToolbarSize.width/2;
+        const available=selectionToolbarSize.boardWidth||board.current?.clientWidth||window.innerWidth;
+        return Math.max((rightRail?12:84)+half,Math.min(available-(rightRail?84:12)-half,selectionScreenBounds.left+selectionScreenBounds.width/2));
+      })()
     : 0;
 
   const lectrisPatchSelected = (patch: Partial<Item>) => {
@@ -5754,6 +6119,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (isStudent && structurallyLockedForStudent(singleSelected)) return;
     if (singleSelected.locked && patch.locked !== false) return;
     if(singleSelected.kind==="pdf"&&patch.pdfPage!==undefined){setPdfPage(singleSelected,patch.pdfPage);return;}
+    if(singleSelected.kind==="image"&&(patch.width!==undefined||patch.height!==undefined)){
+      const ratio=imageAspect(singleSelected);
+      patch=patch.width!==undefined?{...patch,height:patch.width/ratio}:{...patch,width:patch.height!*ratio};
+    }
     commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,...patch}:item));
   };
   const lectrisEditSelected = () => {
@@ -5761,7 +6130,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setLectrisInspectorOpen(false);
     if (!singleSelected || !canEdit || (singleSelected.locked&&!contourWorksheet) || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
     switch (singleSelected.kind) {
-      case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
+      case "text": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
       case "graph": openGraphEditor(singleSelected); break;
       case "fraction": setFractionEditorId(singleSelected.id); break;
@@ -5770,8 +6139,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       case "quiz": openQuizEditor(singleSelected); break;
       case "flashcard": openFlashcardEditor(singleSelected); break;
       case "linkmedia": openLinkMediaEditor(singleSelected); break;
-      case "image": setImageCropEditorId(singleSelected.id); break;
-      default: setLectrisInspectorOpen(true); break;
+      case "image": if(canCropImage(singleSelected))setImageCropEditorId(singleSelected.id); break;
+      default: break;
     }
   };
   const selectionToolbarPointerDown=(event:React.PointerEvent<HTMLDivElement>)=>{
@@ -5804,7 +6173,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         : scope === "selection" ? expandedIdsForFrameSelection(selected) : [];
       const exportIds = scope === "all" ? null : new Set(idsForScope);
       const source = itemsRef.current.filter((item) => !item.hidden && (!exportIds || exportIds.has(item.id)));
-      const bounds = boundsOf(source);
+      const bounds = visualBoundsOf(source);
       if (!bounds) { setNotice(scope === "all" ? "Доска пока пустая" : scope === "frame" ? "Сначала выберите фрейм" : "Сначала выберите объекты"); return; }
       setNotice("Готовим PNG…");
       const pad = 48;
@@ -6000,6 +6369,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         } else if (item.kind === "sticky") {
           ctx.fillStyle = item.color ?? "#fff3a6"; roundedRect(item.x, item.y, item.width, item.height, 10); ctx.fill();
           ctx.fillStyle = "#252733"; ctx.font = `${item.fontSize ?? 20}px Arial, sans-serif`; wrapText(item.text, item.x + 14, item.y + 30, Math.max(20, item.width - 28), (item.fontSize ?? 20) * 1.25, 18);
+          ctx.save();
+          for(const ink of item.stickerInk??[]){
+            const {points,weight}=stickerInkPixels(item,ink);
+            ctx.globalAlpha=ink.kind==="marker"?.32:1;ctx.lineWidth=weight;
+            ctx.strokeStyle=ctx.fillStyle=ink.color;ctx.lineCap=ctx.lineJoin="round";
+            ctx.beginPath();ctx.moveTo(item.x+points[0].x,item.y+points[0].y);
+            if(points.length===1){ctx.arc(item.x+points[0].x,item.y+points[0].y,weight/2,0,Math.PI*2);ctx.fill();}
+            else{for(const p of points.slice(1))ctx.lineTo(item.x+p.x,item.y+p.y);ctx.stroke();}
+          }
+          ctx.restore();
         } else if (item.kind === "text") {
           ctx.fillStyle = "#252733"; ctx.font = `${item.fontSize ?? 20}px Arial, sans-serif`; wrapText(item.text, item.x, item.y + (item.fontSize ?? 20), Math.max(20, item.width), (item.fontSize ?? 20) * 1.25, 30);
         } else if (item.kind === "shape") {
@@ -6034,19 +6413,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           else { ctx.fillStyle = "#eef0f4"; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); }
         } else if (item.kind === "pdf") {
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#d8dce5"; ctx.lineWidth = 1.5; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = "#dc4c64"; ctx.font = "700 24px Arial, sans-serif"; ctx.fillText("PDF", item.x + 18, item.y + 38);
-          ctx.fillStyle = "#4a4f5c"; ctx.font = "14px Arial, sans-serif"; wrapText(item.name ?? "Документ PDF", item.x + 18, item.y + 66, Math.max(30, item.width - 36), 19, 3);
+          const pdfBlob=item.assetId?await getAsset(item.assetId,boardSummary.id):null;
+          if(!pdfBlob)throw new Error(`Не найден исходный PDF: ${item.name??"Документ"}`);
+          const {renderPdfPageCanvas}=await import("./pdfPagination");
+          const page=await renderPdfPageCanvas(pdfBlob,item.pdfPage??1);
+          const fit=Math.min(item.width/page.width,item.height/page.height), w=page.width*fit,h=page.height*fit;
+          ctx.save();roundedRect(item.x,item.y,item.width,item.height,8);ctx.clip();
+          ctx.drawImage(page,item.x+(item.width-w)/2,item.y+(item.height-h)/2,w,h);ctx.restore();
+          page.width=0;page.height=0;
         }
         ctx.restore();
       }
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", .96));
       if (!blob) throw new Error("Не удалось создать PNG");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url;
       const base = (title || "board").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 70);
       const suffix = scope === "selection" ? "_selection" : scope === "frame" ? `_${(frameForExport?.text || "frame").replace(/[\/:*?"<>|]+/g, "_").slice(0, 40)}` : "";
-      a.download = `${base}${suffix}.png`; a.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (!await saveExport(blob, `${base}${suffix}.png`)) { setNotice("Сохранение отменено"); return; }
       setNotice(`PNG сохранён · ${canvas.width} × ${canvas.height}`);
     } catch (error) {
       setNotice(error instanceof Error ? `Не удалось экспортировать PNG: ${error.message}` : "Не удалось экспортировать PNG");
@@ -6096,6 +6478,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     commit(itemsRef.current.filter((item) => !deletable.includes(item.id)));
     setSelected(selected.filter((id) => lockedIds.has(id)||foreignIds.has(id)));
+    flushSave();
   };
 
   const moveLayer = (front: boolean) => {
@@ -6585,8 +6968,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
   };
-  const graphDraftFromItem=(item:Item):GraphDraft=>({constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphPurpose==="geometry"?item.graphSnap===true:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
-  const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
+  const graphDraftFromItem=(item:Item):GraphDraft=>({boardWidth:item.width,boardHeight:item.height,constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:graphPointSnapEnabled(item),axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
+  const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,...(d.purpose==="coordinates"?{width:d.boardWidth??item.width,height:d.boardHeight??item.height}:{}),text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
+  const addCoordinatePlanePoint=(id:string,x:number,y:number)=>{
+    const item=itemsRef.current.find(candidate=>candidate.id===id);
+    if(!item||!isCoordinatePointGraph(item)||item.locked||!canEdit||structurallyLockedForStudent(item))return;
+    const points=item.graphPoints??[];
+    if(points.length>=40)return;
+    commit(itemsRef.current.map(candidate=>candidate.id===id?
+      {...candidate,graphPoints:[...points,{x,y,label:"",color:"#111111"}]}:candidate));
+    setSelected([id]);
+  };
   const liveGraphDraftRef=useRef<GraphDraft|null>(null);
   const graphLiveBaseRef=useRef<Item|null>(null);
   const openGraphEditor = (item: Item) => {
@@ -6735,6 +7127,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "formula" || item.locked) return;
     if (editing) finishEdit();
+    modalEditorBase.current=item;
     setSelected(pendingMathItem?.id===item.id?[]:[item.id]);
     setTool("select");
     setFormulaEditorId(item.id);
@@ -6744,12 +7137,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const closeFormulaEditor = (save = true) => {
     if (save && formulaEditorId && formulaDraft && pendingMathItem?.id!==formulaEditorId) {
-      commit(itemsRef.current.map((item) => item.id === formulaEditorId ? {
-        ...item,
+      commit(itemsRef.current.map((item) => item.id === formulaEditorId ? mergeModalPatch(item,{
         text: formulaDraft.text.slice(0, 10000),
         fontSize: Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize))),
         color: formulaDraft.color,
-      } : item));
+      }) : item));
     }
     setFormulaEditorId(null);
     setFormulaDraft(null);
@@ -6760,13 +7152,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!formulaEditorId || !formulaDraft) { closeFormulaEditor(); return; }
     const textValue = formulaDraft.text.slice(0, 10000);
     const fontSize = Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize)));
-    if (textValue.trim()) { const history=[textValue,...formulaHistory.filter((value)=>value!==textValue)].slice(0,12); setFormulaHistory(history); localStorage.setItem("onlinerepetitor.formula-history.v54",JSON.stringify(history)); }
-    commit((pendingMathItem?.kind==="formula"&&pendingMathItem.id===formulaEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map((item) => item.id === formulaEditorId ? {
-      ...item,
+    if (textValue.trim()) { const history=[textValue,...formulaHistory.filter((value)=>value!==textValue)].slice(0,12); setFormulaHistory(history); if(!demoMode)localStorage.setItem("onlinerepetitor.formula-history.v54",JSON.stringify(history)); }
+    commit((pendingMathItem?.kind==="formula"&&pendingMathItem.id===formulaEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map((item) => item.id === formulaEditorId ? mergeModalPatch(item,{
       text: textValue,
       fontSize,
       color: formulaDraft.color,
-    } : item));
+    }) : item));
     closeFormulaEditor(false);
     setNotice("Формула сохранена");
   };
@@ -6803,6 +7194,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const openTableEditor = (item: Item) => {
     if (item.kind !== "table" || item.locked) return;
+    modalEditorBase.current=item;
     const rows = Math.max(1, item.tableRows ?? 3);
     const cols = Math.max(1, item.tableCols ?? 3);
     const cells = Array.from({ length: rows * cols }, (_, index) => item.tableCells?.[index] ?? "");
@@ -6867,8 +7259,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const saveTableEditor = () => {
     if(!canCreateAssignments){setNotice("Изменять учебную таблицу может преподаватель");return;}
     if (!tableEditorId || !tableDraft) { setTableEditorId(null); setTableDraft(null); return; }
-    commit(itemsRef.current.map((item) => item.id === tableEditorId ? {
-      ...item,
+    commit(itemsRef.current.map((item) => item.id === tableEditorId ? mergeModalPatch(item,{
       tableRows: tableDraft.rows,
       tableCols: tableDraft.cols,
       tableCells: tableDraft.cells.map((cell) => cell.slice(0, 2000)),
@@ -6877,7 +7268,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       tableAlign: tableDraft.align,
       tableStripe: tableDraft.stripe,
       tableCompact: tableDraft.compact,
-    } : item));
+    }) : item));
     setTableEditorId(null);
     setTableDraft(null);
     setNotice(`Таблица сохранена · ${tableDraft.rows}×${tableDraft.cols}`);
@@ -6886,6 +7277,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const openChecklistEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "checklist" || item.locked) return;
+    modalEditorBase.current=item;
     const entries = item.checklistItems?.length ? [...item.checklistItems] : ["Новый пункт"];
     const done = entries.map((_, index) => item.checklistDone?.[index] === true);
     setSelected([item.id]);
@@ -6896,21 +7288,27 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const saveChecklistEditor = () => {
     if(!canCreateAssignments){setNotice("Изменять структуру задания может преподаватель");return;}
     if (!checklistEditorId || !checklistDraft) { setChecklistEditorId(null); setChecklistDraft(null); return; }
-    const cleanItems = checklistDraft.items.slice(0, 40).map((value) => value.slice(0, 2000));
-    const cleanDone = cleanItems.map((_, index) => checklistDraft.done[index] === true);
+    const rows = checklistDraft.items.slice(0, 40).map((value,index) => ({text:value.slice(0, 2000),done:checklistDraft.done[index]===true}));
+    // New draft rows are placeholders until filled. Do not leave an unused
+    // trailing row on a newly created checklist (especially after an IME
+    // transition). Existing checklists retain deliberately empty entries.
+    if(pendingStudyItem?.id===checklistEditorId){
+      while(rows.length>1&&!rows[rows.length-1].text.trim()&&!rows[rows.length-1].done)rows.pop();
+    }
+    const cleanItems = rows.map(row=>row.text);
+    const cleanDone = rows.map(row=>row.done);
     if(pendingStudyItem?.id===checklistEditorId && (!checklistDraft.title.trim()||!cleanItems.some(x=>x.trim()))){
       setNotice("Введите название и хотя бы один пункт чек-листа");return;
     }
     const original=pendingStudyItem?.id===checklistEditorId?pendingStudyItem:null;
     const source=original?[...itemsRef.current,original]:itemsRef.current;
-    commit(source.map((item) => item.id === checklistEditorId ? {
-      ...item,
+    commit(source.map((item) => item.id === checklistEditorId ? mergeModalPatch(item,{
       text: checklistDraft.title.slice(0, 200),
       checklistItems: cleanItems.length ? cleanItems : ["Новый пункт"],
       checklistDone: cleanItems.length ? cleanDone : [false],
       fontSize: Math.max(10, Math.min(32, Math.round(checklistDraft.fontSize))),
       color: checklistDraft.color,
-    } : item));
+    }) : item));
     if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setChecklistEditorId(null);
     setChecklistDraft(null);
@@ -6926,6 +7324,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const openQuizEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "quiz" || item.locked) return;
+    modalEditorBase.current=item;
     const options = item.quizOptions?.length ? [...item.quizOptions] : ["Вариант 1", "Вариант 2"];
     setSelected([item.id]);
     setQuizEditorId(item.id);
@@ -6949,8 +7348,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const original=pendingStudyItem?.id===quizEditorId?pendingStudyItem:null;
     const source=original?[...itemsRef.current,original]:itemsRef.current;
-    commit(source.map((item) => item.id === quizEditorId ? {
-      ...item,
+    commit(source.map((item) => item.id === quizEditorId ? mergeModalPatch(item,{
       text: quizDraft.question.slice(0, 2000),
       quizOptions: options.length >= 2 ? options : [...options, "Вариант 2"].slice(0, 2),
       quizCorrect: correct,
@@ -6959,7 +7357,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       color: quizDraft.color,
       quizRevealed: false,
       quizSelected: undefined,
-    } : item));
+    }) : item));
     if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setQuizEditorId(null);
     setQuizDraft(null);
@@ -6989,6 +7387,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const openFlashcardEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "flashcard" || item.locked) return;
+    modalEditorBase.current=item;
     setSelected([item.id]);
     setFlashcardEditorId(item.id);
     setFlashcardDraft({ front: item.text || "Вопрос", back: item.flashcardBack ?? "Ответ", fontSize: item.fontSize ?? 18, color: item.color ?? "#5355c9" });
@@ -7002,10 +7401,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     const original=pendingStudyItem?.id===flashcardEditorId?pendingStudyItem:null;
     const source=original?[...itemsRef.current,original]:itemsRef.current;
-    commit(source.map((item) => item.id === flashcardEditorId ? {
-      ...item, text: flashcardDraft.front.slice(0, 5000), flashcardBack: flashcardDraft.back.slice(0, 5000),
+    commit(source.map((item) => item.id === flashcardEditorId ? mergeModalPatch(item,{
+      text: flashcardDraft.front.slice(0, 5000), flashcardBack: flashcardDraft.back.slice(0, 5000),
       fontSize: Math.max(10, Math.min(48, Math.round(flashcardDraft.fontSize))), color: flashcardDraft.color, flashcardFlipped: false,
-    } : item));
+    }) : item));
     if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setFlashcardEditorId(null); setFlashcardDraft(null); setNotice("Карточка сохранена");
   };
@@ -7138,6 +7537,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const openFrameNotesEditor = (frame: Item) => {
     if (frame.kind !== "frame" || frame.locked) return;
+    modalEditorBase.current=frame;
     setFrameNotesEditorId(frame.id);
     setFrameNotesDraft(frame.notes ?? "");
   };
@@ -7145,7 +7545,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const saveFrameNotes = () => {
     if (!frameNotesEditorId) return;
     const notes = frameNotesDraft.slice(0, 20000);
-    commit(itemsRef.current.map((item) => item.id === frameNotesEditorId ? { ...item, notes } : item));
+    commit(itemsRef.current.map((item) => item.id === frameNotesEditorId ? mergeModalPatch(item,{notes}) : item));
     setFrameNotesEditorId(null);
     setFrameNotesDraft("");
     setNotice(notes.trim() ? "Заметки к фрейму сохранены" : "Заметки к фрейму очищены");
@@ -7162,20 +7562,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!singleSelected || singleSelected.kind !== "comment" || singleSelected.locked) return;
     commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, commentTargetId: undefined } : item));
     setNotice("Комментарий отвязан от объекта");
-  };
-
-  const addCommentToSelection = () => {
-    if (selectedItems.length !== 1) { setTool("comment"); setNotice("Щёлкните по объекту или пустому месту, чтобы добавить комментарий"); return; }
-    const target = selectedItems[0];
-    const item: Item = {
-      id: createId(), kind: "comment",
-      x: target.x + target.width + 28, y: target.y + 18,
-      width: 250, height: 132, text: "", color: "#fff8d6", resolved: false,
-      commentTargetId: target.id,
-    };
-    commit([...itemsRef.current, item]);
-    setSelected([item.id]);
-    window.setTimeout(() => startEdit(item), 0);
   };
 
   const nextPresentationOrder = () => Math.max(-1, ...itemsRef.current.filter((item) => item.kind === "frame").map((item, index) => item.presentationOrder ?? index)) + 1;
@@ -7280,7 +7666,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const setSelectedTextStyle = (patch: Partial<Pick<Item, "textAlign" | "fontWeight" | "fontStyle" | "textDecoration" | "textList" | "lineHeight">>) => {
-    if (!singleSelected || selectionLocked || (singleSelected.kind !== "text" && singleSelected.kind !== "sticky")) return;
+    if (!singleSelected || selectionLocked || singleSelected.kind !== "text") return;
     commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, ...patch } : item));
   };
 
@@ -7329,12 +7715,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit(itemsRef.current.filter(item=>item.id!==id));
   };
   const visibleItems = useMemo(() => items.filter((item) => !item.hidden && item.kind !== "instrument"), [items]);
+  const displayInkItems=useMemo(()=>previewRemoteErasures(visibleItems,remoteErasures,remoteEraseTargets.current),[visibleItems,remoteErasures]);
   const visibleObjects = visibleItems;
   const objectCount = items.length;
   const drawingCount = useMemo(() => items.filter(isInkItem).length, [items]);
   // Only actual objects need minimap markers; strokes are already rasterized.
   const minimapObjects = useMemo(() => visibleItems.filter(item => !isInkItem(item)), [visibleItems]);
-  const allBounds = useMemo(() => boundsOf(visibleItems), [visibleItems]);
+  const miniContentBounds = useMemo(() => visualBoundsOf(visibleItems), [visibleItems]);
   // Rasterize unselected, unlocked pen/marker runs in every role. Selected
   // ink remains a real DOM object for handles, moving and rotating. The
   // separate geometric hit test resolves clicks on canvas strokes.
@@ -7374,14 +7761,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     // A few selected strokes may show their editing handles individually.
     // Large lasso selections remain batched to avoid thousands of DOM nodes.
-    for (const item of visibleItems) {
+    for (const item of displayInkItems) {
       if (isInkItem(item) && item.points?.length &&
           !detailedInkIds.has(item.id)) run.push(item);
       else { flush(); layers.push({ kind: "item", key: item.id, item }); }
     }
     flush();
     return layers;
-  }, [visibleItems, detailedInkIds]);
+  }, [displayInkItems, detailedInkIds]);
   const renderEntries = useMemo(() => {
     // Wait for ResizeObserver before mounting a heavy board. Without viewport
     // dimensions the old renderer mounted every single object at startup.
@@ -7400,38 +7787,42 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         bounds.y + bounds.height >= top && bounds.y <= bottom;
     });
   }, [inkLayers, boardViewportSize.width, boardViewportSize.height, view.x, view.y, view.zoom, selectedIds, editing, remotePoseIds]);
-  const minimapBounds = allBounds ?? { x: -400, y: -300, width: 800, height: 600 };
-  // ResizeObserver already maintains these dimensions. Measuring layout in
-  // every pan render forced costly synchronous reflows on heavy boards.
-  const visibleWorld = boardViewportSize.width && boardViewportSize.height ? {
-    x: -view.x / view.zoom,
-    y: -view.y / view.zoom,
-    width: boardViewportSize.width / view.zoom,
-    height: boardViewportSize.height / view.zoom,
-  } : null;
-  const miniPad = 30;
-  // Stable content coordinates: panning should move only the viewport outline,
-  // not rebuild up to 400 minimap markers and resize the entire miniature.
-  const miniX = minimapBounds.x - miniPad;
-  const miniY = minimapBounds.y - miniPad;
-  const miniRight = minimapBounds.x + minimapBounds.width + miniPad;
-  const miniBottom = minimapBounds.y + minimapBounds.height + miniPad;
-  const miniW = Math.max(1, miniRight - miniX);
-  const miniH = Math.max(1, miniBottom - miniY);
-  // Retain minimap React elements between camera frames. Their geometry
-  // depends on content/bounds and selection, not on every pointer movement.
+  const miniViewport = minimapViewport(view, boardViewportSize);
+  const miniBounds = minimapDragExtent.current ?? minimapExtent(miniContentBounds, miniViewport);
+  function paintMinimap(next: View) {
+    const map = minimapSvg.current, frame = minimapFrame.current;
+    if (!map || !frame) return;
+    const visible = minimapViewport(next, boardViewportSize);
+    if (!visible) return;
+    map.setAttribute("viewBox", minimapViewBox(minimapDragExtent.current ?? minimapExtent(miniContentBounds, visible)));
+    for (const key of ["x", "y", "width", "height"] as const) frame.setAttribute(key, String(visible[key]));
+  }
+  function navigateMinimap(e: PE<SVGSVGElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const current = viewerPendingPan.current ?? viewRef.current;
+    const visible = minimapViewport(current, boardViewportSize);
+    if (!visible || !minimapDragExtent.current) return;
+    const target = minimapTarget({ x: e.clientX - rect.left, y: e.clientY - rect.top }, rect, minimapDragExtent.current, visible);
+    if (!target) return;
+    scheduleViewerPan({ ...current, x: boardViewportSize.width / 2 - target.x * current.zoom,
+      y: boardViewportSize.height / 2 - target.y * current.zoom });
+  }
+  function finishMinimap(cancel = false) {
+    if (!minimapDragExtent.current) return;
+    minimapDragExtent.current = null;
+    finishViewerPan(cancel);
+  }
+  // SVG marker geometry stays in world units; only its viewBox and the
+  // viewport outline change when the camera moves.
   const minimapMarkers = useMemo(() => minimapObjects.slice(0, 400).map(item => (
-    <span
+    <rect
       key={item.id}
       className={`minimap-item ${selectedIds.has(item.id) ? "selected" : ""}`}
-      style={{
-        left: `${((item.x - miniX) / miniW) * 100}%`,
-        top: `${((item.y - miniY) / miniH) * 100}%`,
-        width: `${Math.max(1.2, (item.width / miniW) * 100)}%`,
-        height: `${Math.max(1.2, (item.height / miniH) * 100)}%`,
-      }}
+      x={item.x} y={item.y} width={Math.max(0,item.width)} height={Math.max(0,item.height)}
+      transform={item.rotation ? `rotate(${item.rotation} ${item.x + item.width / 2} ${item.y + item.height / 2})` : undefined}
+      vectorEffect="non-scaling-stroke"
     />
-  )), [minimapObjects, selectedIds, miniX, miniY, miniW, miniH]);
+  )), [minimapObjects, selectedIds]);
   const layerRows = useMemo(() => {
     const seenGroups = new Set<string>();
     const rows: Item[] = [];
@@ -7451,7 +7842,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return rows;
   }, [items]);
 
-  const { comments, openComments, linkedComments, presentationFrames } = useMemo(() => {
+  const { linkedComments, presentationFrames } = useMemo(() => {
     const comments: Item[] = [];
     const frames: Array<{ item: Item; index: number }> = [];
     items.forEach((item, indexValue) => {
@@ -7460,8 +7851,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     });
     frames.sort((a, b) => (a.item.presentationOrder ?? a.index) - (b.item.presentationOrder ?? b.index));
     return {
-      comments,
-      openComments: comments.filter((item) => !item.resolved && !item.hidden),
       linkedComments: comments.filter((item) => !item.hidden && item.commentTargetId),
       presentationFrames: frames.map((entry) => entry.item),
     };
@@ -7472,7 +7861,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const showPresentationFrame = (indexValue: number) => {
     const frames = itemsRef.current.filter((item) => item.kind === "frame" && !item.hidden).sort((a, b) => (a.presentationOrder ?? itemsRef.current.indexOf(a)) - (b.presentationOrder ?? itemsRef.current.indexOf(b)));
     if (!frames.length) {
-      requestAnimationFrame(() => fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden)), 70));
+      requestAnimationFrame(() => fitToBounds(visualBoundsOf(itemsRef.current.filter((item) => !item.hidden)), 70));
       return;
     }
     const normalized = ((indexValue % frames.length) + frames.length) % frames.length;
@@ -7494,7 +7883,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setLayersOpen(false);
     setSearchOpen(false);
     setTemplatesOpen(false);
-    setCommentsOpen(false);
     setTableEditorId(null);
     setTableDraft(null);
     setChecklistEditorId(null);
@@ -7539,8 +7927,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const formatPresentationTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const toggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
+      // The rotated same-origin browser board owns a logical landscape
+      // viewport. Fullscreen the outer document, not the inner iframe.
+      const framed=window.parent!==window&&new URLSearchParams(location.search).get("lektrus-board-frame")==="1";
+      const target=framed?window.parent.document:document;
+      if (target.fullscreenElement) await target.exitFullscreen();
+      else {
+        await target.documentElement.requestFullscreen();
+        if(framed)try{await (window.parent.screen.orientation as ScreenOrientation&{lock?:(value:"landscape")=>Promise<void>})?.lock?.("landscape")}catch{/* Logical frame still works. */}
+      }
     } catch { setNotice("Браузер не разрешил полноэкранный режим"); }
   };
 
@@ -7615,6 +8010,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     acknowledgedDocument.current = incomingFingerprint;
     acknowledgedSharedContent.current = incomingFingerprint;
     acknowledgedBoardData.current = data;
+    acknowledgeRemoteInk(data);
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
     remoteSaveFailures.current = 0;
@@ -7675,6 +8071,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         acknowledgedBoardData.current = data;
+        acknowledgeRemoteInk(data);
         return;
       }
       // A different viewport is not new shared board content. Accept the
@@ -7704,6 +8101,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = remoteFingerprint;
         acknowledgedSharedContent.current = remoteFingerprint;
         acknowledgedBoardData.current = remote;
+        acknowledgeRemoteInk(remote);
         pendingRemote.current = null;
         setRemoteConflict(null);
         setConflictLocalBackup(null);
@@ -7711,6 +8109,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         // Do not call applyDocument(): it resets pointer state, selection,
         // editor windows and the undo stack on EVERY server version.
         display(mergedItems);
+        const mergedIds=new Set(mergedItems.map(item=>item.id));
+        setSelected(current=>current.filter(id=>mergedIds.has(id)));
+        if(editing){
+          const edited=mergedItems.find(item=>item.id===editing);
+          if(!edited)setEditing(null);
+          else{draftRef.current=edited.text;setDraft(edited.text);}
+        }
         history.current=[mergedItems];
         index.current=0;
         snapshot.current=merged;
@@ -7729,7 +8134,35 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{
-    if(layoutEditing)return;
+    if(!boardRealtimeAwake||!boardResumePending||demoMode||layoutEditing)return;
+    let cancelled=false;
+    boardResumeRequestRunning.current=true;
+    const refresh=async()=>{
+      try{
+        // Force an authenticated revision check even when the realtime socket
+        // reconnects before a change notification reaches this device.
+        const row=selfhostMode
+          ? await selfhostReadDocument(boardSummary.id)
+          : await getRemoteBoardDocument(boardSummary.id);
+        if(cancelled)return;
+        if(!row)throw new Error("Серверный документ недоступен");
+        if(row.document)receiveRemote.current({
+          board_id:row.board_id,version:row.version,document:row.document,
+          updated_at:row.updated_at??"",updated_by:row.updated_by
+        });
+        boardResumePendingRef.current=false;
+        setBoardResumePending(false);
+      }catch{
+        if(!cancelled)setNotice("Не удалось сверить доску с сервером. Повторите касание, чтобы подключиться снова.");
+      }finally{
+        if(!cancelled)boardResumeRequestRunning.current=false;
+      }
+    };
+    void refresh();
+    return()=>{cancelled=true;boardResumeRequestRunning.current=false};
+  },[boardRealtimeAwake,boardResumePending,boardResumeAttempt,selfhostMode,boardSummary.id,demoMode,layoutEditing]);
+  useEffect(()=>{
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     if(selfhostMode){
       return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
         if(!latest.document)return;
@@ -7743,26 +8176,47 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return subscribeBoardDocument(
       boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus
     );
-  },[boardSummary.id,layoutEditing,selfhostMode]);
+  },[boardSummary.id,layoutEditing,selfhostMode,demoMode,boardRealtimeAwake]);
 
-  useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible]);
+  useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible||!boardRealtimeAwake?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible,boardRealtimeAwake]);
 
-  useEffect(() => layoutEditing?()=>{}:subscribeBoardPresence(
+  useEffect(() => demoMode||layoutEditing||!boardRealtimeAwake?()=>{}:subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
     setPresenceUsers,
     !adminHidden,
-  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
+  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     let active=true;
+    if(acknowledgedBoardData.current)acknowledgeRemoteInk(acknowledgedBoardData.current);
     const channel = connectBoardCursorChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
       cursor=>{if(active)remoteCursorStore.push(cursor)},
       true, // Keep the socket active independently of invisible mode; cursor emission is guarded at pointer-move.
-      ink=>{if(active)remoteInkStore.push(ink)},
+      ink=>{
+        if(!active)return;
+        if(ink.kind!=="eraser"){remoteInkStore.push(ink);return;}
+        const targets=remoteEraseTargets.current;
+        if(ink.cancelled)targets.delete(ink.id);
+        else if(!targets.has(ink.id)){
+          if(targets.size>=128){const oldest=targets.keys().next().value;if(oldest!==undefined){targets.delete(oldest);remoteEraseStore.acknowledge([oldest]);}}
+          targets.set(ink.id,new Set([...itemsRef.current.filter(isInkItem).map(item=>item.id),...remoteInkStore.getSnapshot().keys()]));
+        }
+        // A rapid draw-then-erase can remove a stroke before its first save.
+        // Retire that preview too; the durable fragments will arrive normally.
+        if(ink.finished&&!ink.cancelled&&ink.cutIds?.length){
+          if(ink.cutIds.length<500){
+            // Final affected IDs are exact, even when the original stroke
+            // or an earlier erase packet arrived out of order.
+            targets.set(ink.id,new Set(ink.cutIds));
+          }
+          remoteInkStore.acknowledge(ink.cutIds);
+        }
+        remoteEraseStore.push(ink);
+      },
       status=>{if(active)setInkDiagnostics(status)},
       true, // Drawings remain collaborative even when the admin hides their presence.
     );
@@ -7773,11 +8227,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       channel.close();
       remoteCursorStore.reset();
       remoteInkStore.reset();
+      remoteEraseStore.reset();remoteEraseTargets.current.clear();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteCursorStore, setInkDiagnostics]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel = connectBoardViewControl(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name },
@@ -7802,7 +8257,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       viewControlChannel.current = null;
       channel.close();
     };
-  }, [boardSummary.id, authUser.id, authUser.name]);
+  }, [boardSummary.id, authUser.id, authUser.name,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
     followTeacherRef.current = followTeacher;
@@ -7829,7 +8284,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     });
   },[itemById]);
   useEffect(() => {
-    if(layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel = connectBoardWorkChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
@@ -7934,7 +8389,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setRemoteObjectPoses({});
       setRemoteWork({});
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
     if(!adminHidden) workChannel.current?.publish(selected,
@@ -8051,6 +8506,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   return (
     <div className={`app ${presentation ? "presentation-mode" : ""} ${!canEdit ? "viewer-mode" : ""} ${publicPresentation ? "public-presentation-mode" : ""}`}>
+      {attachmentPreview&&<Suspense fallback={null}><AttachmentPreviewDialog preview={attachmentPreview} onClose={()=>setAttachmentPreview(null)}/></Suspense>}
       {isAppAdmin&&rolePreview!=="actual"&&
         <div className="lektrus-developer-role-banner" role="status">
           <span>Тест роли: <strong>{BOARD_ROLE_PREVIEW_LABELS[rolePreview]}</strong></span>
@@ -8059,7 +8515,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </div>}
       {linkMediaOpen&&<div className="access-backdrop link-media-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setLinkMediaOpen(false)}}><section className="access-modal link-media-dialog"><div className="access-head"><div><h2>{linkMediaEditId?"Изменить мультимедиа":"Мультимедиа по ссылке"}</h2><p>Файл не загружается в Lektrus и не занимает Storage.</p></div><button onClick={()=>setLinkMediaOpen(false)}>×</button></div><label className="link-media-field"><span>Ссылка</span><input value={linkMediaUrl} onChange={e=>setLinkMediaUrl(e.target.value)} placeholder="YouTube, Vimeo, MP3, MP4 или другая http/https ссылка"/></label><label className="link-media-field"><span>Название</span><input value={linkMediaTitle} onChange={e=>setLinkMediaTitle(e.target.value)} placeholder="Необязательно"/></label><div className="link-media-support"><strong>Внутренний плеер</strong><span>YouTube и Vimeo открываются внутри доски. Прямые ссылки на MP3/MP4/WebM и другие поддерживаемые браузером файлы используют встроенный HTML5-плеер. Для остальных ссылок показывается безопасная карточка перехода.</span></div><div className="access-actions"><button onClick={()=>setLinkMediaOpen(false)}>Отмена</button><button className="boards-create" onClick={saveLinkMedia}>{linkMediaEditId?"Сохранить":"Добавить на доску"}</button></div></section></div>}
 
-      {sharing && <ShareDialog board={boardSummary} user={authUser} onClose={() => setSharing(false)}/>}
+      {!demoMode&&sharing && <ShareDialog board={boardSummary} user={authUser} onClose={() => setSharing(false)}/>}
       {showAdminControls && developerSettingsOpen && <div className="access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setDeveloperSettingsOpen(false)}}>
         <section className="access-modal" style={{width:"min(480px,calc(100vw - 24px))",maxHeight:"85vh",overflowY:"auto"}}>
           <div className="access-head"><div><h2>Настройки разработчика</h2><p>Диагностика только для администратора этой доски</p></div><button type="button" aria-label="Закрыть" onClick={()=>setDeveloperSettingsOpen(false)}>×</button></div>
@@ -8186,7 +8642,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
               <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
             </div>
-          </details>{!Capacitor.isNativePlatform()&&installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
+          </details>{installState.eligible&&installState.available&&!installState.installed&&<button type="button" className="install-app-button" disabled={installState.busy} onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
           {documentSyncEnabled && <details className="presence-menu" ref={visitPresenceMenuRef}>
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
@@ -8221,7 +8677,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span className="presence-person-copy">
                   <b>{user.name}{user.userId === authUser.id ? " · Вы" : ""}</b>
-                  <small>{BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
+                  <small>{user.participantRole?PARTICIPANT_ROLE_LABELS[user.participantRole]:BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
                 </span>
                 {canManageBoard && user.userId !== authUser.id && <button
                   type="button"
@@ -8241,7 +8697,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
                 <span className="presence-person-copy">
                   <b>{authUser.name} · Вы</b>
-                  <small>{BOARD_ROLE_LABELS[boardSummary.role]}</small>
+                  <small>{boardSummary.participantRole?PARTICIPANT_ROLE_LABELS[boardSummary.participantRole]:BOARD_ROLE_LABELS[boardSummary.role]}</small>
                 </span>
               </div>}
             </div>
@@ -8250,15 +8706,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           {remoteEditingCount > 0 && <span className="collab-editing-status" title="Сейчас другие участники редактируют объекты">
             ✎ {remoteEditingCount}
           </span>}
-          {canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
+          {!demoMode&&canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
           {discussionEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
+              <div className="lektrus-board-menu-pager" aria-label="Прокрутка действий доски">
+                {([-1,1] as const).map(direction=><button type="button" key={direction} data-menu-page={direction===1?"next":"previous"} aria-label={direction===1?"Следующие действия":"Предыдущие действия"} onClick={event=>{
+                  const menu=event.currentTarget.closest<HTMLElement>(".topbar-more-popover");
+                  const pager=event.currentTarget.parentElement;
+                  if(menu&&pager)menu.scrollTop+=direction*Math.max(24,menu.clientHeight-pager.offsetHeight-16);
+                }}>{direction===1?"↓ Далее":"↑ Назад"}</button>)}
+              </div>
               <button type="button" className="lektrus-controls-menu-entry" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={17}/><span>Управление доской</span></button>
               <div className="topbar-menu-account">
                 <span className="account-avatar" aria-hidden="true"><UserAvatar/></span>
-                <span><strong>{authUser.name}</strong><small>{BOARD_ROLE_LABELS[boardSummary.role]}{authUser.email?` · ${authUser.email}`:""}</small></span>
+                <span><strong>{authUser.name}</strong><small>{boardSummary.participantRole?PARTICIPANT_ROLE_LABELS[boardSummary.participantRole]:BOARD_ROLE_LABELS[boardSummary.role]}{authUser.email?` · ${authUser.email}`:""}</small></span>
               </div>
               <div className="topbar-menu-section">
                 {(quizItems.length>0||flashcardItems.length>0)&&<button onClick={()=>setStudyOpen(true)}><Icon name="quiz" size={16}/><span>Учебный режим</span><b>{quizItems.length+flashcardItems.length}</b></button>}
@@ -8267,22 +8730,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportItemsToPng("all")}}><Icon name="download" size={16}/><span>Экспорт PNG</span></button>
                 {canSaveTemplate&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");openSaveTemplate()}}><Icon name="templates" size={16}/><span>Сохранить как шаблон</span></button>}
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setCommentsOpen(v=>!v)}}><Icon name="comments" size={16}/><span>Комментарии</span>{openComments.length>0&&<b>{openComments.length}</b>}</button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
-                <button type="button" disabled={index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
-                <button type="button" disabled={index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
+                <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
               </div>
               <div className="topbar-menu-section">
-                <button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>
+                {!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
                 {previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
-                <button onClick={()=>void exportBoard()}><Icon name="download" size={16}/><span>Скачать копию</span></button>
+                <button onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportBoard()}}><Icon name="download" size={16}/><span>Скачать копию</span></button>
               </div>
               {showAdminControls && <div className="topbar-menu-section">
                 <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>
               </div>}
               <div className="topbar-menu-section">
-                <button className="topbar-menu-danger" disabled={leavingBoard} onClick={()=>void saveBeforeLeaving(true)}><Icon name="close" size={16}/><span>Выйти из аккаунта</span></button>
+                <button className="topbar-menu-danger" disabled={leavingBoard} onClick={()=>void saveBeforeLeaving(true)}><Icon name="close" size={16}/><span>{demoMode?"Закрыть демо":"Выйти из аккаунта"}</span></button>
               </div>
             </div>
           </details>
@@ -8319,7 +8781,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           />
         </div>
       </header>
-      <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+      <main className={`workspace ${!objectEditorOpen && !presentation && selectedItems.length===0 && (tool==="pen" || tool==="marker" || tool==="eraser") ? "board-ink-dock-open" : ""} lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+        {(!boardRealtimeAwake||boardResumePending)&&<div className="lektrus-board-idle-indicator" role="status" aria-live="polite">
+          {boardResumePending?"Подключаемся и сверяем изменения доски…":"Соединение приостановлено · коснитесь доски для продолжения"}
+        </div>}
         {controlSettingsOpen&&<div className="access-backdrop"
          onPointerDown={e=>{if(e.target===e.currentTarget)setControlSettingsOpen(false)}}>
          <section className="access-modal lektrus-control-settings" role="dialog" aria-modal="true"
@@ -8383,6 +8848,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
              onClick={()=>{setControlSettingsOpen(false);setLectrisPanelSettingsOpen(true)}}>
              Настроить расположение панелей <span aria-hidden="true">→</span>
             </button>
+            <label className="lektrus-controls-check"><input type="checkbox" checked={snapEnabled}
+             onChange={e=>{setSnapEnabled(e.target.checked);clearGuides()}}/>
+             <span><b>Привязка объектов к сетке и направляющим</b>
+              <small>{snapEnabled?"Включена для текущего сеанса доски":"Выключена — объекты перемещаются свободно"}</small></span>
+            </label>
            </section>
            <p className="lektrus-controls-note">На сенсорном экране жест двумя пальцами продолжает работать независимо. Настройки применяются сразу и сохраняются автоматически.</p>
           </div>
@@ -8394,8 +8864,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {!objectEditorOpen && !presentation && selectedItems.length===0 && <LectrisQuickProperties userId={authUser.id}
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
-          weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
+          weight={weight} markerWeight={markerWeight} eraserSize={eraserSize} eraserMode={eraserMode} onEraserMode={setEraserMode}
           canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
+          canEditContent={singleSelected?.kind!=="image"||canCropImage(singleSelected)}
           inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
           onDeselect={()=>{setSelected([]);setLectrisInspectorOpen(false)}}
           onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
@@ -8407,13 +8878,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
             pdfPageCount={pdfPageCount}
             canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
+            canEditContent={singleSelected.kind!=="image"||canCropImage(singleSelected)}
             canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
             onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
 
         <div className="mobile-undo-redo" aria-label="История изменений">
-          <button type="button" disabled={index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
-          <button type="button" disabled={index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
         </div>
         {presentation && (
           <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>
@@ -8471,7 +8943,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ["Формула","Интерактив",() => setTool("formula"),"formula"],["График","Интерактив",() => setTool("graph"),"graph"],["Чек-лист","Задание",() => setTool("checklist"),"checklist"],
             ["Мини-тест","Задание",() => setTool("quiz"),"quiz"],["Карточка вопрос–ответ","Задание",() => setTool("flashcard"),"flashcard"],["Шторка","Интерактив",() => setTool("cover"),"cover"],
             ["Фото / PDF","Материалы",() => setTool("media"),"media"],["Поиск по доске","Панель",() => setSearchOpen(true)],
-            ["Комментарии","Панель",() => setCommentsOpen(true)],["Слои","Панель",() => setLayersOpen(true)],["Горячие клавиши","Справка",() => setShortcutsOpen(true)],
+            ["Слои","Панель",() => setLayersOpen(true)],["Горячие клавиши","Справка",() => setShortcutsOpen(true)],
             ["Режим показа","Презентация",() => { setPresentation(true); setPresentationFrameIndex(0); }],
           ];
           if(canSaveTemplate)commands.push(["Сохранить как шаблон","Доска",openSaveTemplate]);
@@ -8535,27 +9007,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {templateError&&<div role="alert">{templateError}</div>}
               <button type="submit" className="students-primary" disabled={templateBusy||!templateTitle.trim()}>{templateBusy?"Сохранение…":"Сохранить шаблон"}</button>
             </form>
-          </aside>
-        )}
-        {commentsOpen && (
-          <aside className="comments-panel" aria-label="Комментарии">
-            <div className="panel-heading">
-              <div><strong>Комментарии</strong><span>{openComments.length} открыто · {comments.length} всего</span></div>
-              <button onClick={() => setCommentsOpen(false)} aria-label="Закрыть комментарии"><Icon name="close" size={17} /></button>
-            </div>
-            <button className="new-comment-button" onClick={() => { setTool("comment"); setCommentsOpen(false); setNotice("Щёлкните по объекту или пустому месту, чтобы добавить комментарий"); }}><Icon name="plus" size={15}/> Новый комментарий</button>
-            <div className="comments-list">
-              {[...comments].reverse().map((comment) => (
-                <div key={comment.id} className={`comment-list-row ${comment.resolved ? "resolved" : ""}`}>
-                  <button className="comment-list-main" onClick={() => focusItem(comment)}>
-                    <span className="comment-list-status"><Icon name={comment.resolved ? "check" : "comment"} size={15}/></span>
-                    <span><strong>{comment.text.trim().replace(/\s+/g," ").slice(0,72) || "Пустой комментарий"}</strong><small>{comment.commentTargetId ? "Привязан к объекту" : "На доске"}</small></span>
-                  </button>
-                  <button className="comment-resolve-button" title={comment.resolved ? "Открыть снова" : "Отметить решённым"} onClick={() => commit(itemsRef.current.map((item) => item.id === comment.id ? { ...item, resolved: !comment.resolved } : item))}><Icon name="check" size={14}/></button>
-                </div>
-              ))}
-              {!comments.length && <div className="comments-empty">Комментариев пока нет. Добавьте замечание прямо к объекту или на свободное место.</div>}
-            </div>
           </aside>
         )}
         {searchOpen && (
@@ -8755,7 +9206,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {...saved,schoolDiagram:{...saved.schoolDiagram,
                 contourMarks:next.schoolDiagram.contourMarks,contourStrokes:next.schoolDiagram.contourStrokes,
                 contourLegend:next.schoolDiagram.contourLegend,paintedCountries:next.schoolDiagram.paintedCountries}}:next;
-            const fitted=fitGeoMatchingItem(updated);
+            const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(updated),saved);
             commit(itemsRef.current.some(i=>i.id===next.id)?
               itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
@@ -8868,7 +9319,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             collaborative={items.some(item=>item.id===graphEditorId)}
             onChange={changeLiveGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={closeGraphEditor}
             preview={<GraphView item={{
-              id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:graphDraft.title,
+              id:"preview",kind:"graph",x:0,y:0,width:graphDraft.boardWidth??600,height:graphDraft.boardHeight??360,text:graphDraft.title,
               graphPurpose:graphDraft.purpose,graphAxisMode:graphDraft.axisMode,graphFigureId:graphDraft.figureId,graphRotationX:graphDraft.rotationX,graphRotationY:graphDraft.rotationY,graphParallelMarks:graphDraft.parallelMarks,graphIntervalStartClosed:graphDraft.intervalStartClosed,graphIntervalEndClosed:graphDraft.intervalEndClosed,
               graphType:graphDraft.type,graphExpression:graphDraft.expression,
               graphShowCurve:graphDraft.showCurve,graphConnectPoints:graphDraft.connectPoints,
@@ -8906,7 +9357,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {formulaEditorId && formulaDraft && createPortal(
           <div
             className="formula-editor-backdrop lektrus-formula-window"
-            style={subjectEditorStyle("mathematics")} onPointerDown={(event) => { if(event.target===event.currentTarget)closeFormulaEditor(); }}
+            ref={formulaWindow} data-touch-viewport={touchEditorViewport?"true":undefined}
+            style={subjectEditorStyle("mathematics")} onPointerDown={(event) => { if(event.target===event.currentTarget&&!(touchEditorViewport&&dismissEditorBackdropInput(event.target)))closeFormulaEditor(); }}
             onKeyDown={(e) => {
               if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFormulaEditor(); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFormulaEditor(); }
@@ -9023,10 +9475,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
           </div>,document.body
         )}
+        <MobileBoardEditorPortal active={(isCoarsePointer||Capacitor.isNativePlatform())&&Boolean(checklistEditorId||flashcardEditorId||quizEditorId||tableEditorId)}>
         {checklistEditorId && checklistDraft && (
           <div className="checklist-editor-backdrop" onPointerDown={() => { cancelStudyEditor("checklist"); }}>
             <div className="checklist-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор чек-листа" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("checklist"); } if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveChecklistEditor(); } }}>
               <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>{pendingStudyItem?.id===checklistEditorId?"Создание чек-листа":"Чек-лист / задание"}</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { cancelStudyEditor("checklist"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
+              <div className="checklist-editor-scroll">
               {pendingStudyItem?.id===checklistEditorId&&<p className="lektrus-study-creation-hint">
                 Объект появится на доске только после сохранения. Отмена не создаёт задание.
               </p>}
@@ -9047,6 +9501,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 ))}
                 <button className="checklist-add-row" disabled={checklistDraft.items.length >= 40} onClick={addChecklistRow}><Icon name="plus" size={15}/> Добавить пункт</button>
               </div>
+              </div>
               <div className="checklist-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div className="checklist-editor-bulk"><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => false) } : current)}>Сбросить отметки</button><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => true) } : current)}>Отметить всё</button><button className="secondary" onClick={() => { cancelStudyEditor("checklist"); }}>Отмена</button><button className="primary" onClick={saveChecklistEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
             </div>
           </div>
@@ -9063,8 +9518,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </p>}
               <div className="flashcard-editor-body">
                 <section className="flashcard-editor-compose">
-                  <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, front: e.target.value })} placeholder="Что нужно вспомнить?"/></label>
-                  <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, back: e.target.value })} placeholder="Ответ или пояснение"/></label>
+                  <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => {const front=e.target.value;setFlashcardDraft(current=>current?{...current,front}:current)}} placeholder="Что нужно вспомнить?"/></label>
+                  <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => {const back=e.target.value;setFlashcardDraft(current=>current?{...current,back}:current)}} placeholder="Ответ или пояснение"/></label>
                   <div className="flashcard-editor-settings">
                     <label><span>Размер текста</span><input type="range" min="10" max="48" value={flashcardDraft.fontSize} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, fontSize: Number(e.target.value) })}/><strong>{flashcardDraft.fontSize}px</strong></label>
                     <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={flashcardDraft.color} onChange={value=>setFlashcardDraft({ ...flashcardDraft, color: value })}/>
@@ -9174,50 +9629,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>
           </div>
         )}
-        {selected.length === 1 &&
-          !objectEditorOpen &&
-          items.some(
-            (i) =>
-              i.id === selected[0] &&
-              !i.locked &&
-              (i.kind === "text" || i.kind === "sticky" || i.kind === "frame" || i.kind === "comment" || i.kind === "formula" || i.kind === "table" || i.kind === "checklist" || i.kind === "quiz" || i.kind === "flashcard" || i.kind === "cover"),
-          ) && (
-            <button
-              className="edit-selected"
-              onClick={() => {
-                const item = itemsRef.current.find((i) => i.id === selected[0]);
-                if (!item || !canEdit || structurallyLockedForStudent(item)) return;
-                if (item.kind === "table") openTableEditor(item); else if (item.kind === "formula") openFormulaEditor(item); else if (item.kind === "checklist") openChecklistEditor(item); else if (item.kind === "quiz") openQuizEditor(item); else if (item.kind === "flashcard") openFlashcardEditor(item); else startEdit(item);
-              }}
-            >
-              <Icon name="rename" size={15} />
-              {items.find((i) => i.id === selected[0])?.kind === "frame" ? "Переименовать фрейм" : items.find((i) => i.id === selected[0])?.kind === "table" ? "Редактировать таблицу" : items.find((i) => i.id === selected[0])?.kind === "formula" ? "Редактировать формулу" : items.find((i) => i.id === selected[0])?.kind === "checklist" ? "Редактировать чек-лист" : items.find((i) => i.id === selected[0])?.kind === "quiz" ? "Редактировать мини-тест" : items.find((i) => i.id === selected[0])?.kind === "flashcard" ? "Редактировать карточку" : items.find((i) => i.id === selected[0])?.kind === "comment" ? "Редактировать комментарий" : "Редактировать текст"}
-              <kbd>Enter</kbd>
-            </button>
-          )}
-        {(tool === "pen" || tool === "marker" || tool === "eraser") && (
-          <div className="ink-settings lektrus-ink-settings-direct"
-            role="group" aria-label={"Параметры инструмента: "+(tool==="eraser"?"ластик":tool==="marker"?"маркер":"карандаш")}
-            onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
-            <strong className="lektrus-ink-tool-name">{tool==="eraser"?"Ластик":tool==="marker"?"Маркер":"Карандаш"}</strong>
-            {tool!=="eraser"&&<LektrusColorPicker userId={authUser.id} compact label="Цвет"
-              value={tool==="marker"?markerColor:penColor}
-              onChange={tool==="marker"?setMarkerColor:setPenColor}/>}
-            <div className="lektrus-direct-ink-widths" role="group" aria-label="Толщина инструмента">
-              {(tool==="eraser"?INK_WIDTHS.eraser:tool==="marker"?INK_WIDTHS.marker:INK_WIDTHS.pen).map((size,index)=>{
-                const current=tool==="eraser"?eraserSize:tool==="marker"?markerWeight:weight;
-                const candidates=tool==="eraser"?INK_WIDTHS.eraser:tool==="marker"?INK_WIDTHS.marker:INK_WIDTHS.pen;
-                const nearest=candidates.reduce((best,value,i)=>Math.abs(value-current)<Math.abs(candidates[best]-current)?i:best,0);
-                return <button key={size} type="button" aria-pressed={nearest===index}
-                  aria-label={["Очень тонкий","Тонкий","Средний","Толстый","Очень толстый"][index]+" штрих, "+size+" пикселей"}
-                  onClick={()=>tool==="eraser"?setEraserSize(size):tool==="marker"?setMarkerWeight(size):setWeight(size)}>
-                  <InkWidthSample tool={tool} size={size}
-                    color={tool==="marker"?markerColor:penColor}/>
-                </button>;
-              })}
-            </div>
-          </div>
-        )}
+        </MobileBoardEditorPortal>
         {tool === "connector" && (
           <div className="connector-settings">
             <div className="connector-style-buttons">
@@ -9243,13 +9655,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
 <nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
-            {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
+            {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
             <button type="button" data-lektrus-hand-tool="true" className={tool==="hand"?"active":""} aria-label="Рука — перемещать доску одним пальцем" title="Рука" aria-pressed={tool==="hand"} onClick={()=>{finishEdit();setTool("hand");setMobileToolsOpen(false);setSelected([])}}><Icon name="hand" size={20}/></button>
-            {lectrisTouchDockTools.slice(1,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
+            {lectrisTouchDockTools.slice(1,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
           <div className="mobile-tool-cluster mobile-tool-cluster-create" aria-label="Создание">
-            {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board}
+            {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board}
               instruments={sharedInstruments} onAdd={addSharedInstrument}
               onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument}
               editable={canEdit} renderOverlays={false} />}</div>})}
@@ -9259,21 +9671,20 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
-          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{canEdit&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
+          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!demoMode&&canEdit&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
-            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
+            {mobileToolGroups.map(group=>({...group,label:demoMode&&group.tools.includes("linkmedia")?"Фото / PDF":group.label,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
           </div>
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
           <div className="toolbar-pinned" aria-label="Основные инструменты">
-            {(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
+            {(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
           <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">
             {desktopToolSections.filter(g=>g.ids.some(toolAllowedForRole)).map(group=><button key={group.id} type="button" className={`tool-button ${desktopToolsExpanded&&desktopToolSection===group.id?"active":""}`} aria-label={group.label} title={group.label} aria-expanded={desktopToolsExpanded&&desktopToolSection===group.id} onClick={()=>{if(desktopToolSection===group.id)setDesktopToolsExpanded(v=>!v);else{setDesktopToolSection(group.id);setDesktopToolsExpanded(true)}}}><span className="lektrus-section-icon" aria-hidden="true"><Icon name={group.icon} size={22}/></span><span className="tool-tooltip">{group.label}</span></button>)}
           </div>
           {canCreateAssignments&&<button type="button" className={`tool-button lektrus-desktop-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-expanded={subjectToolsOpen} aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg><span className="tool-tooltip">Предметные инструменты</span></button>}
-          {toolAllowedForRole("comment")&&<button type="button" className={`tool-button lektrus-direct-comment ${tool==="comment"?"active":""}`} title="Комментарий" aria-label="Комментарий" onClick={()=>{finishEdit();setTool("comment");setDesktopToolsExpanded(false)}}><Icon name="comment" size={20}/><span className="tool-tooltip">Комментарий</span></button>}
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
             <GeometryInstruments view={view} boardRef={board}
               portalContainer={instrumentViewportHost}
@@ -9284,7 +9695,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
-          {canEdit&&<button type="button" className="toolbar-ai-button" title="AI-помощник по доске" aria-label="AI-помощник по доске" onClick={()=>{finishEdit();setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}}>
+          {!demoMode&&canEdit&&<button type="button" className="toolbar-ai-button" title="AI-помощник по доске" aria-label="AI-помощник по доске" onClick={()=>{finishEdit();setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}}>
             <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
           </button>}
           <button type="button" className="toolbar-command-search" title="Найти инструмент · Ctrl+K" aria-label="Найти инструмент" onClick={()=>{setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}}>
@@ -9323,6 +9734,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {canCreateAssignments&&subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
+            if(demoMode&&!id.startsWith("subject-task-"))return;
             if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
             const rect=board.current?.getBoundingClientRect();
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
@@ -9395,11 +9807,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           }
         }}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
-          tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso"&&t.id!=="graph"&&t.id!=="formula").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
+          tools={tools.filter(t=>(!demoMode||t.id!=="linkmedia")&&t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso"&&t.id!=="graph"&&t.id!=="formula").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
           onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>id!=="formula"&&id!=="graph"&&tools.some(t=>t.id===id)))}
           onClose={()=>setLectrisCustomizeOpen(false)}/>}
-        {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Режим гостя":"Режим ученика"}</div>}
+        {!canEdit?<div className="student-board-mode" title="Доступен просмотр доски без редактирования.">Наблюдатель</div>:isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Гость · ученик":"Режим ученика"}</div>}
         {!isStudent&&attachmentRequests.length>0&&(()=>{
           const request=attachmentRequests[Math.min(attachmentRequestIndex,attachmentRequests.length-1)];
           return <aside className="teacher-media-request" onPointerDown={e=>e.stopPropagation()}>
@@ -9413,7 +9825,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div><Icon name="media" size={17}/><span><b>На согласовании</b><small>{pendingAttachmentRequests.length===1?pendingAttachmentRequests[0].name:`Вложений: ${pendingAttachmentRequests.length}`}</small></span></div>
           <button onClick={()=>{for(const request of pendingAttachmentRequests)sendAttachmentRequest(request);setNotice("Запрос повторно отправлен преподавателю")}}>Отправить снова</button>
         </aside>}
-        {boardAiOpen&&canEdit&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
+        {!demoMode&&boardAiOpen&&canEdit&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
           <section className={`board-ai-panel ${boardAiMode==="assistant"?"has-assistant":""}`} role="dialog" aria-modal="true" aria-label="AI-помощник по доске">
             <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник по доске</strong><span>Команды, поиск, анализ и учебные материалы</span></div></div><button type="button" onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
             <nav className="board-ai-mode-tabs" aria-label="Режим помощника">
@@ -9471,7 +9883,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 target.closest(".graph-view")&&!pinchState.current){
                 const objectId=target.closest<HTMLElement>("[data-object]")?.dataset.object;
                 const candidate=objectId?itemsRef.current.find(it=>it.id===objectId):null;
-                if(candidate?.kind==="graph"&&candidate.graphPurpose==="geometry"&&!candidate.locked&&
+                if(candidate?.kind==="graph"&&(candidate.graphPurpose==="geometry"||isCoordinatePointGraph(candidate)&&!!target.closest("svg"))&&!candidate.locked&&
                     !(structurallyLockedForStudent(candidate))&&activeBoardGeometryMode(candidate)==="move"){
                   geometryCanvasTouch.current={pointer:e.pointerId,id:candidate.id,x:e.clientX,y:e.clientY};
                 }
@@ -9484,7 +9896,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               // Complete the previous move at its last valid position instead
               // of silently snapping the object or viewport backwards.
               end();
-              if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
+              if(eraserSession.current)cancelEraser();
               touchPoints.current.clear();
               consumedTouchIds.current.clear();
               pinchState.current=null;
@@ -9596,6 +10008,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               setContextMenu(null);
               setRightPointerActive(true);
               setPanning(true);
+              if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
               gesture.current={pointer:e.pointerId,mode:"pan",start,view,
                 before:itemsRef.current,ids:[],path:[world(start)],additive:false};
               e.currentTarget.setPointerCapture(e.pointerId);
@@ -9607,12 +10020,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             // matching, biology, syntax, coding or a full subject worksheet).
             // Active buttons/inputs and independent pan/zoom canvases are
             // excluded by the shared DOM classifier.
-            if(tool==="select"&&!presentation&&!space&&!objectEditorOpen&&
+            if((tool==="select"||tool==="lasso")&&!presentation&&!space&&!objectEditorOpen&&
                e.button===0&&!pinchState.current&&!gesture.current&&canEdit){
               const dragSurface=boardObjectAtInertPointerTarget(target);
               const objectId=dragSurface?.dataset.object;
               const dragItem=objectId?itemsRef.current.find(item=>item.id===objectId):null;
-              if(dragItem&&!dragItem.hidden&&canTransformBoardObject(dragItem)){
+              if(dragItem&&!dragItem.hidden&&canTransformBoardObject(dragItem)&&(tool==="select"||selected.includes(dragItem.id))){
                 down(e);
                 // down() updates the gesture ref imperatively. TypeScript
                 // cannot infer that mutation after the !gesture.current guard.
@@ -9647,9 +10060,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(gesture.current)end(true);
             const screen=local(e.clientX,e.clientY);
             const p=world(screen);
-            eraserSession.current={pointer:e.pointerId,last:p,zoom:view.zoom,path:[p]};
+            if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
+            eraserSession.current={id:createId(),pointer:e.pointerId,last:p,zoom:view.zoom,weight:eraserSize/view.zoom,path:[p],mode:eraserMode,hiddenIds:new Set(),hiddenStickerInk:new Set()};
+            sendLiveEraser(eraserSession.current);
             setSelected([]);
-            beginEraserPreview();
+            if(eraserMode==="partial")beginEraserPreview();
             previewEraserSegment(screen,screen);
             setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
             board.current?.setPointerCapture(e.pointerId);
@@ -9675,12 +10090,27 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               if(Math.hypot(p.x-start.x,p.y-start.y)>5)rightPress.current.dragged=true;
             }
             const g=eraserSession.current;
-            if(!g||g.pointer!==e.pointerId)return;
+            if(!g){
+              // Eraser hover used to return from the bubble handler before
+              // publishing presence. Capture also sees moves over widgets
+              // that stop propagation. Keep camera navigation on its fast path.
+              if(tool==="eraser"&&!pinchState.current&&!consumedTouchIds.current.has(e.pointerId)&&
+                 !gesture.current&&e.pointerType!=="touch"){
+                const screen=local(e.clientX,e.clientY);
+                const p=world(screen);
+                if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
+                setLiveEraserCursor(screen.x,screen.y,e.pointerType);
+              }
+              return;
+            }
+            if(g.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
             const screen=local(e.clientX,e.clientY);
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
-            recordEraserPoint(world(screen));
+            const p=world(screen);
+            if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
+            recordEraserPoint(p);
             setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
           }}
           onPointerUpCapture={(e) => {
@@ -9702,6 +10132,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   Math.hypot(previous.x-e.clientX,previous.y-e.clientY)<27){
                   lastGeometryCanvasTap.current=null;
                   const target=itemsRef.current.find(it=>it.id===canvasTap.id);
+                  if(target&&isCoordinatePointGraph(target)&&!target.locked&&canEdit&&!structurallyLockedForStudent(target)){
+                    const element=Array.from(board.current?.querySelectorAll<HTMLElement>(".board-object[data-object]")??[]).find(el=>el.dataset.object===target.id);
+                    const svg=element?.querySelector<SVGSVGElement>(".graph-view > svg");
+                    const point=svg?planePointFromClient(target,svg,{x:e.clientX,y:e.clientY}):null;
+                    if(point){
+                      if(gesture.current?.pointer===e.pointerId){move(e);end();}
+                      touchEnd(e);
+                      e.preventDefault();e.stopPropagation();
+                      coordinateDoubleTapUntil.current=Date.now()+650;
+                      addCoordinatePlanePoint(target.id,point.x,point.y);
+                      return;
+                    }
+                  }
                   if(target?.kind==="graph"&&target.graphPurpose==="geometry"&&!target.locked&&canEdit){
                     if(gesture.current?.pointer===e.pointerId){move(e);end();}
                     touchEnd(e);
@@ -9744,7 +10187,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const screen=local(e.clientX,e.clientY);
             const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
             previewEraserSegment(previous,screen);
-            finishEraser(world(screen));
+            const p=world(screen);
+            if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
+            finishEraser(p);
             if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
             if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
           }}
@@ -9768,8 +10213,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(eraserSession.current?.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
             // Pointer cancellation (e.g. a second finger) is not an erase.
-            eraserSession.current=null;
-            stopEraserPreview();
+            cancelEraser();
             if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
           }}
           onClickCapture={(e)=>{
@@ -9790,7 +10234,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); if(tool==="select")syncSelectionCursor(e.target,e.pointerType); }}
           onPointerMove={(e) => {
             if(inertSurfaceDragPointer.current===e.pointerId)return;
-            if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y,e.pointerType);}return;}
             if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;
             const activeGesture=gesture.current;
             // Navigation uses cached board bounds and CSS transforms. It does
@@ -9800,6 +10243,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               move(e);
               return;
             }
+            if(tool==="eraser")return; // hover/erase presence is handled in capture
             const localPoint=local(e.clientX,e.clientY);
             const worldPoint=world(localPoint);
             if(!adminHidden)cursorChannel.current?.sendCursor(worldPoint.x,worldPoint.y);
@@ -9811,7 +10255,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             e.preventDefault();
             // Mouse RMB is handled on pointerup. Prevent the native menu from
             // appearing during a drag or reopening after release.
-            if(e.nativeEvent.button!==2){
+            if(e.nativeEvent.button!==2&&tool==="select"&&!gesture.current&&!eraserSession.current&&!pinchState.current){
               openBoardContextMenu(e.clientX,e.clientY,
                 (e.target as HTMLElement).closest<HTMLElement>("[data-object]")?.dataset.object);
             }
@@ -9856,7 +10300,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             // Releasing a previous object's capture must not cancel a NEW
             // gesture. Only the owner of the lost capture can be cleared.
             if(eraserSession.current?.pointer===e.pointerId){
-              eraserSession.current=null;stopEraserPreview();
+              cancelEraser();
             }
             if(e.pointerType==="touch"&&eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
             if(gesture.current?.pointer===e.pointerId)end(true);
@@ -9883,7 +10327,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div ref={setInstrumentViewportHost}
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
-            <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom}/>
+            <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom} erasures={remoteErasures} eraseTargets={remoteEraseTargets.current}/>
             <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom}/>
           </div>
           <div
@@ -9930,13 +10374,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               const base=live?{...live,x:entry.item.x,y:entry.item.y,
                 width:entry.item.width,height:entry.item.height,
                 rotation:entry.item.rotation}:entry.item;
-              const item=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
+              const posed=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
                 height:pose.height,rotation:pose.rotation,
                 ...(base.kind==="connector"?{
                   connectorStart:pose.connectorStart??base.connectorStart,
                   connectorEnd:pose.connectorEnd??base.connectorEnd
                 }:{}),
               }:base;
+              const item=pose&&base.kind==="sticky"?resizeStickerInk(base,posed,true):posed;
               return (
               <div
                 data-object={item.id}
@@ -9967,6 +10412,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                         : "#fff",
                 }}
                 onDoubleClick={(event) => {
+                  if(isCoordinatePointGraph(item))return;
                   if(item.kind==="graph"&&item.graphPurpose==="geometry"&&
                      (event.target as Element).closest?.(".graph-point"))return;
                   if(scienceEditorItem?.id===item.id&&item.graphFigureId?.startsWith("chem-formula-"))return;
@@ -9981,7 +10427,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     tool === "select" &&
                     !space &&
                     !item.locked &&
-                    (item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment")
+                    (item.kind === "text" || item.kind === "frame" || item.kind === "comment")
                   ) {
                     startEdit(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "formula") {
@@ -10008,7 +10454,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   } else if (tool === "select" && !space && !item.locked && item.kind === "flashcard") {
                     setSelected([item.id]);
                     openFlashcardEditor(item);
-                  } else if ((tool === "select" || tool === "hand") && !space && !item.locked && item.kind === "image") {
+                  } else if ((tool === "select" || tool === "hand") && !space && item.kind === "image" && canCropImage(item)) {
                     setSelected([item.id]);
                     setImageCropEditorId(item.id);
                   }
@@ -10025,13 +10471,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 {item.points && <Ink item={item} />}
                 {item.kind === "shape" && <Shape type={item.shapeType} color={item.color}/>}
                 {item.kind === "connector" && <Connector item={item}/>}
-                {(item.kind === "image" || item.kind === "pdf") && <Media item={item} boardId={boardSummary.id}/>}
-                {item.kind === "image" && imageCropEditorId === item.id && <InlineImageCrop
+                {(item.kind === "image" || item.kind === "pdf") && <Media
+                  item={item} boardId={boardSummary.id}
+                  selected={selectedIds.has(item.id)}
+                  autoFitEnabled={canCropImage(item)&&imageCropEditorId!==item.id}
+                  onAutoFit={autoFitExistingImage}
+                />}
+                {item.kind === "image" && imageCropEditorId === item.id && canCropImage(item) && <InlineImageCrop
                   item={item} boardId={boardSummary.id}
                   registerApply={apply=>{imageCropApplyRef.current=apply}}
                   onApply={async crop=>{
                     const current=itemsRef.current.find(candidate=>candidate.id===item.id&&candidate.kind==="image");
-                    if(!current)return;
+                    if(!current||!canCropImage(current)){setImageCropEditorId(null);return;}
                     const previous=current.imageCrop??{x:0,y:0,width:1,height:1};
                     const same=([ "x","y","width","height"] as const).every(k=>Math.abs(previous[k]-crop[k])<.00001);
                     if(!same){
@@ -10137,7 +10588,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   constructionActive={boardGeometryMode?.id===item.id}
                   onToggleConstruction={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")
                     ?()=>{if(boardGeometryMode?.id===item.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(item,"move")}:undefined}
-                  onPointMoveEnd={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
+                  onPointMoveEnd={isCoordinatePointGraph(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(index,x,y)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((point,i)=>i===index?{...point,x,y:candidate.graphPurpose==="number-line"?0:y}:point)}:candidate));setSelected([item.id]);}:boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const moved=moveGeometryVertex({
@@ -10192,7 +10643,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?closeFreeSketchBoard(candidate):candidate));
                     setSelected([item.id]);
                   }:undefined}
-                  onAddPoint={graphPointEditId===item.id&&item.graphPurpose!=="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
+                  onAddPoint={isCoordinatePointGraph(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(x,y)=>{
+                    if(Date.now()>=coordinateDoubleTapUntil.current)addCoordinatePlanePoint(item.id,x,y);
+                  }:graphPointEditId===item.id&&item.graphPurpose!=="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const points=candidate.graphPoints??[];
@@ -10207,7 +10660,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   onPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(index)=>selectBoardGeometryPoint(item,index):undefined}
                   onCreateAndPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(x,y)=>tapBoardGeometryBlank(item,x,y):undefined}
                   pickedPoints={boardGeometryMode?.id===item.id?boardGeometryMode.selected:[]}
-                  onRemovePoint={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
+                  onRemovePoint={isCoordinatePointGraph(item)&&tool==="select"&&!presentation&&!space&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);}:selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
@@ -10217,14 +10670,27 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 {item.kind === "flashcard" && <FlashcardView item={item} onFlip={!item.locked ? () => flipFlashcard(item) : undefined} />}
                 {item.kind === "cover" && editing !== item.id && <CoverView item={item} onToggle={!isStudent && !item.locked ? () => toggleCover(item) : undefined} />}
                 {item.locked && <div className="object-lock-badge" aria-label="Объект заблокирован"><Icon name="lock" size={13} /></div>}
-                {(item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment") &&
+                {item.kind === "sticky" && <>
+                  {item.text && <div className="text-display" style={{fontSize:item.fontSize??20,lineHeight:item.lineHeight??1.45,textAlign:item.textAlign??"left",fontWeight:item.fontWeight??"normal",fontStyle:item.fontStyle??"normal",textDecoration:item.textDecoration??"none"}}>{item.text}</div>}
+                  <svg className="sticker-ink-layer" viewBox={`0 0 ${item.width} ${item.height}`} aria-hidden="true">
+                    {(item.stickerInk??[]).map(ink=>{
+                      const {points,weight}=stickerInkPixels(item,ink);
+                      return <g key={ink.id} data-sticker-ink={ink.id} opacity={ink.kind==="marker"?.32:1}>
+                        {points.length===1?<circle cx={points[0].x} cy={points[0].y} r={weight/2} fill={ink.color}/>:
+                          <polyline points={points.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round"/>}
+                      </g>;
+                    })}
+                  </svg>
+                </>}
+                {(item.kind === "text" || item.kind === "frame" || item.kind === "comment") &&
                   (editing === item.id ? (
                     <textarea
                       ref={editor}
                       key={item.id}
+                      autoFocus
                       aria-label="Текст объекта"
                       className={item.kind === "frame" ? "text-editor frame-editor" : item.kind === "comment" ? "text-editor comment-editor" : "text-editor"}
-                      style={item.kind === "frame" || item.kind === "comment" ? undefined : { fontSize: item.fontSize ?? 20, ...(item.kind === "text" || item.kind === "sticky" ? { color:item.kind==="text"?(item.color??"#202124"):undefined, lineHeight:item.lineHeight??1.45, textAlign: item.textAlign ?? "left", fontWeight: item.fontWeight ?? "normal", fontStyle: item.fontStyle ?? "normal", textDecoration: item.textDecoration ?? "none" } : {}) }}
+                      style={item.kind === "text" ? { fontSize: item.fontSize ?? 20, color:item.color??"#202124", lineHeight:item.lineHeight??1.45, textAlign: item.textAlign ?? "left", fontWeight: item.fontWeight ?? "normal", fontStyle: item.fontStyle ?? "normal", textDecoration: item.textDecoration ?? "none" } : undefined}
                       value={draft}
                       placeholder="Введите текст…"
                       onChange={(e) => {
@@ -10435,6 +10901,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             />}
           {selectionScreenBounds && selectedItems.length > 0 && !objectEditorOpen && !boardAiOpen && (
             <div
+              ref={selectionToolbarRef}
               className={`selection-toolbar-screen ${singleSelected?.kind==="graph"?"lektrus-graph-selection-toolbar":""}`}
               data-more-direction={selectionToolbarTop<440?"down":"up"}
               style={{
@@ -10451,10 +10918,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </span>
 
               {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                (["text","sticky","frame","comment","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
+                (singleSelected.kind==="text"||canCropImage(singleSelected))&&
                 <button type="button" className="selection-edit-action" data-board-interactive="true"
-                  title="Редактировать содержимое" aria-label="Редактировать содержимое"
-                  onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>Редактировать</span></button>}
+                  title={singleSelected.kind==="image"?"Обрезать изображение":"Редактировать текст"} aria-label={singleSelected.kind==="image"?"Обрезать изображение":"Редактировать текст"}
+                  onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>{singleSelected.kind==="image"?"Обрезать":"Редактировать"}</span></button>}
               {singleSelected?.kind === "linkmedia" && !selectionLocked && (<span className="linkmedia-selection-controls"><button type="button" onClick={()=>openLinkMediaEditor(singleSelected)} title="Изменить ссылку"><Icon name="rename" size={15}/><span>Ссылка</span></button><a href={singleSelected.mediaUrl} target="_blank" rel="noreferrer" onPointerDown={e=>e.stopPropagation()} title="Открыть источник"><Icon name="open" size={15}/></a></span>)}
               {singleSelected?.kind === "frame" && !selectionLocked && (
                 <button type="button" className="frame-name-action" onClick={renameSelectedFrame} title="Переименовать фрейм · Enter / F2">
@@ -10534,27 +11001,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky" || singleSelected?.kind === "shape" || singleSelected?.kind === "frame" || singleSelected?.kind === "formula" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover" || singleSelected?.kind === "connector") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="object-color-menu"><button type="button" className="object-color-trigger" onClick={()=>setColorMenuOpen(v=>!v)} title="Цвет"><span style={{background:singleSelected.color??"#5355c9"}}/>Цвет</button>{colorMenuOpen&&<span className="object-color-popover">{(singleSelected.kind==="sticky"?["#fff3a6","#ffd9de","#dff5c8","#dcecff","#eadcff","#ffffff"]:["#202124","#5355c9","#2f855a","#d97706","#dc4c64","#8b5cf6","#0ea5e9","#64748b","#ffffff"]).map(value=><button type="button" key={value} className="object-color-square" style={{background:value}} onClick={()=>{recolorSelected(value);setColorMenuOpen(false)}} aria-label={`Цвет ${value}`}/>)}</span>}</span>
               )}
-              {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky" || singleSelected?.kind === "formula" || singleSelected?.kind === "table" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+              {(singleSelected?.kind === "text" || singleSelected?.kind === "formula" || singleSelected?.kind === "table" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="font-size-controls" title={singleSelected.kind === "formula" ? "Размер формулы" : singleSelected.kind === "table" ? "Размер текста таблицы" : singleSelected.kind === "checklist" ? "Размер текста чек-листа" : singleSelected.kind === "quiz" ? "Размер текста вопроса" : singleSelected.kind === "flashcard" ? "Размер текста карточки" : singleSelected.kind === "cover" ? "Размер текста шторки" : "Размер текста"}>
                   <button type="button" onClick={() => changeFontSize(-2)} aria-label="Уменьшить размер">A−</button>
                   <span>{singleSelected.fontSize ?? (singleSelected.kind === "formula" ? 28 : singleSelected.kind === "table" ? 13 : singleSelected.kind === "checklist" || singleSelected.kind === "quiz" ? 15 : singleSelected.kind === "flashcard" ? 18 : singleSelected.kind === "cover" ? 17 : 20)}</span>
                   <button type="button" onClick={() => changeFontSize(2)} aria-label="Увеличить размер">A+</button>
-                </span>
-              )}
-              {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky") && !selectionLocked && (
-                <span className="text-format-controls" title="Форматирование текста">
-                  <button type="button" className={singleSelected.fontWeight === "bold" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontWeight: singleSelected.fontWeight === "bold" ? "normal" : "bold" })} title="Полужирный"><b>B</b></button>
-                  <button type="button" className={singleSelected.fontStyle === "italic" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontStyle: singleSelected.fontStyle === "italic" ? "normal" : "italic" })} title="Курсив"><i>I</i></button>
-                  <button type="button" className={singleSelected.textDecoration === "underline" ? "active" : ""} onClick={() => setSelectedTextStyle({ textDecoration: singleSelected.textDecoration === "underline" ? "none" : "underline" })} title="Подчёркивание"><u>U</u></button>
-                  <span className="connector-control-separator" />
-                  <button type="button" className={(singleSelected.textAlign ?? "left") === "left" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "left" })} title="По левому краю">≡</button>
-                  <button type="button" className={singleSelected.textAlign === "center" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "center" })} title="По центру">≣</button>
-                  <button type="button" className={singleSelected.textAlign === "right" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "right" })} title="По правому краю">≡</button>
-                  <span className="connector-control-separator" />
-                  <button type="button" className={(singleSelected.textList??"none")==="bullet"?"active":""} onClick={()=>setSelectedTextStyle({textList:(singleSelected.textList??"none")==="bullet"?"none":"bullet"})} title="Маркированный список">•≡</button>
-                  <button type="button" className={singleSelected.textList==="number"?"active":""} onClick={()=>setSelectedTextStyle({textList:singleSelected.textList==="number"?"none":"number"})} title="Нумерованный список">1≡</button>
-                  <select className="text-line-height" value={singleSelected.lineHeight??1.45} onChange={e=>setSelectedTextStyle({lineHeight:Number(e.target.value)})} title="Межстрочный интервал"><option value={1}>1,0</option><option value={1.2}>1,2</option><option value={1.45}>1,45</option><option value={1.75}>1,75</option><option value={2}>2,0</option></select>
-
                 </span>
               )}
               {singleSelected?.kind==="connector"&&!selectionLocked&&<span className="lektrus-connector-quick">
@@ -10591,19 +11042,33 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 </>
               )}
 
-              <details className="selection-more">
+              <details className="selection-more" onToggle={event=>{
+                const details=event.currentTarget;
+                details.closest(".selection-toolbar-screen")?.classList.toggle("is-more-open",details.open);
+              }}>
                 <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
                 <div className="selection-more-menu">
+                  {singleSelected?.kind === "text" && !selectionLocked && (
+                    <span className="text-format-controls selection-text-format-section" title="Форматирование текста">
+                      <button type="button" className={singleSelected.fontWeight === "bold" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontWeight: singleSelected.fontWeight === "bold" ? "normal" : "bold" })} title="Полужирный"><b>B</b></button>
+                      <button type="button" className={singleSelected.fontStyle === "italic" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontStyle: singleSelected.fontStyle === "italic" ? "normal" : "italic" })} title="Курсив"><i>I</i></button>
+                      <button type="button" className={singleSelected.textDecoration === "underline" ? "active" : ""} onClick={() => setSelectedTextStyle({ textDecoration: singleSelected.textDecoration === "underline" ? "none" : "underline" })} title="Подчёркивание"><u>U</u></button>
+                      <span className="connector-control-separator" />
+                      <button type="button" className={(singleSelected.textAlign ?? "left") === "left" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "left" })} title="По левому краю">≡</button>
+                      <button type="button" className={singleSelected.textAlign === "center" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "center" })} title="По центру">≣</button>
+                      <button type="button" className={singleSelected.textAlign === "right" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "right" })} title="По правому краю">≡</button>
+                      <span className="connector-control-separator" />
+                      <button type="button" className={(singleSelected.textList??"none")==="bullet"?"active":""} onClick={()=>setSelectedTextStyle({textList:(singleSelected.textList??"none")==="bullet"?"none":"bullet"})} title="Маркированный список">•≡</button>
+                      <button type="button" className={singleSelected.textList==="number"?"active":""} onClick={()=>setSelectedTextStyle({textList:singleSelected.textList==="number"?"none":"number"})} title="Нумерованный список">1≡</button>
+                      <select className="text-line-height" value={singleSelected.lineHeight??1.45} onChange={e=>setSelectedTextStyle({lineHeight:Number(e.target.value)})} title="Межстрочный интервал"><option value={1}>1,0</option><option value={1.2}>1,2</option><option value={1.45}>1,45</option><option value={1.75}>1,75</option><option value={2}>2,0</option></select>
+
+                    </span>
+                  )}
                   {singleSelected&&!isInkItem(singleSelected)&&
                     <button type="button" onClick={()=>setLectrisInspectorOpen(true)}>
                       <Icon name="settings" size={16}/><span>Настройки и свойства</span>
                     </button>}
-                  {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                    <button type="button" onClick={lectrisEditSelected}>
-                      <Icon name="rename" size={16}/><span>Редактировать</span>
-                    </button>}
                   <button type="button" onClick={copySelected}><Icon name="copy" size={16} /><span>Копировать</span><kbd>Ctrl+C</kbd></button>
-                  {selectedItems.length === 1 && singleSelected?.kind !== "comment" && <button type="button" onClick={addCommentToSelection}><Icon name="comment" size={16}/><span>Добавить комментарий</span></button>}
                   <button type="button" onClick={() => void exportItemsToPng("selection")}><Icon name="download" size={16} /><span>Скачать выделение PNG</span><kbd>Ctrl+Shift+E</kbd></button>
                   {singleSelected?.kind === "frame" && !selectionLocked && (
                     <>
@@ -10689,7 +11154,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <>
                   <button onClick={() => { duplicateSelected(); setContextMenu(null); }}>Дублировать <span>Ctrl+D</span></button>
                   <button onClick={() => { copySelected(); setContextMenu(null); }}>Копировать <span>Ctrl+C</span></button>
-                  {singleSelected?.kind !== "comment" && <button onClick={() => { addCommentToSelection(); setContextMenu(null); }}>Добавить комментарий</button>}
                   {singleSelected?.kind==="connector"&&!selectionLocked&&<section className="lektrus-connector-context" role="group" aria-label="Редактирование линии и стрелки">
                     <strong>Линия и стрелка</strong>
                     <div className="lektrus-connector-context-types" role="group" aria-label="Тип линии">
@@ -10759,7 +11223,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               ) : (
                 <>
                   <button disabled={!clipboard.current.length} onClick={() => { pasteClipboard(); setContextMenu(null); }}>Вставить <span>Ctrl+V</span></button>
-                  <button disabled={!items.length} onClick={() => { fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden))); setContextMenu(null); }}>Показать всю доску</button>
+                  <button disabled={!items.length} onClick={() => { fitToBounds(visualBoundsOf(itemsRef.current.filter((item) => !item.hidden))); setContextMenu(null); }}>Показать всю доску</button>
                   <button onClick={() => { setView({ x: 0, y: 0, zoom: 1 }); setContextMenu(null); }}>Масштаб 100%</button>
                 </>
               )}
@@ -10804,8 +11268,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           {selected.length
             ? selectionLocked
               ? `Выделено: ${selected.length} · объект заблокирован · разблокируйте для редактирования`
-              : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
-            : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
+              : isCoarsePointer || Capacitor.isNativePlatform()
+                ? `Выделено: ${selected.length} · перетащите для перемещения`
+                : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
+            : isCoarsePointer || Capacitor.isNativePlatform()
+              ? `Сейчас: ${toolShortLabel[tool]} · два пальца — масштаб и перемещение`
+              : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
         </div>
         <div className="board-controls">
           <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>
@@ -10859,7 +11327,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button
             className={`snap-toggle ${snapEnabled ? "active" : ""}`}
             onClick={() => { setSnapEnabled((value) => !value); clearGuides(); }}
-            title="Умные привязки при перемещении · Alt временно отключает"
+            aria-pressed={snapEnabled}
+            aria-label={snapEnabled?"Привязка включена · отключить":"Привязка выключена · включить"}
+            title={snapEnabled?"Привязка включена · Alt временно отключает":"Привязка выключена · нажмите, чтобы включить"}
           >
             <Icon name="snap" size={16} />
           </button>
@@ -10867,7 +11337,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             className="fit-button fit-all-button"
             aria-label="Показать всю доску"
             disabled={!items.length}
-            onClick={() => fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden)))}
+            onClick={() => fitToBounds(visualBoundsOf(itemsRef.current.filter((item) => !item.hidden)))}
             title="Показать всю доску"
           >
             <Icon name="fit" size={16} />
@@ -10876,47 +11346,39 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             className="fit-button fit-selection-button"
             aria-label="Приблизить выделение"
             disabled={!selectionBounds}
-            onClick={() => fitToBounds(selectionBounds, 120)}
+            onClick={() => fitToBounds(visualBoundsOf(selectedItems), 120)}
             title="Приблизить выделение"
           >
             <Icon name="select" size={16} />
           </button>
         </div>
         {items.length > 0 && (
-          <div className="minimap">
+          <div className="minimap" role="region" aria-label="Навигатор доски">
             <div className="minimap-header">
-              <span>Навигация</span>
-              <span>{visibleObjects.length} видно · {objectCount} всего</span>
+              <span>Навигатор</span>
             </div>
             <div
               className="minimap-world"
-              title="Щёлкните, чтобы перейти к месту на доске"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                const miniRect = e.currentTarget.getBoundingClientRect();
-                const mainRect = board.current?.getBoundingClientRect();
-                if (!mainRect) return;
-                const worldX = miniX + ((e.clientX - miniRect.left) / miniRect.width) * miniW;
-                const worldY = miniY + ((e.clientY - miniRect.top) / miniRect.height) * miniH;
-                setView((current) => ({
-                  ...current,
-                  x: mainRect.width / 2 - worldX * current.zoom,
-                  y: mainRect.height / 2 - worldY * current.zoom,
-                }));
-              }}
+              title="Нажмите или проведите по карте, чтобы переместиться по доске"
             >
-              {minimapMarkers}
-              {visibleWorld && (
-                <span
-                  className="minimap-viewport"
-                  style={{
-                    left: `${((visibleWorld.x - miniX) / miniW) * 100}%`,
-                    top: `${((visibleWorld.y - miniY) / miniH) * 100}%`,
-                    width: `${(visibleWorld.width / miniW) * 100}%`,
-                    height: `${(visibleWorld.height / miniH) * 100}%`,
-                  }}
-                />
-              )}
+              <svg ref={minimapSvg} className="minimap-canvas" viewBox={minimapViewBox(miniBounds)} preserveAspectRatio="xMidYMid meet"
+                aria-label="Карта расположения объектов и видимой области доски"
+                onPointerDown={e => {
+                  if (!e.isPrimary || e.button !== 0) return;
+                  e.preventDefault();
+                  const current=viewerPendingPan.current??viewRef.current;
+                  minimapDragExtent.current=minimapExtent(miniContentBounds,minimapViewport(current,boardViewportSize));
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  navigateMinimap(e);
+                }}
+                onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) navigateMinimap(e); }}
+                onPointerUp={() => finishMinimap()}
+                onPointerCancel={() => finishMinimap(true)}
+                onLostPointerCapture={() => finishMinimap()}
+              >
+                {minimapMarkers}
+                {miniViewport && <rect ref={minimapFrame} className="minimap-viewport" {...miniViewport} vectorEffect="non-scaling-stroke" />}
+              </svg>
             </div>
           </div>
         )}

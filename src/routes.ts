@@ -5,6 +5,28 @@ const PENDING_BOARD_KEY = "lektrus.pending-board-route.v1";
 const PENDING_BOARD_CROSS_TAB_KEY = "lektrus.pending-board-route.v2";
 const PENDING_TTL_MS = 2 * 60 * 60 * 1000;
 const TOKEN = /^[a-f0-9]{64}$/;
+const PUBLIC_HOSTS = new Set(["lektrus.ru","www.lektrus.ru","lectrus.ru","www.lectrus.ru"]);
+/** Accept only board and invitation routes from trusted HTTPS or app links. */
+export function nativeBoardPath(value:string):string|null {
+  try {
+    // Older embedded URL implementations differ in how they expose custom
+    // scheme authorities. Match our two strictly validated routes directly.
+    const custom=value.match(/^ru\.lektrus\.board:\/\/(join|board)(\/[^?#]+)$/);
+    if(custom){
+      const route=parseRoute(`/${custom[1]}${custom[2]}`);
+      return route.kind==="join"?`/join/${route.token}`:route.kind==="board"?`/board/${route.boardId}`:null;
+    }
+    const url=new URL(value);
+    if(url.username||url.password||url.port||url.search||url.hash)return null;
+    const path=url.protocol==="https:"&&PUBLIC_HOSTS.has(url.hostname)?url.pathname:"";
+    const route=parseRoute(path);
+    return route.kind==="join"?`/join/${route.token}`:route.kind==="board"?`/board/${route.boardId}`:null;
+  } catch { return null; }
+}
+export function nativeBoardUrl(path:string):string|null {
+  const route=parseRoute(path);
+  return route.kind==="join"?`ru.lektrus.board://join/${route.token}`:route.kind==="board"?`ru.lektrus.board://board/${route.boardId}`:null;
+}
 /** Internal workspace navigation must never land on the public marketing root. */
 export function navigateWorkspaceSection(section = "") {
   window.history.pushState({}, "", section ? "/app?section=" + encodeURIComponent(section) : "/app");

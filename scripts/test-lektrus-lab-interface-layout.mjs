@@ -3,6 +3,7 @@
  */
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {assertFullscreenStage} from "./test-lab-fullscreen-stage.mjs";
 const css=readFileSync("src/lektrusLabSceneLayout.css","utf8");
 const markup=readFileSync("src/LektrusChemistryBench.tsx","utf8");
 const main=readFileSync("src/appEntry.tsx","utf8");
@@ -161,9 +162,7 @@ console.log("Android fullscreen laboratory: isolated paint, single simulation wr
 
 // Mobile fullscreen keeps a physical-size table with one expandable shelf,
 // independently of the desktop laboratory scene.
-assert.match(editor,/const compact=window\.matchMedia/);
-assert.match(editor,/const scale=compact\?1:h\/1000/);
-assert.match(editor,/const height=compact\?h:1000/);
+assertFullscreenStage();
 assert.match(editor,/height:stage\.height,zoom:stage\.scale/);
 assert.match(editor,/compactFullscreen=\{stage\.compact\}/);
 assert.match(markup,/const \[mobileDrawer,setMobileDrawer\]=useState<MobileDrawer\|null>\(null\)/);

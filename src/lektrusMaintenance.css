@@ -1,0 +1,54 @@
+.maintenance-notice{display:flex;align-items:center;gap:14px;box-sizing:border-box;padding:14px 18px;background:#e8f3ff;color:#174579;border:1px solid #94bdf1;border-radius:13px;font:500 14px/1.45 system-ui,sans-serif;overflow-wrap:anywhere}
+.maintenance-notice-copy{flex:1;min-width:0}
+.maintenance-notice-copy strong,.maintenance-notice-detail,.maintenance-notice-time{display:block;color:inherit}
+.maintenance-notice-copy strong{font-size:15px;font-weight:800;line-height:1.3;margin-bottom:3px}
+.maintenance-notice-detail{font-weight:550}
+.maintenance-notice-time{font-size:12px;font-weight:650;margin-top:3px}
+.maintenance-notice-icon{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:11px;background:#c9e2ff;color:#174579}
+.maintenance-notice-public{margin:18px auto 0;width:min(var(--site-custom-width,1200px),calc(100% - 64px));position:relative;z-index:2;box-shadow:0 4px 14px #17457915}
+/* The landing site has a fixed desktop sidebar and remains light even with a
+   dark browser theme. The notice lives inside main, so it shares its offset. */
+.marketing-site .maintenance-notice-public{background:#e8f3ff;color:#174579;border-color:#94bdf1}
+.marketing-site .maintenance-notice-public .maintenance-notice-copy strong,
+.marketing-site .maintenance-notice-public .maintenance-notice-detail,
+.marketing-site .maintenance-notice-public .maintenance-notice-time{color:#174579}
+.maintenance-notice-app{position:fixed;z-index:10001;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);right:14px;max-width:min(450px,calc(100vw - 28px));max-height:40dvh;overflow:auto;box-shadow:0 8px 32px #17457924}
+.maintenance-blocking{position:fixed;inset:0;z-index:2147483000;overflow:auto;background:#eef4fc;overscroll-behavior:contain}
+.maintenance-screen{--maint-ink:#152a47;--maint-muted:#526780;--maint-accent:#315dc3;box-sizing:border-box;min-height:100%;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:clamp(18px,4vh,48px);padding:calc(28px + env(safe-area-inset-top,0px)) calc(22px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(22px + env(safe-area-inset-left,0px));background:radial-gradient(ellipse at 50% 44%,#fff 0%,#f1f6ff 50%,#e7eef9 100%);color:var(--maint-ink);font-family:"Lektrus Manrope",system-ui,sans-serif;text-align:center}
+.maintenance-screen-brand{display:flex;align-items:center;gap:9px;color:var(--maint-ink);font-size:23px;font-weight:800;letter-spacing:-.045em}
+.maintenance-screen-brand img{width:38px;height:38px;object-fit:contain}
+.maintenance-screen-content{display:flex;flex-direction:column;align-items:center;width:min(100%,650px);gap:12px;margin:auto 0;overflow-wrap:anywhere}
+.maintenance-screen-symbol{display:grid;place-items:center;width:106px;height:106px;margin-bottom:8px;border-radius:32px;background:#e4edff;color:var(--maint-accent);box-shadow:0 8px 30px #335cc21c}
+.maintenance-screen-symbol svg{width:83px;height:83px}
+.maintenance-screen-eyebrow{color:var(--maint-accent);font-size:13px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin:0}
+.maintenance-screen h1{font-size:clamp(34px,5.4vw,64px);line-height:1.08;letter-spacing:-.05em;font-weight:850;color:var(--maint-ink);margin:0 0 6px}
+.maintenance-screen-message{font-size:clamp(16px,2.1vw,20px);line-height:1.55;color:var(--maint-muted);margin:0;max-width:560px}
+.maintenance-screen-time{font-size:clamp(14px,1.7vw,17px);line-height:1.5;font-weight:750;color:var(--maint-ink);margin:4px 0 0}
+.maintenance-screen-note{display:flex;align-items:flex-start;justify-content:center;gap:8px;color:var(--maint-muted);font-size:13px;line-height:1.5;margin:15px 0 0}
+.maintenance-screen-note span{width:7px;height:7px;margin-top:6px;flex:none;border-radius:50%;background:#3caa78;box-shadow:0 0 0 4px #3caa7819}
+.maintenance-screen-footer{font-size:11px;letter-spacing:.1em;font-weight:650;text-transform:uppercase;color:var(--maint-muted)}
+.maintenance-checking{min-height:100dvh;display:grid;place-items:center}
+.maintenance-checking span{width:25px;height:25px;border:3px solid #9ba9c84a;border-top-color:#536bd2;border-radius:50%;animation:maintenanceSpin .9s linear infinite}
+@keyframes maintenanceSpin{to{transform:rotate(360deg)}}
+.admin-maintenance{display:grid;gap:16px;max-width:800px;padding:18px 0}
+.admin-maintenance h2,.admin-maintenance p{margin:0}
+.admin-maintenance .maintenance-admin-state{border:1px solid #94bdf1;border-radius:14px;padding:14px;background:#e8f3ff;color:#174579}
+.admin-maintenance-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.admin-maintenance label{display:grid;gap:6px;font-weight:600;min-width:0}
+.admin-maintenance input:not([type=checkbox]),.admin-maintenance textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #97a3b080;border-radius:9px;background:transparent;color:inherit;font:inherit}
+.admin-maintenance-accounts{max-height:260px;overflow:auto;display:grid;gap:3px;border:1px solid #97a3b080;border-radius:12px;padding:8px}
+.admin-maintenance-accounts label{display:flex;align-items:center;gap:10px;padding:8px;font-weight:400;overflow-wrap:anywhere}
+.admin-maintenance-accounts small{display:block;opacity:.75}
+.admin-maintenance-actions{display:flex;flex-wrap:wrap;gap:10px}
+
+@media(prefers-color-scheme:dark){
+ .maintenance-blocking{background:#101a2a}
+ .maintenance-screen{--maint-ink:#f1f5ff;--maint-muted:#b2c1db;--maint-accent:#97b5ff;background:radial-gradient(ellipse at center,#202e4a 0%,#152138 50%,#101a2a 100%)}
+ .maintenance-screen-symbol{background:#273e68;box-shadow:none}
+ .maintenance-notice-app,.admin-maintenance .maintenance-admin-state{background:#192f50;color:#d1e8ff;border-color:#466e9d}
+ .maintenance-notice-app .maintenance-notice-icon{background:#466e9d;color:#d1e8ff}
+}
+@media(max-width:920px){.maintenance-notice-public{width:calc(100% - 36px);margin-top:14px}}
+@media(max-width:600px){.maintenance-notice{padding:12px;gap:10px;font-size:13px}.maintenance-notice-copy strong{font-size:14px}.maintenance-notice-icon{width:34px;height:34px}.maintenance-notice-public{width:calc(100% - 24px);margin-top:12px}.maintenance-notice-app{right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);max-width:calc(100vw - 20px)}.maintenance-screen-symbol{width:84px;height:84px;border-radius:25px}.maintenance-screen-symbol svg{width:66px;height:66px}}
+@media(max-height:460px) and (orientation:landscape){.maintenance-screen{gap:12px;padding:calc(10px + env(safe-area-inset-top,0px)) calc(18px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(18px + env(safe-area-inset-left,0px))}.maintenance-screen-brand{font-size:18px}.maintenance-screen-brand img{width:27px;height:27px}.maintenance-screen-content{gap:6px}.maintenance-screen-symbol{width:54px;height:54px;margin-bottom:0;border-radius:16px}.maintenance-screen-symbol svg{width:42px;height:42px}.maintenance-screen h1{font-size:clamp(29px,5vw,40px);margin-bottom:0}.maintenance-screen-note{margin-top:6px}.maintenance-screen-footer{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.maintenance-checking span{animation:none}}

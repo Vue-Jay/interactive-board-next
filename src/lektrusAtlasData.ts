@@ -1,5 +1,6 @@
 import {historicalSnapshots} from "./lektrusAtlasModel";
 import type {HistoricalCoverageGap, HistoricalTerritorialIssue, HistoricalGeometry} from "./lektrusHistoricalTimeline";
+import {regionDisplayNames} from "./regionDisplayNames";
 
 export type GeoPosition=[number,number];
 export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineString"|"Point"|"MultiPoint";
@@ -83,7 +84,7 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
  pending.set(key,task);
  try{return await task}finally{pending.delete(key)}
 }
-const russianCountryNames=new Intl.DisplayNames(["ru"],{type:"region"});
+const russianCountryNames=regionDisplayNames("ru");
 /** Conventional school names for objects present in the actual map source. */
 const naturalNames:Record<string,string>={
  "Black Sea": "Чёрное море",
@@ -169,7 +170,7 @@ const historicNames:Record<string,string>={
  * boundaries or treating a modern country as an ancient polity.
  * CLDR provides Russian equivalents for ISO 3166 country names, including
  * small and island states often absent from hand-maintained dictionaries. */
-const englishCountryNames=new Intl.DisplayNames(["en"],{type:"region"});
+const englishCountryNames=regionDisplayNames("en");
 const historicalCountryNames=(()=>{
  const names=new Map<string,string>();
  for(let first=65;first<=90;first++)for(let second=65;second<=90;second++){

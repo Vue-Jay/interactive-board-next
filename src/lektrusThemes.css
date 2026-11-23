@@ -706,3 +706,11 @@
 .access-backdrop .invite-modal .invite-email-panel>summary{color:var(--lt-text)}
 .access-backdrop .invite-modal .invite-email-panel>summary small{color:var(--lt-muted)}
 .access-backdrop .invite-modal .invite-email-panel .invite-row{border-top-color:var(--lt-line)}
+
+/* Text fields use one restrained focus indication; no second outer ring.
+   Retain button/checkbox/radio keyboard focus and the field's own border. */
+html body :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]),textarea,select):focus {
+  outline:none!important;
+  box-shadow:none!important;
+  border-color:var(--lt-focus,#6486ed)!important;
+}

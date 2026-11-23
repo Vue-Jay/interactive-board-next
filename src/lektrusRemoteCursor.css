@@ -1,0 +1,36 @@
+/* Peer pointer uses the same arrow silhouette as the local selection cursor.
+   Screen-space sizing and the negative SVG margin preserve its hotspot. */
+.remote-cursor.lektrus-remote-cursor {
+  gap:2px;
+  pointer-events:none;
+}
+.lektrus-remote-cursor .remote-cursor-pointer {
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  margin:-2px 0 0 -3px;
+  overflow:visible;
+  filter:drop-shadow(0 1px 2px rgba(16,32,61,.24));
+}
+.lektrus-remote-cursor .remote-cursor-pointer path {
+  fill:#fff;
+  stroke:var(--lt-primary,#3056c8);
+  stroke-width:2.2;
+  stroke-linejoin:round;
+}
+.remote-cursor.lektrus-remote-cursor > span {
+  margin:12px 0 0 -2px;
+  max-width:150px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  padding:3px 7px;
+  border:1px solid var(--lt-on-primary,#fff);
+  border-radius:7px;
+  background:var(--lt-primary,#3056c8);
+  color:var(--lt-on-primary,#fff);
+  box-shadow:0 2px 6px rgba(16,32,61,.18);
+  font-size:11px;
+  font-weight:650;
+  line-height:1.2;
+}

@@ -50,8 +50,16 @@ jobs:
         run: |
           node scripts/test-lektrus-board-role-preview.mjs
           node scripts/test-lektrus-release-browser-smoke.mjs --notice-only
+      - name: Check PWA install confirmation and duplicate prompt suppression in Chrome
+        run: node scripts/test-lektrus-release-browser-smoke.mjs --pwa-only
       - name: Check split-screen home layout in real Chrome
         run: node scripts/test-lektrus-release-browser-smoke.mjs --home-only
+      - name: Check tablet dock swipe and full tool catalogue in real Chrome
+        run: node scripts/test-lektrus-release-browser-smoke.mjs --tablet-tools-only
+      - name: Check learning workspace and assignment failure recovery in real Chrome
+        run: node scripts/test-lektrus-release-browser-smoke.mjs --education-only
+      - name: Check real device interface studio and global publication in Chrome
+        run: node scripts/test-lektrus-release-browser-smoke.mjs --interface-only
       - name: Build the standard Lektrus application against the self-hosted backend
         env:
           VITE_LEKTRUS_BACKEND: 'selfhost'

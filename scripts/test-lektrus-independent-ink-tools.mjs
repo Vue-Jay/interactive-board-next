@@ -54,6 +54,16 @@ assert.equal(ink.normalizeInkPreferences({marker:{color:"#000000",size:100}}).ma
 const editor=fs.readFileSync("src/LectrisObjectEditor.tsx","utf8");
 assert.match(editor,/pen:\[1,3,6,12,22\]/);
 assert.match(editor,/onClick=\{\(\)=>updateWidth\(size\)\}/);
+assert.match(editor,/data-eraser-mode="partial" aria-pressed=\{value==="partial"\}/,
+ "Partial eraser must be a directly selectable, clearly marked mode");
+assert.match(editor,/data-eraser-mode="stroke" aria-pressed=\{value==="stroke"\}/,
+ "Whole-stroke eraser must be a directly selectable, clearly marked mode");
+assert.match(editor,/aria-label="Стирать участок линии"/);
+assert.match(editor,/aria-label="Стирать весь штрих одним касанием"/);
+assert.match(editor,/className="lektrus-eraser-mode-label" aria-hidden="true">Часть<\/span>/);
+assert.match(editor,/className="lektrus-eraser-mode-label" aria-hidden="true">Штрих<\/span>/);
+assert.match(editor,/viewBox="0 0 48 32"/, "Each eraser mode has an illustrative icon");
+
 const inkCss=fs.readFileSync("src/lektrusSubjectPolish2026.css","utf8");
 assert.match(inkCss,/Every pen-width preset, especially the fifth 22px button/,
  "The maximum pen preset must remain accessible in narrow toolbars");
@@ -72,13 +82,23 @@ assert.match(app,/viewerToolRef\.current=chosen;\s*writeBoardSessionTool\(boardS
  "The viewer's tool must be stored BEFORE React schedules a UI update");
 assert.match(app,/useLayoutEffect\(\(\)=>\{\s*viewerToolRef\.current=tool;\s*writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
  "Keep individual tool selection intact on document re-render");
-const directCss=fs.readFileSync("src/lektrusResponsive.css","utf8");
-assert.match(directCss,/Five full-width, directly tappable pen presets/);
-assert.match(directCss,/\.lektrus-ink-settings-direct \.lektrus-direct-ink-widths\{/);
-assert.match(directCss,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)!important/);
-assert.match(directCss,/\.lektrus-direct-ink-widths>button\{/);
-assert.match(directCss,/touch-action:manipulation!important/,
- "Every thickness including pen 22 px must receive touches");
+const dockCss=fs.readFileSync("src/lektrusMobileWorkspacePolish.css","utf8");
+const style=fs.readFileSync("src/lektrusResponsive.css","utf8");
+assert.match(style,/\.lektrus-eraser-mode-check/,"Active eraser must have a checkmark");
+assert.match(style,/\.workspace \.lektrus-eraser-modes>button\[aria-pressed="true"\]/);
+assert.match(editor,/data-eraser-mode="partial"/);
+assert.match(editor,/data-eraser-mode="stroke"/);
+assert.equal((app.match(/<LectrisQuickProperties/g)||[]).length,1,
+ "There must only be one original bottom ink toolbar");
+assert.doesNotMatch(app,/lektrus-ink-settings-direct/,
+ "Never render an extra upper ink settings panel");
+assert.match(app,/board-ink-dock-open/,"Reserve safe non-canvas footer");
+assert.match(dockCss,/\.workspace\.board-ink-dock-open \.board\s*\{\s*bottom:96px!important/);
+assert.match(dockCss,/\.workspace\.board-ink-dock-open:has\(\.is-ink-properties\[data-ink-upper-row="true"\]\) \.board/);
+assert.match(dockCss,/\.workspace\.board-ink-dock-open \.board\s*\{\s*bottom:145px!important/);
+assert.match(dockCss,/\.lectris-quick-properties\.is-ink-properties\s*\{/);
+assert.match(editor,/viewBox="0 0 48 32"/);
+assert.match(app,/className=\{`app \$\{presentation \? "presentation-mode" : ""\}/);
 assert.match(app,/if \(gesture\.current \|\| eraserSession\.current\)/,
  "Remote document changes must defer while local ink is being drawn");
 assert.match(app,/if \(decision === "conflict"\)/,

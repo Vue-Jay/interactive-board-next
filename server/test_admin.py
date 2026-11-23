@@ -8,7 +8,81 @@ import pytest
 from app import app
 from test_api import TEACHER, STUDENT, OUTSIDER, client, sign_in
 import feedback_mail
+import telegram_editor
+import asyncio
 import admin as admin_module
+
+
+@pytest.mark.asyncio
+async def test_site_news_editor_publication_and_access(client):
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    _, administrator = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    public, manage = "/api/v1/news", "/api/v1/admin/news"
+    seeded = (await client.get(public+"?category=announcement")).json()
+    assert {"Анатомия человека", "Виртуальный микроскоп", "Программирование на доске"} <= {row["title"] for row in seeded}
+    archive = (await client.get(public+"?limit=50")).json()
+    assert len(archive) >= 16
+    historical = next(row for row in archive if row["title"] == "Геометрические построения")
+    assert historical["published_at"].startswith("2026-10-24")
+    payload = {"title":"Анонс для теста", "category":"announcement", "summary":"Краткое описание", "body":"Подробности\nСледующая строка", "version":"1.2", "published":False}
+    assert (await client.get(manage)).status_code == 401
+    assert (await client.get(manage, headers=student)).status_code == 403
+    assert (await client.post(manage, json=payload, headers=student)).status_code == 403
+    result = await client.post(manage, json=payload, headers=administrator)
+    assert result.status_code == 201, result.text
+    article = result.json()
+    article_id = article["id"]
+    target = manage + "/" + article_id
+    assert article["published_at"] is None
+    assert article_id not in [entry["id"] for entry in (await client.get(public)).json()]
+    assert article_id in [entry["id"] for entry in (await client.get(manage, headers=administrator)).json()]
+    assert (await client.put(target, headers=student, json={**payload,"published":True})).status_code == 403
+    assert (await client.put(target, headers=administrator, json={**payload,"summary":" ","published":True})).status_code == 422
+    publish = await client.put(target, headers=administrator, json={**payload,"published":True})
+    assert publish.status_code == 200, publish.text
+    published_at = publish.json()["published_at"]
+    rows = (await client.get(public+"?category=announcement")).json()
+    current = next(row for row in rows if row["id"] == article_id)
+    assert current["body"] == payload["body"] and current["published_at"] == published_at
+    assert "created_at" not in current and "updated_at" not in current
+    assert article_id not in [row["id"] for row in (await client.get(public+"?category=feature")).json()]
+    edited = await client.put(target, headers=administrator, json={**payload,"title":"Уточнённый анонс","published":True})
+    assert edited.json()["published_at"] == published_at
+    assert (await client.get(public+"?limit=51")).status_code == 422
+    archived = await client.put(target, headers=administrator, json=payload)
+    assert archived.status_code == 200 and archived.json()["published_at"] is None
+    assert article_id not in [row["id"] for row in (await client.get(public)).json()]
+
+
+@pytest.mark.asyncio
+async def test_global_interface_layout_is_shared_and_admin_write_only(client):
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    _, admin = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    _, other = await sign_in(client, "outsider@example.test")
+    read_url = "/api/v1/interface-layout"
+    write_url = "/api/v1/admin/interface-layout"
+    assert (await client.get(read_url)).json() == {"layout": None}
+    design = {"version": 1, "profiles": {
+        "desktop": {"toolbar": {"x": 4, "y": 0, "scale": 1}},
+        "phonePortrait": {"toolbar": {"x": 0, "y": 5, "scale": 0.9}},
+        "phone": {"toolbar": {"x": 0, "y": -5, "scale": 1.1}},
+    }, "controls": {}, "extras": {}}
+    payload = {"layout": design}
+    assert (await client.put(write_url, json=payload)).status_code == 401
+    assert (await client.put(write_url, json=payload, headers=student)).status_code == 403
+    assert (await client.put(write_url, json={"layout": {}}, headers=admin)).status_code == 422
+    assert (await client.put(write_url, json=payload, headers=admin)).status_code == 200
+    for headers in (admin, student, other, {}):
+        assert (await client.get(read_url, headers=headers)).json() == payload
+    design["profiles"]["desktop"]["toolbar"]["x"] = -2
+    assert (await client.put(write_url, json=payload, headers=admin)).status_code == 200
+    assert (await client.get(read_url, headers=other)).json() == payload
+    async with app.state.pool.acquire() as conn:
+        assert await conn.fetchval("select count(*) from global_interface_layout") == 1
 
 
 @pytest.mark.asyncio
@@ -177,7 +251,7 @@ async def test_admin_can_manage_accounts_boards_and_feedback_but_students_cannot
     until = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
     grant = await client.patch(
         f"/api/v1/admin/users/{OUTSIDER}/subscription", headers=admin,
-        json={"plan": "teacher", "until": until},
+        json={"plan": "pro", "until": until},
     )
     assert grant.status_code == 200, grant.text
     async with app.state.pool.acquire() as conn:
@@ -185,7 +259,7 @@ async def test_admin_can_manage_accounts_boards_and_feedback_but_students_cannot
             "SELECT subscription_plan,subscription_until FROM account_users WHERE id=$1",
             OUTSIDER,
         )
-    assert plan["subscription_plan"] == "teacher"
+    assert plan["subscription_plan"] == "pro"
     assert plan["subscription_until"] is not None
 
     application = {
@@ -311,3 +385,132 @@ async def test_admin_delete_account_preserves_other_users_boards(client, tmp_pat
     assert (tmp_path / str(shared) / shared_storage.hex).exists()
     assert not (tmp_path / str(owned) / owned_storage.hex).exists()
     assert not (tmp_path / "materials" / material_storage.hex).exists()
+
+
+@pytest.mark.asyncio
+async def test_maintenance_schedule_exceptions_and_automatic_end(client):
+    from app import lookup_board_sessions
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+    admin_data, admin = await sign_in(client, "teacher@example.test")
+    selected_data, selected = await sign_in(client, "student@example.test")
+    ordinary_data, ordinary = await sign_in(client, "outsider@example.test")
+    path, status = "/api/v1/admin/maintenance", "/api/v1/maintenance"
+    now = datetime.now(timezone.utc)
+    config = {"starts_at": (now + timedelta(hours=1)).isoformat(),
+              "ends_at": (now + timedelta(hours=2)).isoformat(),
+              "notice": "Обновляем Lektrus", "allowed_accounts": [str(STUDENT)]}
+    assert (await client.get(status)).json()["state"] == "off"
+    assert (await client.put(path, json=config, headers=ordinary)).status_code == 403
+    assert (await client.put(path, json={**config,"ends_at":now.isoformat()}, headers=admin)).status_code == 422
+    response = await client.put(path, json=config, headers=admin)
+    assert response.status_code == 200, response.text
+    public = (await client.get(status)).json()
+    assert public["state"] == "scheduled" and public["notice"] == config["notice"]
+    assert "allowed_accounts" not in public and public["access_allowed"]
+    board_id = UUID((await client.post("/api/v1/boards", headers=admin, json={"title":"Maintenance test"})).json()["id"])
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("INSERT INTO board_members(board_id,user_id,role) VALUES($1,$2,'viewer'),($1,$3,'viewer')", board_id, STUDENT, OUTSIDER)
+    assert (await client.get("/api/v1/boards", headers=ordinary)).status_code == 200
+    # Passing the scheduled start needs no process restart or manual action.
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE service_maintenance SET starts_at=now()-interval '1 minute'")
+    for headers in (admin, selected):
+        assert (await client.get(status, headers=headers)).json()["access_allowed"]
+        assert (await client.get("/api/v1/boards", headers=headers)).status_code == 200
+    for headers in (ordinary, {}, {"Authorization":"Bearer bogus"}):
+        public = (await client.get(status, headers=headers)).json()
+        assert public["state"] == "active" and not public["access_allowed"]
+        denied = await client.get("/api/v1/boards", headers=headers)
+        assert denied.status_code == 503 and denied.json()["code"] == "maintenance"
+    assert (await client.post("/api/v1/auth/signup", json={})).status_code == 503
+    assert (await client.get("/api/v1/health")).status_code == 200
+    assert (await client.get("/api/v1/news")).status_code == 200
+    assert (await client.get("/api/v1/auth/me", headers=ordinary)).status_code == 200
+    _, relogin = await sign_in(client, "outsider@example.test")
+    assert not (await client.get(status, headers=relogin)).json()["access_allowed"]
+    tokens = [admin_data["access_token"], selected_data["access_token"], ordinary_data["access_token"]]
+    rows = await lookup_board_sessions(app.state.pool, board_id, tokens)
+    assert set(rows) == set(tokens[:2])
+    # Removing the account from the allowlist applies immediately.
+    response = await client.put(path, headers=admin, json={**config,
+        "starts_at": (now-timedelta(minutes=1)).isoformat(), "allowed_accounts":[]})
+    assert response.status_code == 200, response.text
+    assert (await client.get("/api/v1/boards", headers=selected)).status_code == 503
+    assert (await client.get(path, headers=admin)).status_code == 200
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE service_maintenance SET ends_at=now()-interval '1 second'")
+    assert (await client.get(status)).json()["state"] == "off"
+    assert (await client.get("/api/v1/boards", headers=ordinary)).status_code == 200
+    assert (await client.put(path, headers=admin, json={"allowed_accounts":[]})).status_code == 200
+
+# Included by the existing explicit integration-suite file list.
+from test_billing import (test_free_concurrent_board_limit_manual_pro_and_downgrade,
+    test_group_and_storage_limits, test_finance_admin_only_and_manual_grants_not_revenue, test_pro_storage_limit)
+
+@pytest.mark.asyncio
+async def test_telegram_editor_access_queue_and_no_duplicate(client, monkeypatch):
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", TEACHER)
+        await conn.execute("DELETE FROM telegram_posts")
+        await conn.execute("""UPDATE telegram_editor_settings SET auto_news=false,auto_maintenance=false,auto_publish=false,
+            verified_chat_id=NULL,verified_bot_id=NULL,verified_channel=NULL,bot_username=NULL WHERE singleton""")
+    _, administrator = await sign_in(client, "teacher@example.test")
+    _, student = await sign_in(client, "student@example.test")
+    path = "/api/v1/admin/telegram"
+    monkeypatch.delenv("LEKTRUS_TELEGRAM_BOT_TOKEN", raising=False)
+    assert (await client.get(path, headers=student)).status_code == 403
+    assert (await client.post(path+"/posts", headers=student, json={"text":"Test"})).status_code == 403
+    draft = await client.post(path+"/posts",headers=administrator,json={"text":"Новые функции Lektrus"})
+    assert draft.status_code == 201, draft.text
+    post = path+"/posts/"+draft.json()["id"]
+    assert (await client.post(post+"/schedule",headers=administrator,json={})).status_code == 409
+    monkeypatch.setenv("LEKTRUS_TELEGRAM_BOT_TOKEN","123:fake_token")
+    monkeypatch.setenv("LEKTRUS_TELEGRAM_CHANNEL","@lektrus")
+    sent = []
+    async def fake_api(method, **kwargs):
+        if method == "getMe":
+            return {"id":123,"username":"lektrus_test_bot"}
+        if method == "getChat":
+            return {"id":-100123,"type":"channel","username":"lektrus"}
+        if method == "getChatMember":
+            return {"status":"administrator","can_post_messages":True}
+        assert method == "sendMessage"
+        sent.append(kwargs["json"]["text"])
+        return {"message_id":1234}
+    monkeypatch.setattr(telegram_editor,"telegram_api",fake_api)
+    assert (await client.post(path+"/verify",headers=administrator)).status_code == 200
+    assert (await client.post(post+"/schedule",headers=administrator,json={})).status_code == 200
+    await asyncio.gather(telegram_editor.deliver_one(app.state.pool),telegram_editor.deliver_one(app.state.pool))
+    assert sent == ["Новые функции Lektrus"]
+    overview = (await client.get(path,headers=administrator)).json()
+    assert overview["posts"][0]["status"] == "sent"
+    assert overview["posts"][0]["telegram_message_id"] == 1234
+    assert "fake_token" not in str(overview)
+    assert (await client.post(post+"/schedule",headers=administrator,json={})).status_code == 409
+    assert not await telegram_editor.deliver_one(app.state.pool)
+    assert (await client.put(path+"/settings",headers=administrator,json={"auto_news":True})).status_code == 200
+    await telegram_editor.collect_automatic(app.state.pool)
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("""INSERT INTO site_news(category,title,summary,body,published_at)
+            VALUES('update','Тест новой новости','Краткое описание','Текст',now())""")
+    await telegram_editor.collect_automatic(app.state.pool)
+    await telegram_editor.collect_automatic(app.state.pool)
+    overview = (await client.get(path,headers=administrator)).json()
+    auto = [p for p in overview["posts"] if p["source_kind"]=="news"]
+    assert len(auto)==1 and auto[0]["status"]=="draft"
+    assert "Тест новой новости" in auto[0]["text"]
+    assert (await client.post(path+"/posts/"+auto[0]["id"]+"/schedule",headers=administrator,json={})).status_code==200
+    async def uncertain_api(method, **kwargs):
+        if method == "sendMessage":
+            raise telegram_editor.Unknown("timeout")
+        return await fake_api(method,**kwargs)
+    monkeypatch.setattr(telegram_editor,"telegram_api",uncertain_api)
+    assert await telegram_editor.deliver_one(app.state.pool)
+    assert not await telegram_editor.deliver_one(app.state.pool)
+    overview=(await client.get(path,headers=administrator)).json()
+    assert next(p for p in overview["posts"] if p["id"]==auto[0]["id"])["status"]=="unknown"
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("DELETE FROM site_news WHERE title='Тест новой новости'")
+        await conn.execute("DELETE FROM telegram_posts")
+        await conn.execute("UPDATE telegram_editor_settings SET auto_news=false,auto_maintenance=false,auto_publish=false,verified_chat_id=NULL,verified_bot_id=NULL,verified_channel=NULL WHERE singleton")

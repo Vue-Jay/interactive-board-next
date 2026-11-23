@@ -11,7 +11,7 @@ export type RemoteCursor = {
   updatedAt: number;
 };
 
-export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker"; color: string; weight: number; points: { x: number; y: number }[]; finished: boolean; offset?: number };
+export type LiveInkMessage = { clientId: string; userId: string; id: string; kind: "pen" | "marker" | "eraser"; color: string; weight: number; points: { x: number; y: number }[]; finished: boolean; offset?: number; cancelled?:boolean; cutIds?:string[]; eraserMode?:"partial"|"stroke" };
 
 export type BoardCursorChannel = {
   sendCursor: (x: number, y: number) => void;
@@ -66,8 +66,9 @@ export function connectBoardCursorChannel(
       const points=ink.points.slice(offset-start,offset-start+200);
       const finished=ink.finished&&offset+points.length>=end;
       const ok=channel.sendInk({
-        type:"live_ink",client_id:clientId,stroke_id:id,
+        type:ink.kind==="eraser"?"live_erase":"live_ink",client_id:clientId,stroke_id:id,
         kind:ink.kind,color:ink.color,weight:ink.weight,offset,points,finished,
+        ...(ink.kind==="eraser"?{cancelled:finished&&!!ink.cancelled,cut_ids:finished?ink.cutIds??[]:[],...(ink.eraserMode==="stroke"?{erase_mode:"stroke" as const}:{})}:{}),
       });
       lastSentAt=Date.now();
       if(ok){
@@ -92,13 +93,13 @@ export function connectBoardCursorChannel(
           userId: event.user_id, name: event.name, role: event.role,
           x: event.x, y: event.y, updatedAt: event.sent_at || Date.now(),
         });
-      } else if (event.type === "live_ink" && event.client_id !== clientId) {
+      } else if ((event.type === "live_ink"||event.type === "live_erase") && event.client_id !== clientId) {
         received++;
         onInk?.({
           clientId: event.client_id, userId: event.user_id,
           id: event.stroke_id, kind: event.kind, color: event.color,
           weight: event.weight, points: event.points,
-          finished: event.finished, offset: event.offset,
+          finished: event.finished, offset: event.offset,cancelled:event.cancelled,cutIds:event.cut_ids,eraserMode:event.erase_mode,
         });
         if(received===1||received%20===0||event.finished)reportSelfhost("подключено");
       } else if(event.type==="ink_ack"&&event.client_id===clientId){
@@ -200,7 +201,7 @@ export function connectBoardCursorChannel(
       if (!ink.finished && skip === ink.points.length) return true;
       const outgoing = skip ? {...ink,offset:start+skip,points:ink.points.slice(skip)} : ink;
       const ref = String(++sequence);
-      if (!rawSend("broadcast", {type:"broadcast",event:"live_ink",payload:{...outgoing,userId:me.userId,clientId}}, topic, ref)) return false;
+      if (!rawSend("broadcast", {type:"broadcast",event:ink.kind==="eraser"?"live_erase":"live_ink",payload:{...outgoing,userId:me.userId,clientId}}, topic, ref)) return false;
       lastInkSent = Date.now();
       sentInkCount++;
       pendingAcks.add(ref);
@@ -488,10 +489,11 @@ export function connectBoardCursorChannel(
             return;
           }
 
-          if (message.event === "broadcast" && message.payload?.event === "live_ink") {
+          if (message.event === "broadcast" && ["live_ink","live_erase"].includes(message.payload?.event)) {
             const p = message.payload?.payload;
             if (!p || typeof p.userId !== "string" ||
-                typeof p.id !== "string" || !["pen","marker"].includes(p.kind) ||
+                typeof p.id !== "string" || !(message.payload.event==="live_erase"?["eraser"]:["pen","marker"]).includes(p.kind) ||
+                (p.kind==="eraser"&&(!Number.isFinite(p.weight)||p.weight<0.5||p.weight>1000)) ||
                 !Array.isArray(p.points) || p.points.length > 500 ||
                 (p.offset !== undefined && (!Number.isSafeInteger(p.offset) || p.offset < 0 || p.offset > 1_000_000)) ||
                 p.points.some((pt: {x:number;y:number}) => !Number.isFinite(pt?.x) || !Number.isFinite(pt?.y))) return;
@@ -502,8 +504,10 @@ export function connectBoardCursorChannel(
             }
             receivedInkCount++;
             if(receivedInkCount===1 || receivedInkCount%25===0) report("подключено");
-            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,finished:p.finished === true,
-              ...(p.offset === undefined ? {} : {offset:p.offset})});
+            onInk?.({clientId:typeof p.clientId === "string" ? p.clientId : p.userId,userId:p.userId,id:p.id,kind:p.kind,color:typeof p.color === "string" ? p.color : "#222222",weight:Number.isFinite(p.weight)?p.weight:3,points:p.points,finished:p.finished === true,cancelled:p.kind==="eraser"&&p.cancelled===true,
+              ...(p.offset === undefined ? {} : {offset:p.offset}),
+              ...(p.kind==="eraser"&&p.eraserMode==="stroke"?{eraserMode:"stroke" as const}:{}),
+              ...(p.kind==="eraser"&&p.finished===true&&Array.isArray(p.cutIds)?{cutIds:p.cutIds.filter((id:unknown)=>typeof id==="string"&&id.length<=128).slice(0,500)}:{})});
             return;
           }
           if (

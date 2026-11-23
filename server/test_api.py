@@ -21,6 +21,31 @@ from document_delta import apply_delta, encoded_bytes
 from schema import apply_schema
 
 @pytest.mark.asyncio
+async def test_native_auth_and_material_cors_use_exact_origins():
+    from app import allowed_origins
+    assert "https://localhost" in allowed_origins()
+    assert "capacitor://localhost" in allowed_origins()
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        for origin in ("https://localhost", "capacitor://localhost", "https://localhost.evil.test", "capacitor://localhost.evil.test"):
+            for route, headers in (
+                ("/api/v1/auth/login", "content-type"),
+                ("/api/v1/materials", "authorization,content-type,x-file-name,x-material-title,x-material-folder"),
+            ):
+                response = await client.options(route, headers={
+                    "Origin": origin,
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": headers,
+                })
+                if origin.endswith(".evil.test"):
+                    assert response.status_code == 400
+                    assert "access-control-allow-origin" not in response.headers
+                else:
+                    assert response.status_code == 200
+                    assert response.headers["access-control-allow-origin"] == origin
+                    assert "access-control-allow-credentials" not in response.headers
+
+
+@pytest.mark.asyncio
 async def test_slow_http_logging_uses_route_pattern_not_private_request_path(caplog):
     from app import SlowRequestLogger
 
@@ -88,8 +113,9 @@ async def client():
     _feedback_attempts.clear()
     connection = await asyncpg.connect(os.environ["DATABASE_URL"])
     await apply_schema(connection)
+    await connection.execute("UPDATE service_maintenance SET starts_at=NULL,ends_at=NULL,notice=\'\',allowed_accounts=\'{}\' WHERE singleton")
     await connection.execute(
-        "TRUNCATE account_sessions,board_documents,board_members,boards,account_users CASCADE"
+        "TRUNCATE account_sessions,board_documents,board_members,boards,account_users,global_interface_layout CASCADE"
     )
     hashed = bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt(rounds=4)).decode()
     for user_id, email, role in [

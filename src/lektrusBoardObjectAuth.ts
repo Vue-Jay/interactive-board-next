@@ -67,3 +67,27 @@ export function blockedBoardItemRemovals(
  return before.filter(item=>!retained.has(item.id)&&
   !canRemoveBoardItem(item,actorId,true,isBoardOwner));
 }
+
+/** Moving a shared photo is allowed; changing which part of it is displayed
+ * is a content edit reserved for its author and teaching roles. */
+export function canCropBoardImage(
+ item:Item|null|undefined,actorId:string,isStudent:boolean,isBoardOwner=false
+):boolean{
+ return !!item&&item.kind==="image"&&!item.locked&&
+  (isBoardOwner||!isStudent||!!actorId&&item.createdBy===actorId);
+}
+
+export function blockedBoardImageCrops(
+ before:readonly Item[],after:readonly Item[],actorId:string,
+ isStudent:boolean,isBoardOwner=false
+):Item[]{
+ if(!isStudent||isBoardOwner)return [];
+ const originals=new Map(before.filter(item=>item.kind==="image").map(item=>[item.id,item]));
+ return after.filter(item=>{
+  const original=originals.get(item.id);
+  if(!original||canCropBoardImage(original,actorId,true))return false;
+  const a=original.imageCrop,b=item.imageCrop;
+  return (!!a!==!!b)||!!a&&!!b&&
+   (["x","y","width","height"] as const).some(key=>a[key]!==b[key]);
+ });
+}

@@ -722,8 +722,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  onChange,onSelect,onPour,onDropReagent,cabinetSessionKey}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
  const [gasPorts,setGasPorts]=useState<Record<string,{x:number;y:number}>>({});
- const [stageSize,setStageSize]=useState({width:1600,height:1000});
- useEffect(()=>{
+ const [stageSize,setStageSize]=useState(()=>compactFullscreen?
+  {width:window.innerWidth||1600,height:window.innerHeight||1000}:{width:1600,height:1000});
+ useLayoutEffect(()=>{
   const node=host.current;if(!node)return;
   const update=()=>{
    // CSS container queries use untransformed layout pixels, not the

@@ -2,10 +2,14 @@
  * Primary Lektrus self-hosted API client.
  * The primary API client used by the regular Lektrus application.
  */
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
+
 const backendMode = String(import.meta.env.VITE_LEKTRUS_BACKEND || "").trim().toLowerCase();
 export const SELFHOST_BACKEND_ENABLED = backendMode === "selfhost";
 export type SelfhostRole = "teacher" | "student";
 export type SelfhostBoardRole = "owner" | "editor" | "viewer";
+export type SelfhostParticipantRole = "owner" | "co_teacher" | "student" | "observer";
+type InvitedParticipantRole = Exclude<SelfhostParticipantRole,"owner">;
 export type SelfhostUser = {
   id: string; email: string;
   guest_board_id?: string | null;
@@ -15,12 +19,12 @@ export type SelfhostUser = {
   is_admin: boolean;
   requested_at?: string | null;
   reviewed_at?: string | null;
-  subscription_plan?: "free" | "teacher" | "pro";
+  subscription_plan?: "free" | "pro";
   subscription_until?: string | null;
 };
 export type SelfhostSession = {access_token:string;refresh_token:string;expires_at:number;user:SelfhostUser};
 export type SelfhostBoard = {
-  id:string;owner_id:string;title:string;role:SelfhostBoardRole;
+  id:string;owner_id:string;title:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;plan_read_only?:boolean;
   created_at:string;updated_at:string;
 };
 export type SelfhostDocument = {
@@ -28,16 +32,19 @@ export type SelfhostDocument = {
   updated_by:string|null;updated_at:string|null;
 };
 export type SelfhostAccess = {
-  members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";added_at:string}>;
-  invites:Array<{id:string;email:string;role:"editor"|"viewer";created_at:string}>;
+  members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;added_at:string}>;
+  invites:Array<{id:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;created_at:string}>;
 };
 export type SelfhostRealtimeStatus = "online"|"reconnecting"|"offline";
 export type SelfhostPoint={x:number;y:number};
 export type SelfhostLiveInkPacket={
-  type:"live_ink";client_id:string;stroke_id:string;kind:"pen"|"marker";
+  type:"live_ink"|"live_erase";client_id:string;stroke_id:string;kind:"pen"|"marker"|"eraser";
   color:string;weight:number;offset:number;points:SelfhostPoint[];finished:boolean;
+  cancelled?:boolean;
+  cut_ids?:string[];
+  erase_mode?:"partial"|"stroke";
 };
-export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;online_at?:string};
+export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;online_at?:string};
 export type SelfhostLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
   | (SelfhostLiveInkPacket&{user_id:string;name:string;role:SelfhostBoardRole;sent_at:number})
@@ -62,13 +69,17 @@ export type SelfhostBoardChannel=(()=>void)&{
   sendEvent:(event:Record<string,unknown>)=>boolean};
 
 const SESSION_KEY="lektrus.selfhost.session.v1";
+const REMEMBERED_SESSION_KEY="lektrus.selfhost.remembered.v1";
 const TIMEOUT_MS=15000;
+const NATIVE_AUTH_TIMEOUT_MS=30000;
+const HEALTH_TIMEOUT_MS=20000;
 let refreshInFlight:Promise<SelfhostSession|null>|null=null;
 
 export class SelfhostHttpError extends Error {
   readonly status:number;
-  constructor(status:number,message:string){
-    super(message);this.name="SelfhostHttpError";this.status=status;
+  readonly code?:string;
+  constructor(status:number,message:string,code?:string){
+    super(message);this.name="SelfhostHttpError";this.status=status;this.code=code;
   }
 }
 export function selfhostOrigin():string{
@@ -98,20 +109,133 @@ function saveSession(session:SelfhostSession|null){
   if(!session||loadSession()?.user.id!==session.user.id)documentBase=null;
   if(!session)localStorage.removeItem(SESSION_KEY);
   else localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+  if(typeof window!=="undefined"&&typeof window.dispatchEvent==="function"&&typeof Event==="function")
+    window.dispatchEvent(new Event("lektrus:session-changed"));
+}
+// Quick login is opt-in via the existing "Exit" affordance. Keep the
+// credential separately so a page reload never silently signs back in.
+function loadRememberedSession():SelfhostSession|null{
+ try{
+  const raw=localStorage.getItem(REMEMBERED_SESSION_KEY);
+  if(!raw)return null;
+  const value=JSON.parse(raw) as SelfhostSession;
+  if(typeof value?.access_token!=="string"||typeof value?.refresh_token!=="string"||
+     !Number.isFinite(value.expires_at)||typeof value.user?.id!=="string"||
+     !value.user.email||value.user.guest_board_id)return null;
+  return value;
+ }catch{return null;}
+}
+function saveRememberedSession(session:SelfhostSession|null){
+ if(session)localStorage.setItem(REMEMBERED_SESSION_KEY,JSON.stringify(session));
+ else localStorage.removeItem(REMEMBERED_SESSION_KEY);
+}
+export function getRememberedSelfhostAccount(){
+ const session=loadRememberedSession();
+ if(!session)return null;
+ const meta=session.user.user_metadata||{};
+ return {id:session.user.id,email:session.user.email,
+  name:String(meta.display_name||[meta.first_name,meta.last_name].filter(Boolean).join(" ")||session.user.email.split("@")[0])};
+}
+/** Leave workspace without revoking the explicitly remembered account. */
+export function leaveSelfhostAccountRemembered(){
+ const session=loadSession();
+ if(session&&!session.user.guest_board_id&&session.user.email)saveRememberedSession(session);
+ else saveRememberedSession(null);
+ refreshInFlight=null;
+ saveSession(null);
+}
+export async function forgetRememberedSelfhostAccount(){
+ const session=loadRememberedSession();
+ saveRememberedSession(null);
+ if(!session)return;
+ // Do not log out another account; this revokes only the saved credential.
+ try{await rawRequest("/api/v1/auth/logout",{method:"POST"},session.access_token);}
+ catch{/* Removing it locally never depends on the network. */}
+}
+export async function resumeRememberedSelfhostAccount():Promise<SelfhostSession>{
+ const remembered=loadRememberedSession();
+ if(!remembered)throw new Error("Сохранённый вход больше недоступен.");
+ // Inactive until the user explicitly clicks the quick-login button.
+ saveSession(remembered);
+ try{
+  const current=await selfhostSession();
+  if(!current)throw new SelfhostHttpError(401,"Сохранённая сессия истекла. Введите пароль ещё раз.");
+  // A cached access token may have been revoked. Verify it server-side.
+  await selfhostRequest<SelfhostUser>("/api/v1/auth/me");
+  const ready=loadSession();
+  if(!ready||ready.user.id!==remembered.user.id)throw new Error("Аккаунт изменился во время входа.");
+  saveRememberedSession(null);
+  return ready;
+ }catch(error){
+  const live=loadSession();
+  if(live?.user.id===remembered.user.id){
+   if(!(error instanceof SelfhostHttpError&&error.status===401))saveRememberedSession(live);
+   saveSession(null);
+  }
+  if(error instanceof SelfhostHttpError&&error.status===401)saveRememberedSession(null);
+  throw error;
+ }
 }
 export const cachedSelfhostSession=()=>loadSession();
 export function clearSelfhostSession(){refreshInFlight=null;saveSession(null);}
+export function notifyPlanLimit(detail:{resource?:string;message?:string}){if(typeof window!=="undefined")window.dispatchEvent(new CustomEvent("lektrus:plan-limit",{detail}));}
 async function responseError(response:Response):Promise<SelfhostHttpError>{
-  let detail="";
+  let detail="",code:string|undefined;
   try{
-    const data=await response.json() as {detail?:string|Array<{msg:string}>;message?:string};
+    const data=await response.json() as {detail?:string|Array<{msg:string}>|{code?:string;resource?:string;message?:string};message?:string};
     detail=typeof data.detail==="string"?data.detail:
-      Array.isArray(data.detail)?data.detail.map(x=>x.msg).join("; "):data.message||"";
+      Array.isArray(data.detail)?data.detail.map(x=>x.msg).join("; "):data.detail?.message||data.message||"";
+    if(typeof data.detail==="object"&&!Array.isArray(data.detail)&&data.detail?.code==="plan_limit"){code=data.detail.code;notifyPlanLimit(data.detail);}
   }catch{/* Do not display unsafe arbitrary response bodies. */}
-  return new SelfhostHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status));
+  return new SelfhostHttpError(response.status,detail||("Ошибка сервера: HTTP "+response.status),code);
 }
-async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutMs=TIMEOUT_MS):Promise<Response>{
+// Android's native HTTPS transport avoids the WebView's cross-origin preflight
+// round trip and legacy Chromium networking. Do not patch global fetch: binary
+// transfers, streamed/cancellable document requests and the web app retain it.
+async function androidJsonRequest(url:string,init:RequestInit,headers:Headers,signal:AbortSignal,timeoutMs:number):Promise<Response>{
+  const nativeHeaders:Record<string,string>={};
+  headers.forEach((value,key)=>{nativeHeaders[key]=value;});
+  nativeHeaders["cache-control"]="no-store";
+  let onAbort:()=>void=()=>{};
+  try{
+    if(signal.aborted)throw new DOMException("Request aborted","AbortError");
+    const aborted=new Promise<never>((_,reject)=>{
+      onAbort=()=>reject(new DOMException("Request aborted","AbortError"));
+      signal.addEventListener("abort",onAbort,{once:true});
+    });
+    const result=await Promise.race([aborted,CapacitorHttp.request({
+      url,method:init.method||"GET",headers:nativeHeaders,
+      ...(typeof init.body==="string"?{data:init.body}:{}),
+      connectTimeout:timeoutMs,readTimeout:timeoutMs,
+      disableRedirects:true,responseType:"text",
+    })]);
+    // Capacitor parses application/json even with responseType=text. Preserve
+    // HTTP status (including 401 and 204), rather than treating them as errors
+    // in the transport itself. Never expose arbitrary native exception text.
+    const body=[204,205,304].includes(result.status)?null:
+      typeof result.data==="string"?result.data:JSON.stringify(result.data??null);
+    return new Response(body,{status:result.status});
+  }catch(error){
+    if(signal.aborted)throw error;
+    const code=String((error as {code?:unknown})?.code||"");
+    if(code==="UnknownHostException")throw new Error("Не удалось найти сервер Lektrus (DNS). Проверьте соединение с интернетом.");
+    if(code==="SSLHandshakeException"||code==="SSLPeerUnverifiedException")throw new Error("Android не смог установить защищённое соединение с сервером Lektrus (TLS). Проверьте дату, время и обновления Android.");
+    if(code==="SocketTimeoutException")throw new Error("Сервер Lektrus не ответил на запрос Android вовремя. Проверьте соединение и повторите попытку.");
+    throw new Error("Не удалось установить соединение с сервером Lektrus через Android. Проверьте интернет.");
+  }finally{signal.removeEventListener("abort",onAbort);}
+}
+// Report transport failures, not auth/permission errors. Consumers must verify
+// the public health endpoint before treating an individual error as an outage.
+function notifyServiceRequestFailure(path:string){
+  if(path==="/api/v1/health"||path==="/api/v1/mobile/android-update"||path==="/api/v1/maintenance")return;
+  if(typeof window!=="undefined"&&typeof window.dispatchEvent==="function"&&typeof Event==="function")
+    window.dispatchEvent(new Event("lektrus:service-request-failed"));
+}
+async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutMs=TIMEOUT_MS,binary=false):Promise<Response>{
   if(!path.startsWith("/api/v1/"))throw new Error("Неправильный путь API Lektrus.");
+  const nativeJson=!binary&&!init.signal&&Capacitor.getPlatform()==="android"&&Capacitor.isPluginAvailable("CapacitorHttp")&&
+    (init.body===undefined||typeof init.body==="string");
+  if(nativeJson&&path.startsWith("/api/v1/auth/")&&timeoutMs===TIMEOUT_MS)timeoutMs=NATIVE_AUTH_TIMEOUT_MS;
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),timeoutMs);
   const upstream=init.signal;
@@ -122,17 +246,30 @@ async function rawRequest(path:string,init:RequestInit={},token?:string,timeoutM
     const headers=new Headers(init.headers);
     if(token)headers.set("Authorization","Bearer "+token);
     if(init.body!==undefined&&!headers.has("Content-Type"))headers.set("Content-Type","application/json");
-    return await fetch(selfhostOrigin()+path,{
-      ...init,headers,signal:controller.signal,cache:"no-store",credentials:"omit",
-    });
+    const response=nativeJson?await androidJsonRequest(selfhostOrigin()+path,init,headers,controller.signal,timeoutMs):
+      await fetch(selfhostOrigin()+path,{
+        ...init,headers,signal:controller.signal,cache:"no-store",credentials:"omit",
+      });
+    if(response.status>=500)notifyServiceRequestFailure(path);
+    return response;
   }catch(error){
+    if(!upstream?.aborted)notifyServiceRequestFailure(path);
     if(controller.signal.aborted&&!upstream?.aborted)
-      throw new Error("Время ожидания собственного сервера истекло.");
+      throw new Error(nativeJson?"Сервер Lektrus не ответил на запрос Android вовремя. Проверьте соединение и повторите попытку.":"Время ожидания собственного сервера истекло.");
     throw error;
   }finally{
     clearTimeout(timer);
     upstream?.removeEventListener("abort",onAbort);
   }
+}
+/** Unauthenticated and uncached: no session refresh, no private data. */
+export async function selfhostServiceHealthy():Promise<boolean>{
+  try{
+    const response=await rawRequest("/api/v1/health",{},undefined,HEALTH_TIMEOUT_MS);
+    if(!response.ok)return false;
+    const data=await response.json() as {ok?:unknown;service?:unknown};
+    return data?.ok===true&&data.service==="lektrus-selfhost";
+  }catch{return false}
 }
 function normalizeSession(data:{
   access_token:string;refresh_token:string;expires_in:number;user:SelfhostUser;
@@ -148,6 +285,7 @@ export async function selfhostLogin(email:string,password:string):Promise<Selfho
   });
   if(!response.ok)throw await responseError(response);
   const session=normalizeSession(await response.json());
+  saveRememberedSession(null);
   saveSession(session);
   return session;
 }
@@ -166,22 +304,30 @@ async function refreshSession(snapshot:SelfhostSession):Promise<SelfhostSession|
   if(!current||current.user.id!==snapshot.user.id)return null;
   // Another tab may have rotated the token while this request was waiting.
   if(current.refresh_token!==snapshot.refresh_token)return current;
-  const response=await rawRequest("/api/v1/auth/refresh",{
+  let response=await rawRequest("/api/v1/auth/refresh",{
     method:"POST",body:JSON.stringify({refresh_token:snapshot.refresh_token}),
   });
-  if(!response.ok){
+  if(response.status===401){
+    // A deploy or an overlapping browser tab can briefly reject a refresh.
+    // Do not delete a persisted login after ONE rejection: first check whether
+    // another tab rotated it, then retry the same still-current token once.
+    await new Promise(resolve=>setTimeout(resolve,1000));
+    let latest=loadSession();
+    if(latest?.user.id!==snapshot.user.id)return null;
+    if(latest.refresh_token!==snapshot.refresh_token)return latest;
+    response=await rawRequest("/api/v1/auth/refresh",{
+      method:"POST",body:JSON.stringify({refresh_token:snapshot.refresh_token}),
+    });
     if(response.status===401){
-      // Older clients and browsers without Web Locks may still race a rotation.
-      // Allow the winning tab to persist its token before clearing a rejected one.
-      await new Promise(resolve=>setTimeout(resolve,1000));
-      const latest=loadSession();
+      await new Promise(resolve=>setTimeout(resolve,400));
+      latest=loadSession();
       if(latest?.user.id!==snapshot.user.id)return null;
       if(latest.refresh_token!==snapshot.refresh_token)return latest;
       saveSession(null);
       return null;
     }
-    throw await responseError(response);
   }
+  if(!response.ok)throw await responseError(response);
   const next=normalizeSession(await response.json());
   const latest=loadSession();
   if(latest?.user.id!==snapshot.user.id)return null;
@@ -245,7 +391,30 @@ export async function selfhostRequest<T>(path:string,init:RequestInit={},timeout
   if(response.status===204)return undefined as T;
   return await response.json() as T;
 }
+export type MaintenanceStatus={
+  state:"off"|"scheduled"|"active";starts_at:string|null;ends_at:string|null;
+  notice:string;access_allowed:boolean;server_time:string;
+};
+export type MaintenanceConfig=MaintenanceStatus&{allowed_accounts:string[]};
+export type MaintenanceSetting=Pick<MaintenanceConfig,"starts_at"|"ends_at"|"notice"|"allowed_accounts">&{start_now?:boolean};
+export async function selfhostMaintenanceStatus(authenticated=false):Promise<MaintenanceStatus>{
+  const session=authenticated?await selfhostSession():null;
+  const response=await rawRequest("/api/v1/maintenance",{},session?.access_token,6500);
+  if(!response.ok)throw await responseError(response);
+  const data=await response.json() as MaintenanceStatus;
+  if(!["off","scheduled","active"].includes(data?.state)||typeof data.access_allowed!=="boolean")
+    throw new Error("Не удалось проверить режим технических работ.");
+  return data;
+}
+export const selfhostMaintenanceAdmin=()=>selfhostRequest<MaintenanceConfig>("/api/v1/admin/maintenance");
+export const selfhostSaveMaintenance=(value:MaintenanceSetting)=>selfhostRequest<MaintenanceConfig>("/api/v1/admin/maintenance",{method:"PUT",body:JSON.stringify(value)});
 export const selfhostBoards=()=>selfhostRequest<SelfhostBoard[]>("/api/v1/boards");
+// Public update discovery must work before login, and must never refresh auth.
+export async function selfhostAndroidUpdate():Promise<unknown>{
+  const response=await rawRequest("/api/v1/mobile/android-update",{},undefined,6500);
+  if(!response.ok)throw await responseError(response);
+  return response.json();
+}
 export const selfhostNotifications=()=>selfhostRequest<any[]>("/api/v1/notifications");
 export const selfhostOrganization=()=>selfhostRequest<{categories:Array<{kind:"subject"|"group";name:string}>;boards:Array<{board_id:string;subject:string;group_name:string}>}>("/api/v1/organization");
 export const selfhostDirectChats=()=>selfhostRequest<any[]>("/api/v1/direct-chats");
@@ -271,7 +440,7 @@ export async function selfhostMaterialFile(id:string,file?:File,title?:string,fo
   const path="/api/v1/materials/"+encodeURIComponent(id)+(file?"":"/file");
   let session=await selfhostSession(); if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
   const init:RequestInit=file?{method:"POST",headers:{"Content-Type":file.type||"application/octet-stream","X-File-Name":encodeURIComponent(file.name),"X-Material-Title":encodeURIComponent(title||file.name),"X-Material-Folder":encodeURIComponent(folder||"")},body:file}:{};
-  let response=await rawRequest(path,init,session.access_token,120000);
+  let response=await rawRequest(path,init,session.access_token,120000,true);
   if(!response.ok)throw await responseError(response); return file?response.json():response.blob();
 }
 export const selfhostDeleteMaterial=(id:string)=>selfhostRequest<void>("/api/v1/materials/"+encodeURIComponent(id),{method:"DELETE"});
@@ -287,11 +456,11 @@ function assetEndpoint(boardId:string,assetId:string):string{
 async function selfhostAssetRequest(path:string,init:RequestInit,timeoutMs=TIMEOUT_MS):Promise<Response>{
   let session=await selfhostSession();
   if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите в Lektrus заново.");
-  let response=await rawRequest(path,init,session.access_token,timeoutMs);
+  let response=await rawRequest(path,init,session.access_token,timeoutMs,true);
   if(response.status===401){
     session=await refreshAfterUnauthorized(session);
     if(!session)throw new SelfhostHttpError(401,"Сессия завершена. Войдите снова.");
-    response=await rawRequest(path,init,session.access_token,timeoutMs);
+    response=await rawRequest(path,init,session.access_token,timeoutMs,true);
   }
   return response;
 }
@@ -517,13 +686,13 @@ export type SelfhostRemoteObjectPreview=SelfhostObjectPreview&{
 export const selfhostAccess=(boardId:string)=>selfhostRequest<SelfhostAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );
-export const selfhostInvite=(boardId:string,email:string,role:"editor"|"viewer")=>
+export const selfhostInvite=(boardId:string,email:string,role:"editor"|"viewer",participant_role?:InvitedParticipantRole)=>
   selfhostRequest<{kind:"member"|"invite"}>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/invitations",{
-      method:"POST",body:JSON.stringify({email,role}),
+      method:"POST",body:JSON.stringify({email,role,participant_role}),
     });
-export const selfhostClaimInvitations=()=>selfhostRequest<{claimed:number}>(
-  "/api/v1/invitations/claim",{method:"POST"}
+export const selfhostClaimInvitations=(timeoutMs=TIMEOUT_MS)=>selfhostRequest<{claimed:number}>(
+  "/api/v1/invitations/claim",{method:"POST"},timeoutMs
 );
 
 export async function selfhostMe():Promise<SelfhostUser>{
@@ -537,13 +706,14 @@ export const selfhostRequestTeacherAccess=(application:{
 })=>selfhostRequest<SelfhostUser>("/api/v1/account/teacher-request",{
   method:"POST",body:JSON.stringify(application),
 });
+export const selfhostEnableTeacherRole=()=>selfhostRequest<SelfhostUser>("/api/v1/account/role/teacher",{method:"POST"});
 export const selfhostSetStudentRole=()=>selfhostRequest<SelfhostUser>(
   "/api/v1/account/role/student",{method:"POST"}
 );
 export type SelfhostAdminUser={
   user_id:string;name:string;email:string;role:"teacher"|"student";
   teacher_status:"none"|"pending"|"approved"|"rejected";is_admin:boolean;
-  subscription_plan:"free"|"teacher"|"pro";subscription_until:string|null;created_at:string;
+  subscription_plan:"free"|"pro";subscription_until:string|null;created_at:string;
 };
 export type SelfhostTeacherRequest={
   user_id:string;name:string;email:string;status:"pending"|"approved"|"rejected";
@@ -573,7 +743,7 @@ export const selfhostReviewTeacherRequest=(userId:string,approve:boolean)=>selfh
     method:"POST",body:JSON.stringify({approve}),
   }
 );
-export const selfhostAdminSetSubscription=(userId:string,plan:"free"|"teacher"|"pro",until:string|null)=>
+export const selfhostAdminSetSubscription=(userId:string,plan:"free"|"pro",until:string|null)=>
   selfhostRequest<{ok:boolean}>("/api/v1/admin/users/"+encodeURIComponent(userId)+"/subscription",{
     method:"PATCH",body:JSON.stringify({plan,until}),
   });
@@ -649,6 +819,7 @@ export async function selfhostCompletePasswordReset(token:string,password:string
     method:"POST",body:JSON.stringify({token,password}),
   });
   if(!response.ok)throw await responseError(response);
+  saveRememberedSession(null);
 }
 
 export type SelfhostBoardComment={
@@ -698,7 +869,7 @@ function connectSelfhostBoard(
   const sendRaw=(frame:Record<string,unknown>):boolean=>{
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
     try{
-      const wire=compactInk&&frame.type==="live_ink"&&Array.isArray(frame.points)
+      const wire=compactInk&&(frame.type==="live_ink"||frame.type==="live_erase")&&Array.isArray(frame.points)
         ?{...frame,points:frame.points.map((point:SelfhostPoint)=>[point.x,point.y])}:frame;
       socket.send(JSON.stringify(wire));return true
     }
@@ -732,7 +903,7 @@ function connectSelfhostBoard(
     return sent;
   };
   const sendInk=(ink:SelfhostLiveInkPacket):boolean=>{
-    if(ink.type!=="live_ink"||!Array.isArray(ink.points)||
+    if((ink.type!=="live_ink"&&ink.type!=="live_erase")||!Array.isArray(ink.points)||
        !ink.points.length||ink.points.length>200)return false;
     if(ready&&sendInkNow(ink))return true;
     if(queuedInk.length>=256)return false;
@@ -833,6 +1004,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           const message=JSON.parse(String(event.data));
+          if(message?.type==="plan_limit"){notifyPlanLimit(message);closeSocket();clearTimers();onStatus("offline");return;}
           if(message?.type==="pong"){
             clearTimeout(responseDeadline);responseDeadline=undefined;
           }
@@ -876,9 +1048,10 @@ function connectSelfhostBoard(
              Number.isFinite(message.y)){
             onLive?.(message as SelfhostLiveEvent);
           }
-          if(message?.type==="live_ink"&&typeof message.stroke_id==="string"&&
+          if((message?.type==="live_ink"||message?.type==="live_erase")&&typeof message.stroke_id==="string"&&
              Array.isArray(message.points)&&message.points.length<=200&&
              typeof message.user_id==="string"){
+            if(message.type==="live_erase"&&(message.kind!=="eraser"||!Number.isFinite(message.weight)||message.weight<0.5||message.weight>1000))return;
             const points=message.points.map((point:unknown)=>Array.isArray(point)&&point.length===2
               ?{x:point[0],y:point[1]}:point);
             if(points.every((point:unknown)=>jsonObject(point)&&typeof point.x==="number"&&typeof point.y==="number"&&Number.isFinite(point.x)&&Number.isFinite(point.y)))
@@ -1130,10 +1303,10 @@ export const selfhostRenameBoard = (boardId:string,title:string) =>
   });
 export const selfhostDeleteBoard = (boardId:string) =>
   selfhostRequest<{ok:boolean}>("/api/v1/boards/"+encodeURIComponent(boardId),{method:"DELETE"});
-export const selfhostChangeMemberRole = (boardId:string,memberId:string,role:"editor"|"viewer") =>
+export const selfhostChangeMemberRole = (boardId:string,memberId:string,role:"editor"|"viewer",participant_role?:InvitedParticipantRole) =>
   selfhostRequest<{ok:boolean;role:string}>(
     "/api/v1/boards/"+encodeURIComponent(boardId)+"/members/"+encodeURIComponent(memberId),{
-      method:"PATCH",body:JSON.stringify({role}),
+      method:"PATCH",body:JSON.stringify({role,participant_role}),
     });
 export const selfhostRemoveMember = (boardId:string,memberId:string) =>
   selfhostRequest<void>(

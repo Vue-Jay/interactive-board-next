@@ -80,15 +80,57 @@ test("eraser draws a lightweight canvas preview and commits once at gesture end"
  assert.ok(app.includes("const previewEraserSegment=(from:Point,to:Point)=>"));
  assert.ok(app.includes("const recordEraserPoint=(point:Point)=>"));
  assert.ok(app.includes("const finishEraser=(point:Point|null)=>"));
- assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
- assert.ok(app.includes("commit(next);"));
+ const finish=app.slice(app.indexOf("const finishEraser="),app.indexOf("const currentDocument ="));
+ assert.match(finish,/const next=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
+ assert.equal([...finish.matchAll(/commit\(next,\{immediatePaint:true\}\)/g)].length,1);
  assert.ok(app.includes("stopEraserPreview();"));
 });
 
-test("eraser hover does not render the entire board or broadcast cursor each mouse event",()=>{
+test("eraser hover and active strokes publish world-space cursors without rerender or interfering with pan",()=>{
  const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
- assert.ok(app.includes('if(tool==="eraser"){if(!eraserSession.current)'));
- assert.ok(app.includes("setLiveEraserCursor(p.x,p.y)"));
+ const hover='if(tool==="eraser")return; // hover/erase presence is handled in capture';
+ assert.ok(app.includes(hover));
+ const handler=app.slice(app.lastIndexOf('onPointerMove={(e) => {',app.indexOf(hover)),app.indexOf(hover));
+ assert.ok(handler.includes('if(eraserSession.current||pinchState.current||consumedTouchIds.current.has(e.pointerId))return;'));
+ assert.match(handler,/activeGesture\?\.mode==="pan"[\s\S]*?move\(e\);\s*return;/);
+ const start='onPointerMoveCapture={(e) => {';
+ const capture=app.slice(app.indexOf(start)+start.length,app.indexOf('          }}\n          onPointerUpCapture=',app.indexOf(start)));
+ assert.ok(capture.length>0);
+ const sent=[],painted=[],recorded=[];
+ const ref=current=>({current});
+ const state={
+  touchPoints:ref(new Map([[1,{}]])),touchMove:()=>false,inertSurfaceDragPointer:ref(null),
+  gesture:ref(null),tool:"eraser",rightPress:ref(null),eraserSession:ref(null),
+  pinchState:ref(null),consumedTouchIds:ref(new Set()),adminHidden:false,
+  view:{x:20,y:30,zoom:2},local:(x,y)=>({x:x-100,y:y-50}),
+  world:({x,y})=>({x:(x-20)/2,y:(y-30)/2}),
+  cursorChannel:ref({sendCursor:(x,y)=>sent.push({x,y})}),
+  setLiveEraserCursor:(...a)=>painted.push(a),previewEraserSegment:()=>{},
+  recordEraserPoint:p=>recorded.push(p),
+ };
+ const run=new Function(...Object.keys(state),"e",capture);
+ const move=(overrides={})=>run(...Object.values(state),{pointerId:1,pointerType:"mouse",clientX:160,clientY:120,preventDefault(){},stopPropagation(){},...overrides});
+ move();
+ assert.deepEqual(sent,[{x:20,y:20}],"Hover reaches the other participant even above a widget");
+ assert.deepEqual(painted,[[60,70,"mouse"]]);
+ state.eraserSession.current={pointer:1,last:{x:20,y:20},zoom:2};
+ move({clientX:180});
+ assert.deepEqual(sent.at(-1),{x:30,y:20},"Cursor tracks an active erase before pointerup");
+ assert.deepEqual(recorded,[{x:30,y:20}]);
+ assert.deepEqual(painted.at(-1),[80,70,"mouse",true]);
+ move({pointerId:2});
+ assert.equal(sent.length,2,"A second pointer cannot hijack the current eraser cursor");
+ state.adminHidden=true;move({clientX:190});
+ assert.equal(sent.length,2,"Hidden administrators do not reveal their presence through the eraser");
+ state.adminHidden=false;state.eraserSession.current=null;state.gesture.current={mode:"pan"};
+ move();assert.equal(sent.length,2,"Camera navigation keeps its fast path");
+ state.gesture.current=null;move({pointerType:"touch"});
+ assert.equal(sent.length,2,"Touch without an active erase should not broadcast a hover");
+ state.pinchState.current={};move();assert.equal(sent.length,2,"Pinch does not leak cursor samples");
+ for(const [from,to] of [['onPointerDownCapture={(e) => {','onPointerMoveCapture='],['onPointerUpCapture={(e) => {','onPointerCancelCapture=']]){
+  const part=app.slice(app.indexOf(from),app.indexOf(to,app.indexOf(from)));
+  assert.match(part,/if\(!adminHidden\)cursorChannel\.current\?\.sendCursor\(p\.x,p\.y\)/,"Start and finish publish the cursor even without pointermove");
+ }
  assert.ok(!app.includes("setEraserCursor("));
  assert.ok(!app.includes("eraserCursor &&"));
  assert.ok(app.includes('el.style.visibility="visible"'));
@@ -97,8 +139,10 @@ test("eraser hover does not render the entire board or broadcast cursor each mou
 test("autosave waits until eraser stroke ends and only commits once",()=>{
  const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
  assert.ok(app.includes("if (saveBlocked || gesture.current || eraserSession.current) return;"));
- assert.match(app,/const next=eraseInkAlongPath\(before,g\.path,eraserSize\/2\/g\.zoom,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
- assert.ok(app.includes("commit(next);"));
+ const finish=app.slice(app.indexOf("const finishEraser="),app.indexOf("const currentDocument ="));
+ assert.match(finish,/const next=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
+ assert.equal([...finish.matchAll(/commit\(next,\{immediatePaint:true\}\)/g)].length,1);
+ assert.match(finish,/commit\(next,\{immediatePaint:true\}\)[\s\S]*?flushSave\(\)/);
  assert.ok(app.includes("stopEraserPreview();"));
  assert.ok(app.includes("eraserSession.current=null;"));
 });

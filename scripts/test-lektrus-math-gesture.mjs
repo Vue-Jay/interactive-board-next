@@ -15,6 +15,15 @@ function load(moduleCode,dependencies={}){
  return exports;
 }
 const names=load(transpile("src/lektrusGeometryPointNames.ts"));
+const plane=load(transpile("src/coordinatePlane.ts"));
+const coordinateItem={kind:"graph",graphPurpose:"coordinates",width:600,height:300,graphXMin:-10,graphXMax:10,graphYMin:-5,graphYMax:5};
+assert.equal(plane.isCoordinatePlane(coordinateItem),true);
+assert.equal(plane.isCoordinatePlane({...coordinateItem,graphPurpose:"function"}),false);
+assert.deepEqual(plane.coordinatePlaneViewport(coordinateItem),{width:600,height:300});
+assert.deepEqual(plane.planePointFromSvg(coordinateItem,{x:345,y:175}),{x:2,y:-1});
+assert.deepEqual(plane.planePointFromSvg({...coordinateItem,graphSnap:false},{x:345,y:175}),{x:1.5,y:-.8333});
+assert.deepEqual(plane.planePointFromSvg({...coordinateItem,graphPurpose:"number-line"},{x:345,y:175}),{x:2,y:0});
+assert.deepEqual(plane.planePointFromSvg({...coordinateItem,graphSnap:true},{x:345,y:175}),{x:2,y:-1});
 const constraints=load(transpile("src/lektrusGeometryConstraints.ts"));
 const precise=load(transpile("src/lektrusGeometryPrecision.ts"));
 const math=load(transpile("src/LektrusGraphEditor.tsx"),{
@@ -406,7 +415,7 @@ assert.match(app,/let nearest:number\|null=null,best=radius\*radius/,
  "nearest real vertex wins when large mobile touch areas overlap");
 assert.match(app,/selectionContacts\.current\.size>1/,
  "two-finger navigation cancels point selection");
-assert.match(app,/onPointMoveEnd=\{boardGeometryMode\?\.id===item\.id&&selectedIds\.has\(item\.id\)/,
+assert.match(app,/:boardGeometryMode\?\.id===item\.id&&selectedIds\.has\(item\.id\)/,
  "vertex dragging is opt-in so ordinary object dragging remains available");
 assert.match(app,/if\(onPointMoveEnd\)setLiveVertex/,
  "local drag preview does not write remote history at every pointer step");
@@ -470,8 +479,10 @@ assert.match(app,/aria-pressed=\{constructionActive\}/,
  "the on-canvas construction toggle exposes active state to assistive technologies");
 assert.match(boardGeometryCss,/\.lektrus-graph-canvas-construction\[aria-pressed="true"\]/,
  "active on-graph construction button is visibly distinguished");
-assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
- "a normal graph drag no longer adds accidental vertices");
+assert.match(app,/onAddPoint=\{isCoordinatePointGraph\(item\).*?\?\(x,y\)=>/,
+ "coordinate planes accept points without opening the editor");
+assert.match(app,/:graphPointEditId===item\.id&&item\.graphPurpose!=="geometry"/,
+ "other graphs still require explicit point edit mode");
 assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id/,
  "a normal graph drag no longer closes a free polygon accidentally");
 assert.match(app,/activeBoardGeometryMode\(item\)==="move"/,
@@ -490,8 +501,10 @@ assert.match(app,/if\(editBlankTap\.current\?\.id===event\.pointerId\)/,
  "point is added only on release of its original finger");
 assert.match(app,/if\(editBlankTap\.current\)editBlankTap\.current\.cancelled=true/,
  "pinch cancels provisional vertex placement");
-assert.match(app,/onDoubleClick=\{onRemovePoint&&purpose==="geometry"/,
- "double-click on a vertex removes it only in point editing mode");
+assert.match(app,/onDoubleClick=\{onRemovePoint&&\(purpose==="geometry"\|\|isCoordinatePointGraph\(item\)\)/,
+ "double-click removes a vertex or coordinate point");
+assert.match(app,/onRemovePoint=\{isCoordinatePointGraph\(item\)&&tool==="select"/,
+ "coordinate point deletion is available directly on the board");
 assert.match(css,/\.board-object\.object-graph \.lektrus-connect-drawing-surface/,
  "the board has a dedicated touch-safe blank drawing surface");
 assert.match(app,/ignoreNativeDoubleClickUntil/,

@@ -160,7 +160,7 @@ assert.ok(app.includes('dragItem&&!dragItem.hidden&&canTransformBoardObject(drag
  "Locked and student-protected objects must never be moved");
 assert.ok(app.includes('tool==="hand"&&e.button===0'),
  "Atlas header pans with hand, but moves its object with selection tool");
-assert.ok(app.includes('data-board-gesture-owner={onPickPoint||onAddPoint?"true":undefined}'),
+assert.ok(app.includes('data-board-gesture-owner={onPickPoint||onAddPoint&&!isCoordinatePointGraph(item)?"true":undefined}'),
  "Freehand/geometry point editing must retain nested gesture ownership");
 assert.match(app,/data-board-interactive="true"\s+stroke="transparent"/,
  "Moving a physics ray must not turn into moving the whole graph object");

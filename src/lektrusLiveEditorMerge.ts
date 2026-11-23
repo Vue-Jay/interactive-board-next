@@ -16,7 +16,7 @@ const isIdCollection=(values:unknown[],key:string)=>(
  ["contourMarks","contourStrokes","bodies","supports","forces","components","junctions","wires","elements","rays",
   // Chemical glassware and appliances are addressed by persistent IDs.
   // Index-based array appends can duplicate a beaker on an evaporation tick.
-  "vessels","placedDevices","graphPoints","points"].includes(key)&&
+  "vessels","placedDevices","graphPoints","points","stickerInk"].includes(key)&&
  values.every(x=>record(x)&&typeof x.id==="string")
 );
 function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):unknown[]{
@@ -27,7 +27,9 @@ function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):u
    const id=(value as {id:string}).id;
    const original=before.get(id);
    if(original===undefined){result.set(id,value);continue;}
-   if(!same(original,value))result.set(id,mergeEditedValue(original,value,result.get(id)??original,key));
+   // Deleted nested items (including sticker ink) must not be resurrected
+   // by a concurrent edit that still references their old IDs.
+   if(result.has(id)&&!same(original,value))result.set(id,mergeEditedValue(original,value,result.get(id),key));
   }
   for(const [id] of before)if(!edit.some(v=>(v as {id:string}).id===id))result.delete(id);
   return [...result.values()];
@@ -53,6 +55,10 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  if(same(base,edit))return latest;
  if(same(edit,latest))return latest;
  if(same(base,latest))return edit;
+ // Old stickers have no ink field. Concurrent first strokes must merge just
+ // as two additions to an existing sticker, instead of replacing each other.
+ if(key==="stickerInk"&&base==null&&Array.isArray(edit)&&Array.isArray(latest))
+  return mergeArray([],edit,latest,key) as T;
  if(Array.isArray(base)&&Array.isArray(edit)&&Array.isArray(latest))
   return mergeArray(base,edit,latest,key) as T;
  if(record(base)&&record(edit)&&record(latest)){

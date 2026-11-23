@@ -1,7 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Item,ShapeType,ConnectorStyle,ArrowHeadStyle } from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 import {boardObjectTypeName} from "./boardObjectNames";
+import type {EraserMode} from "./inkEraser";
+
+export function EraserModePicker({value,onChange}:{value:EraserMode;onChange:(mode:EraserMode)=>void}){
+ return <div className="lektrus-eraser-modes" role="group" aria-label="Режим ластика">
+  <button type="button" data-eraser-mode="partial" aria-pressed={value==="partial"}
+    aria-label="Стирать участок линии" title="Стереть только участок под ластиком"
+    onClick={()=>onChange("partial")}>
+   <svg viewBox="0 0 48 32" width="44" height="30" fill="none" aria-hidden="true">
+    <path d="M3 25H16 M32 25H45" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
+    <path d="m18 15 10-11 11 10-10 11-11-10Z" fill="currentColor" fillOpacity=".12" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+    <path d="m23 20 11-11" stroke="currentColor" strokeWidth="1.5"/>
+   </svg>
+   <span className="lektrus-eraser-mode-label" aria-hidden="true">Часть</span>
+   <span className="lektrus-eraser-mode-check" aria-hidden="true">✓</span>
+  </button>
+  <button type="button" data-eraser-mode="stroke" aria-pressed={value==="stroke"}
+    aria-label="Стирать весь штрих одним касанием" title="Удалить линию целиком одним касанием"
+    onClick={()=>onChange("stroke")}>
+   <svg viewBox="0 0 48 32" width="44" height="30" fill="none" aria-hidden="true">
+    <path d="M3 22H27" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round"/>
+    <path d="M31 12H45 M36 9h4 M33 15l1 12h8l1-12 M37 18v6 M40 18v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+   </svg>
+   <span className="lektrus-eraser-mode-label" aria-hidden="true">Штрих</span>
+   <span className="lektrus-eraser-mode-check" aria-hidden="true">✓</span>
+  </button>
+ </div>;
+}
 
 /** Five genuinely distinct BOARD-pixel widths. */
 export const INK_WIDTHS={
@@ -30,7 +57,7 @@ const inkWidthIndex=(tool:"pen"|"marker"|"eraser",width:number)=>{
  return values.reduce((best,v,i)=>Math.abs(v-width)<Math.abs(values[best]-width)?i:best,0);
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
-const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"]);
+const advancedKinds = new Set<Item["kind"]>(["text","frame","comment","graph","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"]);
 
 
 type QuickProps = {
@@ -41,7 +68,10 @@ type QuickProps = {
   weight: number;
   markerWeight: number;
   eraserSize: number;
+  eraserMode:EraserMode;
+  onEraserMode:(mode:EraserMode)=>void;
   canModify: boolean;
+  canEditContent?: boolean;
   inspectorOpen: boolean;
   onInspectorOpen: () => void;
   onDeselect: () => void;
@@ -62,6 +92,53 @@ export function LectrisQuickProperties(props: QuickProps) {
   useEffect(()=>setExpanded(false),[tool,item?.id]);
   const drawing=tool==="pen"||tool==="marker";
   const erasing=tool==="eraser";
+  const dockRef=useRef<HTMLElement>(null);
+  useLayoutEffect(()=>{
+    const dock=dockRef.current;
+    const workspace=dock?.closest(".workspace");
+    if(!dock||!workspace||(!drawing&&!erasing))return;
+    const win=dock.ownerDocument.defaultView;
+    if(!win)return;
+    const landscape=win.matchMedia("(max-width:1100px) and (orientation:landscape)");
+    const bounds=(selector:string)=>{
+      const rect=workspace.querySelector(selector)?.getBoundingClientRect();
+      return rect&&rect.width>0&&rect.height>0?rect:null;
+    };
+    const measure=()=>{
+      if(!landscape.matches)return;
+      const rail=bounds("nav.mobile-board-tools")||bounds(".toolbar.compact-toolbar");
+      const zoom=bounds(".board-controls");
+      const map=bounds(".minimap");
+      const left=(rail?.right??0)+8;
+      const header=dock.ownerDocument.querySelector(".topbar");
+      const safeRight=header?Math.max(8,parseFloat(win.getComputedStyle(header).paddingRight)-10||8):8;
+      const right=map?win.innerWidth-map.left+8:safeRight;
+      const zoomRight=Math.max(left,(zoom?.right??0)+8);
+      // Prefer the lowest row between zoom and the map. Where that lane is
+      // genuinely too narrow, move just above zoom rather than cover it.
+      const fits=win.innerWidth-zoomRight-right>=dock.offsetWidth;
+      dock.style.setProperty("--lektrus-ink-left",`${fits?zoomRight:left}px`);
+      dock.style.setProperty("--lektrus-ink-right",`${right}px`);
+      dock.dataset.inkUpperRow=String(!fits);
+    };
+    const observer=typeof ResizeObserver!=="undefined"?new ResizeObserver(measure):null;
+    const observe=()=>{
+      observer?.disconnect();
+      observer?.observe(workspace);
+      workspace.querySelectorAll(".board-controls,.minimap,nav.mobile-board-tools,.toolbar.compact-toolbar").forEach(el=>observer?.observe(el));
+      measure();
+    };
+    const mutations=new MutationObserver(records=>{
+      if(records.some(record=>[...record.addedNodes,...record.removedNodes].some(node=>node instanceof Element&&node.matches(".minimap,.board-controls,nav.mobile-board-tools,.toolbar.compact-toolbar"))))observe();
+    });
+    mutations.observe(workspace,{childList:true});
+    observe();
+    win.addEventListener("resize",measure);
+    return ()=>{
+      observer?.disconnect();mutations.disconnect();win.removeEventListener("resize",measure);
+      dock.style.removeProperty("--lektrus-ink-left");dock.style.removeProperty("--lektrus-ink-right");delete dock.dataset.inkUpperRow;
+    };
+  },[drawing,erasing]);
   if(!selectionCount&&!drawing&&!erasing)return null;
   const inkTool=erasing?"eraser":tool==="marker"?"marker":"pen";
   const inkSizes=INK_WIDTHS[inkTool];
@@ -71,7 +148,7 @@ export function LectrisQuickProperties(props: QuickProps) {
     else if(tool==="marker")props.onMarkerWeight(n);
     else props.onWeight(n);
   };
-  return <section className={`lectris-quick-properties ${drawing||erasing?"is-ink-properties":""} ${expanded?"is-expanded":""}`}
+  return <section ref={dockRef} className={`lectris-quick-properties ${drawing||erasing?"is-ink-properties":""} ${expanded?"is-expanded":""}`}
     aria-label={drawing||erasing?"Параметры инструмента":"Быстрые настройки"}
     onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
     onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
@@ -87,13 +164,14 @@ export function LectrisQuickProperties(props: QuickProps) {
             value={item.color||"#365fd0"} onChange={value=>props.onPatch({color:value})}/>}
         {item&&<span className="lectris-quick-metric">{Math.round(item.width)} × {Math.round(item.height)}</span>}
         {item&&item.kind!=="pen"&&item.kind!=="marker"&&<button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
-        {item&&canModify&&advancedKinds.has(item.kind)&&<button type="button" onClick={props.onEdit}>Редактировать</button>}
+        {item&&canModify&&props.canEditContent!==false&&advancedKinds.has(item.kind)&&<button type="button" onClick={props.onEdit}>Редактировать</button>}
         {canModify&&<button type="button" onClick={props.onDuplicate}>Копия</button>}
         {canModify&&<button type="button" className="lectris-danger" onClick={props.onDelete}>Удалить</button>}
         <button type="button" onClick={props.onDeselect} aria-label="Снять выделение">×</button>
       </>:<>
         {drawing&&<LektrusColorPicker compact userId={props.userId} label="Цвет"
           value={color} onChange={props.onColor}/>}
+        {erasing&&<EraserModePicker value={props.eraserMode} onChange={props.onEraserMode}/>}
         <div className="lektrus-ink-five-widths" role="group"
           aria-label={"Толщина: "+(erasing?"ластик":tool==="marker"?"маркер":"карандаш")}>
           {inkSizes.map((size,i)=><button key={size} type="button"
@@ -112,6 +190,7 @@ type InspectorProps = {
   item: Item;
   pdfPageCount?: number|null;
   canModify: boolean;
+  canEditContent?: boolean;
   userId: string;
   canToggleLock: boolean;
   onClose: () => void;
@@ -138,13 +217,13 @@ function NumberField({label,value,minimum=-100000,maximum=100000,disabled,onComm
   </label>;
 }
 
-export function LectrisObjectInspector({item,pdfPageCount,canModify,userId,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
-  const editable=advancedKinds.has(item.kind);
+export function LectrisObjectInspector({item,pdfPageCount,canModify,canEditContent,userId,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
+  const editable=canEditContent!==false&&advancedKinds.has(item.kind);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const [locationOpen,setLocationOpen]=useState(false);
   const [textDraft,setTextDraft]=useState(item.text);
   useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
-  const textEditable=["text","sticky","frame","comment"].includes(item.kind);
+  const textEditable=["text","frame","comment"].includes(item.kind);
   const saveText=()=>{if(!canModify||textDraft===item.text)return;onPatch({text:item.kind==="frame"?textDraft.replace(/\s*\n+\s*/g," ").trim().slice(0,120):textDraft});};
   const currentColor = /^#[0-9a-fA-F]{6}$/.test(item.color||"") ? (item.color ?? "#365fd0") : "#365fd0";
   const rotation=item.rotation??0;

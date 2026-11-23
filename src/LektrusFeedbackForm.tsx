@@ -27,7 +27,7 @@ export default function LektrusFeedbackForm({compact=false,source}:Props){
    <label className="wide"><span>Тема</span><select value={topic} onChange={event=>setTopic(event.target.value as (typeof topics)[number])}>{topics.map(value=><option key={value}>{value}</option>)}</select></label>
    <label className="wide"><span>Сообщение</span><textarea required value={message} onChange={event=>setMessage(event.target.value)} minLength={8} maxLength={4000} rows={compact?4:5} placeholder="Что понравилось, что стоит изменить или добавить?"/></label>
   </div>
-  <div className="lektrus-feedback-submit-row"><button type="submit" disabled={sending||message.trim().length<8}>{sending?"Отправляем…":"Отправить сообщение"} <span aria-hidden="true">↗</span></button><small>Email нужен только если хотите получить ответ.</small></div>
+  <div className="lektrus-feedback-submit-row"><button type="submit" disabled={sending||message.trim().length<8}>{sending?"Отправляем…":"Отправить сообщение"} <span aria-hidden="true">↗</span></button><small>Email нужен, только если хотите получить ответ.</small></div>
   {notice&&<p className="lektrus-feedback-notice" role="status">{notice}</p>}{error&&<p className="lektrus-feedback-error" role="alert">{error}</p>}
   {source==="app"&&import.meta.env.VITE_TELEGRAM_URL&&<a className="lektrus-feedback-telegram" href={import.meta.env.VITE_TELEGRAM_URL} target="_blank" rel="noopener noreferrer">Написать в Telegram <span aria-hidden="true">↗</span></a>}
  </form>;

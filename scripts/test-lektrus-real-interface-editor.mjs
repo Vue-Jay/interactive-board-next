@@ -18,7 +18,7 @@ assert.match(app,/const \[initial\] = useState\(\(\) => layoutEditing\?[\s\S]*?l
  "interface editor starts from an empty board without loading user content");
 assert.match(app,/layoutEditing&&isAppAdmin&&new URLSearchParams/,"preview must not recursively mount another editor");
 assert.match(app,/get\("layout-preview"\)!=="1"/);
-assert.match(app,/if \(!canEdit \|\| layoutEditing\) return;/,"no content write from interface editor");
+assert.match(app,/if \(!canEdit \|\| layoutEditing \|\| demoMode\) return;/,"neither the interface editor nor the public demo may save content");
 assert.doesNotMatch(editor,/li-stage-board|li-board-example|li-studio-inspector|<svg/i,
  "never create a fake board or icon set");
 assert.match(editor,/getInterfaceElements/,"discover UI controls directly from the real DOM");
@@ -46,4 +46,15 @@ assert.match(targets,/querySelectorAll<HTMLElement>/,"enumerate real UI elements
 assert.match(css,/lektrus-layout-alignment-grid/);
 assert.match(css,/\.lektrus-live-layout-marquee/);
 assert.match(css,/\.lektrus-layout-device-frame/);
-console.log("Lektrus layout editor: full-screen real board, undo/redo, marquee selection, group moves, desktop preview of four device resolutions.");
+assert.match(layout,/isSelfhostBackendEnabled\(\)/);
+assert.match(layout,/selfhostRequest\("\/api\/v1\/admin\/interface-layout"/);
+assert.match(layout,/tabletPortrait.*phonePortrait/);
+assert.match(appShell,/isRemoteBackendEnabled\(\)\|\|isSelfhostBackendEnabled\(\)/);
+assert.match(editor,/phonePortrait:\{width:390,height:844/);
+assert.match(editor,/Math\.min\(1,/);
+assert.match(editor,/device=\\"?\+device|device="\+device/);
+assert.match(editor,/loadGlobalInterfaceLayout\(\)/);
+assert.match(css,/data-interface-control="marker"/);
+assert.match(app,/data-interface-control=\{id\}/);
+assert.match(read("src/lektrusInterfacePreview.ts"),/window\.matchMedia=query=>match\(rewritePreviewMediaQuery/);
+console.log("Lektrus layout editor: six independent profiles, exact iframe viewport, touch emulation, shared server configuration, real controls.");

@@ -26,7 +26,7 @@ const rotated=placeImageCrop({...full,rotation:90},firstCrop);
 assert.ok(Math.abs(rotated.x-200)<1e-8&&Math.abs(rotated.y-250)<1e-8);
 const image={id:"image-1",kind:"image",x:first.x,y:first.y,
  width:first.width,height:first.height,text:"",
- assetId:"original-image",name:"test.png",mime:"image/png",imageCrop:firstCrop};
+ assetId:"original-image",name:"test.png",mime:"image/png",imageCrop:firstCrop,imageSourceAspect:2};
 const document={version:1,title:"Тест обрезки",
  view:{x:0,y:0,zoom:1},items:[image]};
 const saved=model.parseDocument(JSON.stringify(document));
@@ -34,6 +34,9 @@ assert.deepEqual(saved.items[0].imageCrop,firstCrop,
  "Crop geometry must survive save/load and Realtime serialization");
 assert.equal(saved.items[0].assetId,"original-image",
  "The original asset ID must survive non-destructive cropping");
+assert.equal(saved.items[0].imageSourceAspect,2,"The original aspect survives save/load independently of preview compression");
+const narrowCrop=placeImageCrop(full,{x:0,y:0,width:.005,height:.5});
+assert.equal(narrowCrop.width/narrowCrop.height,.02,"A narrow crop must not acquire artificial side padding");
 assert.equal(model.validImageCrop({x:.25,y:.25,width:.5,height:.5}),true);
 for(const invalid of [
  {x:-.1,y:0,width:.5,height:1},
@@ -64,6 +67,6 @@ for(const [tool,sizes] of [["pen",[1,3,6,12,22]],["marker",[2,7,14,28,48]],["era
  assert.ok(sizes.every((n,i)=>i===0||n>sizes[i-1]*1.65),
   "Visually distinct presets for "+tool);
 }
-assert.ok(app.includes("<InkWidthSample tool={tool} size={size}"),
- "Bottom toolbar must show a real-size proportional stroke and numeric label");
+assert.ok(widthsSource.includes("<InkWidthSample tool={inkTool} size={size}"),
+ "The single bottom toolbar must show proportionate thickness previews");
 console.log("Lektrus brush presets + editable non-destructive image crops: OK");

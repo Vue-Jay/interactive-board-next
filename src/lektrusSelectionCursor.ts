@@ -18,7 +18,8 @@ const cursor=(body:string,hotspotX:number,hotspotY:number,fallback:string="defau
   return `url("data:image/svg+xml,${encodeURIComponent(svg(body))}") ${x} ${y}, ${fallback}`;
 };
 
-const arrowShape="M3.8 3.2v21.3l6.1-6 5 9.1 4.3-2.3-5-8.8 8.6-.3Z";
+export const BOARD_SELECTION_ARROW_PATH="M3.8 3.2v21.3l6.1-6 5 9.1 4.3-2.3-5-8.8 8.6-.3Z";
+const arrowShape=BOARD_SELECTION_ARROW_PATH;
 const arrow=(hover:boolean)=>cursor(
   // White fill is constant. Only hover adds a narrow BLUE outer glow;
   // neither state has a second white outline or grows beyond 22px.

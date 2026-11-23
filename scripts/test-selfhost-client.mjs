@@ -21,7 +21,7 @@ assert.match(registrationStyles,/@media \(min-width: 760px\)/);
 assert.match(registrationStyles,/\.auth-shell-register \.auth-form > \.auth-field/);
 assert.match(registrationStyles,/\.auth-shell-register \.auth-form > \.auth-submit/);
 
-async function loadSelfhost(enabled) {
+async function loadSelfhost(enabled, platform="web") {
   let source=readFileSync(new URL("../src/selfhostApi.ts",import.meta.url),"utf8");
   source=source
     .replaceAll("import.meta.env.VITE_LEKTRUS_BACKEND",JSON.stringify(enabled?"selfhost":""))
@@ -32,8 +32,8 @@ async function loadSelfhost(enabled) {
   }).outputText;
   const data=new Map([["lesson-board.supabase.session.v1","production-must-remain"]]);
   const record=[];
-  let expires=900,refreshes=0,documentVersion=3,documentFailures=0;
-  let refreshStatus=200,rotations=0,activeRefresh="refresh-first",rejectOldAccess=false;
+  let expires=900,refreshes=0,documentVersion=3,documentFailures=0,healthStatus=200,healthBody={ok:true,service:'lektrus-selfhost'};
+  let refreshStatus=200,rotations=0,activeRefresh="refresh-first",rejectOldAccess=false,transientRefresh401=false;
   let lockTail=Promise.resolve();
   const locks={request(_name,callback){
     const result=lockTail.then(callback);lockTail=result.catch(()=>{});return result;
@@ -66,12 +66,17 @@ async function loadSelfhost(enabled) {
       body:typeof options.body==="string"?JSON.parse(options.body):
         options.body instanceof Blob?{size:options.body.size,type:options.body.type}:null});
     const ok=(value,status=200)=>Response.json(value,{status});
+    if(u.pathname==="/api/v1/health"){
+      assert.equal(headers.get("Authorization"),null);
+      return ok(healthBody,healthStatus);
+    }
     if(u.pathname==="/api/v1/auth/login"){
       assert.equal(headers.get("Authorization"),null);
       return ok({access_token:"token-first",refresh_token:"refresh-first",expires_in:expires,user});
     }
     if(u.pathname==="/api/v1/auth/refresh"){
       refreshes++;
+      if(transientRefresh401){transientRefresh401=false;return ok({detail:"Update in progress"},401);}
       if(refreshStatus!==200)return ok({detail:"Session service unavailable"},refreshStatus);
       if(JSON.parse(options.body).refresh_token!==activeRefresh)return ok({detail:"Already rotated"},401);
       const suffix=++rotations===1?"":"-"+rotations;
@@ -86,6 +91,10 @@ async function loadSelfhost(enabled) {
       const body=JSON.parse(options.body);
       assert.deepEqual(body,{email:"recipient@example.test",kinds:["password_reset","reply"]});
       return ok({email:body.email,results:[{kind:"password_reset",status:"sent"},{kind:"reply",status:"failed"}]});
+    }
+    if(u.pathname==="/api/v1/auth/me"){
+      if(!headers.get("Authorization")?.startsWith("Bearer "))return ok({detail:"Unauthorized"},401);
+      return ok(user);
     }
     if(u.pathname==="/api/v1/auth/logout")return new Response(null,{status:200});
     if(u.pathname==="/api/v1/boards"&&options.method==="POST"){
@@ -242,6 +251,22 @@ async function loadSelfhost(enabled) {
     if(u.pathname==="/api/v1/auth/verify-email")return ok({access_token:"token-verified",refresh_token:"refresh-verified",expires_in:900,user});
     throw new Error("Unexpected pilot request "+u.pathname);
   };
+  const nativeRequests=[];
+  let nativeFailure=null,claimFailure=false,loginFailure=false;
+  const bridge={Capacitor:{getPlatform:()=>platform,isPluginAvailable:name=>name==="CapacitorHttp"},CapacitorHttp:{
+    async request(options){
+      nativeRequests.push(options);
+      assert.equal(options.disableRedirects,true);
+      assert.equal(options.headers["cache-control"],"no-store");
+      if(nativeFailure)throw {code:nativeFailure};
+      const pathname=new URL(options.url).pathname;
+      if(pathname==="/api/v1/auth/login"&&loginFailure)return loginFailure===429?{status:429,data:{detail:"Слишком много попыток. Попробуйте позже."}}:{status:401,data:{detail:"Неверный email или пароль."}};
+      if(pathname==="/api/v1/invitations/claim"&&claimFailure)return {status:503,data:{detail:"Unavailable"}};
+      const response=await fetch(options.url,{method:options.method,headers:options.headers,body:options.data,credentials:"omit"});
+      const raw=await response.text();
+      return {status:response.status,data:raw?JSON.parse(raw):""};
+    },
+  }};
   const sockets=[];
   class Socket {
     static OPEN=1;
@@ -255,7 +280,7 @@ async function loadSelfhost(enabled) {
   }
   const listeners=new Map();
   const makeContext=(withLocks=true)=>vm.createContext({
-    exports:{},fetch,URL,Headers,Response,AbortController,FormData,TextEncoder,queueMicrotask,
+    exports:{},require:name=>{assert.equal(name,"@capacitor/core");return bridge;},fetch,URL,Headers,Response,AbortController,DOMException,FormData,TextEncoder,queueMicrotask,
     navigator:{onLine:true,locks:withLocks?locks:undefined},WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
@@ -268,9 +293,9 @@ async function loadSelfhost(enabled) {
   const broadcastSource=readFileSync(new URL("../src/boardBroadcast.ts",import.meta.url),"utf8");
   const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
-  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
+  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
-    setRefreshStatus:v=>{refreshStatus=v},rejectOldAccess:()=>{rejectOldAccess=true},
+    setRefreshStatus:v=>{refreshStatus=v},setTransientRefresh401:()=>{transientRefresh401=true},rejectOldAccess:()=>{rejectOldAccess=true},
     remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
 }
 
@@ -289,6 +314,47 @@ assert.equal(api.cachedSelfhostSession().user.id,session.user.id);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.equal(records[0].body.email,"teacher@example.test");
 assert.equal((await api.selfhostBoards()).length,1);
+assert.equal(env.nativeRequests.length,0,"The regular browser must keep its own Fetch transport");
+
+// Simulate the actual Android HTTP bridge, checking the transport boundary,
+// HTTP statuses, signed-in requests, cancellation, and no accidental retries.
+const android=await loadSelfhost(true,"android");
+android.setLoginFailure(true);
+await assert.rejects(android.api.selfhostLogin("fake@example.test","invalid"),e=>e.status===401&&e.message==="Неверный email или пароль.");
+assert.equal(android.api.cachedSelfhostSession(),null);
+assert.equal(android.nativeRequests.length,1);
+assert.equal(android.nativeRequests[0].connectTimeout,30000);
+assert.equal(JSON.parse(android.nativeRequests[0].data).email,"fake@example.test");
+android.setLoginFailure(429);
+await assert.rejects(android.api.selfhostLogin("fake@example.test","invalid"),e=>e.status===429&&e.message==="Слишком много попыток. Попробуйте позже.");
+assert.equal(android.nativeRequests.length,2,"Rate-limited login must not be automatically replayed");
+assert.equal(android.api.cachedSelfhostSession(),null);
+android.setLoginFailure(false);
+const authSource=readFileSync(new URL("../src/authStore.ts",import.meta.url),"utf8");
+const authContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?android.api:{},localStorage:android.sessionStorage});
+vm.runInContext(ts.transpileModule(authSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,authContext);
+android.setClaimFailure(true);
+const androidUser=await authContext.exports.loginUser({email:"teacher@example.test",password:"test-password"});
+assert.equal(androidUser.id,android.api.cachedSelfhostSession().user.id,"Claim failure must not fail a completed login");
+assert.equal(android.nativeRequests.at(-1).connectTimeout,5000);
+android.setClaimFailure(false);
+await authContext.exports.retrySelfhostInvitations(androidUser.id);
+assert.equal(android.nativeRequests.at(-1).headers.authorization,"Bearer token-first");
+assert.equal((await android.api.selfhostBoards()).length,1);
+const nativeCount=android.nativeRequests.length;
+await android.api.selfhostAssetExists("00000000-0000-4000-8000-000000000004","missing");
+assert.equal(android.nativeRequests.length,nativeCount,"Binary asset requests must not use the JSON bridge");
+android.setNativeFailure("UnknownHostException");
+const attempts=android.nativeRequests.length;
+const webFallbacks=android.records.length;
+await assert.rejects(android.api.selfhostLogin("fake@example.test","invalid"),/DNS/);
+assert.equal(android.nativeRequests.length,attempts+1,"Do not replay authentication on network failure");
+assert.equal(android.records.length,webFallbacks,"Do not fall back to Fetch after native POST may have arrived");
+android.setNativeFailure("SSLHandshakeException");
+await assert.rejects(android.api.selfhostBoards(),/TLS/);
+android.setNativeFailure("SocketTimeoutException");
+await assert.rejects(android.api.selfhostBoards(),/вовремя/);
+console.log("Android JSON transport: 401, session, invitation recovery, bearer, binary isolation, DNS/TLS/timeout and no replay OK.");
 assert.equal((await api.selfhostCreateBoard("Тест",true)).id,"board-1");
 assert.equal((await api.selfhostReadDocument("board-1")).version,3);
 const nativeBoard=await api.selfhostCreateBoard("Нативная доска",false);
@@ -521,8 +587,8 @@ openedBoard();
 await Promise.resolve();
 
 // Production board adapter receives cumulative pointer windows, not pilot packets.
-const adapterInk=[],adapterStatuses=[];
-const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",name:"Me",role:"owner"},()=>{},true,ink=>adapterInk.push(ink),status=>adapterStatuses.push(status));
+const adapterInk=[],adapterStatuses=[],adapterCursors=[];
+const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",name:"Me",role:"owner"},cursor=>adapterCursors.push(cursor),true,ink=>adapterInk.push(ink),status=>adapterStatuses.push(status));
 await new Promise(resolve=>setTimeout(resolve,0));
 const inkSocket=sockets.at(-1);
 inkSocket.open();
@@ -546,6 +612,28 @@ assert.ok(adapterStatuses.at(-1).includes("сервер 1"));
 inkSocket.emit({...final,client_id:"other_tab",user_id:"me",name:"Me",role:"owner",sent_at:Date.now()});
 assert.equal(adapterInk.length,1,"A second browser tab must receive the stroke even for the same account");
 assert.deepEqual(JSON.parse(JSON.stringify(adapterInk[0].points)),points.slice(200));
+const erase={id:"eraser_1",kind:"eraser",color:"#000000",weight:92,offset:0,points:[{x:10,y:10},{x:20,y:20}],finished:false,eraserMode:"stroke"};
+channel.sendInk(erase);
+for(let i=0;i<100;i++)channel.sendCursor(i,i+1);
+await waitFor(()=>inkSocket.sent.some(x=>x.type==="live_erase"&&!x.finished));
+await waitFor(()=>inkSocket.sent.some(x=>x.type==="cursor"&&x.x===99&&x.y===100));
+const cursorFrames=inkSocket.sent.filter(x=>x.type==="cursor");
+assert.equal(cursorFrames.length,1,"Rapid eraser moves use the existing coalesced cursor relay");
+inkSocket.emit({...cursorFrames[0],client_id:"other_tab",user_id:"user_2",name:"Student",role:"editor",sent_at:Date.now()});
+assert.deepEqual([adapterCursors.at(-1)?.x,adapterCursors.at(-1)?.y],[99,100],"The observer receives the collaborator cursor during erasing");
+const erasePreview=inkSocket.sent.find(x=>x.type==="live_erase");
+assert.equal(erasePreview.erase_mode,"stroke");
+inkSocket.emit({...erasePreview,client_id:"other_tab",user_id:"me",name:"Me",role:"owner"});
+assert.equal(adapterInk.at(-1).kind,"eraser");
+assert.equal(adapterInk.at(-1).eraserMode,"stroke");
+assert.equal(adapterInk.at(-1).finished,false,"The other tab receives the eraser before release");
+channel.sendInk({...erase,finished:true,cutIds:["stroke_fast"]});
+await waitFor(()=>inkSocket.sent.some(x=>x.type==="live_erase"&&x.finished));
+const eraseFinal=inkSocket.sent.find(x=>x.type==="live_erase"&&x.finished);
+assert.deepEqual(eraseFinal.cut_ids,["stroke_fast"]);
+assert.equal(eraseFinal.erase_mode,"stroke");
+inkSocket.emit({...eraseFinal,client_id:"other_tab",user_id:"me",name:"Me",role:"owner"});
+assert.deepEqual(JSON.parse(JSON.stringify(adapterInk.at(-1).cutIds)),["stroke_fast"]);
 channel.close();
 await Promise.resolve();
 
@@ -567,6 +655,36 @@ await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
+// A deliberate exit retains one server-authenticated, one-click last account.
+const quick=await loadSelfhost(true);
+const quickSession=await quick.api.selfhostLogin("teacher@example.test","test-password");
+quick.api.leaveSelfhostAccountRemembered();
+assert.equal(quick.api.cachedSelfhostSession(),null,"Exit must end the active session");
+assert.equal(quick.api.getRememberedSelfhostAccount().email,"teacher@example.test");
+const restarted=quick.forkApi();
+assert.equal(restarted.cachedSelfhostSession(),null,"Reload must not silently log in");
+assert.equal(restarted.getRememberedSelfhostAccount().name,"Учитель");
+const restored=await restarted.resumeRememberedSelfhostAccount();
+assert.equal(restored.user.id,quickSession.user.id,"One click restores the prior account");
+assert.equal(restarted.getRememberedSelfhostAccount(),null,"Remembered token moves to active session");
+restarted.leaveSelfhostAccountRemembered();
+await restarted.forgetRememberedSelfhostAccount();
+assert.equal(restarted.getRememberedSelfhostAccount(),null,"Forget removes the last account button");
+assert.equal(quick.storage.get("lektrus.selfhost.remembered.v1"),undefined);
+const temporary=await loadSelfhost(true);
+await temporary.api.selfhostLogin("teacher@example.test","test-password");
+temporary.api.leaveSelfhostAccountRemembered();
+temporary.setRefreshStatus(503);
+const savedQuickSession=JSON.parse(temporary.storage.get("lektrus.selfhost.remembered.v1"));
+temporary.storage.set("lektrus.selfhost.remembered.v1",JSON.stringify({...savedQuickSession,expires_at:1}));
+await assert.rejects(temporary.api.resumeRememberedSelfhostAccount(),e=>e.status===503);
+assert.equal(temporary.api.cachedSelfhostSession(),null,"Temporary outage must not cause automatic login");
+assert.equal(temporary.api.getRememberedSelfhostAccount().email,"teacher@example.test",
+ "Transient update failure must keep the last-account quick-login button");
+temporary.setRefreshStatus(200);
+assert.equal((await temporary.api.resumeRememberedSelfhostAccount()).user.id,quickSession.user.id);
+console.log("Last account quick login, manual forget, reload and transient refresh recovery OK.");
+
 // Independent tabs share storage and only one single-use refresh token.
 const multi=await loadSelfhost(true);
 await multi.api.selfhostLogin("teacher@example.test","test-password");
@@ -587,6 +705,15 @@ assert.equal((await secondTab.selfhostSession()).access_token,"token-refreshed-2
 expiredSession();multi.setRefreshStatus(401);
 assert.equal(await multi.api.selfhostSession(),null,"A confirmed rejection still expires the session");
 assert.equal(secondTab.cachedSelfhostSession(),null);
+const duringUpdate=await loadSelfhost(true);
+await duringUpdate.api.selfhostLogin("teacher@example.test","test-password");
+const beforeUpdate=JSON.parse(duringUpdate.storage.get("lektrus.selfhost.session.v1"));
+duringUpdate.storage.set("lektrus.selfhost.session.v1",JSON.stringify({...beforeUpdate,expires_at:1}));
+duringUpdate.setTransientRefresh401();
+assert.equal((await duringUpdate.api.selfhostSession()).user.id,beforeUpdate.user.id,
+ "A single temporary auth rejection during an update must not sign out the user");
+assert.equal(duringUpdate.api.cachedSelfhostSession()?.user.id,beforeUpdate.user.id);
+assert.equal(duringUpdate.refreshCount(),2,"Refresh must retry only once after transient 401");
 const delayed=await loadSelfhost(true);
 await delayed.api.selfhostLogin("teacher@example.test","test-password");
 delayed.rejectOldAccess();
@@ -603,3 +730,100 @@ assert.deepEqual(legacyBoth.map(s=>s.access_token),["token-refreshed","token-ref
 assert.equal(legacyA.cachedSelfhostSession().refresh_token,"refresh-refreshed");
 console.log("Session restoration: two tabs, single-use rotation, transient restart and confirmed revocation OK.");
 console.log("Self-hosted Lektrus API: auth, native documents, private assets, students, assignments, schedule, lessons, discussions, presence and realtime events OK.");
+
+for(const platform of ["web","android","ios"]){
+  const health=await loadSelfhost(true,platform);
+  assert.equal(await health.api.selfhostServiceHealthy(),true);
+  health.setHealth(503,{detail:"Database unavailable"});
+  assert.equal(await health.api.selfhostServiceHealthy(),false);
+  health.setHealth(200,{ok:true,service:"unrelated"});
+  assert.equal(await health.api.selfhostServiceHealthy(),false);
+  assert.equal(health.api.cachedSelfhostSession(),null);
+  assert.equal(health.refreshCount(),0);
+  assert.ok(health.records.every(r=>r.path==="/api/v1/health"&&r.bearer===null));
+  if(platform==="android")assert.ok(health.nativeRequests.every(r=>r.connectTimeout===20000&&r.readTimeout===20000),
+    "Health probes must tolerate slower VPN connections on native Android");
+}
+console.log("Public health probe: browser, Android transport and iOS, no auth or session mutation.");
+
+// A background health failure must not remove the native auth view or reload
+// its input state on recovery. Full-page browser/connected-workspace recovery
+// is still required. Drive the actual hook using isolated events and timers.
+const availabilitySource=readFileSync(new URL("../src/useServiceAvailability.ts",import.meta.url),"utf8");
+const availabilityCode=ts.transpileModule(availabilitySource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+function availabilityFixture(preserveView,initialProbe){
+  const win=new EventTarget(),doc=new EventTarget(),nav={onLine:true};
+  doc.visibilityState="visible";
+  let reason=null,checking=false,reloads=0,reads=0,healthy=false,cleanup;
+  win.location={reload(){reloads++}};
+  let stateIndex=0;const timers=new Map();let timerId=0;
+  const react={useState(initial){const index=stateIndex++;return [initial,value=>{if(index===0)reason=value;else checking=value}]},useRef(current){return {current}},useEffect(effect){cleanup=effect()}};
+  const exports={};
+  vm.runInNewContext(availabilityCode,{exports,require(name){
+    if(name==="react")return react;
+    if(name==="@capacitor/core")return {Capacitor:{isNativePlatform:()=>false}};
+    if(name==="@capacitor/app")return {App:{}};
+    if(name==="./selfhostApi")return {selfhostServiceHealthy:async()=>{reads++;return reads===1&&initialProbe?initialProbe:healthy}};
+    throw Error(name);
+  },window:win,document:doc,navigator:nav,Date,setTimeout(fn,delay){const id=++timerId;timers.set(id,{fn,delay});return id},clearTimeout(id){timers.delete(id)}});
+  const hook=exports.useServiceAvailability(true,preserveView);
+  return {hook,cleanup,win,doc,nav,timers,setHealthy(value){healthy=value},state(){return {reason,checking,reloads,reads}},
+    tick(delay){const next=[...timers].find(([,timer])=>timer.delay===delay);assert.ok(next,`Missing ${delay}ms retry`);timers.delete(next[0]);next[1].fn()}};
+}
+const flush=()=>new Promise(resolve=>setImmediate(resolve));
+for(const preserve of [true,false]){
+  const f=availabilityFixture(preserve);
+  await flush();
+  assert.deepEqual(f.state(),{reason:null,checking:false,reloads:0,reads:1},"One transient failure must not hide Lektrus");
+  f.setHealthy(true);f.tick(1000);await flush();
+  assert.deepEqual(f.state(),{reason:null,checking:false,reloads:0,reads:2},"VPN recovery before confirmation must not reload the page");
+  assert.equal(f.timers.size,0);
+  f.setHealthy(false);f.hook.check();await flush();
+  assert.equal(f.state().reason,null,"A successful check resets the failure count");
+  f.cleanup();assert.equal(f.timers.size,0);
+}
+for(const preserve of [true,false]){
+  const f=availabilityFixture(preserve);
+  await flush();
+  assert.equal(f.state().reason,null);
+  f.tick(1000);await flush();
+  assert.deepEqual(f.state(),{reason:"server", checking:false,reloads:0,reads:2});
+  assert.equal(f.timers.size,1,"Unavailable service must retain its automatic retry");
+  f.setHealthy(true);f.tick(15000);await flush();
+  assert.equal(f.state().reloads,preserve?0:1,"Native auth must recover without destroying input state; full-screen route must restore");
+  if(preserve){
+    assert.equal(f.state().reason,null);
+    f.nav.onLine=false;f.win.dispatchEvent(new Event("offline"));
+    assert.equal(f.state().reason,"offline");
+    f.nav.onLine=true;f.win.dispatchEvent(new Event("online"));await flush();
+    assert.equal(f.state().reason,null);assert.equal(f.state().reloads,0);
+  }
+  f.cleanup();assert.equal(f.timers.size,0);
+}
+// Switching Wi-Fi/VPN while a probe is pending must cause a new probe, not
+// let the old network's result count as a failure on the new network.
+let finishOldProbe;
+const switched=availabilityFixture(true,new Promise(resolve=>{finishOldProbe=resolve}));
+switched.nav.onLine=false;switched.win.dispatchEvent(new Event("offline"));
+assert.equal(switched.state().reason,"offline");
+switched.setHealthy(true);switched.nav.onLine=true;switched.win.dispatchEvent(new Event("online"));
+assert.equal(switched.state().reads,1,"Do not overlap health probes on network change");
+finishOldProbe(false);await flush();
+assert.deepEqual(switched.state(),{reason:null,checking:false,reloads:0,reads:2});
+switched.cleanup();assert.equal(switched.timers.size,0);
+const stale=availabilityFixture(true);await flush();
+stale.nav.onLine=false;stale.win.dispatchEvent(new Event("offline"));
+stale.setHealthy(true);stale.tick(15000);await flush();
+assert.equal(stale.state().reason,null,"A successful real response overrides a stale browser offline flag");
+stale.cleanup();assert.equal(stale.timers.size,0);
+const hidden=availabilityFixture(true);
+hidden.doc.visibilityState="hidden";await flush();
+assert.equal(hidden.timers.size,0,"Do not poll hidden views");
+hidden.doc.visibilityState="visible";hidden.doc.dispatchEvent(new Event("visibilitychange"));await flush();
+assert.equal(hidden.state().reason,"server","Resume pending confirmation when the tab becomes visible");
+hidden.cleanup();assert.equal(hidden.timers.size,0);
+assert.match(appSource,/serviceAvailability\.reason&&!activeBoard&&!preserveNativeAuth/);
+assert.match(appSource,/connectionIssue=\{preserveNativeAuth&&serviceAvailability\.reason\?/);
+assert.match(registrationForm,/auth-connection-notice/);
+assert.match(registrationForm,/onClick=\{connectionIssue\.onRetry\}/);
+console.log("Native authentication: connection warning, preserved form, automatic recovery without reload; browser outage recovery unchanged.");

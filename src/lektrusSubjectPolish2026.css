@@ -731,12 +731,6 @@
   z-index:235!important;
  }
 }
-@media(max-width:1100px) and (orientation:landscape) and (pointer:coarse){
- body .workspace:has(.lectris-quick-properties.is-ink-properties) .board-controls{
-  bottom:calc(62px + env(safe-area-inset-bottom,0px))!important;
-  z-index:235!important;
- }
-}
 
 /* Mobile structure editor: the tools remain reachable without covering atoms. */
 .lektrus-organic-editor-toolbar{overflow-y:auto;max-height:110px;overscroll-behavior:contain;scrollbar-width:thin}
