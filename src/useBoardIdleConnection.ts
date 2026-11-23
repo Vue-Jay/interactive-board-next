@@ -23,7 +23,13 @@ export function useBoardIdleConnection(
  const canSleepRef=useRef(canSleep);
  canSleepRef.current=canSleep;
  useEffect(()=>{
-  if(!enabled)return;
+  if(!enabled){
+   awakeRef.current=true;
+   setAwake(true);
+   return;
+  }
+  awakeRef.current=true;
+  setAwake(true);
   let lastAction=Date.now();
   let hiddenSince:number|null=document.hidden?Date.now():null;
   let timer:ReturnType<typeof setTimeout>|undefined;
@@ -55,7 +61,7 @@ export function useBoardIdleConnection(
    check();
   };
   const move=(event:PointerEvent)=>{
-   if(event.buttons)activity(event);
+   if(event.buttons&&awakeRef.current)activity(event);
   };
   const visibility=()=>{
    hiddenSince=document.hidden?Date.now():null;
