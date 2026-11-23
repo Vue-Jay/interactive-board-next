@@ -1,0 +1,150 @@
+
+/* Quick re-entry to a remembered account, designed for desktop and native/mobile. */
+.auth-card .auth-remembered {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+  margin: 10px 0 12px;
+  padding: 14px;
+  border: 1px solid #d7e3f6;
+  border-radius: 17px;
+  background: linear-gradient(150deg, #f8fbff 0%, #f1f6ff 100%);
+  box-shadow: 0 4px 18px rgba(34, 76, 160, .045);
+}
+.auth-card .auth-remembered-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  gap: 8px;
+}
+.auth-card .auth-remembered-eyebrow {
+  color: #496a9e;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.auth-card .auth-remembered-forget {
+  display: grid;
+  flex: 0 0 30px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #7589a8;
+  cursor: pointer;
+  opacity: 1;
+  transition: color .15s, background .15s;
+}
+.auth-card .auth-remembered-forget:hover {
+  color: #284b81;
+  background: #e4edfd;
+}
+.auth-card .auth-remembered-profile {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+.auth-card .auth-remembered-avatar {
+  display: grid;
+  flex: 0 0 45px;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  border-radius: 13px;
+  background: #e1eaff;
+  color: #345dc0;
+}
+.auth-card .auth-remembered-avatar svg { width: 23px; height: 23px; }
+.auth-card .auth-remembered-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.auth-card .auth-remembered-copy strong {
+  display: block;
+  color: #1a2e50;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.auth-card .auth-remembered-copy span {
+  display: block;
+  color: #617697;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.auth-card .auth-remembered-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 43px;
+  padding: 9px 14px;
+  border: 1px solid #345fc9;
+  border-radius: 11px;
+  background: #365fca;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(43, 85, 183, .13);
+  transition: background .15s, box-shadow .15s, transform .15s;
+}
+.auth-card .auth-remembered-login:hover:not(:disabled) {
+  background: #294fb3;
+  box-shadow: 0 7px 17px rgba(43, 85, 183, .20);
+}
+.auth-card .auth-remembered-login:active:not(:disabled) { transform: translateY(1px); }
+.auth-card .auth-remembered-login:disabled,
+.auth-card .auth-remembered-forget:disabled { opacity: .55; cursor: wait; }
+.auth-card .auth-remembered-login svg { flex: none; }
+.auth-card .auth-remembered-divider {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 12px;
+  color: #8090a9;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+.auth-card .auth-remembered-divider::before,
+.auth-card .auth-remembered-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e1e8f2;
+}
+.auth-card .auth-remembered-divider span { white-space: nowrap; }
+.auth-card .auth-remembered-login:focus-visible,
+.auth-card .auth-remembered-forget:focus-visible {
+  outline: 3px solid rgba(59, 106, 218, .35);
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .auth-card .auth-remembered { padding: 12px; gap: 9px; margin-top: 8px; }
+  .auth-card .auth-remembered-avatar { width: 42px; height: 42px; flex-basis: 42px; }
+  .auth-card .auth-remembered-login { min-height: 44px; }
+  .auth-card .auth-remembered-divider { font-size: 11px; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card .auth-remembered-login,
+  .auth-card .auth-remembered-forget { transition: none; }
+}
