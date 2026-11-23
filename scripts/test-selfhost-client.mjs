@@ -91,6 +91,10 @@ async function loadSelfhost(enabled, platform="web") {
       assert.deepEqual(body,{email:"recipient@example.test",kinds:["password_reset","reply"]});
       return ok({email:body.email,results:[{kind:"password_reset",status:"sent"},{kind:"reply",status:"failed"}]});
     }
+    if(u.pathname==="/api/v1/auth/me"){
+      if(!headers.get("Authorization")?.startsWith("Bearer "))return ok({detail:"Unauthorized"},401);
+      return ok(user);
+    }
     if(u.pathname==="/api/v1/auth/logout")return new Response(null,{status:200});
     if(u.pathname==="/api/v1/boards"&&options.method==="POST"){
       const body=JSON.parse(options.body);
@@ -650,6 +654,36 @@ await api.selfhostLogout();
 assert.equal(api.cachedSelfhostSession(),null);
 assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-remain");
 assert.ok(records.some(x=>x.path==="/api/v1/auth/logout"&&x.bearer==="Bearer token-refreshed"));
+// A deliberate exit retains one server-authenticated, one-click last account.
+const quick=await loadSelfhost(true);
+const quickSession=await quick.api.selfhostLogin("teacher@example.test","test-password");
+quick.api.leaveSelfhostAccountRemembered();
+assert.equal(quick.api.cachedSelfhostSession(),null,"Exit must end the active session");
+assert.equal(quick.api.getRememberedSelfhostAccount().email,"teacher@example.test");
+const restarted=quick.forkApi();
+assert.equal(restarted.cachedSelfhostSession(),null,"Reload must not silently log in");
+assert.equal(restarted.getRememberedSelfhostAccount().name,"Учитель");
+const restored=await restarted.resumeRememberedSelfhostAccount();
+assert.equal(restored.user.id,quickSession.user.id,"One click restores the prior account");
+assert.equal(restarted.getRememberedSelfhostAccount(),null,"Remembered token moves to active session");
+restarted.leaveSelfhostAccountRemembered();
+await restarted.forgetRememberedSelfhostAccount();
+assert.equal(restarted.getRememberedSelfhostAccount(),null,"Forget removes the last account button");
+assert.equal(quick.storage.get("lektrus.selfhost.remembered.v1"),undefined);
+const temporary=await loadSelfhost(true);
+await temporary.api.selfhostLogin("teacher@example.test","test-password");
+temporary.api.leaveSelfhostAccountRemembered();
+temporary.setRefreshStatus(503);
+const saved=JSON.parse(temporary.storage.get("lektrus.selfhost.remembered.v1"));
+temporary.storage.set("lektrus.selfhost.remembered.v1",JSON.stringify({...saved,expires_at:1}));
+await assert.rejects(temporary.api.resumeRememberedSelfhostAccount(),e=>e.status===503);
+assert.equal(temporary.api.cachedSelfhostSession(),null,"Temporary outage must not cause automatic login");
+assert.equal(temporary.api.getRememberedSelfhostAccount().email,"teacher@example.test",
+ "Transient update failure must keep the last-account quick-login button");
+temporary.setRefreshStatus(200);
+assert.equal((await temporary.api.resumeRememberedSelfhostAccount()).user.id,quickSession.user.id);
+console.log("Last account quick login, manual forget, reload and transient refresh recovery OK.");
+
 // Independent tabs share storage and only one single-use refresh token.
 const multi=await loadSelfhost(true);
 await multi.api.selfhostLogin("teacher@example.test","test-password");
