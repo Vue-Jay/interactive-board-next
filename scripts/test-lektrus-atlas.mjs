@@ -998,6 +998,16 @@ assert.equal(geoExports.mapFeaturePath(tiny,.00015,{
  left:0,right:20,top:0,bottom:20}),"",
  "distant microstate polygons are skipped by viewport clipping");
 assert.equal(geoExports.borderPrecision(tiny),0,"missing precision is unknown, not approximate");
+assert.equal(geoExports.borderPrecision({...tiny,properties:{
+ NAME:"Historical candidate",historicalRole:"polity",geometryStatus:"candidate"
+}}),1,"A provisional annual historical border must be displayed dashed and marked approximate");
+assert.equal(geoExports.borderPrecision({...tiny,properties:{
+ NAME:"Approved label, unverified border",historicalRole:"polity",geometryStatus:"candidate",
+ ATLAS_HISTORICAL_LABEL:"Историческое название подтверждено"
+}}),1,"A reviewed label does not verify geometric precision");
+assert.equal(geoExports.borderPrecision({...tiny,properties:{
+ NAME:"Modern point",geometryStatus:"candidate"
+}}),0,"Only historical annual candidates are marked approximate by default");
 const islandPoint={type:"Feature",properties:{NAME:"Island"},geometry:{
  type:"Point",coordinates:[180,0]
 }};

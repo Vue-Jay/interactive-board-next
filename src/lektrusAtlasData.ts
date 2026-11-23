@@ -410,6 +410,10 @@ export function modernAtlasTerritoryUpdate(feature:GeoFeature):{note:string;url:
  return undefined;
 }
 export const borderPrecision=(f:GeoFeature):number=>{
+ // Annual Cliopatria geometries remain candidate reconstructions even when
+ // their names or a component attribution was independently reviewed.
+ // A solid line would silently claim an exact historical political border.
+ if(f.properties?.historicalRole&&f.properties?.geometryStatus==="candidate")return 1;
  if(f.properties?.ATLAS_HISTORICAL_LABEL)return 1;
  const number=Number(f.properties?.BORDERPRECISION);
  return Number.isFinite(number)&&number>=1&&number<=3?number:0;
