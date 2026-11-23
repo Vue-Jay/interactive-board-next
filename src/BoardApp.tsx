@@ -8646,7 +8646,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           />
         </div>
       </header>
-      <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+      <main className={`workspace ${!objectEditorOpen && !presentation && selectedItems.length===0 && (tool==="pen" || tool==="marker" || tool==="eraser") ? "board-ink-dock-open" : ""} lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
         {controlSettingsOpen&&<div className="access-backdrop"
          onPointerDown={e=>{if(e.target===e.currentTarget)setControlSettingsOpen(false)}}>
          <section className="access-modal lektrus-control-settings" role="dialog" aria-modal="true"
