@@ -28,6 +28,42 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
  const stop=(event:SyntheticEvent)=>event.stopPropagation();
  const pattern=sentencePatternById(d.patternId);
 
+ // Keep following the finger even if Android WebView loses capture on the
+ // original chip; the window-level pointerup commits the reorder once.
+ useEffect(()=>{
+  const move=(event:PointerEvent)=>{
+   const gesture=gestureRef.current;
+   if(!gesture||gesture.pointerId!==event.pointerId)return;
+   if(!gesture.active&&Math.hypot(event.clientX-gesture.startX,event.clientY-gesture.startY)<5)return;
+   if(event.cancelable)event.preventDefault();
+   gesture.active=true;
+   setPreview({id:gesture.id,left:event.clientX-gesture.offsetX,
+    top:event.clientY-gesture.offsetY,width:gesture.width});
+   const siblings=Array.from(partsRef.current?.querySelectorAll<HTMLButtonElement>("[data-sentence-word]")??[])
+    .filter(element=>element.dataset.sentenceWord!==gesture.id);
+   dropSlotRef.current=sentenceWordDropSlot(event.clientX,event.clientY,
+    siblings.map(element=>element.getBoundingClientRect()));
+   setChecked(false);
+  };
+  const finish=(event:PointerEvent)=>{
+   const gesture=gestureRef.current;
+   if(!gesture||gesture.pointerId!==event.pointerId)return;
+   gestureRef.current=null;
+   const slot=dropSlotRef.current;
+   dropSlotRef.current=null;
+   if(event.type==="pointerup"&&gesture.active&&slot!==null)
+    setOrder(moveSentenceWord(gesture.origin,gesture.id,slot));
+   setPreview(null);
+  };
+  window.addEventListener("pointermove",move,{capture:true,passive:false});
+  window.addEventListener("pointerup",finish,true);
+  window.addEventListener("pointercancel",finish,true);
+  return()=>{
+   window.removeEventListener("pointermove",move,true);
+   window.removeEventListener("pointerup",finish,true);
+   window.removeEventListener("pointercancel",finish,true);
+  };
+ },[]);
  const beginDrag=(event:ReactPointerEvent<HTMLButtonElement>,id:string)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
   event.preventDefault();event.stopPropagation();
@@ -76,7 +112,8 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
  const releaseLostCapture=(event:ReactPointerEvent<HTMLButtonElement>)=>{
   const gesture=gestureRef.current;
   if(!gesture||gesture.pointerId!==event.pointerId)return;
-  gestureRef.current=null;dropSlotRef.current=null;setPreview(null);
+  // Do not discard the gesture: window pointerup/pointercancel will finish it
+  // even after a tablet browser releases the chip's pointer capture.
  };
  const reorderWithKeyboard=(event:ReactKeyboardEvent<HTMLButtonElement>,id:string)=>{
   const at=order.indexOf(id);

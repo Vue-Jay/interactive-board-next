@@ -102,7 +102,7 @@ import ShareDialog from "./ShareDialog";
 import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
-import { isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
+import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
@@ -3149,12 +3149,20 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // A hidden app sleeps earlier. Auth stays intact; reconnection checks the
   // server document version before accepting the next local edit.
   const [boardRealtimeAwake,setBoardRealtimeAwake]=useState(true);
+  // Until the latest server revision is fetched, no interaction may edit a
+  // document that another participant updated while this board was asleep.
+  const [boardResumePending,setBoardResumePending]=useState(false);
+  const boardResumePendingRef=useRef(false);
+  const boardResumeRequestRunning=useRef(false);
+  const [boardResumeAttempt,setBoardResumeAttempt]=useState(0);
   const boardLastAction=useRef(Date.now());
   // Read live refs at timeout, not the last React render. A network save may
   // finish without rerendering the board; stale busy=true would prevent sleep.
   const boardIdleBusy=()=>Boolean(gesture.current||eraserSession.current||saveTimer.current||
-    remoteSaveInFlight.current||remoteSavePromise.current||queuedRemoteSnapshot.current||
-    pendingRemote.current||pendingAttachmentTimers.current.size);
+    remoteSaveInFlight.current||remoteSavePromise.current||remoteRetryTimer.current||
+    queuedRemoteSnapshot.current||deferredRemote.current||pendingRemote.current||
+    pendingAttachmentTimers.current.size||pendingAttachmentRequests.length||
+    objectEditorOpen||editing||boardAssistantBusy||boardAiGenerating);
 
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
@@ -3520,8 +3528,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [flushSave]);
-  // One timer per open board. Only *user* actions wake a sleeping socket;
-  // passive realtime messages, tab focus and animation frames never do.
+  // One timer per open board. User input wakes sockets, but the first action
+  // is consumed until a fresh server document has been fetched and reconciled.
   useEffect(()=>{
     if(demoMode||layoutEditing)return;
     const ACTIVE_IDLE_MS=10*60*1000,HIDDEN_IDLE_MS=90*1000;
@@ -3534,25 +3542,40 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       timeout=setTimeout(()=>{
         if(boardIdleBusy()){timeout=setTimeout(arm,1500);return;}
         if(Date.now()-boardLastAction.current>=limit){
-          flushSave();setBoardRealtimeAwake(false);
+          boardResumePendingRef.current=false;
+          setBoardResumePending(false);
+          flushSave();
+          setBoardRealtimeAwake(false);
         }else arm();
       },due);
     };
-    const userAction=()=>{
+    const userAction=(event:Event)=>{
       boardLastAction.current=Date.now();
-      if(!boardRealtimeAwake)setBoardRealtimeAwake(true);
-      else arm();
+      if(!boardRealtimeAwake){
+        boardResumePendingRef.current=true;
+        setBoardResumePending(true);
+        setBoardRealtimeAwake(true);
+      }else if(boardResumePendingRef.current&&!boardResumeRequestRunning.current){
+        // A failed reconnect is retried only after another actual user action.
+        setBoardResumeAttempt(value=>value+1);
+      }else arm();
+      if(boardResumePendingRef.current){
+        if(event.cancelable)event.preventDefault();
+        event.stopImmediatePropagation();
+      }
     };
-    // pointermove is NOT activity: leaving a mouse on a desk should save traffic.
-    for(const type of ["pointerdown","keydown","wheel","input"] as const)
-      document.addEventListener(type,userAction,{capture:true,passive:true});
+    // Mouse hover and passive network messages never keep the socket awake.
+    // Capture before React board handlers; passive:false is necessary to
+    // prevent a stale pointer or keystroke from changing the shared document.
+    const events=["pointerdown","pointerup","click","keydown","beforeinput","wheel","input"] as const;
+    for(const type of events)
+      document.addEventListener(type,userAction,{capture:true,passive:false});
     const visibility=()=>{if(boardRealtimeAwake)arm()};
     document.addEventListener("visibilitychange",visibility);
     arm();
     return()=>{
       clearTimeout(timeout);
-      for(const type of ["pointerdown","keydown","wheel","input"] as const)
-        document.removeEventListener(type,userAction,true);
+      for(const type of events)document.removeEventListener(type,userAction,true);
       document.removeEventListener("visibilitychange",visibility);
     };
   },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave]);
@@ -4029,6 +4052,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     const current=itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
@@ -4120,7 +4144,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setEditing(item.id);
   };
   const undo = (direction: number) => {
-    if (gesture.current || !canEdit) return;
+    if (gesture.current || !canEdit || boardResumePendingRef.current) return;
     if(isStudent&&!isBoardOwner){
       const stack=personalHistory.current;
       const step=direction<0?stack.cursor-1:stack.cursor;
@@ -8110,6 +8134,34 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{
+    if(!boardRealtimeAwake||!boardResumePending||demoMode||layoutEditing)return;
+    let cancelled=false;
+    boardResumeRequestRunning.current=true;
+    const refresh=async()=>{
+      try{
+        // Force an authenticated revision check even when the realtime socket
+        // reconnects before a change notification reaches this device.
+        const row=selfhostMode
+          ? await selfhostReadDocument(boardSummary.id)
+          : await getRemoteBoardDocument(boardSummary.id);
+        if(cancelled)return;
+        if(!row)throw new Error("Серверный документ недоступен");
+        if(row.document)receiveRemote.current({
+          board_id:row.board_id,version:row.version,document:row.document,
+          updated_at:row.updated_at??"",updated_by:row.updated_by
+        });
+        boardResumePendingRef.current=false;
+        setBoardResumePending(false);
+      }catch{
+        if(!cancelled)setNotice("Не удалось сверить доску с сервером. Повторите касание, чтобы подключиться снова.");
+      }finally{
+        if(!cancelled)boardResumeRequestRunning.current=false;
+      }
+    };
+    void refresh();
+    return()=>{cancelled=true;boardResumeRequestRunning.current=false};
+  },[boardRealtimeAwake,boardResumePending,boardResumeAttempt,selfhostMode,boardSummary.id,demoMode,layoutEditing]);
+  useEffect(()=>{
     if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     if(selfhostMode){
       return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
@@ -8730,6 +8782,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </div>
       </header>
       <main className={`workspace ${!objectEditorOpen && !presentation && selectedItems.length===0 && (tool==="pen" || tool==="marker" || tool==="eraser") ? "board-ink-dock-open" : ""} lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}${boardAiOpen?" board-ai-open":""}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+        {(!boardRealtimeAwake||boardResumePending)&&<div className="lektrus-board-idle-indicator" role="status" aria-live="polite">
+          {boardResumePending?"Подключаемся и сверяем изменения доски…":"Соединение приостановлено · коснитесь доски для продолжения"}
+        </div>}
         {controlSettingsOpen&&<div className="access-backdrop"
          onPointerDown={e=>{if(e.target===e.currentTarget)setControlSettingsOpen(false)}}>
          <section className="access-modal lektrus-control-settings" role="dialog" aria-modal="true"

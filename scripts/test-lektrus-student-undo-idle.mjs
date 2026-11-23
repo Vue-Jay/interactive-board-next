@@ -65,6 +65,16 @@ assert.match(board,/disabled=\{isStudent&&!isBoardOwner\?!personalRedoAvailable\
 for(const socket of ["selfhostWatchDocument","subscribeBoardDocument","subscribeBoardPresence","connectBoardCursorChannel","connectBoardViewControl","connectBoardWorkChannel","connectAttachmentApprovalChannel","subscribeBoardComments"])
  assert.ok(board.includes(socket),"Board socket must be explicitly controlled: "+socket);
 assert.match(board,/const \[boardRealtimeAwake,setBoardRealtimeAwake\]=useState\(true\)/);
+assert.match(board,/boardResumePendingRef\.current=true/,"First interaction requires full reconnect");
+assert.match(board,/if\(event\.cancelable\)event\.preventDefault\(\)/,"Block stale pointer/key before syncing");
+assert.match(board,/await selfhostReadDocument\(boardSummary\.id\)/,"Reconnect must fetch current server document");
+assert.match(board,/await getRemoteBoardDocument\(boardSummary\.id\)/);
+assert.match(board,/objectEditorOpen\|\|editing\|\|boardAssistantBusy\|\|boardAiGenerating/);
+assert.match(board,/pendingAttachmentTimers\.current\.size\|\|pendingAttachmentRequests\.length/);
+assert.match(board,/remoteRetryTimer\.current/);
+assert.match(board,/className="lektrus-board-idle-indicator"/);
+assert.match(board,/if\(boardResumePendingRef\.current\)\{setNotice/);
+
 assert.match(board,/ACTIVE_IDLE_MS=10\*60\*1000,HIDDEN_IDLE_MS=90\*1000/);
 assert.match(board,/if\(boardIdleBusy\(\)\)/);
 assert.match(board,/if\(!boardRealtimeAwake\)setBoardRealtimeAwake\(true\)/);
@@ -75,4 +85,7 @@ assert.match(sentence,/data-board-interactive="true"/);
 assert.match(sentence,/dropSlotRef\.current=slot/);
 assert.match(sentence,/setOrder\(moveSentenceWord\(gesture\.origin,gesture\.id,slot\)\)/);
 assert.doesNotMatch(sentence,/setOrder\(current=>moveSentenceWord\(current,gesture\.id,slot\)\)/);
+assert.match(sentence,/window\.addEventListener\("pointermove",move/);
+assert.match(sentence,/window\.addEventListener\("pointerup",finish,true\)/);
+assert.match(sentence,/window\.addEventListener\("pointercancel",finish,true\)/);
 console.log("Student-only undo/redo, peer conflict isolation, idle socket gating, tablet word capture: OK");
