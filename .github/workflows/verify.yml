@@ -25,6 +25,7 @@ jobs:
           node scripts/test-lektrus-release-tools.mjs
           node scripts/test-lektrus-student-undo.mjs
           node scripts/test-lektrus-idle-connections.mjs
+          node scripts/test-lektrus-guest-name-cache.mjs
           node scripts/test-lektrus-sentence-drag.mjs
       - name: Check sentence drag in real Chrome with mouse, touch and keyboard
         run: |
