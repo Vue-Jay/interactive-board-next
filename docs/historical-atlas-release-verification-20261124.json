@@ -175,7 +175,8 @@
     {
       "command": "LEKTRUS_NATIVE_BUILD=true npm run build; node scripts/test-native-pdf-worker.mjs",
       "result": "passed",
-      "scope": "Native-compatible JS, worker fallback export, real 1/3-page PDFs"
+      "scope": "Native-compatible JS, worker fallback export, real 1/3-page PDFs",
+      "notice": "Final native build and PDF-worker check repeated after focus-persistence fix"
     },
     {
       "command": "node scripts/test-lektrus-historical-timeline.mjs TIMELINE SOURCE",
@@ -234,13 +235,37 @@
     },
     {
       "command": "python scripts/audit-historical-unique-geometries.py TIMELINE ARCHIVE REPORT SOURCE",
-      "result": "running",
-      "notice": "Earlier failures exposed outdated repair classification, missing temporal-witness handling and the documented 1e-6 grid fallback; no full pass claimed yet"
+      "result": "passed",
+      "notice": "Technical topology/provenance/operation checks, not historical approval; external archive disagreements retained separately",
+      "counts": {
+        "uniqueGeometries": 11800,
+        "invalidGeometries": 0,
+        "excludedGeometries": 0,
+        "equivalentRepairs": 13,
+        "reviewedComponentSelections": 1621,
+        "reviewedMapPartitions": 15,
+        "partitionSubsetChecks": 8,
+        "datedCoastlinePartitions": 7,
+        "completeThreeWayPartitions": 1,
+        "affectedReviewUnits": 0,
+        "snapshots": 49,
+        "archivePolygons": 16928,
+        "uniqueSpatialPairs": 14094
+      },
+      "reportSha256": "1d43f2827af62cab49d563e50ebf2db28f290ea06dc422e8ecb6e3f335af3c6e"
     },
     {
       "command": "LEKTRUS_ATLAS_PHYSICAL_INPUT=1 node scripts/test-lektrus-annual-atlas-browser.mjs (1944,1847)",
-      "result": "running-with-retained-first-pass-findings",
-      "notice": "Initial fractional-pixel run found two 1944 pointer failures; an exact integer-pixel rerun is active. Raw failed receipts are retained; no full year accepted yet"
+      "result": "passed-by-year-after-integer-pixel-rerun",
+      "notice": "1847 passed in original complete run; 1944 passed in complete integer-pixel rerun. Original two subpixel failures retained as superseded evidence, not silently discarded",
+      "years": [
+        1944,
+        1847
+      ],
+      "syntheticCards": 244,
+      "trustedMouseClicks": 244,
+      "emulatedTouchTaps": 244,
+      "technicalIssues": 0
     },
     {
       "command": "atlas-global-layers; atlas-school-facts; atlas-labels; historical-references; service-unavailable; github-agent-guard",
@@ -250,6 +275,11 @@
       "command": "node scripts/test-lektrus-atlas-mineral-overview.mjs",
       "result": "passed-after-updating-stale-style-assertion",
       "notice": "Preserves .56 mineral opacity check while allowing .65 historical documented-core opacity"
+    },
+    {
+      "command": "summarize-lektrus-annual-browser-audit.mjs on real partial/complete-year receipts",
+      "result": "passed-positive-and-negative-gates",
+      "notice": "1/80 physical probes cannot pass the year gate; 80/80 is retained while missing global annual coverage still blocks acceptance"
     }
   ],
   "historicalSources": [
@@ -339,5 +369,31 @@
     "scripts/atlas-physical-input.mjs": "8c6af461c72b7fdc5354c9bf2033601d3ca26667e65eaf45969b334554175322",
     "scripts/test-lektrus-annual-atlas-browser.mjs": "e5cd6f91d1dd9dc7b9efb09ae6ecd68cc32b4651614726dc395a028b7dd8bc9e",
     "scripts/audit-historical-unique-geometries.py": "f4a38a3cbb01b37b4ae0ef4bcdb3d73e58d6ee60d4ed9a1729644510b7904989"
+  },
+  "pointerCoverage": {
+    "yearsWithEveryTerritoryPassingMouseAndTouch": [
+      -3400,
+      -3000,
+      1847,
+      1944
+    ],
+    "territoryYears": 249,
+    "trustedMouseClicks": 249,
+    "emulatedTouchTaps": 249,
+    "allAnnualYearsComplete": false,
+    "historicalAcceptance": false
+  },
+  "externalSpatialDiagnostics": {
+    "archiveSnapshots": 49,
+    "archivePolygons": 16928,
+    "counts": {
+      "excluded": 288,
+      "named-disagreement": 476,
+      "named-high-overlap": 220,
+      "no-spatial-match": 10781,
+      "spatial-only": 5163
+    },
+    "registry": "historical-atlas-spatial-findings-20261124.json",
+    "notice": "476 named outline disagreements are candidates, not confirmed errors or additions to the 859-case denominator. Spatial-only/no-match does not establish absence or sovereignty. Shared source ancestry has not been ruled out."
   }
 }
