@@ -59,7 +59,7 @@ export function applyPersonalBoardEdit(
    else delete next[field];
    changed=true;
   }
-  if(changed)changes.set(id,next as Item);
+  if(changed)changes.set(id,next as unknown as Item);
  }
  if(!changes.size)return {items:current as Item[],changed:false,conflicts};
  const result:Item[]=[];
