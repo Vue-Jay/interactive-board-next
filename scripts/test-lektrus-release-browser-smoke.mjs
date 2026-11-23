@@ -1307,21 +1307,21 @@ try{
  await wait('document.querySelector("section.board")?.classList.contains("board-tool-eraser")',
   "Eraser could not be activated");
  const eraserModeButton=async (mode)=>{
-  const found=await evaluate(`(()=>{const button=[...document.querySelectorAll('.lektrus-eraser-modes button')].find(b=>b.textContent.trim()===${JSON.stringify(mode)}&&b.getBoundingClientRect().width>0);if(!button)return false;button.click();return true})()`);
+  const found=await evaluate(`(()=>{const button=[...document.querySelectorAll('.lektrus-eraser-modes button')].find(b=>b.dataset.eraserMode===${JSON.stringify(mode)}&&b.getBoundingClientRect().width>0);if(!button)return false;button.click();return true})()`);
   assert.ok(found,"Both eraser modes must be available");
  };
  const savedInkIds=`(()=>{const doc=JSON.parse(localStorage.getItem('lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0'));return doc.items.filter(i=>i.kind==='pen').map(i=>i.id)})()`;
  const originalInk=await evaluate(savedInkIds);
  const lineId=originalInk.at(-1);
  assert.ok(lineId,"Saved stroke ID missing");
- await eraserModeButton("Точечный");
+ await eraserModeButton("partial");
  const hitX=canvasPoint.x+48,hitY=canvasPoint.y+Math.sin(48/30)*12;
  await mouse("mousePressed",hitX,hitY,{pressed:true});
  await mouse("mouseReleased",hitX,hitY);
  await wait(`${savedInkIds}.length===${originalInk.length+1}&&!${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Partial eraser must split the real stroke into two fragments");
  await click('button[aria-label="Отменить"]');
  await wait(`${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Undo must restore the entire original stroke");
- await eraserModeButton("Целый штрих");
+ await eraserModeButton("stroke");
  await mouse("mousePressed",hitX,hitY,{pressed:true});
  await wait('document.querySelector("section.board").classList.contains("eraser-live")',"Whole stroke must disappear in the live preview before pointer release");
  await mouse("mouseReleased",hitX,hitY);
