@@ -3150,8 +3150,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // server document version before accepting the next local edit.
   const [boardRealtimeAwake,setBoardRealtimeAwake]=useState(true);
   const boardLastAction=useRef(Date.now());
-  const boardIdleBusy=useRef(false);
-  boardIdleBusy.current=!!(gesture.current||eraserSession.current||saveTimer.current||
+  // Read live refs at timeout, not the last React render. A network save may
+  // finish without rerendering the board; stale busy=true would prevent sleep.
+  const boardIdleBusy=()=>Boolean(gesture.current||eraserSession.current||saveTimer.current||
     remoteSaveInFlight.current||remoteSavePromise.current||queuedRemoteSnapshot.current||
     pendingRemote.current||pendingAttachmentTimers.current.size);
 
@@ -3531,7 +3532,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const limit=document.visibilityState==="hidden"?HIDDEN_IDLE_MS:ACTIVE_IDLE_MS;
       const due=Math.max(50,boardLastAction.current+limit-Date.now());
       timeout=setTimeout(()=>{
-        if(boardIdleBusy.current){timeout=setTimeout(arm,1500);return;}
+        if(boardIdleBusy()){timeout=setTimeout(arm,1500);return;}
         if(Date.now()-boardLastAction.current>=limit){
           flushSave();setBoardRealtimeAwake(false);
         }else arm();
