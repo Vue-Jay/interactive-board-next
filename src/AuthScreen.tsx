@@ -7,6 +7,7 @@ import type { AccountRole } from "./accountRoleStore";
 import { isRemoteBackendEnabled } from "./backend";
 import { isSelfhostBackendEnabled } from "./selfhostApi";
 import {saveProfileDetails} from "./profileDetailsStore";
+import {getCachedGuestName} from "./guestNameCache";
 import type {UnavailableReason} from "./ServiceUnavailableScreen";
 import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser,resendRegistrationCode, resumeRememberedAccount, requestPasswordReset, completePasswordReset, type AuthUser } from "./authStore";
 
@@ -28,7 +29,7 @@ export default function AuthScreen({ onAuthenticated,previewMode=false,onPreview
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice,setNotice]=useState("");
-  const [guestName, setGuestName] = useState("");
+  const [guestName, setGuestName] = useState(()=>getCachedGuestName());
   const [guestLinkPassword,setGuestLinkPassword]=useState("");
   const [guestPasswordRequired,setGuestPasswordRequired]=useState(false);
   const [remembered,setRemembered]=useState(()=>getRememberedAccount());
