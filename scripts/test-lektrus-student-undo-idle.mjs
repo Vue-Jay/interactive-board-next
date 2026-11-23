@@ -66,7 +66,7 @@ for(const socket of ["selfhostWatchDocument","subscribeBoardDocument","subscribe
  assert.ok(board.includes(socket),"Board socket must be explicitly controlled: "+socket);
 assert.match(board,/const \[boardRealtimeAwake,setBoardRealtimeAwake\]=useState\(true\)/);
 assert.match(board,/ACTIVE_IDLE_MS=10\*60\*1000,HIDDEN_IDLE_MS=90\*1000/);
-assert.match(board,/if\(boardIdleBusy\.current\)/);
+assert.match(board,/if\(boardIdleBusy\(\)\)/);
 assert.match(board,/if\(!boardRealtimeAwake\)setBoardRealtimeAwake\(true\)/);
 assert.match(board,/document\.addEventListener\(type,userAction,\{capture:true,passive:true\}\)/);
 assert.doesNotMatch(board,/document\.addEventListener\("pointermove",userAction/);
