@@ -15,6 +15,7 @@ import MobileBoardEditorPortal, { dismissEditorBackdropInput, fitMobileEditorVie
 import { useTouchBoardMenuViewport } from "./useTouchBoardMenuViewport";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import { boardObjectAtInertPointerTarget } from "./boardObjectDragSurface";
+import {captureStudentBoardAction,replayStudentBoardAction,type StudentBoardAction} from "./studentBoardUndo";
 import { buildBoardDragSnapIndex, snapBoardDrag, type BoardDragSnapIndex } from "./boardDragSnapIndex";
 import { applyBoardSelectionCursor, clearBoardSelectionCursor, selectionCursorForGesture, selectionCursorForTarget } from "./lektrusSelectionCursor";
 import "./App.css";
@@ -3097,6 +3098,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const clipboard = useRef<Item[]>([]);
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
   const index = useRef(0);
+  // These entries belong to the CURRENT pupil only. Remote board revisions do
+  // not reset them, nor do they become undoable actions of this viewer.
+  const studentUndoPast=useRef<StudentBoardAction[]>([]);
+  const studentUndoFuture=useRef<StudentBoardAction[]>([]);
 
   const snapshot = useRef<DocumentData | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3997,6 +4002,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           JSON.stringify(item) === JSON.stringify(baseline[pos])))
       return;
     const isLabSimulation=options?.labSimulation===true;
+    if(isStudent&&!isLabSimulation){
+      const action=captureStudentBoardAction(current,normalized,authUser.id);
+      if(action){
+        studentUndoPast.current.push(action);
+        if(studentUndoPast.current.length>80)studentUndoPast.current.shift();
+        studentUndoFuture.current=[];
+      }
+    }
     labSimulationOnly.current=isLabSimulation;
     if(!isLabSimulation)labCheckpointStartedAt.current=null;
     history.current = history.current.slice(0, index.current + 1);
@@ -4061,6 +4074,31 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const undo = (direction: number) => {
     if (gesture.current || !canEdit) return;
+    if(isStudent){
+      const source=direction<0?studentUndoPast.current:studentUndoFuture.current;
+      const destination=direction<0?studentUndoFuture.current:studentUndoPast.current;
+      const type=direction<0?"undo":"redo" as const;
+      let skipped=0;
+      while(source.length){
+        const action=source.pop()!;
+        const outcome=replayStudentBoardAction(itemsRef.current,action,authUser.id,type);
+        if(!outcome.ok){skipped++;continue;}
+        if(blockedBoardItemRemovals(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
+           blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length){
+          skipped++;continue;
+        }
+        destination.push(action);
+        if(destination.length>80)destination.shift();
+        display(outcome.items);
+        if(snapshot.current&&!saveBlocked)
+          snapshot.current=packDocumentInk({...snapshot.current,items:outcome.items});
+        setSelected([]);
+        if(skipped)setNotice("Некоторые действия уже изменены другими участниками и пропущены.");
+        return;
+      }
+      if(skipped)setNotice("Эти действия уже изменены другими участниками. Их нельзя безопасно отменить.");
+      return;
+    }
     const next = index.current + direction;
     if (next < 0 || next >= history.current.length) return;
     // History snapshots describe our change, not a license to replace the
@@ -4277,9 +4315,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           respond(`Серверная история недоступна офлайн. В локальной истории отмены ${localSteps} шагов. Последний шаг: добавлено ${added}, изменено ${changed}, удалено ${removed}; сейчас на доске ${current.length} элементов.`);
         }
       }else if(command.kind==="undo"||command.kind==="redo"){
-        const before=index.current;
+        const before=isStudent
+          ?`${studentUndoPast.current.length}:${studentUndoFuture.current.length}`
+          :String(index.current);
         undo(command.kind==="undo"?-1:1);
-        respond(index.current===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
+        const after=isStudent
+          ?`${studentUndoPast.current.length}:${studentUndoFuture.current.length}`
+          :String(index.current);
+        respond(after===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
       }else if(command.kind==="pick-media"){
         const input=mediaInput.current;
         if(!input)respond("Не удалось открыть выбор файла. Используйте кнопку загрузки фото или PDF на панели инструментов.");
@@ -8597,8 +8640,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
-                <button type="button" disabled={index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
-                <button type="button" disabled={index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
+                <button type="button" disabled={isStudent?studentUndoPast.current.length===0:index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={isStudent?studentUndoFuture.current.length===0:index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
               </div>
               <div className="topbar-menu-section">
                 {!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
@@ -8746,8 +8789,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
 
         <div className="mobile-undo-redo" aria-label="История изменений">
-          <button type="button" disabled={index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
-          <button type="button" disabled={index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
+          <button type="button" disabled={isStudent?studentUndoPast.current.length===0:index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={isStudent?studentUndoFuture.current.length===0:index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
         </div>
         {presentation && (
           <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>
