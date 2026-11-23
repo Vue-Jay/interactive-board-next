@@ -542,6 +542,7 @@ export type Item = {
   instrumentScale?: number;
   assetId?: string;
   imageCrop?: ImageCropRect;
+  imageSourceAspect?: number;
   name?: string;
   mime?: string;
   pdfPage?: number;
@@ -751,6 +752,8 @@ export function parseDocument(raw: string): DocumentData {
       if (typeof i.assetId !== "string" || typeof i.name !== "string" || typeof i.mime !== "string") throw new Error("Повреждён медиаобъект");
       if (i.kind === "image" && i.imageCrop != null && !validImageCrop(i.imageCrop))
         throw new Error("Повреждены границы обрезки изображения");
+      if(i.kind==="image"&&i.imageSourceAspect!=null&&(!finite(i.imageSourceAspect)||i.imageSourceAspect<=0))
+        throw new Error("Повреждены пропорции изображения");
       if (i.kind === "pdf" && i.pdfPage != null && (!finite(i.pdfPage) || i.pdfPage < 1 || i.pdfPage > 10000)) throw new Error("Повреждён номер страницы PDF");
     }
     if (i.kind === "pen" || i.kind === "marker") {
@@ -1493,6 +1496,7 @@ export function parseDocument(raw: string): DocumentData {
       ...(i.kind === "image" || i.kind === "pdf" ? {
           assetId: i.assetId, name: i.name, mime: i.mime,
           ...(i.kind === "image" && validImageCrop(i.imageCrop) ? { imageCrop: { ...i.imageCrop } } : {}),
+          ...(i.kind === "image" && finite(i.imageSourceAspect) && i.imageSourceAspect>0 ? {imageSourceAspect:i.imageSourceAspect} : {}),
           ...(i.kind === "pdf" && finite(i.pdfPage) ? { pdfPage: Math.max(1, Math.round(i.pdfPage)) } : {})
         } : {}),
       ...(i.kind === "connector" ? {

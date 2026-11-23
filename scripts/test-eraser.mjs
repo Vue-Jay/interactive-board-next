@@ -43,6 +43,7 @@ assert.equal(JSON.stringify(stickerInkPixels(enlargedOverhang,enlargedOverhang.s
 const cutOverhang=eraseStickerInk(overhanging,[{x:350,y:150}],5);
 assert.notEqual(cutOverhang,overhanging,"eraser reaches ink beyond the paper");
 assert.ok(cutOverhang.stickerInk.some(i=>i.points.some(p=>p.x>1)),"remaining outside ink is still attached");
+assert.equal(eraseStickerInk(overhanging,[{x:350,y:150}],5,"stroke").stickerInk.length,0,"whole stroke eraser removes the complete attached line even outside the paper");
 assert.equal(JSON.stringify(modelExports.parseDocument(JSON.stringify({version:1,title:"Test",view:{x:0,y:0,zoom:1},items:[overhanging]})).items[0].stickerInk),JSON.stringify([overhang]));
 const recovered=modelExports.parseDocument(JSON.stringify({version:1,title:"Test",view:{x:0,y:0,zoom:1},items:[annotated]})).items[0];
 assert.equal(JSON.stringify(recovered.stickerInk),JSON.stringify([ink]));
@@ -73,6 +74,9 @@ const spans = (pieces) => pieces.map((i) => {
 
 for (const kind of ["pen", "marker"]) {
   const original = stroke(kind);
+  assert.equal(eraseInkAlongPath([original],[point(2500,0)],10,()=>true,"stroke").length,0,"whole stroke erases the entire original");
+  assert.equal(eraseInkAlongPath([original],[point(2500,-100),point(2500,100)],10,()=>true,"stroke").length,0,"fast crossing must catch the entire stroke");
+  assert.equal(eraseInkAlongPath([original],[point(2500,100)],10,()=>true,"stroke")[0],original,"a miss must leave the stroke alone");
   // One click near the middle MUST make a gap, even in a 5,000px two-point stroke.
   const cut = eraseInkAlongPath([original], [point(2500, 0)], 10);
   assert.equal(cut.length, 2, kind + ": partial erasure must leave two pieces");
@@ -100,5 +104,20 @@ nearby.y = 100;
 const cutWithUntouched = eraseInkAlongPath([untouched, nearby], [point(2500, 0)], 10);
 assert.equal(cutWithUntouched.length, 3);
 assert.equal(cutWithUntouched[2], nearby, "other strokes must be preserved");
+assert.equal(eraseInkAlongPath([untouched,nearby],[point(2500,0)],10,()=>true,"stroke")[0],nearby);
+assert.equal(eraseInkAlongPath([locked],[point(2500,0)],10,()=>false,"stroke")[0],locked);
+const rotatedLine={...stroke(),rotation:90};
+assert.equal(eraseInkAlongPath([rotatedLine],[point(2500,1000)],5,()=>true,"stroke").length,0,"rotated strokes are hit in their displayed position");
+assert.equal(eraseInkAlongPath([rotatedLine],[point(4000,0)],5,()=>true,"stroke")[0],rotatedLine);
+const dot={...stroke(),x:8,y:8,width:4,height:4,points:[point(2,2)]};
+assert.equal(eraseInkAlongPath([dot],[point(10,10)],5,()=>true,"stroke").length,0,"one-point marks can be removed");
+const previewExports={};
+runInNewContext(ts.transpileModule(readFileSync(new URL("../src/remoteEraserPreview.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{
+  exports:previewExports,require:name=>name==="./boardModel"?modelExports:name==="./boardLiveInk"?{remoteInkRuns:p=>[{points:p.points}]}:exports,crypto:{randomUUID}
+});
+const preview={id:"erase",kind:"eraser",weight:20,points:[point(2500,0)],eraserMode:"stroke"};
+const targets=new Map([[preview.id,new Set([untouched.id])]]);
+assert.equal(previewExports.previewRemoteErasures([untouched,nearby],new Map([[preview.id,preview]]),targets)[0],nearby,"Peer must see the whole line disappear before eraser release");
+assert.equal(previewExports.previewRemoteErasures([untouched],new Map([[preview.id,{...preview,eraserMode:"partial"}]]),targets).length,2,"Peer partial mode still shows both cut fragments");
 
 console.log("Eraser regression tests passed: partial, crossed, long, full, repeated, non-lockable and protected strokes.");

@@ -19,7 +19,7 @@ import { buildBoardDragSnapIndex, snapBoardDrag, type BoardDragSnapIndex } from 
 import { applyBoardSelectionCursor, clearBoardSelectionCursor, selectionCursorForGesture, selectionCursorForTarget } from "./lektrusSelectionCursor";
 import "./App.css";
 import GeometryInstruments, { type InstrumentType } from "./GeometryInstruments";
-import { resizedRect, preserveRotatedAnchor } from "./lektrusRotateResize";
+import { resizedRect, resizedImageRect, initialImageSize, preserveRotatedAnchor } from "./lektrusRotateResize";
 import LektrusBoardGeometryPanel, { type BoardGeometryMode } from "./LektrusBoardGeometryPanel";
 import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
 import { addBoardGeometryPoint, linkBoardGeometry, adjustBoardGeometry, constrainBoardGeometry, releaseBoardGeometryConstraint, schoolBoardGeometry, removeBoardGeometryElement, removeBoardGeometrySchoolGroup, editBoardGeometryPoint, type BoardGeometryResult } from "./lektrusBoardGeometry";
@@ -84,7 +84,7 @@ import { formatPiRadians, makeMathPresetItem } from "./lektrusMathPresets";
 import { isSolidFigure, projectSolid, projectSolidAxis, projectSolidSurfaces, projectSolidEdges, solidDimensionEdgePairs } from "./lektrusSolid3d";
 import { useAdaptiveBoardToolbar } from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
-import { LectrisQuickProperties, LectrisObjectInspector, InkWidthSample, INK_WIDTHS } from "./LectrisObjectEditor";
+import { LectrisQuickProperties, LectrisObjectInspector, InkWidthSample, INK_WIDTHS, EraserModePicker } from "./LectrisObjectEditor";
 import { placeImageCrop } from "./imageCropGeometry";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
@@ -129,7 +129,7 @@ import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWay
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
-import { eraseInkAlongPath } from "./inkEraser";
+import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, makeStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
 import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planePointFromClient} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
@@ -389,6 +389,7 @@ type Gesture = {
   transformItem?: Item;
   transformItems?: Item[];
   transformBounds?: Bounds;
+  imageAspect?:number;
   ink?: { id: string; kind: "pen" | "marker"; color: string; weight: number };
   sticker?: Item;
   additive: boolean;
@@ -792,11 +793,11 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
   }, [nearViewport, item.assetId, boardId]);
 
   const crop=item.kind==="image"?item.imageCrop:undefined;
-  const imageStyle:CSSProperties|undefined=crop?{
+  const imageStyle:CSSProperties=crop?{
     position:"absolute",objectFit:"fill",
     width:`${100/crop.width}%`,height:`${100/crop.height}%`,
     left:`${-100*crop.x/crop.width}%`,top:`${-100*crop.y/crop.height}%`
-  }:undefined;
+  }:{objectFit:"fill"};
   return <div ref={hostRef} className="media-host">
     {!nearViewport
       ? <div className="media-missing">Вложение</div>
@@ -2304,6 +2305,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [remoteWork, setRemoteWork] = useState<Record<string, RemoteWorkState>>({});
   const workChannel = useRef<BoardWorkChannel | null>(null);
   const board = useRef<HTMLElement>(null);
+  // Older images may have been saved in a padded frame. Read their decoded
+  // aspect ratio once at the start of a resize, not on each pointer sample.
+  const imageAspect=(item:Item)=>{
+    const cropRatio=(item.imageCrop?.width??1)/(item.imageCrop?.height??1);
+    if(item.imageSourceAspect)return item.imageSourceAspect*cropRatio;
+    const img=board.current?.querySelector<HTMLImageElement>(`.board-object[data-object="${CSS.escape(item.id)}"] .media-image`);
+    if(!img?.naturalWidth||!img.naturalHeight)return item.width/item.height;
+    return img.naturalWidth/img.naturalHeight*cropRatio;
+  };
   const selectionToolbarRef = useRef<HTMLDivElement>(null);
   const [selectionToolbarSize,setSelectionToolbarSize] = useState({width:0,height:0,boardWidth:0,boardHeight:0});
   const [boardViewportSize,setBoardViewportSize]=useState({width:0,height:0});
@@ -2498,6 +2508,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const setMarkerWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "marker", { size: value }));
   useEffect(() => { if(!demoMode)writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
   const [eraserSize, setEraserSize] = useState(22);
+  const [eraserMode,setEraserMode]=useState<EraserMode>("partial");
   const [snapEnabled, setSnapEnabled] = useState(false);
   const guideX=useRef<HTMLDivElement>(null);
   const guideY=useRef<HTMLDivElement>(null);
@@ -2797,11 +2808,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const itemsRef = useRef(items);
   const [getCurrentItemIndex] = useState(()=>createCurrentItemIndex<Item>());
-  const eraserSession = useRef<{id:string;pointer:number;last:Point;zoom:number;weight:number;path:Point[]}|null>(null);
+  const eraserSession = useRef<{id:string;pointer:number;last:Point;zoom:number;weight:number;path:Point[];mode:EraserMode;hiddenIds:Set<string>;hiddenStickerInk:Set<SVGElement>}|null>(null);
   const sendLiveEraser=(g:NonNullable<typeof eraserSession.current>,finished=false,cancelled=false,cutIds:string[]=[])=>{
     const offset=Math.max(0,g.path.length-(cancelled?1:500));
     cursorChannel.current?.sendInk({id:g.id,kind:"eraser",color:"#000000",weight:g.weight,
-      points:g.path.slice(offset),offset,finished,cancelled,cutIds});
+      points:g.path.slice(offset),offset,finished,cancelled,cutIds,eraserMode:g.mode});
   };
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
@@ -3673,7 +3684,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // The original SVG strokes are replaced with a lightweight, instant canvas
   // preview while erasing. This keeps the brush responsive on teacher boards
   // without forcing the entire React object tree to render on every pointermove.
-  const beginEraserPreview=()=>{
+  const beginEraserPreview=(hiddenIds?:ReadonlySet<string>)=>{
     const canvas=eraserPreviewCanvas.current;
     const host=board.current;
     if(!canvas||!host)return;
@@ -3692,7 +3703,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const right=(rect.width-view.x)/z,bottom=(rect.height-view.y)/z;
     ctx.setTransform(ratio*z,0,0,ratio*z,ratio*view.x,ratio*view.y);
     for(const item of itemsRef.current){
-      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length)continue;
+      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length||hiddenIds?.has(item.id))continue;
       const pad=(item.weight??3)/2;
       if(item.x+item.width+pad<left||item.x-pad>right||item.y+item.height+pad<top||item.y-pad>bottom)continue;
       ctx.save();
@@ -3723,6 +3734,28 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     host.classList.add("eraser-live");
   };
   const previewEraserSegment=(from:Point,to:Point)=>{
+    const g=eraserSession.current;
+    if(g?.mode==="stroke"){
+      const path=[world(from),world(to)];
+      let changed=false;
+      for(const item of itemsRef.current){
+        if(isInkItem(item)&&!g.hiddenIds.has(item.id)&&canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner)&&inkTouchesEraser(item,path,g.weight/2)){
+          g.hiddenIds.add(item.id);changed=true;
+        }else if(item.kind==="sticky"&&!item.hidden&&!item.locked&&canTransformBoardObject(item)&&item.stickerInk?.length){
+          const next=eraseStickerInk(item,path,g.weight/2,"stroke");
+          if(next===item)continue;
+          const remaining=new Set(next.stickerInk?.map(ink=>ink.id));
+          const node=board.current?.querySelector(`.board-object[data-object="${CSS.escape(item.id)}"]`);
+          for(const ink of item.stickerInk){
+            if(remaining.has(ink.id))continue;
+            const element=node?.querySelector<SVGElement>(`[data-sticker-ink="${CSS.escape(ink.id)}"]`);
+            if(element&&!g.hiddenStickerInk.has(element)){element.style.visibility="hidden";g.hiddenStickerInk.add(element);}
+          }
+        }
+      }
+      if(changed)beginEraserPreview(g.hiddenIds);
+      return;
+    }
     const canvas=eraserPreviewCanvas.current;
     if(!canvas||canvas.style.display!=="block")return;
     const ctx=canvas.getContext("2d");
@@ -3751,7 +3784,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const cancelEraser=()=>{
     const g=eraserSession.current;
-    if(g)sendLiveEraser(g,true,true);
+    if(g){sendLiveEraser(g,true,true);g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));}
     eraserSession.current=null;
     stopEraserPreview();
   };
@@ -3772,11 +3805,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // The model is changed once per gesture, as one undo/history operation.
     const before=itemsRef.current;
     const erased=eraseInkAlongPath(before,g.path,g.weight/2,
-      item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner));
+      item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner),g.mode);
     let stickerChanged=false;
     const withStickers=erased.map(item=>{
       if(item.kind!=="sticky"||item.hidden||item.locked||!canTransformBoardObject(item))return item;
-      const next=eraseStickerInk(item,g.path,g.weight/2);
+      const next=eraseStickerInk(item,g.path,g.weight/2,g.mode);
       if(next!==item)stickerChanged=true;
       return next;
     });
@@ -3793,6 +3826,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Erasing should not wait for the generic document autosave debounce.
       flushSave();
     }
+    g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));
     stopEraserPreview();
     if (!remoteSaveInFlight.current && deferredRemote.current) {
       const delayed = deferredRemote.current;
@@ -4289,6 +4323,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
     let width = 360;
     let height = isPdf ? 500 : 260;
+    let imageSourceAspect:number|undefined;
     if (isImage) {
       const url = URL.createObjectURL(file);
       try {
@@ -4298,9 +4333,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           image.onerror = () => reject(new Error("Не удалось определить размер изображения"));
           image.src = url;
         });
-        const scale = Math.min(420 / Math.max(1, natural.width), 320 / Math.max(1, natural.height), 1);
-        width = Math.max(120, natural.width * scale);
-        height = Math.max(80, natural.height * scale);
+        ({width,height}=initialImageSize(natural.width,natural.height));
+        imageSourceAspect=natural.width/natural.height;
       } finally {
         URL.revokeObjectURL(url);
       }
@@ -4317,6 +4351,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       y: center.y - height / 2 + offset,
       width,
       height,
+      imageSourceAspect,
       text: "",
       assetId: id,
       name: file.name,
@@ -4354,6 +4389,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const item:Item={
       id:createId(),kind:request.kind,x:center.x-request.width/2,y:center.y-request.height/2,
       width:request.width,height:request.height,text:"",assetId:request.assetId,name:request.name,mime:request.mime,
+      ...(request.kind==="image"?{imageSourceAspect:request.width/request.height}:{}),
     };
     commit([...itemsRef.current,item]);
     setSelected([item.id]);setTool("select");
@@ -4950,6 +4986,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         mode: transformHandle === "rotate" ? "rotate" : "resize",
         handle: transformHandle,
         transformItem: { ...hit, points: hit.points?.map((p) => ({ ...p })) },
+        imageAspect:hit.kind==="image"?imageAspect(hit):undefined,
         start,
         view,
         before: itemsRef.current,
@@ -5494,14 +5531,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const wx = dx / g.view.zoom, wy = dy / g.view.zoom;
       if (g.transformItems && g.transformBounds) {
         const baseBounds = g.transformBounds;
-        const nextBounds = resizedRect(baseBounds, g.handle, wx, wy, 80, 60, e.shiftKey);
+        const nextBounds = g.transformItems.some(item=>item.kind==="image")
+          ?resizedImageRect(baseBounds,g.handle,wx,wy)
+          :resizedRect(baseBounds, g.handle, wx, wy, 80, 60, e.shiftKey);
         const sx = nextBounds.width / Math.max(1, baseBounds.width);
         const sy = nextBounds.height / Math.max(1, baseBounds.height);
         const resized=g.transformItems.map(base=>fitItemToRect(base,{
           x:nextBounds.x+(base.x-baseBounds.x)*sx,
           y:nextBounds.y+(base.y-baseBounds.y)*sy,
-          width:Math.max(8,base.width*sx),
-          height:Math.max(8,base.height*sy),
+          width:Math.max(base.kind==="image"?0.001:8,base.width*sx),
+          height:Math.max(base.kind==="image"?0.001:8,base.height*sy),
         }));
         if(!paintCompositorResize(g,resized)){
           const byId=new Map(resized.map(item=>[item.id,item] as const));
@@ -5516,7 +5555,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         const radians=-(base.rotation??0)*Math.PI/180;
         const localWx=wx*Math.cos(radians)-wy*Math.sin(radians);
         const localWy=wx*Math.sin(radians)+wy*Math.cos(radians);
-        const localRect = resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
+        const localRect = base.kind==="image"
+          ?resizedImageRect(base,g.handle,localWx,localWy,g.imageAspect)
+          :resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
         const rect = preserveRotatedAnchor(base,localRect,base.rotation??0);
         const resized=fitItemToRect(base,rect,true);
         if(!paintCompositorResize(g,[resized]))
@@ -5922,6 +5963,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (isStudent && structurallyLockedForStudent(singleSelected)) return;
     if (singleSelected.locked && patch.locked !== false) return;
     if(singleSelected.kind==="pdf"&&patch.pdfPage!==undefined){setPdfPage(singleSelected,patch.pdfPage);return;}
+    if(singleSelected.kind==="image"&&(patch.width!==undefined||patch.height!==undefined)){
+      const ratio=imageAspect(singleSelected);
+      patch=patch.width!==undefined?{...patch,height:patch.width/ratio}:{...patch,width:patch.height!*ratio};
+    }
     commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,...patch}:item));
   };
   const lectrisEditSelected = () => {
@@ -8632,7 +8677,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {!objectEditorOpen && !presentation && selectedItems.length===0 && <LectrisQuickProperties userId={authUser.id}
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
-          weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
+          weight={weight} markerWeight={markerWeight} eraserSize={eraserSize} eraserMode={eraserMode} onEraserMode={setEraserMode}
           canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
           canEditContent={singleSelected?.kind!=="image"||canCropImage(singleSelected)}
           inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
@@ -9403,6 +9448,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             role="group" aria-label={"Параметры инструмента: "+(tool==="eraser"?"ластик":tool==="marker"?"маркер":"карандаш")}
             onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
             <strong className="lektrus-ink-tool-name">{tool==="eraser"?"Ластик":tool==="marker"?"Маркер":"Карандаш"}</strong>
+            {tool==="eraser"&&<EraserModePicker value={eraserMode} onChange={setEraserMode}/>}
             {tool!=="eraser"&&<LektrusColorPicker userId={authUser.id} compact label="Цвет"
               value={tool==="marker"?markerColor:penColor}
               onChange={tool==="marker"?setMarkerColor:setPenColor}/>}
@@ -9852,10 +9898,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const screen=local(e.clientX,e.clientY);
             const p=world(screen);
             if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
-            eraserSession.current={id:createId(),pointer:e.pointerId,last:p,zoom:view.zoom,weight:eraserSize/view.zoom,path:[p]};
+            eraserSession.current={id:createId(),pointer:e.pointerId,last:p,zoom:view.zoom,weight:eraserSize/view.zoom,path:[p],mode:eraserMode,hiddenIds:new Set(),hiddenStickerInk:new Set()};
             sendLiveEraser(eraserSession.current);
             setSelected([]);
-            beginEraserPreview();
+            if(eraserMode==="partial")beginEraserPreview();
             previewEraserSegment(screen,screen);
             setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
             board.current?.setPointerCapture(e.pointerId);
@@ -10461,7 +10507,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   <svg className="sticker-ink-layer" viewBox={`0 0 ${item.width} ${item.height}`} aria-hidden="true">
                     {(item.stickerInk??[]).map(ink=>{
                       const {points,weight}=stickerInkPixels(item,ink);
-                      return <g key={ink.id} opacity={ink.kind==="marker"?.32:1}>
+                      return <g key={ink.id} data-sticker-ink={ink.id} opacity={ink.kind==="marker"?.32:1}>
                         {points.length===1?<circle cx={points[0].x} cy={points[0].y} r={weight/2} fill={ink.color}/>:
                           <polyline points={points.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round"/>}
                       </g>;

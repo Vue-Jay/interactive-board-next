@@ -8,8 +8,10 @@ export function placeImageCrop(
  crop: ImageCropRect
 ): Pick<Item,"x"|"y"|"width"|"height"|"imageCrop"> {
  const previous=item.imageCrop??{x:0,y:0,width:1,height:1};
- const nextWidth=Math.max(24,item.width*crop.width/previous.width);
- const nextHeight=Math.max(24,item.height*crop.height/previous.height);
+ const rawWidth=item.width*crop.width/previous.width;
+ const rawHeight=item.height*crop.height/previous.height;
+ const scale=Math.max(1,24/Math.max(rawWidth,rawHeight));
+ const nextWidth=rawWidth*scale,nextHeight=rawHeight*scale;
  const localDx=(crop.x+crop.width/2-previous.x-previous.width/2)*item.width/previous.width;
  const localDy=(crop.y+crop.height/2-previous.y-previous.height/2)*item.height/previous.height;
  const angle=(item.rotation??0)*Math.PI/180;

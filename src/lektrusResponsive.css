@@ -789,6 +789,11 @@
  min-width:0;box-sizing:border-box;padding:5px 8px;
 }
 .lektrus-ink-tool-name{font-size:11px;white-space:nowrap;color:#526986}
+.lektrus-eraser-modes{display:flex;align-items:center;gap:3px;min-width:0;max-width:100%;flex:0 1 auto}
+.workspace .lektrus-eraser-modes>button{display:flex;align-items:center;justify-content:center;gap:4px;min-height:40px;padding:4px 7px;border:1px solid #cbd8e9;border-radius:8px;background:#fff;color:#405674;font-size:11px;font-weight:650;white-space:nowrap;touch-action:manipulation}
+.workspace .lektrus-eraser-modes>button[aria-pressed="true"]{border-color:#5e8cde;background:#e9f1ff;color:#1e56a2;box-shadow:inset 0 0 0 1px #8caceb}
+.workspace .lektrus-eraser-modes>button:focus-visible{outline:2px solid #3165ba;outline-offset:-2px}
+@media(max-width:700px),(pointer:coarse){.workspace .lektrus-eraser-modes>button{min-height:44px}.workspace .lektrus-ink-settings-direct:has(.lektrus-eraser-modes){flex-wrap:wrap}}
 .lektrus-direct-ink-widths{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
 .lektrus-direct-ink-widths>button{
  box-sizing:border-box;display:flex;justify-content:center;align-items:center;

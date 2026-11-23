@@ -2,6 +2,18 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Item,ShapeType,ConnectorStyle,ArrowHeadStyle } from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 import {boardObjectTypeName} from "./boardObjectNames";
+import type {EraserMode} from "./inkEraser";
+
+export function EraserModePicker({value,onChange}:{value:EraserMode;onChange:(mode:EraserMode)=>void}){
+ return <div className="lektrus-eraser-modes" role="group" aria-label="Режим ластика">
+  <button type="button" aria-pressed={value==="partial"} title="Стирать только участок под ластиком" onClick={()=>onChange("partial")}>
+   <svg viewBox="0 0 24 20" width="24" height="20" fill="none" aria-hidden="true"><path d="M2 14 8 7m8 5 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="10" r="5" stroke="currentColor" strokeDasharray="2 2"/></svg>Точечный
+  </button>
+  <button type="button" aria-pressed={value==="stroke"} title="Удалять весь штрих при касании" onClick={()=>onChange("stroke")}>
+   <svg viewBox="0 0 24 20" width="24" height="20" fill="none" aria-hidden="true"><path d="M2 14 8 6l7 7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 2"/><path d="m9 6 6 8m0-8-6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Целый штрих
+  </button>
+ </div>;
+}
 
 /** Five genuinely distinct BOARD-pixel widths. */
 export const INK_WIDTHS={
@@ -41,6 +53,8 @@ type QuickProps = {
   weight: number;
   markerWeight: number;
   eraserSize: number;
+  eraserMode:EraserMode;
+  onEraserMode:(mode:EraserMode)=>void;
   canModify: boolean;
   canEditContent?: boolean;
   inspectorOpen: boolean;
@@ -142,6 +156,7 @@ export function LectrisQuickProperties(props: QuickProps) {
       </>:<>
         {drawing&&<LektrusColorPicker compact userId={props.userId} label="Цвет"
           value={color} onChange={props.onColor}/>}
+        {erasing&&<EraserModePicker value={props.eraserMode} onChange={props.onEraserMode}/>}
         <div className="lektrus-ink-five-widths" role="group"
           aria-label={"Толщина: "+(erasing?"ластик":tool==="marker"?"маркер":"карандаш")}>
           {inkSizes.map((size,i)=><button key={size} type="button"

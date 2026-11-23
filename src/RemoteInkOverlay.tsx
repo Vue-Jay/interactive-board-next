@@ -2,6 +2,7 @@ import { memo, useMemo, useSyncExternalStore } from "react";
 import { remoteInkRuns, type RemoteInkStore, type RemoteLiveInkPreview } from "./boardLiveInk";
 import {stroke} from "./boardModel";
 import {previewRemoteErasures} from "./remoteEraserPreview";
+import {inkTouchesEraser} from "./inkEraser";
 
 type Erasures=ReadonlyMap<string,RemoteLiveInkPreview>;
 type EraseTargets=ReadonlyMap<string,ReadonlySet<string>>;
@@ -13,6 +14,10 @@ const RemoteInkStroke=memo(function RemoteInkStroke({ink,zoom,erasures,eraseTarg
   const runs=useMemo(()=>remoteInkRuns(ink).map(run=>({...run,coordinates:run.points.length===1?"":run.points.map(point=>`${point.x},${point.y}`).join(" ")})),[ink]);
   const visibleRuns=useMemo(()=>{
     if(!erasures?.size||!eraseTargets||ink.kind==="eraser"||![...erasures.keys()].some(id=>eraseTargets.get(id)?.has(ink.id)))return runs;
+    // Even if packet loss split a still-live pen stroke into separate runs,
+    // a whole-stroke eraser touching one run removes all runs of that ID.
+    if([...erasures].some(([id,erase])=>erase.eraserMode==="stroke"&&!erase.cancelled&&eraseTargets.get(id)?.has(ink.id)&&
+      (erase.cutIds?.includes(ink.id)||runs.some(run=>remoteInkRuns(erase).some(path=>inkTouchesEraser(stroke(ink.id,ink.kind as "pen"|"marker",run.points,ink.color,ink.weight),path.points,erase.weight/2))))))return [];
     return runs.flatMap<{offset:number|string;points:RemoteLiveInkPreview["points"];coordinates:string}>(run=>{
       const item=stroke(ink.id,ink.kind as "pen"|"marker",run.points,ink.color,ink.weight);
       const pieces=previewRemoteErasures([item],erasures,eraseTargets);

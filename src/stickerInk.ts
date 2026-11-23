@@ -1,5 +1,5 @@
 import { simplifyStrokePath, stroke, type Item, type Point, type StickerInk } from "./boardModel";
-import { eraseInkAlongPath } from "./inkEraser";
+import { eraseInkAlongPath, type EraserMode } from "./inkEraser";
 
 /** Undo the object's rotation before converting to sticker-local coordinates. */
 export function stickerLocalPoint(item: Item, p: Point): Point {
@@ -71,14 +71,14 @@ export function stickerVisualBounds(item: Item) {
 }
 
 /** Apply the ordinary partial-stroke eraser in the sticker's own geometry. */
-export function eraseStickerInk(item: Item, path: Point[], radius: number): Item {
+export function eraseStickerInk(item: Item, path: Point[], radius: number, mode:EraserMode="partial"): Item {
   if(!item.stickerInk?.length)return item;
   const localPath=path.map(p=>stickerLocalPoint(item,p));
   const strokes=item.stickerInk.map(ink=>{
     const pixels=stickerInkPixels(item,ink);
     return stroke(ink.id,ink.kind,pixels.points,ink.color,pixels.weight,8);
   });
-  const fragments=eraseInkAlongPath(strokes,localPath,radius);
+  const fragments=eraseInkAlongPath(strokes,localPath,radius,()=>true,mode);
   if(fragments===strokes)return item;
   const originals=new Map(strokes.map((s,i)=>[s,item.stickerInk![i]]));
   return {...item,stickerInk:fragments.map(fragment=>originals.get(fragment)??{

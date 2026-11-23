@@ -114,6 +114,10 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
                     "weight", "offset", "points", "finished"}
         if kind == "live_erase":
             required.update(("cancelled", "cut_ids"))
+            if "erase_mode" in frame:
+                required.add("erase_mode")
+                if frame["erase_mode"] not in ("partial", "stroke"):
+                    raise InvalidLiveEvent("invalid_erase_mode")
         if set(frame) != required:
             raise InvalidLiveEvent("invalid_ink_fields")
         client_id, stroke_id = frame["client_id"], frame["stroke_id"]
@@ -154,6 +158,7 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
                 "stroke_id": stroke_id, "kind": tool, "color": color,
                 "weight": weight, "offset": offset, "points": validated,
                 **({"cancelled": frame["cancelled"], "cut_ids": frame["cut_ids"]} if kind == "live_erase" else {}),
+                **({"erase_mode": frame["erase_mode"]} if kind == "live_erase" and "erase_mode" in frame else {}),
                 "finished": finished, "sent_at": int(time.time() * 1000)}
 
     if kind == "work_state":

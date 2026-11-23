@@ -1306,7 +1306,50 @@ try{
  await click('.toolbar-pinned button[aria-label^="Ластик"]');
  await wait('document.querySelector("section.board")?.classList.contains("board-tool-eraser")',
   "Eraser could not be activated");
- console.log("✓ Ink: real pencil stroke rendered and saved; eraser activates");
+ const eraserModeButton=async (mode)=>{
+  const found=await evaluate(`(()=>{const button=[...document.querySelectorAll('.lektrus-eraser-modes button')].find(b=>b.textContent.trim()===${JSON.stringify(mode)}&&b.getBoundingClientRect().width>0);if(!button)return false;button.click();return true})()`);
+  assert.ok(found,"Both eraser modes must be available");
+ };
+ const savedInkIds=`(()=>{const doc=JSON.parse(localStorage.getItem('lesson-board.document.v1.board.00000000-0000-4000-8000-0000000000a0'));return doc.items.filter(i=>i.kind==='pen').map(i=>i.id)})()`;
+ const originalInk=await evaluate(savedInkIds);
+ const lineId=originalInk.at(-1);
+ assert.ok(lineId,"Saved stroke ID missing");
+ await eraserModeButton("Точечный");
+ const hitX=canvasPoint.x+48,hitY=canvasPoint.y+Math.sin(48/30)*12;
+ await mouse("mousePressed",hitX,hitY,{pressed:true});
+ await mouse("mouseReleased",hitX,hitY);
+ await wait(`${savedInkIds}.length===${originalInk.length+1}&&!${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Partial eraser must split the real stroke into two fragments");
+ await click('button[aria-label="Отменить"]');
+ await wait(`${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Undo must restore the entire original stroke");
+ await eraserModeButton("Целый штрих");
+ await mouse("mousePressed",hitX,hitY,{pressed:true});
+ await wait('document.querySelector("section.board").classList.contains("eraser-live")',"Whole stroke must disappear in the live preview before pointer release");
+ await mouse("mouseReleased",hitX,hitY);
+ await wait(`${savedInkIds}.length===${originalInk.length-1}&&!${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Whole stroke eraser must remove the complete line without fragments");
+ console.log("✓ Real pencil, partial eraser, whole stroke eraser and undo");
+
+ // Drop actual decoded files of different dimensions and encodings. The
+ // pointer resize must keep their source aspect and fill the visible frame.
+ for(const [mime,w,h] of [["image/png",480,90],["image/jpeg",90,480],["image/webp",320,160]]){
+  const name=`resize-${mime.split('/')[1]}`;
+  await evaluate(`(async()=>{const b=document.querySelector('section.board'),r=b.getBoundingClientRect(),c=document.createElement('canvas');c.width=${w};c.height=${h};const ctx=c.getContext('2d');ctx.fillStyle='#2275ce';ctx.fillRect(0,0,c.width,c.height);const file=new File([await new Promise(resolve=>c.toBlob(resolve,${JSON.stringify(mime)}))],${JSON.stringify(name)},{type:${JSON.stringify(mime)}});const dataTransfer=new DataTransfer();dataTransfer.items.add(file);b.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer,clientX:Math.round(r.left+r.width*.55),clientY:Math.round(r.top+r.height*.42)}));return true})()`);
+  const selector=`.object-image:has(img[alt="${name}"])`;
+  await wait(`(()=>{const img=document.querySelector(${JSON.stringify(selector)}+' img');return img?.complete&&img.naturalWidth>0})()`,"Image did not load: "+mime,10000);
+  const ratio=await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});return el.offsetWidth/el.offsetHeight})()`);
+  assert.ok(Math.abs(ratio-w/h)/(w/h)<.05,"Initial frame must preserve image proportions for "+mime);
+  const beforeWidth=await evaluate(`document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().width`);
+  const grip=await rect('.screen-handle-e');
+  await mouse('mousePressed',grip.x,grip.y,{pressed:true});
+  await mouse('mouseMoved',grip.x+24,grip.y,{pressed:true});
+  await mouse('mouseReleased',grip.x+24,grip.y);
+  await wait(`document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().width>${beforeWidth+10}`,"Side grip must actually resize the image: "+mime);
+  const resized=await evaluate(`(()=>{const el=document.querySelector(${JSON.stringify(selector)}),img=el.querySelector('img');return {ratio:parseFloat(el.style.width)/parseFloat(el.style.height),fit:getComputedStyle(img).objectFit}})()`);
+  assert.ok(Math.abs(resized.ratio-w/h)/(w/h)<.015&&resized.fit==='fill',"Side grip must preserve aspect and avoid padding for "+mime);
+  await click('button[aria-label="Отменить"]'); // resize
+  await click('button[aria-label="Отменить"]'); // insertion, free the same board area
+  await wait(`!document.querySelector(${JSON.stringify(selector)})`,"Undo must remove the inserted image");
+ }
+ console.log("✓ PNG, JPEG and WebP: real image insertion and proportional side resize without padding");
 
  // The release catalogue must show the real 'Задания на доске' option.
  // Existing subject diagrams are never deleted by this menu filter.
