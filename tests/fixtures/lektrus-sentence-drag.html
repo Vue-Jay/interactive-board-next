@@ -27,7 +27,7 @@
     if(event.target.closest("[data-board-interactive],button"))return;
     window.__boardCaptured=(window.__boardCaptured||0)+1;
    }},
-    React.createElement("div",{className:"board-object",dataset:{object:"sentence-1"},
+    React.createElement("div",{className:"board-object","data-object":"sentence-1",
      style:{width:"98%",height:"100%",transform:"translateZ(0) scale(.96)",transformOrigin:"top left"}},
      React.createElement(LektrusLanguageSocialView,{diagram})
     )
