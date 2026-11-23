@@ -74,37 +74,56 @@ export function historicalUnresolvedCenters(year:number,issues:readonly {group:s
  return [...(groups.has('Mindanao')?mindanaoCenters:[]),...regionalCenters.filter(c=>groups.has(c.group))].filter(c=>c.from<=year&&year<=c.to).map(c=>({...c,id:`historical-center-${c.id}`,year}));
 }
 
-// Establishment and de facto recovery years in Sun, Hein, Song & Feng (2018),
-// "Planning modern cities in China" (Table 1). Dates are *calendar-year
-// brackets*, not precise treaty dates or final settlement of sovereignty.
-// The cities' municipal concessions are NOT separate sovereign countries.
+// Establishment/recovery brackets: Sun et al. (2018), Table 1. Primary
+// diplomatic records correct Austrian/Russian administrative transitions and
+// distinguish occupation and legal relinquishment from postwar recovery.
+// An ending year is a transition; none of these are sovereign countries.
 export const tianjinConcessionChronology=[
- {id:'british',nameRu:'британская',founded:1860,recovered:1945},
- {id:'french',nameRu:'французская',founded:1861,recovered:1945},
+ {id:'british',nameRu:'британская',founded:1860,recovered:1945,administrationEnded:1941},
+ {id:'french',nameRu:'французская',founded:1861,recovered:1945,administrationEnded:1943},
  {id:'german',nameRu:'германская',founded:1895,recovered:1917},
  {id:'japanese',nameRu:'японская',founded:1898,recovered:1945},
- {id:'russian',nameRu:'российская',founded:1901,recovered:1924},
+ {id:'russian',nameRu:'российская',founded:1901,recovered:1920,sourceRecovery:1924},
  {id:'belgian',nameRu:'бельгийская',founded:1902,recovered:1931},
- {id:'italian',nameRu:'итальянская',founded:1902,recovered:1945},
- {id:'austrohungarian',nameRu:'австро-венгерская',founded:1902,recovered:1919}
+ {id:'italian',nameRu:'итальянская',founded:1902,recovered:1945,administrationEnded:1943},
+ {id:'austrohungarian',nameRu:'австро-венгерская',founded:1902,recovered:1917,sourceRecovery:1919}
 ] as const;
 
-/** A recovery year is a transition, not automatically 365 days of control. */
+const tianjinAdministrationEnd=(c:typeof tianjinConcessionChronology[number])=>
+ 'administrationEnded' in c?c.administrationEnded:c.recovered;
+export const tianjinDatedTransitions=[
+ {from:1917,to:1919,description:'Австро-венгерская администрация прекратилась в 1917 году. Дипломатические документы октября 1917 года уже называют эту концессию бывшей; дата 1919 в сводной таблице не означает продолжения её управления до 1919 года.',url:'https://history.state.gov/historicaldocuments/frus1917Supp02v01/d614'},
+ {from:1920,to:1924,description:'Китайские власти приняли управление российской концессией 25 сентября 1920 года. Сохранение части муниципальных правил и последующее правовое урегулирование не означают российского административного контроля до 1924 года.',url:'https://history.state.gov/historicaldocuments/frus1920v01/d481'},
+ {from:1941,to:1945,description:'В декабре 1941 года японские силы заняли британскую концессию. Восстановление китайского управления после капитуляции Японии в 1945 году — отдельное событие.',url:'https://api.parliament.uk/historic-hansard/commons/1941/dec/11/china-british-residents'},
+ {from:1943,to:1945,description:'Британия подписала договор об отказе от экстерриториальных прав 11 января 1943 года; обмен ратификациями состоялся 20 мая. Это юридическая дата, а не восстановление китайской администрации на занятой японскими силами территории.',url:'https://treaties.fcdo.gov.uk/data/Library2/pdf/1943-TS0002.pdf'},
+ {from:1943,to:1945,description:'В мае 1943 года власти Виши передали французскую концессию под японский контроль. Это прекращение прежней администрации, а не признанная передача китайского суверенитета Японии.',url:'https://history.state.gov/historicaldocuments/frus1945v07/d99'},
+ {from:1943,to:1947,description:'После итальянского перемирия сентября 1943 года японские войска заняли итальянскую концессию. Поэтому она не показана как действующая итальянская администрация в 1944 году.',url:'https://doi.org/10.1080/1354571X.2010.501979'},
+ {from:1945,to:1947,description:'К ноябрю 1945 года китайские власти уже управляли бывшими муниципальными учреждениями; согласование передачи имущества и обязательств продолжалось отдельно.',url:'https://history.state.gov/historicaldocuments/frus1945v07/d1028'},
+ {from:1947,to:1947,description:'Статья 25 мирного договора с Италией отменяла аренду итальянской концессии. Договор подписан 10 февраля 1947 года и вступил в силу 15 сентября 1947 года. Эта юридическая дата не продлевает итальянское управление до 1947 года.',url:'https://treaties.un.org/doc/Publication/UNTS/Volume%2049/v49.pdf'}
+] as const;
+
+/** Calendar-year transitions never imply a full year under one authority. */
 export function tianjinConcessionStatus(year:number){
- return {active:tianjinConcessionChronology.filter(c=>c.founded<=year&&year<c.recovered),
+ return {active:tianjinConcessionChronology.filter(c=>c.founded<=year&&year<tianjinAdministrationEnd(c)),
   established:tianjinConcessionChronology.filter(c=>c.founded===year),
-  recovery:tianjinConcessionChronology.filter(c=>c.recovered===year)};
+  administrationChanges:tianjinConcessionChronology.filter(c=>tianjinAdministrationEnd(c)===year),
+  recovery:tianjinConcessionChronology.filter(c=>c.recovered===year),
+  transitions:tianjinDatedTransitions.filter(t=>t.from<=year&&year<=t.to)};
+}
+
+export function historicalCenterSources(center:{url?:string;sources?:readonly string[]}){
+ return [...new Set([...(center.url?[center.url]:[]),...(center.sources??[])])];
 }
 
 // At world-map scale keep a single city marker. This is a historical card,
 // not a replacement for missing georeferenced neighbourhood boundaries.
 export function historicalTreatyPortCenters(year:number){
- if(year<1860||year>1946)return [];
- const context=year<=1899?'После открытия порта в 1860 году иностранные концессии устраивались поэтапно в городской зоне вдоль реки Хайхэ.':year<=1902?'В 1900–1902 годах действовало временное международное правительство Тяньцзиня, контролировавшее город примерно 25 месяцев. Это не означало прекращения всех отдельных концессий, а возвращение китайского муниципального управления было поэтапным.':year<=1936?'В городе действовали иностранные муниципальные концессии; сроки их учреждения и фактического возвращения Китаю различались.':year===1937?'В июле 1937 года Тяньцзинь был захвачен японской армией.':year<=1944?'Японская военная оккупация города не означала перехода китайского суверенитета; иностранные концессии имели различный статус.':year===1945?'В 1945 году японская оккупация завершилась, началось восстановление китайского управления.':'В 1946 году город находился под управлением Китайской Республики; юридическое оформление прекращения некоторых концессий продолжалось.';
+ if(year<1860||year>1947)return [];
+ const context=year<=1899?'После открытия порта в 1860 году иностранные концессии устраивались поэтапно в городской зоне вдоль реки Хайхэ.':year<=1902?'В 1900–1902 годах действовало временное международное правительство Тяньцзиня, контролировавшее город примерно 25 месяцев. Это не означало прекращения всех отдельных концессий, а возвращение китайского муниципального управления было поэтапным.':year<=1936?'В городе действовали иностранные муниципальные концессии; сроки их учреждения и фактического возвращения Китаю различались.':year===1937?'В июле 1937 года Тяньцзинь был захвачен японской армией.':year<=1944?'Японская военная оккупация города не означала перехода китайского суверенитета; иностранные концессии имели различный статус.':year===1945?'В 1945 году японская оккупация завершилась, началось восстановление китайского управления.':'После войны город находился под управлением Китайской Республики; юридическое оформление прекращения концессий и передача имущества продолжались отдельно.';
  const status=tianjinConcessionStatus(year);
  const names=(list:typeof status.active)=>list.map(c=>c.nameRu).join(', ');
- const perYear=`${status.active.length?'Концессии, действовавшие в течение части или всего года по академической хронологии: '+names(status.active)+'. ':''}${status.established.length?'Учреждение/расширение в этом году: '+names(status.established)+'. ':''}${status.recovery.length?'Год фактического возвращения: '+names(status.recovery)+'. ':''}${year>=1863&&year<=1902?'Американское поселение (отмечено в источнике как учреждённое после 1862 года) было включено в британскую южную часть в 1902 году; точный первый год здесь не установлен. ':''}`;
- return [{id:'historical-center-tianjin-treaty-port',group:'Тяньцзинь — концессия',from:1860,to:1946,year,lon:117.2,lat:39.13,title:'Тяньцзинь — иностранные концессии',description:`${context} ${perYear}Сводные годы начала и возвращения не являются точными датами изменения международного правового статуса. Точка отмечает исторический город, не границы концессий и не отдельную государственную территорию.`,url:'https://journals.open.tudelft.nl/iphs/article/download/2751/2962/'}];
+ const perYear=`${status.active.length?'Муниципальные администрации до зарегистрированного перехода (без утверждения о контроле над всем городом): '+names(status.active)+'. ':''}${status.established.length?'Учреждение/расширение в этом году: '+names(status.established)+'. ':''}${status.administrationChanges.length?'Смена прежней администрации в этом году: '+names(status.administrationChanges)+'. ':''}${status.recovery.length?'Восстановление китайского управления в течение года: '+names(status.recovery)+'. ':''}${status.transitions.map(t=>t.description).join(' ')} ${year>=1863&&year<=1902?'Американское поселение (отмечено в источнике как учреждённое после 1862 года) было включено в британскую южную часть в 1902 году; точный первый год здесь не установлен. ':''}`;
+ return [{id:'historical-center-tianjin-treaty-port',group:'Тяньцзинь — концессия',from:1860,to:1947,year,lon:117.2,lat:39.13,title:'Тяньцзинь — иностранные концессии',description:`${context} ${perYear}Сводные годы начала и возвращения не являются точными датами изменения международного правового статуса. Точка отмечает исторический город, не границы концессий и не отдельную государственную территорию.`,url:'https://journals.open.tudelft.nl/iphs/article/download/2751/2962/',sources:status.transitions.map(t=>t.url)}];
 }
 
 // Corsica was liberated on 4 October 1943. The island was already a French

@@ -25,7 +25,7 @@ try{
   if(fs.existsSync(local))await route.fulfill({path:local,contentType:"application/json",headers:{"access-control-allow-origin":"*"}});
   else await route.continue();
  });
- await page.goto(base+"/demo/board?scene=history&capture=1");
+ await page.goto(base+"/demo/board?qa-release-fixture=1&scene=history&capture=1");
  const period=page.getByLabel("Выбрать год исторической карты");
  await period.waitFor({timeout:90000});
  const years=await period.locator("option").evaluateAll(nodes=>nodes.map(node=>Number(node.value)));
@@ -58,6 +58,15 @@ try{
    return null;
   });
   if(!probe){noPhysicalHit.push(year);return;}
+  // Reset before BOTH probes: the preceding synthetic audit may have left
+  // this exact country's card open, hiding a broken mouse-selection path.
+  const otherId=ids.find(id=>id!==probe.id);
+  assert.ok(otherId,`${year}: need a second territory to verify physical selection`);
+  const resetCard=async()=>{
+   await page.locator(`path.lektrus-atlas-country[data-atlas-feature-index="${otherId}"]`).dispatchEvent('click');
+   await page.locator(`.lektrus-atlas-info-object[data-atlas-selected-index="${otherId}"]`).waitFor({state:'visible',timeout:6000});
+  };
+  await resetCard();
   // Playwright's mouse API dispatches a trusted screen-coordinate action,
   // unlike locator.dispatchEvent and element.click used for the full audit.
   await page.mouse.move(probe.x,probe.y);
@@ -69,10 +78,7 @@ try{
   physicalMouseHits++;
   // Reset the card to a DIFFERENT country; otherwise a broken touch handler
   // could "pass" because the mouse already selected the expected one.
-  const otherId=ids.find(id=>id!==probe.id);
-  assert.ok(otherId,`${year}: need a second territory to verify touch selection`);
-  await page.locator(`path.lektrus-atlas-country[data-atlas-feature-index="${otherId}"]`).dispatchEvent('click');
-  await page.locator(`.lektrus-atlas-info-object[data-atlas-selected-index="${otherId}"]`).waitFor({state:'visible',timeout:6000});
+  await resetCard();
   // Playwright emits touchstart/touchend in a hasTouch Chromium context.
   // This is a real browser hit-test path, but NOT real Android hardware QA.
   await page.touchscreen.tap(probe.x,probe.y);

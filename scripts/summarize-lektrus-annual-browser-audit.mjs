@@ -10,7 +10,7 @@ function findFiles(dir){
  return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?findFiles(path.join(dir,e.name)):e.name.endsWith('.jsonl')?[path.join(dir,e.name)]:[]);
 }
 const years=new Map(),duplicates=[],parseErrors=[],issues=[],facts=[];
-const totals={expected:0,clicked:0,verified:0,issues:0,candidates:0,coverageGaps:0,rejected:0,physicalClicks:0};
+const totals={expected:0,clicked:0,verified:0,issues:0,candidates:0,coverageGaps:0,rejected:0,physicalClicks:0,physicalTouchTaps:0,physicalExpected:0};
 for(const file of findFiles(root)){
  const rl=readline.createInterface({input:fs.createReadStream(file),crlfDelay:Infinity});
  for await(const line of rl){
@@ -27,8 +27,10 @@ for(const file of findFiles(root)){
 }
 const expected=Array.from({length:5427},(_,i)=>2026-i).filter(y=>y!==0),annual=[...years.values()].sort((a,b)=>b.year-a.year);
 const missing=expected.filter(y=>!years.has(y)),unexpected=[...years.keys()].filter(y=>!expected.includes(y));
-const incomplete=annual.filter(y=>!y.completed||y.expected!==y.clicked||y.issues>0).map(y=>y.year);
-const result={expectedYears:expected.length,reportedYears:years.size,missing,unexpected,duplicates,parseErrors,incomplete,totals,annual,scope:'Real Chromium synthetic SVG DOM-dispatch and card checks. Physical pointer hit-testing NOT performed (0 clicks), independent historical correctness NOT verified; 2025 and 2026 coverage gaps remain.'};
+const incomplete=annual.filter(y=>!y.completed||y.expected!==y.clicked||y.issues>0||
+ y.physicalExpected>0&&(y.physicalClicks!==y.physicalExpected||y.physicalTouchTaps!==y.physicalExpected)).map(y=>y.year);
+const pointerComplete=!missing.length&&!incomplete.length&&annual.every(y=>y.physicalExpected===y.expected&&y.physicalClicks===y.expected&&y.physicalTouchTaps===y.expected);
+const result={expectedYears:expected.length,reportedYears:years.size,missing,unexpected,duplicates,parseErrors,incomplete,totals,physicalPointerCoverageComplete:pointerComplete,annual,scope:`Real Chromium selection/card checks; ${totals.physicalClicks} trusted mouse clicks and ${totals.physicalTouchTaps} emulated touch taps. ${pointerComplete?'Every reported territory passed both pointer methods.':'Complete annual mouse/touch acceptance remains unfinished.'} Independent historical correctness NOT verified; 2025 and 2026 coverage gaps remain.`};
 fs.writeFileSync(path.join(output,'annual-browser-summary.json'),JSON.stringify(result,null,2));
 fs.writeFileSync(path.join(output,'annual-browser-issues.json'),JSON.stringify(issues,null,2));
 fs.writeFileSync(path.join(output,'annual-browser-coverage-findings.json'),JSON.stringify(facts,null,2));

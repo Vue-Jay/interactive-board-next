@@ -112,6 +112,7 @@ jobs:
           LEKTRUS_PLAYWRIGHT_MODULE: /tmp/lektrus-atlas-playwright/node_modules/playwright
           LEKTRUS_ATLAS_YEARS: ${{ matrix.years }}
           VITE_LEKTRUS_BACKEND: selfhost
+          LEKTRUS_ATLAS_QA_FIXTURE: '1'
           VITE_LEKTRUS_API_ORIGIN: ''
         run: |
           set -euo pipefail
@@ -224,6 +225,7 @@ jobs:
           LEKTRUS_ATLAS_SHARDS: '24'
           LEKTRUS_ATLAS_AUDIT_OUTPUT: /tmp/lektrus-browser-audit
           VITE_LEKTRUS_BACKEND: selfhost
+          LEKTRUS_ATLAS_QA_FIXTURE: '1'
           VITE_LEKTRUS_API_ORIGIN: ''
         run: |
           set -euo pipefail

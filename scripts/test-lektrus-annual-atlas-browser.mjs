@@ -9,7 +9,8 @@ import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
 import {historicalBlockForYear,historicalYearState} from '../src/lektrusHistoricalTimeline.ts';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
-import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {auditPhysicalTerritories} from './atlas-physical-input.mjs';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 function planAnnualYears(registry,shard,shards){
  const years=[];
  for(const period of registry.periods)for(let year=period.to;year>=period.from;year--)if(year!==0)years.push({year,weight:20+period.records});
@@ -34,6 +35,7 @@ async function main(){
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json')));
  const shard=Number(process.env.LEKTRUS_ATLAS_SHARD??0),shards=Number(process.env.LEKTRUS_ATLAS_SHARDS??1);
  const focused=process.env.LEKTRUS_ATLAS_YEARS;
+ const physicalInput=process.env.LEKTRUS_ATLAS_PHYSICAL_INPUT==='1';
  const allYears=planAnnualYears(registry,shard,shards);
  const years=focused?[...new Set(focused.split(',').map(Number))].sort((a,b)=>b-a):allYears;
  if(focused){assert.ok(shard===0&&shards===1&&years.length&&years.every(y=>allYears.includes(y)), 'Invalid focused annual audit years');}
@@ -41,17 +43,19 @@ async function main(){
  fs.mkdirSync(output,{recursive:true});
  const file=path.join(output,focused?`focused-year-audit-${createHash('sha256').update(years.join(',')).digest('hex').slice(0,12)}.jsonl`:`year-audit-${shard}.jsonl`);
  fs.writeFileSync(file,'');
+ const receiptFile=path.join(output,`physical-receipts-${focused?path.basename(file,'.jsonl'):shard}.ndjson`);
+ if(physicalInput)fs.writeFileSync(receiptFile,'');
  const reportRow=row=>{fs.appendFileSync(file,JSON.stringify(row)+'\n');};
  const browser=await chromium.launch({headless:true,...(process.env.LEKTRUS_CHROMIUM_EXECUTABLE?{executablePath:process.env.LEKTRUS_CHROMIUM_EXECUTABLE}:{})});
  let failures=0,clicked=0,passed=0,completed=0,lastBlock,pack;
  try{
-  const page=await browser.newPage({viewport:{width:1360,height:1000}}),errors=[];
+  const page=await browser.newPage({viewport:{width:1360,height:1000},hasTouch:physicalInput}),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.route(/(?:historical-basemaps|natural-earth-vector).*\/(?:world_[^/]+\.geojson|ne_[^/]+\.geojson|index\.json)(?:\?.*)?$/,async route=>{
    const local=path.join(archive,path.basename(new URL(route.request().url()).pathname));
    if(fs.existsSync(local))await route.fulfill({path:local,contentType:'application/json',headers:{'access-control-allow-origin':'*'}});else await route.continue();
   });
-  await page.goto((process.env.LEKTRUS_ATLAS_BASE_URL||'http://127.0.0.1:4175')+'/demo/board?scene=history&capture=1&annualAtlas=1');
+  await page.goto((process.env.LEKTRUS_ATLAS_BASE_URL||'http://127.0.0.1:4175')+'/demo/board?qa-release-fixture=1&scene=history&capture=1&annualAtlas=1');
   const input=page.getByLabel('Выбрать год исторической карты');
   await input.waitFor({timeout:90000});
   await page.getByTitle('Выбрать территорию карты').click();
@@ -129,9 +133,22 @@ async function main(){
    }
    return {mode,rendered,issues,results};
   },{year,mode,expected,modern});
+  const auditLayer=async(year,mode,expected,modern=false)=>{
+   const layer=await evaluateLayer(year,mode,expected,modern);
+   if(physicalInput){
+    const focusedIds=process.env.LEKTRUS_ATLAS_PHYSICAL_IDS?.split(',');
+    const targets=focusedIds?layer.results.filter(r=>focusedIds.includes(r.id)):layer.results;
+    layer.physicalResults=await auditPhysicalTerritories(page,targets,modern,result=>{
+     fs.appendFileSync(receiptFile,JSON.stringify({year,mode,sourceSha256:manifest.source.sha256,...result})+'\n');
+    });
+    for(const r of layer.physicalResults)if(r.errors.length)layer.issues.push({kind:'physical-pointer-failure',id:r.id,errors:r.errors});
+   }
+   return layer;
+  };
   const runYear=async year=>{
    const row={year,shard,source:year===2026?'Natural Earth historical archive overview':year===2025?'missing':'Cliopatria 0.2.1',coverageStatus:'candidate',interactionMethod:'synthetic-svg-dom-click',physicalClicks:0,expectedClicks:null,issues:[],layers:[],gaps:[],rejected:[],pageErrors:[],completed:false};
    const errorStart=completed===0?0:errors.length;
+   if(physicalInput)row.interactionMethod='synthetic-svg-dom-click-and-trusted-mouse-touch';
    try{
     if(year===2025){
      await openYear(2025);
@@ -153,7 +170,7 @@ async function main(){
      const expected=modern.features.filter(f=>['Polygon','MultiPolygon'].includes(f.geometry?.type)).map((f,i)=>({id:String(i),sourceName:f.properties?.NAME??f.properties?.ADMIN??null}));
      row.coverageStatus='archived-overview-not-2026';row.expectedClicks=expected.length;
      row.gaps.push({name:'Весь мир',reason:'2026: отображается архивный обзор, а не точный датированный слой'});
-     row.layers.push(await evaluateLayer(year,'none',expected,true));
+     row.layers.push(await auditLayer(year,'none',expected,true));
     }else{
      const block=historicalBlockForYear(manifest,year);
      if(!block)throw new Error(`No manifest block for ${year}`);
@@ -195,7 +212,7 @@ async function main(){
      const expectedLocators=state.coverageGaps.flatMap(g=>historicalGapLocators[g.name]?[historicalGapLocators[g.name].iso]:[]).sort();
      const actualLocators=await page.locator('[data-atlas-gap-locator]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasGapLocator).sort());
      if(JSON.stringify(actualLocators)!==JSON.stringify(expectedLocators))row.issues.push({kind:'wrong-gap-locators',expected:expectedLocators,actual:actualLocators});
-     const centers=[...historicalUnresolvedCenters(year,state.territorialIssues),...historicalTreatyPortCenters(year)];
+     const centers=[...historicalUnresolvedCenters(year,state.territorialIssues),...historicalTreatyPortCenters(year),...historicalCorsicaLiberationCenters(year)];
      const actualCenters=await page.locator('[data-atlas-historical-center]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasHistoricalCenter).sort());
      if(JSON.stringify(actualCenters)!==JSON.stringify(centers.map(c=>c.id).sort()))row.issues.push({kind:'wrong-historical-center-locators',expected:centers.map(c=>c.id),actual:actualCenters});
      row.historicalCenters=[];
@@ -205,7 +222,8 @@ async function main(){
        await page.locator(`[data-atlas-historical-center="${center.id}"]`).dispatchEvent('click');item.clicked=true;
        const card=page.locator('.lektrus-atlas-info-object .lektrus-atlas-description').filter({hasText:center.title});
        await card.waitFor({state:'visible',timeout:5000});
-       item.verified=await card.getByRole('link',{name:'Исторический источник ↗'}).getAttribute('href')===center.url;
+       const links=await card.locator('a[href]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href')));
+       item.verified=JSON.stringify(links)===JSON.stringify(historicalCenterSources(center));
        if(!item.verified)row.issues.push({kind:'wrong-historical-center-source',id:center.id});
       }catch(error){row.issues.push({kind:'historical-center-card-error',id:center.id,message:String(error?.message??error)});}
       row.historicalCenters.push(item);
@@ -217,7 +235,7 @@ async function main(){
        // Await the actual React-rendered layer, even when no overlay exists.
        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
        const expected=[...state.drawable,...state.overlays.filter(r=>r.record.role===mode)].map(({record:r})=>({id:r.id,sourceIndex:r.sourceIndex,sourceName:r.sourceName,name:r.name,nameRu:r.nameRu,role:r.role,from:r.from,to:r.to}));
-       row.layers.push(await evaluateLayer(year,mode,expected));
+       row.layers.push(await auditLayer(year,mode,expected));
       }catch(error){row.issues.push({kind:'layer-error',mode,message:String(error?.message??error)});}
      }
      await layer.selectOption('none');
@@ -228,14 +246,17 @@ async function main(){
    const items=row.layers.flatMap(x=>x.results),count=items.filter(x=>x.clicked).length,ok=items.filter(x=>x.clicked&&!x.errors.length).length;
    if(row.expectedClicks!==null&&count!==row.expectedClicks)row.issues.push({kind:'year-click-count-mismatch',expected:row.expectedClicks,actual:count});
    const issueCount=row.issues.length+row.pageErrors.length+row.layers.reduce((n,l)=>n+l.issues.length,0)+items.filter(x=>x.errors.length).length;
-   row.summary={expected:row.expectedClicks,clicked:count,verified:ok,attempted:items.length,issues:issueCount,candidates:items.filter(x=>x.candidates.length).length,coverageGaps:row.gaps.length,rejected:row.rejected.length};
+   const physical=row.layers.flatMap(l=>l.physicalResults??[]);
+   row.physicalClicks=physical.filter(r=>r.mouse).length;
+   row.physicalTouchTaps=physical.filter(r=>r.touch).length;
+   row.summary={expected:row.expectedClicks,clicked:count,verified:ok,attempted:items.length,issues:issueCount,candidates:items.filter(x=>x.candidates.length).length,coverageGaps:row.gaps.length,rejected:row.rejected.length,physicalClicks:row.physicalClicks,physicalTouchTaps:row.physicalTouchTaps,physicalExpected:physicalInput?items.length:0};
    reportRow(row);clicked+=count;passed+=ok;failures+=issueCount;completed++;
    console.log(`ATLAS_YEAR ${JSON.stringify({year,completed:row.completed,coverageStatus:row.coverageStatus,...row.summary})}`);
    if(issueCount)console.log(`ATLAS_YEAR_ISSUES ${JSON.stringify({year,issues:row.issues,layerIssues:row.layers.flatMap(l=>l.issues),cards:items.filter(x=>x.errors.length).slice(0,20).map(x=>({id:x.id,sourceIndex:x.sourceIndex,cardTitle:x.cardTitle,errors:x.errors})),pageErrors:row.pageErrors})}`);
   };
   if(shard===0&&!focused){await runYear(2026);await runYear(2025);}
   for(const year of years)await runYear(year);
-  console.log(`Shard ${shard}: ${completed} years, ${clicked} synthetic SVG DOM-handler dispatches, ${passed} card checks, ${failures} technical issues. Physical pointer hit-testing and independent historical accuracy remain UNVERIFIED.`);
+  console.log(`Shard ${shard}: ${completed} years, ${clicked} synthetic SVG DOM-handler dispatches, ${passed} card checks, ${failures} technical issues. ${physicalInput?'Trusted mouse/touch receipts saved for every attempted territory; inspect failures.':'Physical pointer hit-testing NOT performed.'} Independent historical accuracy remains UNVERIFIED.`);
   if(failures||completed!==years.length+(shard===0&&!focused?2:0))process.exitCode=1;
  }finally{await browser.close();}
 }

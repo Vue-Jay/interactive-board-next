@@ -29,7 +29,7 @@ import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots as legac
 import {HISTORY_FIRST_YEAR,HISTORY_LAST_YEAR,historicalYearFeatureCollection,historicalYearSourcesComparable} from "./lektrusHistoricalTimeline";
 import {createHistoricalTimelineLoader} from "./lektrusHistoricalTimelineLoader";
 import {historicalGapLocators,HISTORICAL_GAP_LOCATOR_SOURCE} from "./lektrusHistoricalGapLocators";
-import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters} from "./lektrusHistoricalUnresolvedCenters";
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalCenterSources} from "./lektrusHistoricalUnresolvedCenters";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,modernAtlasTerritoryUpdate,summariseNamedChanges,
 historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -271,6 +271,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const [annualOverlay,setAnnualOverlay]=useState<'none'|'composite'|'relation'|'settlement'>('none');
  const [annualGapDetailsOpen,setAnnualGapDetailsOpen]=useState(false);
  const [source,setSource]=useState<GeoCollection|null>(null);
+ const sourceRequestKey=useRef("");
  const [baseLand,setBaseLand]=useState<GeoCollection|null>(null);
  const [baseCoastline,setBaseCoastline]=useState<GeoCollection|null>(null);
  const [baseLoading,setBaseLoading]=useState(true);
@@ -444,8 +445,17 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  },[refresh,detailedGeography]);
  useEffect(()=>{
   let active=true;
-  setError("");setLayerWarning("");setLoading(true);setSource(null);setSourceYear(null);setSelected(null);
-  setPrevious(null);setSelectedMarker(null);
+  // Zoom changes thematic detail, not the identity of the dated map. Clearing
+  // its source here used to erase a directory selection immediately after
+  // focusFeature zoomed in, and also discarded selected historical markers.
+  const requestKey=`${historical}:${snapshot.year}:${modernBorders}:${needsPoliticalGeometry}:${refresh}`;
+  const sourceChanged=sourceRequestKey.current!==requestKey;
+  sourceRequestKey.current=requestKey;
+  setError("");setLayerWarning("");
+  if(sourceChanged){
+   setLoading(true);setSource(null);setSourceYear(null);setSelected(null);
+   setPrevious(null);setSelectedMarker(null);
+  }
   const modern=modernBorders&&needsPoliticalGeometry?loadAtlasLayer("countries-russian"):Promise.resolve(null);
   const main=modernBorders?modern:loadMapPeriod(snapshot.year);
   const before=historical&&!modernReference&&index>0?
@@ -473,7 +483,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   ];
   Promise.all([main,before]).then(async([geo,prev])=>{
    if(!active)return;
-   setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
+   setSource(current=>sourceChanged||!current?geo:current);
+   setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
    let localCityLoaded=false,highRiversLoaded=false,highLakesLoaded=false;
    const result=await Promise.allSettled(requested.map(([layer])=>layer==="rivers-ultra"?
@@ -2041,7 +2052,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
      {historical&&<p>{markerDetails.id.startsWith('historical-center-')?'Год карты':'Дата'}: {yearLabel(markerDetails.year)}</p>}
-     {markerDetails.url&&<a href={markerDetails.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>}
+     {historicalCenterSources(markerDetails).map((url,i)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Исторический источник {i+1} ↗</a></span>)}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
      <strong>Запись о минеральном сырье: {selectedMineralCommodity?.name??"Полезное ископаемое"}</strong>
@@ -2366,7 +2377,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         setSelectedMarker(c.id);setSelected(null);setSelectedMineral(null);
         setHistoryTab("article");setInspectorOpen(true);
        }}>{c.title} ⌖</button>{" "}
-       <a href={c.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>
+       {historicalCenterSources(c).map((url,i)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Исторический источник {i+1} ↗</a></span>)}
        <p>{c.description}</p>
       </li>)}</ul>
      </details>}
@@ -2426,6 +2437,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      </>:<>
       <div className="lektrus-atlas-directory-list" style={{maxHeight:230,overflowY:"auto"}}>
        {visibleDirectory.length?visibleDirectory.slice(currentDirectoryPage*120,(currentDirectoryPage+1)*120).map((entry,i)=><button type="button" key={currentDirectoryPage*120+i}
+        data-atlas-directory-revision-id={entry.feature.properties?.historicalRevisionId as string|undefined}
+        data-atlas-directory-index={mapSourceFeatures.indexOf(entry.feature)}
         onClick={()=>focusFeature(entry.feature)} title={"Показать на карте: "+entry.name}
         style={{display:"block",width:"100%",textAlign:"left",padding:"6px 8px",
          background:selected===entry.feature?"#e2edff":"transparent",border:0,cursor:"pointer"}}>
@@ -2504,7 +2517,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
      {historical&&<p>{markerDetails.id.startsWith('historical-center-')?'Год карты':'Дата'}: {yearLabel(markerDetails.year)}</p>}
-     {markerDetails.url&&<a href={markerDetails.url} target="_blank" rel="noopener noreferrer">Исторический источник ↗</a>}
+     {historicalCenterSources(markerDetails).map((url,i)=><span key={url}>{" "}<a href={url} target="_blank" rel="noopener noreferrer">Исторический источник {i+1} ↗</a></span>)}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
      <strong>Запись о минеральном сырье: {selectedMineralCommodity?.name??"Полезное ископаемое"}</strong>

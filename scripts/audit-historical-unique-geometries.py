@@ -64,10 +64,10 @@ PROJECT = Transformer.from_crs('EPSG:4326', 'EPSG:6933', always_xy=True)
 
 
 def audit(folder, archive, output, original_source):
-    manifest = json.loads((folder / 'manifest.json').read_text())
-    registry = json.loads((folder / 'change-review-registry.json').read_text())
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
+    registry = json.loads((folder / 'change-review-registry.json').read_text(encoding='utf-8'))
     assert registry['source']['sha256'] == manifest['source']['sha256']
-    geom, topology, records, repaired, selections = {}, {}, {}, {}, {}
+    geom, topology, records, repaired, selections, partitions, adjustments = {}, {}, {}, {}, {}, {}, {}
     for block in manifest['blocks']:
         data = (folder / block['file']).read_bytes()
         assert hash_bytes(data) == block['sha256']
@@ -83,10 +83,18 @@ def audit(folder, archive, output, original_source):
         for r in pack['records']:
             assert r['id'] not in records or records[r['id']] == r
             records[r['id']] = r
-            if r.get('geometryRepair') in ('reviewed-source-components', 'reviewed-union-source-components', 'reviewed-difference-source-components'):
-                selections[r['id']] = (r, pack['geometries'][r['geometryId']])
+            base_id = r.get('boundaryAdjustment', {}).get('baseGeometryId', r['geometryId'])
+            if r.get('boundaryAdjustment'):
+                adjustments[r['id']] = (r, pack['geometries'][r['geometryId']],
+                                       pack['geometries'][base_id],
+                                       [pack['geometries'][c['cutGeometryId']] for c in r['boundaryAdjustment']['cuts']])
+            if r.get('geometryRepair') == 'reviewed-map-partition':
+                partitions[r['id']] = (r, pack['geometries'][base_id],
+                                       pack['geometries'][r['mapPartition']['outlineGeometryId']])
+            elif r.get('geometryRepair') in ('reviewed-source-components', 'reviewed-union-source-components', 'reviewed-difference-source-components'):
+                selections[r['id']] = (r, pack['geometries'][base_id])
             elif r.get('sourceGeometryId'):
-                repaired[r['sourceIndex']] = pack['geometries'][r['geometryId']]
+                repaired[r['sourceIndex']] = pack['geometries'][base_id]
     assert len(topology) == manifest['counts']['uniqueGeometries']
     assert len(records) == manifest['counts']['revisions']
     # Independent GEOS equivalence against the immutable input, not the JS
@@ -98,26 +106,97 @@ def audit(folder, archive, output, original_source):
     for index, raw in repaired.items():
         before = shape(original['features'][index]['geometry'])
         after = shape(raw)
-        assert not before.is_valid and after.is_valid
+        assert not before.is_valid and after.is_valid, f'Invalid topology repair at {index}'
         assert after.equals(unary_union(polygons(make_valid(before)))), f'Repair changed areal geometry at {index}'
+    temporal_witness_checks = set()
+
+    def selected_part(revision, part):
+        feature = original['features'][part['index']]
+        geometry = polygons(shape(feature['geometry']))[part['part']]
+        if feature['properties']['FromYear'] <= revision['from'] <= revision['to'] <= feature['properties']['ToYear']:
+            return geometry
+        witnesses = [w for w in revision.get('geometryTemporalWitnesses', [])
+                     if w['before'] == part and w['year'] == revision['from'] == revision['to']]
+        assert len(witnesses) == 1, f'Undocumented out-of-period source part at {revision["sourceIndex"]}'
+        w = witnesses[0]
+        before, after = original['features'][w['before']['index']], original['features'][w['after']['index']]
+        assert before['properties']['ToYear'] == w['year'] - 1
+        assert after['properties']['FromYear'] == w['year'] + 1
+        following = polygons(shape(after['geometry']))[w['after']['part']]
+        assert geometry.equals(following), f'Temporal witness changed outline at {revision["sourceIndex"]}'
+        temporal_witness_checks.add((revision['id'], part['index'], part['part']))
+        return geometry
+
     for revision, raw in selections.values():
         parts = []
         for part in revision['geometryParts']:
-            feature = original['features'][part['index']]
-            assert feature['properties']['FromYear'] <= revision['from'] <= revision['to'] <= feature['properties']['ToYear']
-            g = shape(feature['geometry'])
-            parts.append(polygons(g)[part['part']])
+            parts.append(selected_part(revision, part))
         after = shape(raw)
         expected = unary_union(parts)
         if revision.get('geometryRepair') == 'reviewed-difference-source-components':
             for part in revision['geometrySubtractions']:
-                feature = original['features'][part['index']]
-                assert feature['properties']['FromYear'] <= revision['from'] <= revision['to'] <= feature['properties']['ToYear']
-                expected = expected.difference(polygons(shape(feature['geometry']))[part['part']])
+                expected = expected.difference(selected_part(revision, part))
             # Independent clipping engines may differ at floating-point intersections.
             assert after.is_valid and after.symmetric_difference(expected).area < 1e-10, f'Invalid subtraction at {revision["sourceIndex"]}'
         else:
-            assert after.is_valid and after.equals(expected), f'Component selection changed geometry at {revision["sourceIndex"]}'
+            # polygon-clipping and GEOS can order/split union intersections
+            # differently at machine precision too (not only subtraction).
+            # Use the same small area tolerance as the independent difference
+            # check above; invalid geometry still fails unconditionally.
+            assert after.is_valid and after.symmetric_difference(expected).area < 1e-10, f'Component selection changed geometry at {revision["sourceIndex"]}'
+    # A dated cartographic partition intentionally changes the source area; it
+    # must never be classified as an area-preserving topology repair. Verify
+    # its own outline and provenance independently with GEOS instead.
+    partition_groups, subset_checks, dated_coastlines = {}, 0, 0
+    for revision, raw, outline_raw in partitions.values():
+        after, outline = shape(raw), shape(outline_raw)
+        label = f'{revision["sourceIndex"]}/{revision["from"]}/{revision["to"]}'
+        assert after.is_valid and not after.is_empty, f'Invalid map partition at {label}'
+        assert outline.is_valid and not outline.is_empty, f'Invalid partition outline at {label}'
+        assert revision['mapPartition']['evidence'] in revision['review']['sources']
+        assert revision['geometryParts'], f'Missing source parts at {label}'
+        for part in revision['geometryParts']:
+            feature = original['features'][part['index']]
+            assert feature['properties']['FromYear'] <= revision['from'] <= revision['to'] <= feature['properties']['ToYear']
+            assert part['part'] < len(polygons(shape(feature['geometry'])))
+        if revision['mapPartition'].get('kind') == 'documented-island':
+            # A separately sourced generalized coastline is not constrained to
+            # the original coarse shoreline. Its exact coordinates and dated
+            # attribution are checked by the annual source test, not invented
+            # or accepted here through an inappropriate subset assertion.
+            dated_coastlines += 1
+        else:
+            assert after.difference(outline).area < 1e-10, f'Partition outside outline at {label}'
+            subset_checks += 1
+        if 'kind' not in revision['mapPartition']:
+            key = (revision['mapPartition']['outlineGeometryId'], revision['from'], revision['to'])
+            partition_groups.setdefault(key, []).append(after)
+    for key, parts in partition_groups.items():
+        outline = shape(next(outline for r, _, outline in partitions.values()
+                             if (r['mapPartition']['outlineGeometryId'], r['from'], r['to']) == key))
+        assert len(parts) == 3, f'Incomplete three-way map partition at {key}'
+        for i, a in enumerate(parts):
+            for b in parts[i + 1:]:
+                assert a.intersection(b).area < 1e-10, f'Overlapping map partition at {key}'
+        assert unary_union(parts).symmetric_difference(outline).area < 1e-10, f'Partition lost land at {key}'
+    snapped_adjustments = 0
+    for revision, raw, base, cuts in adjustments.values():
+        expected = shape(base).difference(unary_union([shape(c) for c in cuts]))
+        if revision['boundaryAdjustment'].get('exhausted'):
+            assert expected.is_empty and revision['geometryStatus'] == 'rejected'
+        else:
+            after = shape(raw)
+            assert after.is_valid, f'Invalid boundary adjustment at {revision["sourceIndex"]}'
+            if after.symmetric_difference(expected).area >= 1e-10:
+                # partitionHistoricalGeometry retries failed sweep operations
+                # on a documented 1e-6-degree grid. Independently reproduce
+                # that grid with JS Math.round's tie rule; do not widen the
+                # area tolerance or accept an unexplained discrepancy.
+                def snap(raw):
+                    return transform(shape(raw), lambda xy: np.floor(xy * 1e6 + .5) / 1e6)
+                expected = snap(base).difference(unary_union([snap(c) for c in cuts]))
+                assert after.symmetric_difference(expected).area < 1e-10, f'Boundary adjustment changed geometry at {revision["sourceIndex"]}'
+                snapped_adjustments += 1
     del original, original_bytes
     affected = {}
     for unit in registry['reviewUnits']:
@@ -174,9 +253,9 @@ def audit(folder, archive, output, original_source):
         snapshots.append({'year': year, 'file': filename.name, 'sha256': hash_bytes(data), 'counts': counts, 'rows': rows})
     snapshots.sort(key=lambda s: s['year'], reverse=True)
     report = {'source': manifest['source'], 'method': 'EPSG:6933; exact source-name equality plus spatial overlap; no automatic historical identity or boundary approval; invalid polygons made valid for diagnostic comparison only',
-              'counts': {'uniqueGeometries': len(topology), 'invalidGeometries': sum(t['invalid'] is not None for t in topology.values()), 'excludedGeometries': sum(bool(t['comparisonExcluded']) for t in topology.values()), 'equivalentRepairs': len(repaired), 'reviewedComponentSelections': len(selections), 'affectedReviewUnits': sum(map(len, affected.values())), 'snapshots': len(snapshots), 'archivePolygons': sum(len(s['rows']) for s in snapshots), 'uniqueSpatialPairs': len(pairs)},
+              'counts': {'uniqueGeometries': len(topology), 'invalidGeometries': sum(t['invalid'] is not None for t in topology.values()), 'excludedGeometries': sum(bool(t['comparisonExcluded']) for t in topology.values()), 'equivalentRepairs': len(repaired), 'reviewedComponentSelections': len(selections), 'reviewedMapPartitions': len(partitions), 'partitionSubsetChecks': subset_checks, 'datedCoastlinePartitions': dated_coastlines, 'completeThreeWayPartitions': len(partition_groups), 'affectedReviewUnits': sum(map(len, affected.values())), 'snapshots': len(snapshots), 'archivePolygons': sum(len(s['rows']) for s in snapshots), 'uniqueSpatialPairs': len(pairs)},
               'topology': topology, 'affectedReviewUnits': affected, 'snapshots': snapshots}
-    output.write_text(json.dumps(report, ensure_ascii=False, separators=(',', ':')))
+    output.write_text(json.dumps(report, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print(json.dumps(report['counts']), flush=True)
     assert not report['counts']['invalidGeometries'], 'Candidate topology regression: inspect report'
     return report

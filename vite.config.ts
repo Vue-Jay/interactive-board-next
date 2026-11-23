@@ -32,6 +32,13 @@ export default defineConfig({
   plugins: [react(), {
     name: 'lektrus-annual-atlas-local-preview',
     apply: 'serve',
+    // Main's public demo now starts empty. Reuse the separate release fixture
+    // only on an explicitly opted-in local QA server, never in built bundles.
+    transform(code, id) {
+      if (process.env.LEKTRUS_ATLAS_QA_FIXTURE === '1' && id.replaceAll('\\', '/').endsWith('/src/App.tsx')) {
+        return code.replace('import("./PublicDemoBoard")', 'import("../scripts/qa-release-board-fixture")')
+      }
+    },
     configureServer(server) {
       const folder=process.env.LEKTRUS_ANNUAL_TIMELINE_DIR
       if(!folder)return
