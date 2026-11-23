@@ -6,11 +6,28 @@ import type {EraserMode} from "./inkEraser";
 
 export function EraserModePicker({value,onChange}:{value:EraserMode;onChange:(mode:EraserMode)=>void}){
  return <div className="lektrus-eraser-modes" role="group" aria-label="Режим ластика">
-  <button type="button" aria-pressed={value==="partial"} title="Стирать только участок под ластиком" onClick={()=>onChange("partial")}>
-   <svg viewBox="0 0 24 20" width="24" height="20" fill="none" aria-hidden="true"><path d="M2 14 8 7m8 5 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="10" r="5" stroke="currentColor" strokeDasharray="2 2"/></svg>Точечный
+  <button type="button" data-eraser-mode="partial" aria-pressed={value==="partial"}
+    aria-label="Стирать участок линии"
+    title="Точечный: стирает только часть линии под ластиком"
+    onClick={()=>onChange("partial")}>
+   <svg viewBox="0 0 48 32" width="44" height="30" fill="none" aria-hidden="true">
+    <path d="M3 26 17 19 M31 12 45 5" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+    <path d="m18 12 8-7 9 10-8 7z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" fill="currentColor" fillOpacity=".12"/>
+    <path d="m23 17 9-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+   </svg>
+   <span className="lektrus-eraser-mode-label" aria-hidden="true">Часть</span>
+   <span className="lektrus-eraser-mode-check" aria-hidden="true">✓</span>
   </button>
-  <button type="button" aria-pressed={value==="stroke"} title="Удалять весь штрих при касании" onClick={()=>onChange("stroke")}>
-   <svg viewBox="0 0 24 20" width="24" height="20" fill="none" aria-hidden="true"><path d="M2 14 8 6l7 7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 2"/><path d="m9 6 6 8m0-8-6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Целый штрих
+  <button type="button" data-eraser-mode="stroke" aria-pressed={value==="stroke"}
+    aria-label="Стирать весь штрих одним касанием"
+    title="Весь штрих: удаляет линию целиком одним касанием"
+    onClick={()=>onChange("stroke")}>
+   <svg viewBox="0 0 48 32" width="44" height="30" fill="none" aria-hidden="true">
+    <path d="M3 26 45 5" stroke="currentColor" strokeWidth="3" strokeDasharray="2 5" strokeLinecap="round" opacity=".45"/>
+    <path d="M18 8 32 24 M32 8 18 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+   </svg>
+   <span className="lektrus-eraser-mode-label" aria-hidden="true">Всё</span>
+   <span className="lektrus-eraser-mode-check" aria-hidden="true">✓</span>
   </button>
  </div>;
 }
