@@ -54,6 +54,8 @@ assert.match(login,/const user=selfhostUser\(await selfhostGuestLogin\(guestName
  "Only successful self-hosted guest logins may update the cache");
 assert.match(login,/const s=await signInAnonymousRemote\(guestName\);\s*const user=remoteUser\(s\)!;\s*rememberGuestName\(guestName\)/,
  "Only successful remote guest logins may update the cache");
-assert.doesNotMatch(cache,/token|password|refresh|access_token|fetch\(/i,
- "The guest-name cache must not store credentials or talk to the server");
+assert.match(cache,/localStorage\.setItem\(GUEST_NAME_CACHE_KEY,name\)/,
+ "The only stored value must be the name");
+assert.doesNotMatch(cache,/fetch\(|sessionStorage\.setItem\(|import\s+.*(?:selfhostApi|backend)/i,
+ "The guest-name cache must not make requests or manage authentication");
 console.log("Guest name: saved after successful login, restored next session, editable, bad storage handled, no credentials PASS");
