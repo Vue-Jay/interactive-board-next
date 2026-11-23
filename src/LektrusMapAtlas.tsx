@@ -51,7 +51,7 @@ const periodIndex=(year:number)=>annualPreview?historicalSnapshots.findIndex(s=>
 const initialPeriodIndex=(year:number)=>Math.max(0,periodIndex(year));
 const annualSource=(year:number)=>annualPreview&&year>=HISTORY_FIRST_YEAR&&year<=HISTORY_LAST_YEAR;
 async function loadMapPeriod(year:number):Promise<GeoCollection>{
- if(annualPreview&&year===2025)throw new Error("Для 2025 года пока нет независимого датированного слоя. Другой год не подставляется.");
+ if(annualPreview&&year===2025)return {type:"FeatureCollection",features:[],historicalUncoveredYear:2025};
  if(!annualSource(year))return loadHistoricalSnapshot(year);
  const state=await annualLoader!.year(year);
  if(state.status==="outside-source-coverage")throw new Error("Нет датированного слоя для выбранного года");
@@ -2332,9 +2332,19 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
-     <small>{modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":annualSource(snapshot.year)?"Предварительная ежегодная реконструкция Cliopatria 0.2.1. Контуры ещё не получили независимую историческую приёмку.":"Историческая реконструкция: отдельные контуры могут отражать более поздние границы. Не считать их точной картой суверенных государств."}</small>
+     <small>{sourceYear===snapshot.year&&source?.historicalUncoveredYear===2025?
+      "Для 2025 года нет самостоятельного датированного исторического слоя. Государственные границы не подставляются из 2024 или 2026 года.":
+      modernReference?"Архивная геометрия Natural Earth (2022); не точная карта 2026 года":
+      annualSource(snapshot.year)?"Предварительная ежегодная реконструкция Cliopatria 0.2.1. Контуры ещё не получили независимую историческую приёмку.":
+      "Историческая реконструкция: отдельные контуры могут отражать более поздние границы. Не считать их точной картой суверенных государств."}</small>
      {annualSource(snapshot.year)&&<><label>Дополнительный слой <select aria-label="Дополнительный исторический слой" value={annualOverlay} onChange={e=>{setAnnualOverlay(e.target.value as typeof annualOverlay);setSelected(null)}}><option value="none">Только территории</option><option value="composite">Политические объединения</option><option value="relation">Политические связи</option><option value="settlement">Поселения и расселение</option></select></label>{annualOverlay!=='none'&&<small>Пунктирный контур — {annualOverlay==='composite'?'объединение нескольких территорий':annualOverlay==='settlement'?'предварительная область поселений':'политическая связь'}, а не дополнительная государственная граница.</small>}</>}
     </div>}
+    {historical&&sourceYear===snapshot.year&&source?.historicalUncoveredYear===2025&&
+     <div className="lektrus-atlas-no-dated-source" role="status" data-atlas-uncovered-year="2025">
+      <strong>Граница 2025 года пока не подтверждена источниками</strong>
+      <p>Этот год есть на шкале, но не имеет проверенного собственного картографического слоя.
+      Карта не показывает выдуманные границы и не копирует соседние годы.</p>
+     </div>}
     {historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year&&!!source?.historicalTerritorialIssues?.length&&<details className="lektrus-atlas-layer-warning" data-atlas-unresolved-count={source.historicalTerritorialIssues.length}>
      <summary>Неуточнённые территории: {unresolvedRegions.length}</summary>
      <small>Оранжевый пунктир показывает ошибочный исходный контур, а не исторически установленную границу. Принадлежность, местное управление и границы уточняются отдельно.</small>

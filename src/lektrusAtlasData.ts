@@ -5,7 +5,7 @@ export type GeoPosition=[number,number];
 export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineString"|"Point"|"MultiPoint";
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null;bbox?:number[]};
-export type GeoCollection={type:"FeatureCollection";features:GeoFeature[];historicalCoverageGaps?:HistoricalCoverageGap[];historicalTerritorialIssues?:(HistoricalTerritorialIssue&{sourceIndex:number;name:string;geometry:HistoricalGeometry})[];historicalRejected?:{name:string;review?:{reason:string;reasonRu?:string;sources:string[]}}[]};
+export type GeoCollection={type:"FeatureCollection";features:GeoFeature[];historicalCoverageGaps?:HistoricalCoverageGap[];historicalTerritorialIssues?:(HistoricalTerritorialIssue&{sourceIndex:number;name:string;geometry:HistoricalGeometry})[];historicalRejected?:{name:string;review?:{reason:string;reasonRu?:string;sources:string[]}}[];historicalUncoveredYear?:number};
 export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"rivers-ultra"|"lakes-ultra"|"cities-regional"|"cities-local"|"admin-regional"|"admin-world-overview"|"admin-world-lines"|"regions-regional"|"elevation-regional"|"glaciers-regional"|"marine"|"physical-labels";
 // Pin the dataset snapshots used by school lessons.
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/";

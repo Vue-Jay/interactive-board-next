@@ -82,7 +82,8 @@ export function historicalYearState(pack: HistoricalPack, year: number) {
  * remain in the audit state but cannot silently reach the map layer. */
 export function historicalYearFeatureCollection(state: ReturnType<typeof historicalYearState>, includeOverlays=false) {
   return {type:'FeatureCollection' as const, historicalCoverageGaps:state.coverageGaps,historicalTerritorialIssues:state.territorialIssues,historicalRejected:state.rejected.map(r=>({name:r.nameRu??r.name,review:r.review})),features:(includeOverlays?[...state.drawable,...state.overlays]:state.drawable).map(({record,geometry})=>({
-    type:'Feature' as const, geometry, properties:{NAME:record.nameRu ?? (record.role==='polity'||record.role==='settlement'?record.name:record.name.slice(1,-1)),
+    type:'Feature' as const, geometry, properties:{NAME:record.nameRu ?? (record.role==='polity'||record.role==='settlement'?record.name:
+        (record.name.startsWith('(')&&record.name.endsWith(')')?record.name.slice(1,-1):record.name)),
       ATLAS_HISTORICAL_LABEL:record.nameRu, historicalEntityId:record.entityId,
       historicalRevisionId:record.id, sourceName:record.sourceName, sourceWikidata:record.sourceWikidata,
       sourceIndex:record.sourceIndex, from:record.from, to:record.to,
@@ -111,7 +112,7 @@ export function validateHistoricalManifest(value: unknown): HistoricalManifest {
 export function validateHistoricalPack(value: unknown, block: HistoricalBlock): HistoricalPack {
   const pack = value as HistoricalPack;
   if (pack?.schema !== HISTORY_SCHEMA || pack.from !== block.from || pack.to !== block.to || !Array.isArray(pack.records) || !pack.geometries || typeof pack.geometries !== 'object'||!pack.coverageGaps||typeof pack.coverageGaps!=='object'||Array.isArray(pack.coverageGaps)) throw new Error('Invalid historical period pack');
-  for(const [year,gaps] of Object.entries(pack.coverageGaps))if(!/^\d+$/.test(year)||Number(year)<block.from||Number(year)>block.to||!Array.isArray(gaps)||gaps.some(g=>!g.name||!g.date||!g.reason||!g.source.startsWith('https://www.un.org/')))throw new Error('Invalid historical coverage gap');
+  for(const [year,gaps] of Object.entries(pack.coverageGaps))if(!/^-?(?:[1-9]\d*|0)$/.test(year)||!validHistoricalYear(Number(year))||Number(year)<block.from||Number(year)>block.to||!Array.isArray(gaps)||gaps.some(g=>!g.name||!g.date||!g.reason||!g.source.startsWith('https://www.un.org/')))throw new Error('Invalid historical coverage gap');
   const recordIds = new Set<string>();
   for (const record of pack.records) {
     if (!record || !hash.test(record.id) || recordIds.has(record.id) || !hash.test(record.entityId) || !hash.test(record.geometryId) || !record.name || !validHistoricalYear(record.from) || !validHistoricalYear(record.to) || record.from > record.to || record.from > block.to || record.to < block.from || !['candidate','rejected'].includes(record.geometryStatus) || !['candidate','reviewed'].includes(record.nameStatus)) throw new Error('Invalid historical revision');

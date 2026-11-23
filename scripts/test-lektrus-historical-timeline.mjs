@@ -105,8 +105,29 @@ assert.ok(state.coverageGaps.some(g=>g.name==='Algeria'));
 assert.deepEqual(historicalYearFeatureCollection(state).historicalCoverageGaps,state.coverageGaps);
 assert.equal(historicalYearFeatureCollection(state).features.length,1);
 assert.equal(historicalYearFeatureCollection(state).features[0].properties.NAME,'Республика Мали');
+// A source aggregate can be reviewed under a non-parenthesized name. Do not
+// amputate first/last letters; only unwrap literal (Parenthesized) labels.
+const compositeLabel=historicalYearFeatureCollection({...state,drawable:[],overlays:[
+ {record:{...state.overlays[0].record,role:'composite',name:'Former colonial possessions',nameRu:undefined},geometry:square()}
+]},true).features[0].properties.NAME;
+assert.equal(compositeLabel,'Former colonial possessions');
+const wrappedLabel=historicalYearFeatureCollection({...state,drawable:[],overlays:[
+ {record:{...state.overlays[0].record,role:'composite',name:'(British Empire)',nameRu:undefined},geometry:square()}
+]},true).features[0].properties.NAME;
+assert.equal(wrappedLabel,'British Empire');
 assert.equal(historicalYearState(pack,1963).drawable.length,2);
 assert.throws(()=>validateHistoricalPack({...pack,geometries:{}},block));
+// Audit gaps can be attached to BCE years: signed calendar keys are valid,
+// year zero is not. Accept only years belonging to the enclosing data pack.
+const bceBlock=historicalBlockForYear(fixture,-1);
+const bcePack=JSON.parse(fs.readFileSync(path.join(fixtureDir,bceBlock.file)));
+const bceGap={name:'Undated state boundary',date:'-1',reason:'Unknown source coverage',source:'https://www.un.org/en/about-us/growth-in-un-membership'};
+assert.doesNotThrow(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[bceGap]}},bceBlock));
+assert.throws(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.coverageGaps,'0':[bceGap]}},bceBlock));
+assert.ok(historicalYearState({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[bceGap]}},-1).coverageGaps.length===1);
+const atlasUI=fs.readFileSync(new URL('../src/LektrusMapAtlas.tsx',import.meta.url),'utf8');
+assert.match(atlasUI,/if\(annualPreview&&year===2025\)return \{type:"FeatureCollection",features:\[\],historicalUncoveredYear:2025\}/);
+assert.match(atlasUI,/data-atlas-uncovered-year="2025"/);
 assert.throws(()=>historicalYearState(pack,1800));
 let requests=0, corrupt=false;
 const fetchFixture=async url=>{
