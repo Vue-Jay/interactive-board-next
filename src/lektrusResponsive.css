@@ -789,43 +789,40 @@
  min-width:0;box-sizing:border-box;padding:5px 8px;
 }
 .lektrus-ink-tool-name{font-size:11px;white-space:nowrap;color:#526986}
-/* The eraser has two explicit behaviors. Show the action, not an ambiguous tool name. */
-.lektrus-eraser-modes{display:flex;align-items:center;gap:5px;min-width:0;flex:0 1 auto}
-.lektrus-eraser-modes-caption{font-size:11px;font-weight:700;color:#5e718d;white-space:nowrap;margin-right:2px}
+/* Compact illustrated eraser modes: broken line = erase part, crossed line = erase all. */
+.lektrus-eraser-modes{display:flex;align-items:center;gap:5px;min-width:0;flex:0 0 auto}
 .workspace .lektrus-eraser-modes>button{
- position:relative;display:flex;align-items:center;justify-content:flex-start;gap:7px;
- box-sizing:border-box;min-height:52px;min-width:120px;padding:6px 15px 6px 8px;
+ position:relative;box-sizing:border-box;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:1px;
+ width:66px;min-width:66px;min-height:60px;padding:5px 5px 4px;
  border:1px solid #cbd8e9;border-radius:10px;background:#fff;color:#405674;
- font-size:12px;text-align:left;white-space:nowrap;cursor:pointer;touch-action:manipulation;
+ white-space:nowrap;cursor:pointer;touch-action:manipulation;
  transition:background .12s,border-color .12s,box-shadow .12s;
 }
-.workspace .lektrus-eraser-modes>button>svg{flex:0 0 28px;width:28px;height:24px}
-.lektrus-eraser-mode-text{display:flex;flex-direction:column;gap:1px;line-height:1.15}
-.lektrus-eraser-mode-text strong{font-size:12px;font-weight:750}
-.lektrus-eraser-mode-text small{font-size:10px;font-weight:550;color:#607590}
+.workspace .lektrus-eraser-modes>button>svg{display:block;width:40px;height:27px;flex:0 0 27px}
+.lektrus-eraser-mode-label{font-size:10px;line-height:1.2;font-weight:730;color:inherit}
 .lektrus-eraser-mode-check{
- position:absolute;top:4px;right:5px;display:grid;place-items:center;width:14px;height:14px;
- border-radius:50%;background:#3165ba;color:#fff;font-size:10px;font-weight:750;
- opacity:0;transform:scale(.8);transition:opacity .12s,transform .12s;
+ position:absolute;top:3px;right:3px;display:grid;place-items:center;
+ width:13px;height:13px;border-radius:50%;background:#3165ba;color:#fff;
+ font-size:9px;font-weight:800;opacity:0;transform:scale(.8);
+ transition:opacity .12s,transform .12s;
 }
 .workspace .lektrus-eraser-modes>button[aria-pressed="true"]{
  border-color:#427bd6;background:#e8f2ff;color:#1e56a2;
  box-shadow:inset 0 0 0 1px #80a7e7;
 }
 .workspace .lektrus-eraser-modes>button[aria-pressed="true"] .lektrus-eraser-mode-check{opacity:1;transform:scale(1)}
-.workspace .lektrus-eraser-modes>button[aria-pressed="true"] .lektrus-eraser-mode-text small{color:#315f9e}
 .workspace .lektrus-eraser-modes>button:hover:not([aria-pressed="true"]){background:#f2f7ff;border-color:#9cb9e4}
 .workspace .lektrus-eraser-modes>button:focus-visible{outline:3px solid #3165ba;outline-offset:2px}
 @media(max-width:700px),(pointer:coarse){
- .lektrus-eraser-modes-caption{display:none}
- .workspace .lektrus-eraser-modes>button{min-height:50px;min-width:114px;padding:5px 13px 5px 7px}
+ .workspace .lektrus-eraser-modes>button{width:60px;min-width:60px;min-height:54px;padding:3px}
+ .workspace .lektrus-eraser-modes>button>svg{width:36px;height:25px;flex-basis:25px}
  .workspace .lektrus-ink-settings-direct:has(.lektrus-eraser-modes){flex-wrap:wrap}
 }
 @media(max-width:950px) and (orientation:landscape){
- .workspace .lektrus-eraser-modes>button{min-height:44px;min-width:103px;gap:4px;padding:4px 13px 4px 5px}
- .workspace .lektrus-eraser-modes>button>svg{width:23px;height:21px;flex-basis:23px}
- .lektrus-eraser-mode-text small{display:none}
- .lektrus-eraser-mode-text strong{font-size:11px}
+ .workspace .lektrus-eraser-modes>button{width:54px;min-width:54px;min-height:46px;padding:2px}
+ .workspace .lektrus-eraser-modes>button>svg{width:32px;height:22px;flex-basis:22px}
+ .lektrus-eraser-mode-label{font-size:9px}
 }
 @media(prefers-reduced-motion:reduce){
  .workspace .lektrus-eraser-modes>button,.lektrus-eraser-mode-check{transition:none}
