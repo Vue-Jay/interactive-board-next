@@ -304,22 +304,30 @@ async function refreshSession(snapshot:SelfhostSession):Promise<SelfhostSession|
   if(!current||current.user.id!==snapshot.user.id)return null;
   // Another tab may have rotated the token while this request was waiting.
   if(current.refresh_token!==snapshot.refresh_token)return current;
-  const response=await rawRequest("/api/v1/auth/refresh",{
+  let response=await rawRequest("/api/v1/auth/refresh",{
     method:"POST",body:JSON.stringify({refresh_token:snapshot.refresh_token}),
   });
-  if(!response.ok){
+  if(response.status===401){
+    // A deploy or an overlapping browser tab can briefly reject a refresh.
+    // Do not delete a persisted login after ONE rejection: first check whether
+    // another tab rotated it, then retry the same still-current token once.
+    await new Promise(resolve=>setTimeout(resolve,1000));
+    let latest=loadSession();
+    if(latest?.user.id!==snapshot.user.id)return null;
+    if(latest.refresh_token!==snapshot.refresh_token)return latest;
+    response=await rawRequest("/api/v1/auth/refresh",{
+      method:"POST",body:JSON.stringify({refresh_token:snapshot.refresh_token}),
+    });
     if(response.status===401){
-      // Older clients and browsers without Web Locks may still race a rotation.
-      // Allow the winning tab to persist its token before clearing a rejected one.
-      await new Promise(resolve=>setTimeout(resolve,1000));
-      const latest=loadSession();
+      await new Promise(resolve=>setTimeout(resolve,400));
+      latest=loadSession();
       if(latest?.user.id!==snapshot.user.id)return null;
       if(latest.refresh_token!==snapshot.refresh_token)return latest;
       saveSession(null);
       return null;
     }
-    throw await responseError(response);
   }
+  if(!response.ok)throw await responseError(response);
   const next=normalizeSession(await response.json());
   const latest=loadSession();
   if(latest?.user.id!==snapshot.user.id)return null;
