@@ -3153,7 +3153,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const boardIdleBusy=useRef(false);
   boardIdleBusy.current=!!(gesture.current||eraserSession.current||saveTimer.current||
     remoteSaveInFlight.current||remoteSavePromise.current||queuedRemoteSnapshot.current||
-    pendingRemote.current||editing||pendingAttachmentTimers.current.size);
+    pendingRemote.current||pendingAttachmentTimers.current.size);
 
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
