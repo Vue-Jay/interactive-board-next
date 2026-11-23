@@ -809,7 +809,7 @@ const Media = memo(function Media({ item, boardId, selected, autoFitEnabled, onA
     const measure=()=>{
       if(!image.complete||!image.naturalWidth||!image.naturalHeight)return;
       measuredSource.current=key;
-      onAutoFit(item.id,detectImageContentCropFromElement(image),
+      onAutoFit(item.id,detectImageContentCropFromElement(image)??undefined,
         image.naturalWidth/image.naturalHeight);
     };
     if(image.complete&&image.naturalWidth)measure();
@@ -4372,7 +4372,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           const image = new Image();
           image.onload = () => resolve({
             width: image.naturalWidth, height: image.naturalHeight,
-            crop: detectImageContentCropFromElement(image),
+            crop: detectImageContentCropFromElement(image)??undefined,
           });
           image.onerror = () => reject(new Error("Не удалось определить размер изображения"));
           image.src = url;
