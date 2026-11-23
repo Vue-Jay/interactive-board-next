@@ -3145,6 +3145,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [, setRemoteConflict] = useState<RemoteBoardDocument | null>(null);
   const [, setConflictLocalBackup] = useState<DocumentData | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("reconnecting");
+  // After ten minutes without a user action, close all board-specific sockets.
+  // A hidden app sleeps earlier. Auth stays intact; reconnection checks the
+  // server document version before accepting the next local edit.
+  const [boardRealtimeAwake,setBoardRealtimeAwake]=useState(true);
+  const boardLastAction=useRef(Date.now());
+  const boardIdleBusy=useRef(false);
+  boardIdleBusy.current=!!(gesture.current||eraserSession.current||saveTimer.current||
+    remoteSaveInFlight.current||remoteSavePromise.current||queuedRemoteSnapshot.current||
+    pendingRemote.current||editing||pendingAttachmentTimers.current.size);
+
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
   useEffect(() => {
@@ -3509,6 +3519,42 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [flushSave]);
+  // One timer per open board. Only *user* actions wake a sleeping socket;
+  // passive realtime messages, tab focus and animation frames never do.
+  useEffect(()=>{
+    if(demoMode||layoutEditing)return;
+    const ACTIVE_IDLE_MS=10*60*1000,HIDDEN_IDLE_MS=90*1000;
+    let timeout:ReturnType<typeof setTimeout>|undefined;
+    const arm=()=>{
+      clearTimeout(timeout);
+      if(!boardRealtimeAwake)return;
+      const limit=document.visibilityState==="hidden"?HIDDEN_IDLE_MS:ACTIVE_IDLE_MS;
+      const due=Math.max(50,boardLastAction.current+limit-Date.now());
+      timeout=setTimeout(()=>{
+        if(boardIdleBusy.current){timeout=setTimeout(arm,1500);return;}
+        if(Date.now()-boardLastAction.current>=limit){
+          flushSave();setBoardRealtimeAwake(false);
+        }else arm();
+      },due);
+    };
+    const userAction=()=>{
+      boardLastAction.current=Date.now();
+      if(!boardRealtimeAwake)setBoardRealtimeAwake(true);
+      else arm();
+    };
+    // pointermove is NOT activity: leaving a mouse on a desk should save traffic.
+    for(const type of ["pointerdown","keydown","wheel","input"] as const)
+      document.addEventListener(type,userAction,{capture:true,passive:true});
+    const visibility=()=>{if(boardRealtimeAwake)arm()};
+    document.addEventListener("visibilitychange",visibility);
+    arm();
+    return()=>{
+      clearTimeout(timeout);
+      for(const type of ["pointerdown","keydown","wheel","input"] as const)
+        document.removeEventListener(type,userAction,true);
+      document.removeEventListener("visibilitychange",visibility);
+    };
+  },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave]);
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
@@ -3519,13 +3565,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const chatOpenRef=useRef(chatOpen);
   chatOpenRef.current=chatOpen;
   useEffect(()=>{
-    if(layoutEditing||!discussionEnabled)return;
+    if(layoutEditing||!discussionEnabled||!boardRealtimeAwake)return;
     const refresh=()=>{void refreshDiscussions().catch(()=>{})};
     return subscribeBoardComments(boardSummary.id,()=>{
       if(!chatOpenRef.current)setChatUnread(value=>Math.min(99,value+1));
       refresh();
     },refresh);
-  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions]);
+  },[boardSummary.id,discussionEnabled,layoutEditing,refreshDiscussions,boardRealtimeAwake]);
   useEffect(()=>{
     const requested=new URLSearchParams(window.location.search).get("discussion");
     if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
@@ -4365,7 +4411,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       : [item.id];
 
   useEffect(()=>{
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel=connectAttachmentApprovalChannel(
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
@@ -4388,7 +4434,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       pendingAttachmentTimers.current.clear();
       pendingAttachmentStarted.current.clear();
     };
-  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode]);
+  },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode,boardRealtimeAwake]);
 
   const addMediaFile = async (file: File, position?: Point, offset = 0) => {
     if (!canEdit) throw new Error("У вас доступ только для просмотра");
@@ -8063,7 +8109,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
   useEffect(()=>{
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     if(selfhostMode){
       return selfhostWatchDocument(boardSummary.id,()=>remoteVersion.current??-1,latest=>{
         if(!latest.document)return;
@@ -8077,19 +8123,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return subscribeBoardDocument(
       boardSummary.id,row=>receiveRemote.current(row),setRealtimeStatus
     );
-  },[boardSummary.id,layoutEditing,selfhostMode,demoMode]);
+  },[boardSummary.id,layoutEditing,selfhostMode,demoMode,boardRealtimeAwake]);
 
-  useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible]);
+  useEffect(() => layoutEditing||!documentSyncEnabled||adminInvisible||!boardRealtimeAwake?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing,documentSyncEnabled,adminInvisible,boardRealtimeAwake]);
 
-  useEffect(() => demoMode||layoutEditing?()=>{}:subscribeBoardPresence(
+  useEffect(() => demoMode||layoutEditing||!boardRealtimeAwake?()=>{}:subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
     setPresenceUsers,
     !adminHidden,
-  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode]);
+  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     let active=true;
     if(acknowledgedBoardData.current)acknowledgeRemoteInk(acknowledgedBoardData.current);
     const channel = connectBoardCursorChannel(
@@ -8130,10 +8176,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       remoteInkStore.reset();
       remoteEraseStore.reset();remoteEraseTargets.current.clear();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel = connectBoardViewControl(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name },
@@ -8158,7 +8204,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       viewControlChannel.current = null;
       channel.close();
     };
-  }, [boardSummary.id, authUser.id, authUser.name,demoMode]);
+  }, [boardSummary.id, authUser.id, authUser.name,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
     followTeacherRef.current = followTeacher;
@@ -8185,7 +8231,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     });
   },[itemById]);
   useEffect(() => {
-    if(demoMode||layoutEditing)return;
+    if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     const channel = connectBoardWorkChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
