@@ -5,7 +5,7 @@ import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
-import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,tianjinConcessionChronology,tianjinConcessionStatus} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,tianjinConcessionChronology,tianjinConcessionStatus} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,historicalYearSourcesComparable,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
@@ -63,6 +63,16 @@ assert.ok(!territorialResolutions.davaoTransfer.reasonRu.includes('к начал
  'Do not backdate Davao Gulf control to early 1849');
 assert.ok(territorialResolutions.davaoTransfer.reason.includes('The 1848 polygon is therefore'),
  '1848 conquest of the fortified settlement is not a survey of the entire gulf');
+assert.equal(historicalCorsicaLiberationCenters(1942).length,0);
+const corsica1943=historicalCorsicaLiberationCenters(1943);
+const corsica1944=historicalCorsicaLiberationCenters(1944);
+assert.equal(corsica1943.length,1);
+assert.equal(corsica1944.length,1);
+assert.equal(corsica1943[0].id,corsica1944[0].id);
+assert.ok(corsica1943[0].description.includes('4 октября 1943'));
+assert.ok(corsica1944[0].description.includes('уже находилась под французским управлением'));
+assert.ok(corsica1944[0].description.includes('не повторное освобождение'));
+assert.equal(historicalCorsicaLiberationCenters(1945).length,0);
 assert.equal(tianjinConcessionChronology.length,8);
 assert.deepEqual(tianjinConcessionStatus(1860).established.map(c=>c.id),['british']);
 assert.deepEqual(tianjinConcessionStatus(1895).established.map(c=>c.id),['german']);

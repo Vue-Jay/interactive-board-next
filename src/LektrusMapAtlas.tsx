@@ -29,7 +29,7 @@ import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots as legac
 import {HISTORY_FIRST_YEAR,HISTORY_LAST_YEAR,historicalYearFeatureCollection,historicalYearSourcesComparable} from "./lektrusHistoricalTimeline";
 import {createHistoricalTimelineLoader} from "./lektrusHistoricalTimelineLoader";
 import {historicalGapLocators,HISTORICAL_GAP_LOCATOR_SOURCE} from "./lektrusHistoricalGapLocators";
-import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters} from "./lektrusHistoricalUnresolvedCenters";
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters} from "./lektrusHistoricalUnresolvedCenters";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,modernAtlasTerritoryUpdate,summariseNamedChanges,
 historicalFeatureFacts,historicalCountryName,historicalSourceName,historicalMapFeatures,loadHistoricalIndex,correctedHistoricalIndexLabel,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -899,7 +899,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    historicalSnapshots[Math.max(0,index-1)].year)/2));
  const schoolMarkers=historical&&mode==="events"?eventsNearYear(snapshot.year).map(event=>({...event,
   id:`school-${event.year}-${event.lat}-${event.lon}`})):[];
- const unresolvedCenters=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?[...historicalUnresolvedCenters(snapshot.year,source?.historicalTerritorialIssues??[]),...historicalTreatyPortCenters(snapshot.year)]:[];
+ const unresolvedCenters=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?[...historicalUnresolvedCenters(snapshot.year,source?.historicalTerritorialIssues??[]),...historicalTreatyPortCenters(snapshot.year),...historicalCorsicaLiberationCenters(snapshot.year)]:[];
  const unresolvedRegions=historical&&annualSource(snapshot.year)&&sourceYear===snapshot.year?historicalUnresolvedRegions(snapshot.year,source?.historicalTerritorialIssues??[]):[];
  const selectedRegionDetails=unresolvedRegions.find(r=>r.id===selectedMarker);
  const openUnresolvedRegion=(id:string)=>{setSelectedMarker(id);setSelected(null);setSelectedMineral(null);setHistoryTab('article');setInspectorOpen(true)};

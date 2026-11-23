@@ -107,6 +107,21 @@ export function historicalTreatyPortCenters(year:number){
  return [{id:'historical-center-tianjin-treaty-port',group:'Тяньцзинь — концессия',from:1860,to:1946,year,lon:117.2,lat:39.13,title:'Тяньцзинь — иностранные концессии',description:`${context} ${perYear}Сводные годы начала и возвращения не являются точными датами изменения международного правового статуса. Точка отмечает исторический город, не границы концессий и не отдельную государственную территорию.`,url:'https://journals.open.tudelft.nl/iphs/article/download/2751/2962/'}];
 }
 
+// Corsica was liberated on 4 October 1943. The island was already a French
+// liberated territory throughout 1944, before mainland France's liberation.
+// A point at Bastia documents a dated event, NEVER a political boundary.
+export function historicalCorsicaLiberationCenters(year:number){
+ if(year!==1943&&year!==1944)return [];
+ const description=year===1943?
+  '4 октября 1943 года освобождена Бастия, завершилось освобождение Корсики от немецкой оккупации. В операции участвовали корсиканское Сопротивление, французские и союзные войска. Точка показывает город и событие, а не боевые позиции или границы отдельного государства.':
+  'В 1944 году Корсика уже находилась под французским управлением после освобождения 4 октября 1943 года. Остров служил базой союзных операций в Средиземноморье и высадки в Провансе. Это не повторное освобождение в 1944 году, а продолжение французского управления.';
+ return [{id:'historical-center-corsica-liberation',group:'Корсика — освобождение 1943 года',
+  from:1943,to:1944,year,lon:9.45,lat:42.697,
+  title:year===1943?'Бастия — завершение освобождения Корсики':'Корсика — освобождённая французская территория',
+  description,
+  url:'https://www.defense.gouv.fr/80-ans-liberation-corse-recit-trois-actes'}];
+}
+
 // A geographic footprint can have several erroneous source attributions.
 // Keep every original row, but show one selectable region, not two pretend states.
 const regionTitles:Record<string,string>={Mindanao:'Минданао — местные политические образования',Corsica:'Корсика — разделённое управление','Эльба':'Эльба — три владения','Коморы':'Нгазиджа (Гранд-Комор) — местные султанаты','Малакка':'Малакка — нидерландское владение и спорные пределы'};
