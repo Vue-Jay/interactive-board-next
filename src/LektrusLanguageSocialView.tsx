@@ -6,7 +6,7 @@ import {moveSentenceWord,sentenceWordDropSlot} from "./lektrusSentenceDrag";
 
 type WordGesture={
  id:string;pointerId:number;startX:number;startY:number;
- offsetX:number;offsetY:number;width:number;active:boolean;origin:string[];
+ offsetX:number;offsetY:number;width:number;active:boolean;origin:string[];slot:number;
 };
 type WordPreview={id:string;left:number;top:number;width:number};
 
@@ -27,6 +27,42 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
  const stop=(event:SyntheticEvent)=>event.stopPropagation();
  const pattern=sentencePatternById(d.patternId);
 
+ // Android WebView/iPad can lose pointer capture when React reorders
+ // captured chips. Only reorder AFTER the finger is released, and track
+ // movement on window so the embedded whiteboard cannot steal the gesture.
+ useEffect(()=>{
+  const move=(event:PointerEvent)=>{
+   const gesture=gestureRef.current;
+   if(!gesture||gesture.pointerId!==event.pointerId)return;
+   if(!gesture.active&&Math.hypot(event.clientX-gesture.startX,event.clientY-gesture.startY)<6)return;
+   if(event.cancelable)event.preventDefault();
+   gesture.active=true;
+   const siblings=Array.from(partsRef.current?.querySelectorAll<HTMLButtonElement>("[data-sentence-word]")??[])
+    .filter(element=>element.dataset.sentenceWord!==gesture.id);
+   gesture.slot=sentenceWordDropSlot(event.clientX,event.clientY,
+    siblings.map(element=>element.getBoundingClientRect()));
+   setPreview({id:gesture.id,left:event.clientX-gesture.offsetX,
+    top:event.clientY-gesture.offsetY,width:gesture.width});
+  };
+  const release=(event:PointerEvent)=>{
+   const gesture=gestureRef.current;
+   if(!gesture||gesture.pointerId!==event.pointerId)return;
+   gestureRef.current=null;
+   setPreview(null);
+   if(event.type==="pointerup"&&gesture.active){
+    setOrder(current=>moveSentenceWord(current,gesture.id,gesture.slot));
+    setChecked(false);
+   }
+  };
+  window.addEventListener("pointermove",move,{capture:true,passive:false});
+  window.addEventListener("pointerup",release,true);
+  window.addEventListener("pointercancel",release,true);
+  return()=>{
+   window.removeEventListener("pointermove",move,true);
+   window.removeEventListener("pointerup",release,true);
+   window.removeEventListener("pointercancel",release,true);
+  };
+ },[]);
  const beginDrag=(event:ReactPointerEvent<HTMLButtonElement>,id:string)=>{
   if(event.pointerType==="mouse"&&event.button!==0)return;
   event.preventDefault();event.stopPropagation();
@@ -35,40 +71,11 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   gestureRef.current={
    id,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,
    offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,width:rect.width,
-   active:false,origin:[...order]
+   active:false,origin:[...order],slot:order.indexOf(id)
   };
   event.currentTarget.focus();
-  event.currentTarget.setPointerCapture(event.pointerId);
- };
- const dragWord=(event:ReactPointerEvent<HTMLButtonElement>)=>{
-  const gesture=gestureRef.current;
-  if(!gesture||gesture.pointerId!==event.pointerId)return;
-  event.preventDefault();event.stopPropagation();
-  if(!gesture.active&&Math.hypot(event.clientX-gesture.startX,event.clientY-gesture.startY)<5)return;
-  gesture.active=true;
-  setPreview({id:gesture.id,left:event.clientX-gesture.offsetX,
-   top:event.clientY-gesture.offsetY,width:gesture.width});
-  const siblings=Array.from(partsRef.current?.querySelectorAll<HTMLButtonElement>("[data-sentence-word]")??[])
-   .filter(element=>element.dataset.sentenceWord!==gesture.id);
-  const slot=sentenceWordDropSlot(event.clientX,event.clientY,
-   siblings.map(element=>element.getBoundingClientRect()));
-  setOrder(current=>moveSentenceWord(current,gesture.id,slot));
-  setChecked(false);
- };
- const endDrag=(event:ReactPointerEvent<HTMLButtonElement>,cancel=false)=>{
-  const gesture=gestureRef.current;
-  if(!gesture||gesture.pointerId!==event.pointerId)return;
-  event.stopPropagation();
-  gestureRef.current=null;
-  if(cancel&&gesture.active)setOrder(gesture.origin);
-  setPreview(null);
-  if(event.currentTarget.hasPointerCapture(event.pointerId))
-   event.currentTarget.releasePointerCapture(event.pointerId);
- };
- const releaseLostCapture=(event:ReactPointerEvent<HTMLButtonElement>)=>{
-  const gesture=gestureRef.current;
-  if(!gesture||gesture.pointerId!==event.pointerId)return;
-  gestureRef.current=null;setPreview(null);
+  // Chip remains mounted for the entire pointer sequence on touch devices.
+  try{event.currentTarget.setPointerCapture(event.pointerId)}catch{/* Window fallback */}
  };
  const reorderWithKeyboard=(event:ReactKeyboardEvent<HTMLButtonElement>,id:string)=>{
   const at=order.indexOf(id);
@@ -85,16 +92,14 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
    <strong>{d.title}</strong>
    <p className="lektrus-sentence-task">{d.instructions}</p>
    {d.showHint&&pattern&&<p className="lektrus-sentence-tip">{pattern.label}: {pattern.tip}</p>}
-   <div ref={partsRef} className="lektrus-sentence-parts"
+   <div ref={partsRef} className="lektrus-sentence-parts" data-board-interactive="true"
     aria-label="Соберите предложение, перетаскивая слова в правильном порядке">
     {order.map((id,i)=><button type="button" key={id} data-sentence-word={id}
      draggable={false} className={preview?.id===id?"is-dragging":""}
      aria-label={`Слово ${dictionary.get(id)?.text??"?"}, позиция ${i+1}. Перетащите или используйте стрелки для перемещения.`}
      title={`Позиция ${i+1}. Перетащите слово или используйте стрелки.`}
+     data-board-interactive="true"
      onPointerDown={event=>beginDrag(event,id)}
-     onPointerMove={dragWord} onPointerUp={event=>endDrag(event)}
-     onPointerCancel={event=>endDrag(event,true)}
-     onLostPointerCapture={releaseLostCapture}
      onKeyDown={event=>reorderWithKeyboard(event,id)}>
      {dictionary.get(id)?.text??"?"}
     </button>)}
