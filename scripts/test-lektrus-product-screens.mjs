@@ -19,9 +19,9 @@ assert.match(board,/!demoMode\|\|entry\.id\.startsWith\("subject-task-"\)/,"Only
 for(const connection of ["connectAttachmentApprovalChannel","subscribeBoardDocument","connectBoardCursorChannel","connectBoardViewControl","connectBoardWorkChannel"]){
  const call=board.lastIndexOf(connection+"(");
  const effect=board.lastIndexOf("useEffect(",call);
- assert.ok(call>effect&&board.slice(effect,call).includes("if(demoMode||layoutEditing)return;"),connection+" must never start in demo");
+ assert.ok(call>effect&&board.slice(effect,call).includes("if(demoMode||layoutEditing||!boardRealtimeAwake)return;"),connection+" must never start in demo");
 }
-assert.match(board,/demoMode\|\|layoutEditing\?\(\)=>\{\}:subscribeBoardPresence/);
+assert.match(board,/demoMode\|\|layoutEditing\|\|!boardRealtimeAwake\?\(\)=>\{\}:subscribeBoardPresence/);
 assert.match(board,/if\(!demoMode\)queueLectrisBoardOrganization/);
 assert.match(assets,/if\(isDemoBoard\(boardId\)\)return demoAssets\.get\(path\)\?\?null/);
 assert.match(assets,/if\(isDemoBoard\(boardId\)\)return;\s*const selfhost/);
