@@ -789,6 +789,22 @@
  min-width:0;box-sizing:border-box;padding:5px 8px;
 }
 .lektrus-ink-tool-name{font-size:11px;white-space:nowrap;color:#526986}
+/* The legacy quick-properties rule hides .ink-settings. On touch layouts the
+   separate quick-properties strip is also hidden, so explicitly restore this
+   direct tool strip without exposing it during a presentation. */
+@media(max-width:1100px),(pointer:coarse){
+ .workspace:not(.presentation-mode) .ink-settings.lektrus-ink-settings-direct{display:flex!important}
+ .presentation-mode .workspace .ink-settings.lektrus-ink-settings-direct{display:none!important}
+}
+@media(max-width:630px) and (orientation:portrait){
+ .workspace .ink-settings.lektrus-ink-settings-direct:has(.lektrus-eraser-modes){
+  align-items:center!important;justify-content:center!important;
+  flex-wrap:wrap!important;overflow-x:visible!important;overflow-y:visible!important;
+  max-width:calc(100vw - 12px)!important;white-space:normal!important;
+ }
+ .workspace .ink-settings.lektrus-ink-settings-direct:has(.lektrus-eraser-modes)>.lektrus-ink-tool-name{display:none}
+ .workspace .ink-settings.lektrus-ink-settings-direct:has(.lektrus-eraser-modes)>.lektrus-direct-ink-widths{flex-basis:100%!important}
+}
 /* Compact illustrated eraser modes: broken line = erase part, crossed line = erase all. */
 .lektrus-eraser-modes{display:flex;align-items:center;gap:5px;min-width:0;flex:0 0 auto}
 .workspace .lektrus-eraser-modes>button{
