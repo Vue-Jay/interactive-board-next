@@ -1,3 +1,4 @@
+import {rememberGuestName} from "./guestNameCache";
 import { LEKTRUS_LOCAL_TEST_MODE, LEKTRUS_LOCAL_TEST_USER } from "./lektrusLocalTestMode";
 import { setLocalAccountRole, type AccountRole } from "./accountRoleStore";
 import { claimRemoteInvitations, completeEmailConfirmationRemote, getCachedRemoteSession, getRemoteSession, isRemoteBackendEnabled, signInRemote, signInAnonymousRemote, signOutRemote, signUpRemote, resendSignupOtpRemote, getRememberedRemoteAccount, resumeRememberedRemoteAccount, leaveRemoteAccountRemembered, clearRememberedRemoteAccount } from "./backend";
@@ -144,11 +145,15 @@ export const loginGuest=async(name:string,token?:string,password?:string):Promis
  if(guestName.length>60)throw new Error("Имя гостя слишком длинное");
  if(isSelfhostBackendEnabled()){
   if(!token)throw new Error("Для гостевого входа нужна ссылка приглашения.");
-  return selfhostUser(await selfhostGuestLogin(guestName,token,password))!;
+  const user=selfhostUser(await selfhostGuestLogin(guestName,token,password))!;
+  rememberGuestName(guestName); // Only after the server confirms guest entry.
+  return user;
  }
  if(!isRemoteBackendEnabled())throw new Error("Гостевой вход доступен только при серверной синхронизации.");
  const s=await signInAnonymousRemote(guestName);
- return remoteUser(s)!;
+ const user=remoteUser(s)!;
+ rememberGuestName(guestName);
+ return user;
 };
 
 export const getRememberedAccount=()=>isSelfhostBackendEnabled()?getRememberedSelfhostAccount():isRemoteBackendEnabled()?getRememberedRemoteAccount():null;
