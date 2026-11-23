@@ -131,6 +131,9 @@ for(let year=1986;year<=1989;year++){
   assert.equal(gaps[0].kind,'documented-state');
   assert.equal(gaps[0].date,'1986-10-21');
   assert.equal(gaps[0].source,'https://history.state.gov/countries/marshall-islands');
+  assert.match(gaps[0].reasonRu,/1986–1989/);
+  assert.ok(historicalGapLocators['Marshall Islands'].historicalNote.includes('21 октября 1986'));
+  assert.equal(historicalGapLocators['Marshall Islands'].historicalSource,gaps[0].source);
   assert.deepEqual(documentedStateCoverageGaps(year,[{sourceWikidata:'Q709',name:'Legacy source'}],true),[]);
   assert.deepEqual(documentedStateCoverageGaps(year,[{name:'Republic of the Marshall Islands'}],true),[]);
   assert.deepEqual(documentedStateCoverageGaps(year,[],false),[],'Small fixtures have no reviewed island supplementation');
@@ -189,9 +192,12 @@ assert.throws(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.co
 assert.ok(historicalYearState({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[bceGap]}},-1).coverageGaps.length===1);
 assert.throws(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[{...bceGap,source:'http://example.org'}]}},bceBlock),
  'Historical evidence must use HTTPS');
+assert.throws(()=>validateHistoricalPack({...bcePack,coverageGaps:{...bcePack.coverageGaps,'-1':[{...bceGap,reasonRu:123}]}},bceBlock),
+ 'Localized historical evidence must have a valid nonempty string');
 const atlasUI=fs.readFileSync(new URL('../src/LektrusMapAtlas.tsx',import.meta.url),'utf8');
 assert.match(atlasUI,/if\(annualPreview&&year===2025\)return \{type:"FeatureCollection",features:\[\],historicalUncoveredYear:2025\}/);
 assert.match(atlasUI,/data-atlas-uncovered-year="2025"/);
+assert.ok(atlasUI.includes('g.reasonRu??('),'Human-readable coverage explanations must be visible');
 assert.match(atlasUI,/const sourcedHistoryCenters=historical&&annualSource/);
 assert.match(atlasUI,/data-atlas-sourced-centers=\{sourcedHistoryCenters\.length\}/);
 assert.match(atlasUI,/\.\.\.historicalTreatyPortCenters\(snapshot\.year\),\.\.\.historicalCorsicaLiberationCenters\(snapshot\.year\)/);

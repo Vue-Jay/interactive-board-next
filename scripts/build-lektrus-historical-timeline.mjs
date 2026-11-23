@@ -2024,7 +2024,8 @@ export function documentedStateCoverageGaps(year,polities,sourceIndexedReviews){
        /Marshall Islands/i.test(r.name)))return [];
   return [{name:'Marshall Islands',kind:'documented-state',date:'1986-10-21',
     source:'https://history.state.gov/countries/marshall-islands',
-    reason:'Independent state recognized in 1986; no independently dated 1986–89 geometry has been accepted. A 1990 outline must not be backdated.'}];
+    reason:'Independent state recognized in 1986; no independently dated 1986–89 geometry has been accepted. A 1990 outline must not be backdated.',
+    reasonRu:'Независимость признана в 1986 году, но для 1986–1989 годов нет самостоятельно принятой датированной карты островов. Поздний контур 1990 года не переносится на ранние годы.'}];
 }
 
 export function buildHistoricalTimeline(source, sourceHash, outDir) {
