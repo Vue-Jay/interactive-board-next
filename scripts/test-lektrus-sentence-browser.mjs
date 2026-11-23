@@ -102,6 +102,7 @@ try{
  await call("Input.dispatchMouseEvent",{type:"mouseMoved",button:"left",buttons:1,x:first.cx+14,y:first.cy});
  await call("Input.dispatchMouseEvent",{type:"mouseMoved",button:"left",buttons:1,x:endX,y:last.cy});
  await waitFor("!!document.querySelector('.lektrus-sentence-drag-preview')","Drag preview missing");
+ assert.deepEqual(await order(),initial,"Keep captured chip mounted until mouse release");
  await call("Input.dispatchMouseEvent",{type:"mouseReleased",button:"left",x:endX,y:last.cy,clickCount:1});
  await waitFor("!document.querySelector('.lektrus-sentence-drag-preview')","Drag preview should disappear");
  assert.equal((await order()).at(-1),initial[0],"Mouse should move a word to the end");
@@ -123,7 +124,36 @@ try{
  assert.equal((await order()).length,6,"No words should be lost during drag");
  await evaluate(`[...document.querySelectorAll('.lektrus-sentence-actions button')].find(b=>b.textContent==='Заново').click()`);
  assert.deepEqual(await order(),initial,"Reset must restore initial sentence scramble");
- console.log("Browser sentence drag: click does not swap, mouse and touch reorder, keyboard moves and reset restores words.");
+ // Both portrait-friendly tablet layouts exercise the touch gesture INSIDE
+ // a board object. Changing DOM order before touchEnd loses capture on WebViews.
+ for(const [width,height] of [[1024,600],[844,430]]){
+  await call("Emulation.setDeviceMetricsOverride",{
+   width,height,deviceScaleFactor:2,mobile:true,screenWidth:width,screenHeight:height
+  });
+  await delay(170);
+  const startOrder=await order();
+  const a=await bounds(0),z=await bounds(5);
+  const x=Math.min(width-24,z.right+12),y=z.cy;
+  await call("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x:a.cx,y:a.cy}]});
+  await call("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x:a.cx+17,y:a.cy}]});
+  await call("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x,y}]});
+  await waitFor("!!document.querySelector('.lektrus-sentence-drag-preview')",
+   "Tablet touch drag did not create a floating word preview");
+  assert.deepEqual(await order(),startOrder,
+   "Tablet gesture must keep DOM chip in place until touchEnd");
+  await call("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+  await waitFor("!document.querySelector('.lektrus-sentence-drag-preview')",
+   "Tablet floating chip stuck after touchEnd");
+  assert.equal((await order()).at(-1),startOrder[0],
+   "Real on-board tablet drag must reorder first chip to the end");
+  await evaluate(`[...document.querySelectorAll('.lektrus-sentence-actions button')].find(b=>b.textContent==='Заново').click()`);
+  await waitFor(`JSON.stringify([...document.querySelectorAll('.lektrus-sentence-parts [data-sentence-word]')].map(b=>b.dataset.sentenceWord))===${JSON.stringify(JSON.stringify(initial))}`,
+   "Tablet reset failed");
+  console.log(`✓ ${width}×${height} real touch: board-embedded word drag and stable capture`);
+ }
+ assert.equal(await evaluate("window.__boardCaptured||0"),0,
+  "Whiteboard must not steal the sentence chip pointerdown");
+ console.log("Browser sentence drag: board-embedded mouse, touch, tablet and keyboard reorder; capture retained until release.");
 }finally{
  if(ws&&ws.readyState===WebSocket.OPEN)ws.close();
  if(chrome){
