@@ -61,8 +61,10 @@ assert.equal(validateLanguageSocialDiagram(newLanguageSocialDiagram("language-se
 const view=fs.readFileSync(new URL("../src/LektrusLanguageSocialView.tsx",import.meta.url),"utf8");
 assert.match(view,/onPointerDown=\{event=>beginDrag\(event,id\)\}/,
  "Sentence construction must start a real drag gesture");
-assert.match(view,/onPointerMove=\{dragWord\}/,
- "Sentence words must follow the pointer");
+assert.match(view,/window\.addEventListener\("pointermove",move,\{capture:true,passive:false\}\)/,
+ "Sentence words must follow the pointer via window capture on tablets");
+assert.match(view,/window\.addEventListener\("pointerup",release,true\)/,
+ "The sentence must reorder only after finger release");
 assert.match(view,/onKeyDown=\{event=>reorderWithKeyboard\(event,id\)\}/,
  "Word ordering remains accessible from the keyboard");
 assert.doesNotMatch(view,/onClick=\{\(\)=>swap\(id\)\}/,
