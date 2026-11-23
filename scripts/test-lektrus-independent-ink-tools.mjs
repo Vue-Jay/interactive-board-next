@@ -58,8 +58,11 @@ assert.match(editor,/data-eraser-mode="partial" aria-pressed=\{value==="partial"
  "Partial eraser must be a directly selectable, clearly marked mode");
 assert.match(editor,/data-eraser-mode="stroke" aria-pressed=\{value==="stroke"\}/,
  "Whole-stroke eraser must be a directly selectable, clearly marked mode");
-assert.match(editor,/<strong>Участок<\/strong><small>Под ластиком<\/small>/);
-assert.match(editor,/<strong>Весь штрих<\/strong><small>Одним касанием<\/small>/);
+assert.match(editor,/aria-label="Стирать участок линии"/);
+assert.match(editor,/aria-label="Стирать весь штрих одним касанием"/);
+assert.match(editor,/className="lektrus-eraser-mode-label" aria-hidden="true">Часть<\/span>/);
+assert.match(editor,/className="lektrus-eraser-mode-label" aria-hidden="true">Всё<\/span>/);
+assert.match(editor,/viewBox="0 0 48 32"/, "Each eraser mode has an illustrative icon");
 
 const inkCss=fs.readFileSync("src/lektrusSubjectPolish2026.css","utf8");
 assert.match(inkCss,/Every pen-width preset, especially the fifth 22px button/,
@@ -84,8 +87,10 @@ assert.match(directCss,/\.lektrus-eraser-mode-check/,
  "The selected eraser behavior must be visible without relying only on color");
 assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\[aria-pressed="true"\]/,
  "The active eraser mode needs a distinct selected state");
-assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\{min-height:50px/,
- "Eraser mode choices must remain touch-sized on mobile");
+assert.match(directCss,/\.workspace \.lektrus-eraser-modes>button\{width:60px;min-width:60px;min-height:54px/,
+ "Compact mobile eraser controls must still have finger-sized touch targets");
+assert.match(directCss,/\.lektrus-eraser-mode-label\{/,
+ "Keep a minimal caption for clarity without text-heavy controls");
 
 assert.match(directCss,/Five full-width, directly tappable pen presets/);
 assert.match(directCss,/\.lektrus-ink-settings-direct \.lektrus-direct-ink-widths\{/);
