@@ -1,5 +1,7 @@
-// Exhaustive browser interaction test. Run against a local test build BEFORE
-// publishing it. Supplies the genuine pinned files to the browser via routes.
+// Full synthetic SVG selection/card acceptance for the pinned legacy years,
+// plus a physically dispatched mouse click on a visible country per year.
+// The sampled pointer check does not prove that EVERY shape is physically hittable.
+// Run against a local build BEFORE publishing; use genuine pinned source files.
 // LEKTRUS_ATLAS_DATA_DIR=/path/to/pinned/files node scripts/test-lektrus-atlas-every-country-browser.mjs
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -31,7 +33,40 @@ try{
  await page.getByRole("option",{name:"Весь мир",exact:true}).click();
  const requested=process.env.LEKTRUS_ATLAS_YEARS?.split(",").map(Number);
  if(requested)for(const year of requested)assert.ok(years.includes(year),`missing period in UI: ${year}`);
- let tested=0;
+ let tested=0,physicalMouseHits=0;
+ const noPhysicalHit=[];
+ const verifyRealMouseHit=async year=>{
+  // The DOM-dispatched click above does not exercise hit testing. Locate a
+  // real on-screen pixel genuinely owned by a painted SVG country, avoiding
+  // labels, zoom controls, overlapping paths and polygons with empty centers.
+  const probe=await page.evaluate(()=>{
+   const paths=[...document.querySelectorAll('path.lektrus-atlas-country[data-atlas-feature-index]')];
+   const candidates=paths.map(el=>{
+    const r=el.getBoundingClientRect(),left=Math.max(r.left,2),top=Math.max(r.top,2);
+    const right=Math.min(r.right,innerWidth-2),bottom=Math.min(r.bottom,innerHeight-2);
+    return {el,left,top,right,bottom,area:Math.max(0,right-left)*Math.max(0,bottom-top)};
+   }).filter(c=>c.area>=64).sort((a,b)=>b.area-a.area);
+   const fractions=[.5,.35,.65,.2,.8,.1,.9];
+   for(const c of candidates){
+    for(const yf of fractions)for(const xf of fractions){
+     const x=c.left+(c.right-c.left)*xf,y=c.top+(c.bottom-c.top)*yf;
+     if(document.elementFromPoint(x,y)===c.el)
+      return {x,y,id:c.el.dataset.atlasFeatureIndex};
+    }
+   }
+   return null;
+  });
+  if(!probe){noPhysicalHit.push(year);return;}
+  // Playwright's mouse API dispatches a trusted screen-coordinate action,
+  // unlike locator.dispatchEvent and element.click used for the full audit.
+  await page.mouse.move(probe.x,probe.y);
+  await page.mouse.click(probe.x,probe.y);
+  const actual=page.locator(`.lektrus-atlas-info-object[data-atlas-selected-index="${probe.id}"]`);
+  await actual.waitFor({state:'visible',timeout:6000});
+  assert.ok((await actual.locator('.lektrus-atlas-description strong').first().textContent())?.trim(),
+   `${year}/${probe.id}: real mouse click did not open a populated card`);
+  physicalMouseHits++;
+ };
  for(const year of years.filter(y=>!requested||requested.includes(y)).sort((a,b)=>b-a)){
   await period.selectOption(String(year));
   await page.locator(`[data-atlas-source-year="${year}"]`).waitFor({timeout:90000});
@@ -91,8 +126,12 @@ try{
    tested++;
   }
   if(year===2026){assert.equal(verifiedStats.size,195,"all 195 UN roster cards must expose verified statistics");console.log("2026: 195 sourced country statistics cards verified after map clicks");}
-  console.log(`${year}: ${ids.length} map clicks, ${tested} total`);
+  await verifyRealMouseHit(year);
+  console.log(`${year}: ${ids.length} synthetic SVG card checks, ${physicalMouseHits} sampled physical mouse hits, ${tested} total`);
  }
  assert.deepEqual(errors,[],"uncaught browser errors during atlas audit");
- console.log(`Verified ${tested} historical map clicks. This tests presentation/selection, not independent historical truth.`);
+ console.log(`Verified ${tested} synthetic SVG path card checks and ${physicalMouseHits} real screen-coordinate mouse hits; ${noPhysicalHit.length} years lacked a visible probe.`);
+ if(noPhysicalHit.length)console.warn('Historical atlas physical hit-testing gaps (not accepted):',JSON.stringify(noPhysicalHit));
+ // A passing UI test never certifies historical facts, all islands, touch
+ // interactions or a full per-year/per-territory physical-pointer audit.
 }finally{await browser.close()}
