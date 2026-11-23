@@ -18,8 +18,20 @@
     {id:"five",text:"new"}, {id:"six",text:"words"}
    ]
   };
+  // This deliberately runs INSIDE a whiteboard object, not just the
+  // standalone editor. The board listens in capture phase before React chips.
   createRoot(document.getElementById("root")).render(
-   React.createElement(LektrusLanguageSocialView,{diagram})
+   React.createElement("section",{className:"board",style:{
+    height:"100%",touchAction:"none",position:"relative",overflow:"hidden"
+   },onPointerDownCapture:event=>{
+    if(event.target.closest("[data-board-interactive],button"))return;
+    window.__boardCaptured=(window.__boardCaptured||0)+1;
+   }},
+    React.createElement("div",{className:"board-object",dataset:{object:"sentence-1"},
+     style:{width:"98%",height:"100%",transform:"translateZ(0) scale(.96)",transformOrigin:"top left"}},
+     React.createElement(LektrusLanguageSocialView,{diagram})
+    )
+   )
   );
  </script>
 </body></html>
