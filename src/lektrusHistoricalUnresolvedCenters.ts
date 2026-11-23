@@ -74,13 +74,37 @@ export function historicalUnresolvedCenters(year:number,issues:readonly {group:s
  return [...(groups.has('Mindanao')?mindanaoCenters:[]),...regionalCenters.filter(c=>groups.has(c.group))].filter(c=>c.from<=year&&year<=c.to).map(c=>({...c,id:`historical-center-${c.id}`,year}));
 }
 
-// Treaty-port concessions were municipal leaseholds, not sovereign states.
-// At this map scale identify the city only; opening and recovery years can
-// contain changes within the year and do not imply full-year control.
+// Establishment and de facto recovery years in Sun, Hein, Song & Feng (2018),
+// "Planning modern cities in China" (Table 1). Dates are *calendar-year
+// brackets*, not precise treaty dates or final settlement of sovereignty.
+// The cities' municipal concessions are NOT separate sovereign countries.
+export const tianjinConcessionChronology=[
+ {id:'british',nameRu:'британская',founded:1860,recovered:1945},
+ {id:'french',nameRu:'французская',founded:1861,recovered:1945},
+ {id:'german',nameRu:'германская',founded:1895,recovered:1917},
+ {id:'japanese',nameRu:'японская',founded:1898,recovered:1945},
+ {id:'russian',nameRu:'российская',founded:1901,recovered:1924},
+ {id:'belgian',nameRu:'бельгийская',founded:1902,recovered:1931},
+ {id:'italian',nameRu:'итальянская',founded:1902,recovered:1945},
+ {id:'austrohungarian',nameRu:'австро-венгерская',founded:1902,recovered:1919}
+] as const;
+
+/** A recovery year is a transition, not automatically 365 days of control. */
+export function tianjinConcessionStatus(year:number){
+ return {active:tianjinConcessionChronology.filter(c=>c.founded<=year&&year<c.recovered),
+  established:tianjinConcessionChronology.filter(c=>c.founded===year),
+  recovery:tianjinConcessionChronology.filter(c=>c.recovered===year)};
+}
+
+// At world-map scale keep a single city marker. This is a historical card,
+// not a replacement for missing georeferenced neighbourhood boundaries.
 export function historicalTreatyPortCenters(year:number){
  if(year<1860||year>1946)return [];
- const context=year<=1899?'После открытия порта в 1860 году иностранные концессии устраивались поэтапно в городской зоне вдоль реки Хайхэ.':year<=1902?'В 1900–1902 годах город находился под временным международным управлением; после его прекращения городское управление было возвращено Китаю.':year<=1936?'В городе действовали иностранные муниципальные концессии; сроки их учреждения и возвращения Китаю различались.':year===1937?'В июле 1937 года Тяньцзинь был захвачен японской армией.':year<=1944?'Японская военная оккупация города не означала перехода китайского суверенитета; иностранные концессии имели различный статус.':year===1945?'В 1945 году японская оккупация завершилась, началось восстановление китайского управления.':'В 1946 году город находился под управлением Китайской Республики; юридическое оформление прекращения некоторых концессий продолжалось.';
- return [{id:'historical-center-tianjin-treaty-port',group:'Тяньцзинь — концессия',from:1860,to:1946,year,lon:117.2,lat:39.13,title:'Тяньцзинь — иностранные концессии',description:`${context} Точка отмечает исторический город, не границы концессий и не отдельную государственную территорию.`,url:'https://journals.open.tudelft.nl/iphs/article/download/2751/2962/'}];
+ const context=year<=1899?'После открытия порта в 1860 году иностранные концессии устраивались поэтапно в городской зоне вдоль реки Хайхэ.':year<=1902?'В 1900–1902 годах действовало временное международное правительство Тяньцзиня, контролировавшее город примерно 25 месяцев. Это не означало прекращения всех отдельных концессий, а возвращение китайского муниципального управления было поэтапным.':year<=1936?'В городе действовали иностранные муниципальные концессии; сроки их учреждения и фактического возвращения Китаю различались.':year===1937?'В июле 1937 года Тяньцзинь был захвачен японской армией.':year<=1944?'Японская военная оккупация города не означала перехода китайского суверенитета; иностранные концессии имели различный статус.':year===1945?'В 1945 году японская оккупация завершилась, началось восстановление китайского управления.':'В 1946 году город находился под управлением Китайской Республики; юридическое оформление прекращения некоторых концессий продолжалось.';
+ const status=tianjinConcessionStatus(year);
+ const names=(list:typeof status.active)=>list.map(c=>c.nameRu).join(', ');
+ const perYear=`${status.active.length?'Концессии, действовавшие в течение части или всего года по академической хронологии: '+names(status.active)+'. ':''}${status.established.length?'Учреждение/расширение в этом году: '+names(status.established)+'. ':''}${status.recovery.length?'Год фактического возвращения: '+names(status.recovery)+'. ':''}${year>=1863&&year<=1902?'Американское поселение (отмечено в источнике как учреждённое после 1862 года) было включено в британскую южную часть в 1902 году; точный первый год здесь не установлен. ':''}`;
+ return [{id:'historical-center-tianjin-treaty-port',group:'Тяньцзинь — концессия',from:1860,to:1946,year,lon:117.2,lat:39.13,title:'Тяньцзинь — иностранные концессии',description:`${context} ${perYear}Сводные годы начала и возвращения не являются точными датами изменения международного правового статуса. Точка отмечает исторический город, не границы концессий и не отдельную государственную территорию.`,url:'https://journals.open.tudelft.nl/iphs/article/download/2751/2962/'}];
 }
 
 // A geographic footprint can have several erroneous source attributions.
