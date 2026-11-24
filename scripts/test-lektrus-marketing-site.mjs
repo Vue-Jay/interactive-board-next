@@ -442,7 +442,7 @@ assert.ok(read("src/main.tsx").includes('import "./lektrusMarketingNews.css"'),"
 assert.ok(read("src/LektrusNews.tsx").includes("Мы в Telegram")&&read("src/LektrusNews.tsx").includes('href="https://t.me/lektrus"'),"news includes official social channel");
 assert.ok(read("src/AdminNewsPanel.tsx").includes('saveAdminNews')&&read("src/AdminScreen.tsx").includes('<AdminNewsPanel/>'),"journal has a real admin editor");
 assert.ok(site.includes('page==="download"')&&site.includes('href="#download"'),"download page must be discoverable from homepage");
-assert.ok(site.includes('releases/latest/download/Lektrus-Android.apk')&&site.includes('Lektrus-Android.apk.sha256'),"download must use the permanent signed release asset and checksum");
+assert.ok(site.includes('https://lektrus.ru/api/v1/mobile/android-apk/latest/Lektrus-Android.apk')&&site.includes('Lektrus-Android.apk.sha256'),"download must use the permanent signed release asset and checksum");
 assert.ok(site.includes('Не отключайте Play Защиту'),"installation guidance must preserve Android security");
 assert.ok(read("src/lektrusMarketingDownload.css").includes("@media(max-width:850px)"),"download cards must reflow on narrow screens");
 assert.ok(read("src/main.tsx").includes('import "./lektrusMarketingDownload.css"'),"download CSS must be bundled into the initial public stylesheet, including production hash navigation");
