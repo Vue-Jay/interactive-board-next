@@ -1200,6 +1200,12 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const xMin = item.graphXMin ?? -10, xMax = item.graphXMax ?? 10, yMin = item.graphYMin ?? -10, yMax = item.graphYMax ?? 10;
   const planeViewport=isCoordinatePlane(item)?coordinatePlaneViewport(item):null;
   const W = planeViewport?.width??600, H = planeViewport?.height??360;
+  // Keep controls pinned to the upper-right edge of the variable-size plane.
+  // Only exceptionally small planes need smaller controls to avoid clipping.
+  const planeControlsScale=planeViewport?Math.min(1,W/170,H/44):1;
+  const diagramControlsTransform=(offset:number)=>planeViewport?
+    `translate(${W-offset*planeControlsScale} ${11*planeControlsScale}) scale(${planeControlsScale})`:
+    `translate(${600-offset} 11)`;
   // A single unit scale on both axes keeps circles circular and geometry measurable.
   const scale = Math.min(W / Math.max(.01,xMax-xMin), H / Math.max(.01,yMax-yMin));
   const cx = (xMin+xMax)/2, cy = (yMin+yMax)/2;
@@ -1857,7 +1863,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            textAnchor={geometryCaptions?.[i]?"middle":undefined} dominantBaseline={geometryCaptions?.[i]?"central":undefined}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text></g>}
       </g>})}
-      {isCoordinatePlane(item)&&onPlaneZoom&&<g className="lektrus-diagram-grid-toggle" transform="translate(447 11)" data-board-interactive="true">
+      {isCoordinatePlane(item)&&onPlaneZoom&&<g className="lektrus-diagram-grid-toggle" transform={diagramControlsTransform(153)} data-board-interactive="true">
         {([["−",1.25,"Уменьшить масштаб плоскости"],["+",.8,"Увеличить масштаб плоскости"]] as const).map(([symbol,factor,label],index)=>
           <g key={symbol} transform={`translate(${index*35} 0)`} role="button" tabIndex={0} className="lektrus-grid-control" aria-label={label}
             onPointerDown={event=>event.stopPropagation()} onPointerUp={event=>event.stopPropagation()}
@@ -1868,7 +1874,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             <text x="15" y="13" textAnchor="middle" dominantBaseline="central" pointerEvents="none" style={{fontSize:20,fill:"currentColor"}}>{symbol}</text>
           </g>)}
       </g>}
-      {(purpose==="geometry"||isCoordinatePointGraph(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
+      {(purpose==="geometry"||isCoordinatePointGraph(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform={diagramControlsTransform(83)} data-board-interactive="true">
         <g role="button" tabIndex={0} className="lektrus-grid-control"
           aria-label={item.graphGrid===false?"Показать сетку":"Скрыть сетку"}
           aria-pressed={item.graphGrid!==false}
