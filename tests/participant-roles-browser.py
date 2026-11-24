@@ -203,6 +203,33 @@ def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
         expect(share).to_have_count(0)
     return scope
 
+def assert_role_toolbar(scope, editable, teacher, touch=False):
+    if not editable:
+        expect(scope.locator(".compact-toolbar,.mobile-board-tools")).to_have_count(0)
+        return
+    rail=scope.locator("nav.mobile-board-tools" if touch else ".toolbar.compact-toolbar")
+    expect(rail).to_be_visible()
+    for tool in ("select","lasso","pen","marker","eraser"):
+        # Pinned tools may be scrollable in a short landscape viewport.
+        expect(rail.locator(f'[data-interface-control="{tool}"]')).to_have_count(1)
+    if touch:
+        expect(rail.locator('[data-lektrus-hand-tool="true"]')).to_have_count(1)
+    for tool in ("frame","table","graph","formula","quiz","checklist"):
+        if not teacher:
+            expect(rail.locator(f'[data-interface-control="{tool}"]')).to_have_count(0)
+    expect(scope.locator('button[aria-label="Предметные инструменты"]:visible')).to_have_count(1 if teacher else 0)
+
+
+def seed_legacy_empty_toolbar(page):
+    page.evaluate("""() => {
+      const session=JSON.parse(localStorage.getItem('lektrus.selfhost.session.v1'));
+      for(const role of ['teacher','student'])for(const device of ['desktop','touch']){
+        localStorage.setItem('lectris.toolbar.v2.'+session.user.id+'.'+role+'.'+device,'[]');
+        localStorage.setItem('lectris.named-layouts.v1.'+session.user.id+'.'+role+'.'+device,JSON.stringify([{id:'qa-layout',name:'QA saved layout',mode:'standard',pinned:['pen','marker','eraser']}]));
+      }
+    }""")
+
+
 def assert_viewer_mode(scope):
     expect(scope.locator("section.board.board-tool-hand")).to_be_visible()
     expect(scope.locator(".compact-toolbar,.mobile-board-tools,.mobile-tools-sheet,.mobile-undo-redo,.welcome-actions")).to_have_count(0)
@@ -315,6 +342,7 @@ def check_guest_and_registration(browser,ident):
                 expect(scope.locator(".student-board-mode")).to_have_text("Гость · ученик")
             else:
                 assert_viewer_mode(scope)
+            assert_role_toolbar(scope,role=="student",False,touch=True)
             assert_history_controls(scope,role=="student")
             pen=scope.locator('[data-interface-control="pen"]:visible')
             if role=="student":
@@ -486,7 +514,7 @@ def assert_maintenance_layout(site, ordinary):
     ordinary.set_viewport_size({"width":390,"height":844})
 
 
-def check_maintenance(browser):
+def check_maintenance(browser,ident):
     async def promote():
         conn=await asyncpg.connect(os.environ["DATABASE_URL"])
         try:
@@ -504,6 +532,25 @@ def check_maintenance(browser):
     admin,ordinary,selected,site=[ctx.new_page() for ctx in contexts]
     try:
         login(admin,"owner")
+        seed_legacy_empty_toolbar(admin)
+        assert_board(admin,ident,True,True)
+        assert_role_toolbar(admin,True,True)
+        # Explicit desktop customization is reflected immediately and survives reload.
+        configure=admin.locator(".toolbar.compact-toolbar .lectris-tools-configure")
+        configure.click()
+        settings=admin.get_by_role("dialog",name="Настройка панели инструментов")
+        expect(settings).to_be_visible()
+        settings.get_by_role("button",name="Маркер: убрать в дополнительные").click()
+        settings.get_by_role("button",name="Сохранить",exact=True).click()
+        expect(admin.locator('.toolbar-pinned [data-interface-control="marker"]')).to_have_count(0)
+        admin.reload()
+        expect(admin.locator("section.board")).to_be_visible(timeout=90000)
+        expect(admin.locator('.toolbar-pinned [data-interface-control="marker"]')).to_have_count(0)
+        configure.click()
+        expect(settings).to_be_visible()
+        settings.get_by_role("button",name="По умолчанию").click()
+        settings.get_by_role("button",name="Сохранить",exact=True).click()
+        assert_role_toolbar(admin,True,True)
         login(ordinary,"learner")
         login(selected,"colleague")
         admin.goto(BASE+"/app?section=admin")
@@ -593,6 +640,7 @@ def main():
             page=context.new_page()
             errors=[];page.on("pageerror",lambda e:errors.append(str(e)))
             login(page,name)
+            seed_legacy_empty_toolbar(page)
             page.screenshot(path=str(OUT/(name+"-desktop-home.png")))
             if name=="learner":
                 expect(page.get_by_role("button",name="Я учусь",exact=True)).to_have_attribute("aria-pressed","true")
@@ -605,12 +653,18 @@ def main():
                     assert client.get(f"/api/v1/boards/{ident}").json()["participant_role"]=="student"
             if owner: check_board_read_recovery(page,ident)
             assert_board(page,ident,author,owner)
+            assert_role_toolbar(page,name!="observer",author)
             assert_history_controls(page,name!="observer")
             page.screenshot(path=str(OUT/(name+"-desktop-board.png")))
             if name=="learner":
                 assert_drawing_saved(page,ident,name)
             if name=="observer":
                 assert_viewer_mode(page)
+                assert page.evaluate("""() => {
+                  const user=JSON.parse(localStorage.getItem('lektrus.selfhost.session.v1')).user.id;
+                  return Object.keys(localStorage).filter(k=>k.startsWith('lectris.toolbar.v3.'+user)||k.startsWith('lectris.named-layouts.v2.'+user)).length===0 &&
+                    JSON.parse(localStorage.getItem('lectris.named-layouts.v1.'+user+'.student.desktop'))[0].pinned.join(',')==='pen,marker,eraser';
+                }"""),"Viewing a read-only board must not overwrite toolbar preferences or named layouts"
                 canvas=page.locator("section.board")
                 world=canvas.locator(".world")
                 before=world.evaluate("el=>el.style.transform")
@@ -640,6 +694,7 @@ def main():
                 assert_compact_workspace(phone,name,width,height)
             phone.set_viewport_size({"width":844,"height":390})
             scope=assert_board(phone,ident,author,owner,embedded=True)
+            assert_role_toolbar(scope,name!="observer",author,touch=True)
             assert_history_controls(scope,name!="observer")
             if name=="observer":
                 assert_viewer_mode(scope)
@@ -648,7 +703,7 @@ def main():
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
         check_guest_and_registration(browser,ident)
-        check_maintenance(browser)
+        check_maintenance(browser,ident)
         check_billing_and_finance(browser)
         browser.close()
     print("All registered and guest participant contexts, registration modes, and persistent learner drawing passed browser acceptance")

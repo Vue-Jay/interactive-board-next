@@ -108,7 +108,7 @@ import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import { readDeveloperPreferences, writeDeveloperPreferences } from "./developerPreferences";
-import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoardObject, canTransformStudentBoardObject, restrictStudentDiagramChange, BOARD_ROLE_PREVIEW_LABELS, type BoardRolePreview } from "./lektrusBoardRolePreview";
+import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoardObject, canTransformStudentBoardObject, restrictStudentDiagramChange, BOARD_ROLE_PREVIEW_LABELS, toolbarPreferenceKey, normalizeToolbarPins, resolveToolbarPins, TOOLBAR_DEFAULT_DESKTOP, TOOLBAR_DEFAULT_TOUCH, type BoardRolePreview } from "./lektrusBoardRolePreview";
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import { trackBoardVisit, listBoardVisits, type BoardVisit } from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
@@ -428,7 +428,7 @@ const toolShortLabel: Record<Tool, string> = {
   table:"Таблица",formula:"Формула",graph:"График",checklist:"Чек-лист",quiz:"Тест",flashcard:"Карточка",
   cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео",
 };
-const primaryDesktopTools = new Set<Tool>(["select","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
+
 type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[];panels?:LectrisPanelLayout};
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Навигация", tools:["select","hand","lasso"] },
@@ -439,7 +439,7 @@ const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Задания", tools:["checklist","quiz","flashcard","cover"] },
   { label:"Фото, PDF и видео", tools:["media","linkmedia"] },
 ];
-const mobileDockTools: Tool[] = ["select","lasso","pen","eraser","sticky","text","shape"];
+
 
 
 const keyTools: Record<string, Tool> = {
@@ -2656,23 +2656,38 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [rightPointerActive,setRightPointerActive] = useState(false);
   const rightPress = useRef<{pointer:number;start:Point;dragged:boolean;domId?:string}|null>(null);
   const lectrisLayoutKey="lectris.board-layout.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
-  const lectrisToolbarKey="lectris.toolbar.v2."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
-  const lectrisDefaultPinned=useMemo<Tool[]>(()=>(
-    (window.matchMedia?.("(pointer:coarse)").matches?mobileDockTools:tools.filter(t=>primaryDesktopTools.has(t.id)).map(t=>t.id))
-      .filter(id=>id!=="select"&&id!=="hand"&&id!=="lasso"&&toolAllowedForRole(id))
-  ),[isStudent,canEdit]);
-  const [lectrisPinned,setLectrisPinned]=useState<Tool[]>(()=>{
-    const defaults=(window.matchMedia?.("(pointer:coarse)").matches?mobileDockTools:tools.filter(t=>primaryDesktopTools.has(t.id)).map(t=>t.id))
-      .filter(id=>id!=="select"&&id!=="hand"&&id!=="lasso"&&toolAllowedForRole(id));
+  const [toolbarTouch,setToolbarTouch]=useState(()=>Capacitor.isNativePlatform()||window.matchMedia?.("(max-width: 1100px), (pointer: coarse)").matches===true);
+  useEffect(()=>{
+    const mq=window.matchMedia?.("(max-width: 1100px), (pointer: coarse)");
+    if(!mq)return;
+    const sync=()=>setToolbarTouch(Capacitor.isNativePlatform()||mq.matches);
+    sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync);
+  },[]);
+  const toolbarDevice=toolbarTouch?"touch":"desktop";
+  const toolbarPreview=isAppAdmin?rolePreview:"actual";
+  const lectrisToolbarKey=toolbarPreferenceKey(authUser.id,roleCapabilities.effectiveRole,toolbarDevice,toolbarPreview);
+  const legacyToolbarKey="lectris.toolbar.v2."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
+  const availablePinnedTools=useMemo<Tool[]>(()=>tools.filter(t=>!["select","hand","lasso","formula","graph"].includes(t.id)&&toolAllowedForRole(t.id)).map(t=>t.id),[isStudent,canEdit,demoMode]);
+  const lectrisDefaultPinned=useMemo<Tool[]>(()=>normalizeToolbarPins(toolbarTouch?TOOLBAR_DEFAULT_TOUCH:TOOLBAR_DEFAULT_DESKTOP,availablePinnedTools),[toolbarTouch,availablePinnedTools]);
+  const [toolbarChoice,setToolbarChoice]=useState<{key:string;pinned:Tool[]}|null>(null);
+  const lectrisPinned=useMemo<Tool[]>(()=>{
+    if(!canEdit)return [];
+    if(toolbarChoice?.key===lectrisToolbarKey)return normalizeToolbarPins(toolbarChoice.pinned,availablePinnedTools);
     try{
-      const parsed:unknown=JSON.parse(localStorage.getItem(lectrisToolbarKey)||"null");
-      if(!Array.isArray(parsed))return defaults;
-      return parsed.filter((id,index):id is Tool=>typeof id==="string"&&tools.some(t=>t.id===id)&&id!=="select"&&id!=="hand"&&id!=="lasso"&&parsed.indexOf(id)===index&&id!=="formula"&&id!=="graph"&&toolAllowedForRole(id as Tool));
-    }catch{return defaults}
-  });
+      const saved=JSON.parse(localStorage.getItem(lectrisToolbarKey)||"null");
+      const legacy=toolbarPreview==="actual"&&roleCapabilities.effectiveRole===accountRole
+        ?JSON.parse(localStorage.getItem(legacyToolbarKey)||"null"):null;
+      return resolveToolbarPins(saved,legacy,lectrisDefaultPinned,availablePinnedTools);
+    }catch{return lectrisDefaultPinned}
+  },[canEdit,toolbarChoice,lectrisToolbarKey,legacyToolbarKey,toolbarPreview,roleCapabilities.effectiveRole,accountRole,lectrisDefaultPinned,availablePinnedTools]);
+  const setLectrisPinned=(next:Tool[])=>{
+    if(!canEdit)return;
+    const pinned=normalizeToolbarPins(next,availablePinnedTools);
+    setToolbarChoice({key:lectrisToolbarKey,pinned});
+    if(!demoMode)try{localStorage.setItem(lectrisToolbarKey,JSON.stringify({version:3,pinned}))}catch{}
+  };
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
-  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
-  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent,canEdit]);
+  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned],[lectrisPinned]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -2681,27 +2696,37 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [lectrisPanelLayout,setLectrisPanelLayout]=useState<LectrisPanelLayout>(()=>readLectrisPanelLayout(lectrisPanelsKey));
   const [lectrisPanelSettingsOpen,setLectrisPanelSettingsOpen]=useState(false);
   useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisPanelsKey,JSON.stringify(lectrisPanelLayout))}catch{}},[lectrisPanelsKey,lectrisPanelLayout]);
-  const lectrisSavedLayoutKey="lectris.named-layouts.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
-  const [lectrisSavedLayouts,setLectrisSavedLayouts]=useState<LectrisSavedLayout[]>(()=>{
+  const lectrisSavedLayoutKey=lectrisToolbarKey.replace("lectris.toolbar.v3.","lectris.named-layouts.v2.");
+  const legacySavedLayoutKey=legacyToolbarKey.replace("lectris.toolbar.v2.","lectris.named-layouts.v1.");
+  const [savedLayoutChoice,setSavedLayoutChoice]=useState<{key:string;layouts:LectrisSavedLayout[]}|null>(null);
+  const lectrisSavedLayouts=useMemo<LectrisSavedLayout[]>(()=>{
+    if(savedLayoutChoice?.key===lectrisSavedLayoutKey)return savedLayoutChoice.layouts;
     try{
-      const parsed:unknown=JSON.parse(localStorage.getItem(lectrisSavedLayoutKey)||"[]");
+      const saved=localStorage.getItem(lectrisSavedLayoutKey);
+      const legacy=toolbarPreview==="actual"&&roleCapabilities.effectiveRole===accountRole?localStorage.getItem(legacySavedLayoutKey):null;
+      const parsed:unknown=JSON.parse(saved??legacy??"[]");
       if(!Array.isArray(parsed))return [];
       return parsed.filter((x):x is LectrisSavedLayout=>x!==null&&typeof x==="object"&&typeof x.id==="string"&&typeof x.name==="string"&&Array.isArray(x.pinned)&&(x.mode==="standard"||x.mode==="lesson"||x.mode==="focus")).slice(0,12)
-        .map(p=>({...p,name:p.name.slice(0,40),pinned:p.pinned.filter((v):v is Tool=>tools.some(t=>t.id===v)&&toolAllowedForRole(v))}));
+        .map(p=>({...p,name:p.name.slice(0,40),pinned:normalizeToolbarPins(p.pinned,tools.map(t=>t.id))}));
     }catch{return []}
-  });
+  },[savedLayoutChoice,lectrisSavedLayoutKey,legacySavedLayoutKey,toolbarPreview,roleCapabilities.effectiveRole,accountRole]);
+  const setLectrisSavedLayouts=(change:(previous:LectrisSavedLayout[])=>LectrisSavedLayout[])=>{
+    if(!canEdit)return;
+    const layouts=change(lectrisSavedLayouts);
+    setSavedLayoutChoice({key:lectrisSavedLayoutKey,layouts});
+    if(!demoMode)try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(layouts))}catch{}
+  };
   const [lectrisLayoutName,setLectrisLayoutName]=useState("");
-  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(lectrisSavedLayouts))}catch{}},[lectrisSavedLayoutKey,lectrisSavedLayouts]);
   const saveLectrisLayout=()=>{
     const name=lectrisLayoutName.trim().slice(0,40);
-    if(!name)return;
+    if(!name||!canEdit)return;
     const entry:LectrisSavedLayout={id:crypto.randomUUID(),name,mode:lectrisLayout,pinned:[...lectrisPinned],panels:{...lectrisPanelLayout}};
     setLectrisSavedLayouts(prev=>[...prev.slice(-11),entry]);
     setLectrisLayoutName("");
   };
   const applyLectrisSavedLayout=(entry:LectrisSavedLayout)=>{
     setLectrisLayout(entry.mode);
-    setLectrisPinned(entry.pinned.filter(toolAllowedForRole));
+    setLectrisPinned(entry.pinned);
     if(entry.panels)setLectrisPanelLayout(normalizeLectrisPanelLayout(entry.panels));
   };
 
@@ -3022,7 +3047,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
   const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}].map(group=>demoMode&&group.id==="media"?{...group,label:"Фото / PDF"}:group);
-  const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
+  const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection+":"+lectrisPinned.join(","));
   useEffect(()=>{if(!canEdit){setSelected([]);setEditing(null);setContextMenu(null);setMobileToolsOpen(false);setDesktopToolsExpanded(false);setLectrisCustomizeOpen(false);setLectrisInspectorOpen(false);setCommandPaletteOpen(false);setSpace(false)}},[canEdit]);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   const touchEditorViewport=isCoarsePointer||Capacitor.isNativePlatform();
@@ -8688,7 +8713,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     <span aria-hidden="true">▦</span>{entry.name}
                   </button>
                   <button type="button" aria-label={"Удалить раскладку "+entry.name} title="Удалить сохранённую раскладку"
-                    onClick={()=>setLectrisSavedLayouts(prev=>prev.filter(p=>p.id!==entry.id))}>×</button>
+                    disabled={!canEdit} onClick={()=>setLectrisSavedLayouts(prev=>prev.filter(p=>p.id!==entry.id))}>×</button>
                 </div>)}
               </div>}
               <div className="lectris-layout-save">
@@ -8696,7 +8721,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   maxLength={40} value={lectrisLayoutName} onChange={e=>setLectrisLayoutName(e.target.value)}
                   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){e.preventDefault();saveLectrisLayout()}}}/>
                 <button type="button" className="lectris-panel-entry" onClick={e=>{setLectrisPanelSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}>Расположение панелей…</button>
-                <button type="button" disabled={!lectrisLayoutName.trim()} onClick={saveLectrisLayout}>Сохранить текущую</button>
+                <button type="button" disabled={!canEdit||!lectrisLayoutName.trim()} onClick={saveLectrisLayout}>Сохранить текущую</button>
                 <button type="button" onClick={()=>{setLectrisLayout("standard");setLectrisPinned(lectrisDefaultPinned);setLectrisPanelLayout({...defaultLectrisPanelLayout});setDesktopToolsExpanded(false)}}>Восстановить по умолчанию</button>
               </div>
               <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
@@ -9738,7 +9763,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         </section>}
         {canEdit&&<aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
           <div className="toolbar-pinned" aria-label="Основные инструменты">
-            {(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
+            {(["select","lasso",...(isCoarsePointer?["hand"]:[]),...lectrisPinned] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
           <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">

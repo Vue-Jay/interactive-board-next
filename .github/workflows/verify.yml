@@ -45,6 +45,8 @@ jobs:
       - name: Check board links, invitations and auth callback routing
         run: npm run test:board-links
       - name: Check geometry names, closure and touch gestures
-        run: npm run test:math-gesture
+        run: |
+          npm run test:math-gesture
+          node scripts/test-lektrus-board-role-preview.mjs
       - name: Check school geometry constructions
         run: node scripts/test-school-geometry.mjs
