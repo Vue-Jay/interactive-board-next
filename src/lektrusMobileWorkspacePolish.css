@@ -253,15 +253,7 @@ html.lektrus-native-board body .topbar:not(.update-banner) {
   html body .workspace {--lektrus-minimap-width:200px;}
 }
 
-/* One compact bottom ink dock, with a real non-canvas lane underneath it.
-   Drawing must remain visible; do not lay the mode picker over existing ink.
-   This only changes the viewport while a brush/eraser is selected. */
-.app:not(.presentation-mode) .workspace.board-ink-dock-open {
-  background:var(--lt-canvas,#f2f5fa);
-}
-.app:not(.presentation-mode) .workspace.board-ink-dock-open .board {
-  bottom:96px!important;
-}
+/* Floating bottom ink dock: never reduce the board viewport when switching tools. */
 .app:not(.presentation-mode) .workspace .lectris-quick-properties.is-ink-properties {
   bottom:max(12px,env(safe-area-inset-bottom,0px))!important;
   max-width:min(530px,calc(100vw - 24px))!important;
@@ -298,9 +290,6 @@ html.lektrus-native-board body .topbar:not(.update-banner) {
   html body .app:not(.presentation-mode) .workspace .lectris-quick-properties.is-ink-properties[data-ink-upper-row="true"] {
     bottom:calc(68px + var(--lektrus-safe-bottom,0px))!important;
   }
-  .app:not(.presentation-mode) .workspace.board-ink-dock-open:has(.is-ink-properties[data-ink-upper-row="true"]) .board {
-    bottom:140px!important;
-  }
   .app:not(.presentation-mode) .workspace .lectris-quick-properties.is-ink-properties .lektrus-eraser-modes>button {
     width:46px!important;min-width:46px!important;min-height:44px!important;
   }
@@ -309,9 +298,6 @@ html.lektrus-native-board body .topbar:not(.update-banner) {
   }
 }
 @media (max-width:700px) and (orientation:portrait) {
-  .app:not(.presentation-mode) .workspace.board-ink-dock-open .board {
-    bottom:145px!important;
-  }
   html body .app:not(.presentation-mode) .workspace .lectris-quick-properties.is-ink-properties {
     bottom:calc(70px + env(safe-area-inset-bottom,0px))!important;
     left:50%!important;right:auto!important;transform:translateX(-50%)!important;

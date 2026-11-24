@@ -96,10 +96,8 @@ assert.equal((app.match(/<LectrisQuickProperties/g)||[]).length,1,
  "There must only be one original bottom ink toolbar");
 assert.doesNotMatch(app,/lektrus-ink-settings-direct/,
  "Never render an extra upper ink settings panel");
-assert.match(app,/board-ink-dock-open/,"Reserve safe non-canvas footer");
-assert.match(dockCss,/\.workspace\.board-ink-dock-open \.board\s*\{\s*bottom:96px!important/);
-assert.match(dockCss,/\.workspace\.board-ink-dock-open:has\(\.is-ink-properties\[data-ink-upper-row="true"\]\) \.board/);
-assert.match(dockCss,/\.workspace\.board-ink-dock-open \.board\s*\{\s*bottom:145px!important/);
+assert.doesNotMatch(app,/board-ink-dock-open/,"Switching ink tools must not shrink the canvas");
+assert.doesNotMatch(dockCss,/board-ink-dock-open/,"No reserved non-canvas footer in any viewport");
 assert.match(dockCss,/\.lectris-quick-properties\.is-ink-properties\s*\{/);
 assert.match(editor,/viewBox="0 0 48 32"/);
 assert.match(app,/className=\{`app \$\{presentation \? "presentation-mode" : ""\}/);

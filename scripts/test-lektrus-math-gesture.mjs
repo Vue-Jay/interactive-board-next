@@ -16,6 +16,19 @@ function load(moduleCode,dependencies={}){
 }
 const names=load(transpile("src/lektrusGeometryPointNames.ts"));
 const plane=load(transpile("src/coordinatePlane.ts"));
+const presets=load(transpile("src/lektrusMathPresets.ts"));
+const initialPlane=presets.makeMathPresetItem("blank",400,500,"default-plane");
+assert.deepEqual(plane.planeRange(initialPlane),{xMin:-10,xMax:10,yMin:-10,yMax:10});
+assert.equal(initialPlane.width,initialPlane.height,"Equal coordinate ranges must start with a square plane");
+assert.equal(initialPlane.x+initialPlane.width/2,400);
+assert.equal(initialPlane.y+initialPlane.height/2,500);
+assert.equal(initialPlane.graphGridStep,1);
+assert.equal(initialPlane.graphSnap,true);
+const initialTicks=plane.planeAxisLayout(plane.planeRange(initialPlane),initialPlane.width/20,initialPlane.graphGridStep,plane.planeAxisLabelFont());
+assert.equal(initialTicks.labelStep,1,"New plane must display unit labels without overlaps");
+assert.equal(initialTicks.gridStep,1);
+const initialLine=presets.makeMathPresetItem("number-line",0,0,"default-line");
+assert.deepEqual([initialLine.graphXMin,initialLine.graphXMax,initialLine.graphGridStep],[-10,10,1]);
 const coordinateItem={kind:"graph",graphPurpose:"coordinates",width:600,height:300,graphXMin:-10,graphXMax:10,graphYMin:-5,graphYMax:5};
 assert.equal(plane.isCoordinatePlane(coordinateItem),true);
 assert.equal(plane.isCoordinatePlane({...coordinateItem,graphPurpose:"function"}),false);

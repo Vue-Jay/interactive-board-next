@@ -22,7 +22,7 @@ assert.match(app,/data-board-interactive/,"embedded board controls keep receivin
 assert.match(app,/suppressTouchClickUntil\.current/,"block accidental click after pinch");
 assert.match(app,/<LectrisQuickProperties/, "Keep one original bottom brush/eraser dock");
 assert.doesNotMatch(app,/lektrus-ink-settings-direct/, "There must not be a duplicate upper brush dock");
-assert.match(app,/board-ink-dock-open/, "Reserve canvas-free space for the bottom controls");
+assert.doesNotMatch(app,/board-ink-dock-open/, "The floating ink controls must not reserve canvas-free space");
 assert.match(quick,/pen:\[1,3,6,12,22\]/);
 assert.match(quick,/marker:\[2,7,14,28,48\]/);
 assert.match(quick,/eraser:\[6,16,32,55,92\]/);

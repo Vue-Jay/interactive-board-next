@@ -26,7 +26,7 @@ const B=(a:number,b:number,order:1|2|3=1):Edge=>S(a,b,"",{bondOrder:order});
 
 export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,createId:()=>string):Item{
   const graph=makeMathPresetItem("blank",x,y,createId());
-  const base:Item={...graph,graphFigureId:id,graphPurpose:"geometry",graphAxisMode:"none",
+  const base:Item={...graph,x:x-260,y:y-156,graphFigureId:id,graphPurpose:"geometry",graphAxisMode:"none",
     graphGrid:false,graphGridStep:1,graphSnap:false,graphShowLabels:true,
     graphShowCurve:false,graphConnectPoints:false,graphExpression:"",
     graphSegments:[],graphAngles:[],graphCircles:[],graphPolygons:[],graphMidpoints:[],
