@@ -1899,7 +1899,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             onClick={event=>{event.preventDefault();event.stopPropagation();onPlaneZoom(factor)}}
             onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onPlaneZoom(factor)}}>
             <title>{label}</title><rect width="30" height="25" rx="7"/>
-            <text x="15" y="13" textAnchor="middle" dominantBaseline="central" pointerEvents="none" style={{fontSize:20,fill:"currentColor"}}>{symbol}</text>
+            <path data-plane-zoom-icon="true" d={symbol==="+"?"M8 12.5H22M15 5.5V19.5":"M8 12.5H22"}
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" pointerEvents="none" aria-hidden="true"/>
           </g>)}
       </g>}
       {(purpose==="geometry"||isCoordinatePointGraph(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform={diagramControlsTransform(83)} data-board-interactive="true">

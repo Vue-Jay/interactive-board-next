@@ -154,6 +154,47 @@ async def test_shared_ink_eraser_in_both_directions(client):
 
 
 @pytest.mark.asyncio
+async def test_student_coordinate_viewport_zoom_and_resize(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    _, pupil=await sign_in(client,"student@example.test")
+    _, observer=await sign_in(client,"outsider@example.test")
+    ident=(await client.post("/api/v1/boards",headers=owner,json={"title":"Coordinate viewport"})).json()["id"]
+    root="/api/v1/boards/"+ident
+    for email,role,kind in [("student@example.test","editor","student"),("outsider@example.test","viewer","observer")]:
+        assert (await client.post(root+"/invitations",headers=owner,json={"email":email,"role":role,"participant_role":kind})).status_code==200
+    link=(await client.post(root+"/share-links",headers=owner,json={"role":"editor","participant_role":"student"})).json()
+    guest=(await client.post("/api/v1/auth/guest",json={"token":link["token"],"name":"Guest"})).json()
+    guest_headers={"Authorization":"Bearer "+guest["access_token"]}
+    plane={"id":"plane","kind":"graph","graphPurpose":"coordinates","graphFigureId":"blank","createdBy":str(TEACHER),"width":340,"height":340,"x":0,"y":0,"graphXMin":-10,"graphXMax":10,"graphYMin":-10,"graphYMax":10,"graphPoints":[{"x":1,"y":2}]}
+    locked={**plane,"id":"locked","locked":True}
+    function={**plane,"id":"function","graphPurpose":"function","graphExpression":"x*x"}
+    legacy={**plane,"id":"legacy"}
+    legacy.pop("graphPurpose")
+    legacy.pop("graphFigureId")
+    doc={"version":1,"items":[plane,locked,function,legacy]}
+    assert (await client.put(root+"/document",headers=owner,json={"expected_version":0,"document":doc})).status_code==200
+    version=1
+    async def patch(actor,item,expected=200):
+        nonlocal version
+        result=await client.patch(root+"/document",headers=actor,json={"expected_version":version,"delta":{"items":{"upsert":[item]}}})
+        assert result.status_code==expected,result.text
+        if expected==200: version+=1
+    zoomed={**plane,"graphXMin":-8,"graphXMax":8,"graphYMin":-8,"graphYMax":8,"graphAxisLabelScale":1.25}
+    await patch(observer,zoomed,403)
+    await patch(pupil,zoomed)
+    resized={**zoomed,"width":425,"graphXMax":12}
+    await patch(guest_headers,resized)
+    await patch(pupil,{**legacy,"graphXMax":12,"width":374})
+    for invalid in ({**resized,"graphXMax":-20},{**resized,"graphXMin":"bad"},{**resized,"graphAxisLabelScale":0},{**resized,"graphExpression":"forged"},{**resized,"graphPoints":[]},{**resized,"createdBy":str(STUDENT)},{**locked,"graphXMax":20},{**function,"graphXMax":20}):
+        await patch(pupil,invalid,403)
+    restored={**plane}
+    await patch(pupil,restored)
+    saved=(await client.get(root+"/document",headers=owner)).json()
+    assert saved["version"]==version
+    assert next(x for x in saved["document"]["items"] if x["id"]=="plane")==restored
+
+
+@pytest.mark.asyncio
 async def test_photo_permissions_and_peer_document_convergence(client):
     from document_delta import apply_delta
     _, owner = await sign_in(client, "teacher@example.test")
