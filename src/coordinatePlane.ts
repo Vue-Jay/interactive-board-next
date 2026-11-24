@@ -13,7 +13,7 @@ export const graphPointSnapEnabled=(item:Item)=>item.graphSnap??isCoordinatePoin
 
 export function coordinatePlaneViewport(item:Item){
   if(item.graphPurpose==="number-line")return {width:600,height:360};
-  return {width:600,height:Math.max(120,Math.min(1800,600*item.height/Math.max(1,item.width)))};
+  return {width:600,height:600*Math.max(1,item.height)/Math.max(1,item.width)};
 }
 
 export function planePointFromSvg(item:Item,point:Point):Point {
@@ -38,4 +38,40 @@ export function planePointFromClient(item:Item,svg:SVGSVGElement,client:Point):P
   const {width,height}=coordinatePlaneViewport(item);
   if(local.x<0||local.x>width||local.y<0||local.y>height)return null;
   return planePointFromSvg(item,local);
+}
+
+/** Range edits change physical dimensions; zoom changes only the range.
+ * Resizing is the inverse of range edits and never changes point coordinates. */
+export type PlaneRange={xMin:number;xMax:number;yMin:number;yMax:number};
+type PlaneSize={width:number;height:number};
+export const planeRange=(item:Item):PlaneRange=>({
+  xMin:item.graphXMin??-10,xMax:item.graphXMax??10,
+  yMin:item.graphYMin??-10,yMax:item.graphYMax??10
+});
+const validRange=(r:PlaneRange)=>Object.values(r).every(Number.isFinite)&&r.xMax>r.xMin&&r.yMax>r.yMin;
+const round=(n:number)=>Number(n.toPrecision(12));
+export function planeSizeForRange(previous:PlaneRange,size:PlaneSize,next:PlaneRange):PlaneSize{
+  if(!validRange(previous)||!validRange(next))return size;
+  const x=next.xMax-next.xMin,y=next.yMax-next.yMin;
+  const unit=Math.min(size.width/(previous.xMax-previous.xMin),size.height/(previous.yMax-previous.yMin));
+  const scale=Math.min(unit,12000/Math.max(x,y));
+  return {width:Math.max(1,round(x*scale)),height:Math.max(1,round(y*scale))};
+}
+export function scalePlaneRange(range:PlaneRange,xFactor:number,yFactor=xFactor):PlaneRange{
+  if(!validRange(range)||!Number.isFinite(xFactor)||!Number.isFinite(yFactor)||xFactor<=0||yFactor<=0)return range;
+  const sx=range.xMax-range.xMin,sy=range.yMax-range.yMin;
+  const cx=(range.xMax+range.xMin)/2,cy=(range.yMax+range.yMin)/2;
+  const limit=(span:number,factor:number)=>Math.max(Math.min(.01,span),Math.min(Math.max(2e6,span),span*factor));
+  const x=limit(sx,xFactor),y=limit(sy,yFactor);
+  const next={xMin:round(cx-x/2),xMax:round(cx+x/2),yMin:round(cy-y/2),yMax:round(cy+y/2)};
+  return validRange(next)?next:range;
+}
+const rangeFields=(r:PlaneRange)=>({graphXMin:r.xMin,graphXMax:r.xMax,graphYMin:r.yMin,graphYMax:r.yMax});
+export function resizeCoordinatePlane(base:Item,resized:Item):Item{
+  if(!isCoordinatePlane(base)||base.width===resized.width&&base.height===resized.height)return resized;
+  return {...resized,...rangeFields(scalePlaneRange(planeRange(base),resized.width/base.width,resized.height/base.height))};
+}
+export function zoomCoordinatePlane(item:Item,factor:number):Item{
+  if(!isCoordinatePlane(item))return item;
+  return {...item,...rangeFields(scalePlaneRange(planeRange(item),factor))};
 }

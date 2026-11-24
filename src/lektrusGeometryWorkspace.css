@@ -446,3 +446,8 @@
   min-height:41px!important;
  }
 }
+
+.lektrus-coordinate-preview-zoom{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px;flex-shrink:0}
+.lektrus-coordinate-preview-zoom button{display:grid;place-items:center;min-width:40px;min-height:36px;border:1px solid var(--lt-border,#d5dce5);border-radius:9px;background:var(--lt-raised,#fff);color:var(--lt-text,#172033);font-size:21px;line-height:1;cursor:pointer}
+.lektrus-coordinate-preview-zoom button:disabled{opacity:.45;cursor:default}
+.lektrus-coordinate-preview-zoom span{font-size:12px;color:var(--lt-muted,#657184)}

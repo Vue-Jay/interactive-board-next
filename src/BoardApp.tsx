@@ -133,7 +133,7 @@ import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, g
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, makeStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
-import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planePointFromClient} from "./coordinatePlane";
+import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planePointFromClient,resizeCoordinatePlane,zoomCoordinatePlane} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
@@ -549,6 +549,7 @@ const fitItemToRect = (base: Item, rect: Bounds, keepWorldInk=false): Item => {
   const sx = rect.width / Math.max(1, base.width);
   const sy = rect.height / Math.max(1, base.height);
   const scaled = { ...base, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  if(isCoordinatePlane(base))return resizeCoordinatePlane(base,scaled);
   if(base.kind==="sticky")return resizeStickerInk(base,scaled,keepWorldInk);
   if (base.kind === "connector" && base.connectorStart && base.connectorEnd) {
     return {
@@ -1116,7 +1117,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, studentMode=false, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPlaneZoom, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, studentMode=false, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1130,6 +1131,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onRayChange?: (x:number,y:number)=>void;
   onGridChange?: (enabled:boolean)=>void;
   onSnapChange?: (enabled:boolean)=>void;
+  onPlaneZoom?: (factor:number)=>void;
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
@@ -1855,6 +1857,17 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            textAnchor={geometryCaptions?.[i]?"middle":undefined} dominantBaseline={geometryCaptions?.[i]?"central":undefined}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text></g>}
       </g>})}
+      {isCoordinatePlane(item)&&onPlaneZoom&&<g className="lektrus-diagram-grid-toggle" transform="translate(447 11)" data-board-interactive="true">
+        {([["−",1.25,"Уменьшить масштаб плоскости"],["+",.8,"Увеличить масштаб плоскости"]] as const).map(([symbol,factor,label],index)=>
+          <g key={symbol} transform={`translate(${index*35} 0)`} role="button" tabIndex={0} className="lektrus-grid-control" aria-label={label}
+            onPointerDown={event=>event.stopPropagation()} onPointerUp={event=>event.stopPropagation()}
+            onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}
+            onClick={event=>{event.preventDefault();event.stopPropagation();onPlaneZoom(factor)}}
+            onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onPlaneZoom(factor)}}>
+            <title>{label}</title><rect width="30" height="25" rx="7"/>
+            <text x="15" y="13" textAnchor="middle" dominantBaseline="central" pointerEvents="none" style={{fontSize:20,fill:"currentColor"}}>{symbol}</text>
+          </g>)}
+      </g>}
       {(purpose==="geometry"||isCoordinatePointGraph(item))&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
         <g role="button" tabIndex={0} className="lektrus-grid-control"
           aria-label={item.graphGrid===false?"Показать сетку":"Скрыть сетку"}
@@ -10653,6 +10666,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   }:undefined}
                   onPeriodicChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(marked)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,sciencePeriodicHighlights:marked}:candidate));
+                  }:undefined}
+                  onPlaneZoom={isCoordinatePlane(item)&&canEdit&&!presentation&&tool==="select"&&!item.locked&&!structurallyLockedForStudent(item)?(factor)=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?zoomCoordinatePlane(candidate,factor):candidate));
                   }:undefined}
                   onGridChange={!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(enabled)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphGrid:enabled}:candidate));
