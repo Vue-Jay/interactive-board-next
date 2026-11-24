@@ -561,3 +561,49 @@ async def test_storage_diagnostics_and_exact_personal_quota(client):
         await conn.execute("UPDATE account_users SET subscription_until=now()-interval '1 day' WHERE id=$1",TEACHER)
     assert (await client.get("/api/v1/billing",headers=owner)).json()["storage"]==personal
     assert (await client.get(path+"?offset=-1",headers=admin)).status_code==422
+
+
+@pytest.mark.asyncio
+async def test_expired_guest_cleanup_preserves_shared_content_and_history(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    _, student=await sign_in(client,"student@example.test")
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1",OUTSIDER)
+    _, admin=await sign_in(client,"outsider@example.test")
+    target=(await client.post("/api/v1/boards",headers=owner,json={"title":"Guest cleanup"})).json()["id"]
+    root=f"/api/v1/boards/{target}"
+    link=(await client.post(root+"/share-links",headers=owner,json={"role":"editor"})).json()
+    guests=[]
+    for name in ("Historic Guest","Empty Guest","Active Guest"):
+        response=await client.post("/api/v1/auth/guest",json={"token":link["token"],"name":name})
+        assert response.status_code==200,response.text
+        guests.append(response.json())
+    historical,empty,active=[UUID(g["user"]["id"]) for g in guests]
+    guest={"Authorization":"Bearer "+guests[0]["access_token"]}
+    assert (await client.put(root+"/document",headers=guest,json={"expected_version":0,"document":{"version":1,"items":[{"id":"ink","kind":"pen","createdBy":str(historical)}]}})).status_code==200
+    assert (await client.post(root+"/visits",headers=guest,json={"visit_id":str(uuid4()),"action":"ping"})).status_code==200
+    assert (await client.post(root+"/comments",headers=guest,json={"body":"Preserve this comment"})).status_code==201
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET guest_expires_at=now()-interval '10 minutes' WHERE id=ANY($1::uuid[])",[historical,empty])
+    path="/api/v1/admin/storage"
+    before=(await client.get(path,headers=admin)).json()
+    assert before["guests"]["active"]==1 and before["guests"]["expired"]==2 and before["guests"]["pending"]==2
+    assert not any(u["id"] in [str(historical),str(empty),str(active)] for u in before["users"])
+    assert (await client.post(path+"/cleanup-guests",headers=student)).status_code==403
+    result=await client.post(path+"/cleanup-guests",headers=admin)
+    assert result.status_code==200,result.text
+    assert result.json()=={"processed":2,"deleted":1,"retained":1}
+    assert (await client.post(path+"/cleanup-guests",headers=admin)).json()=={"processed":0,"deleted":0,"retained":0}
+    async with app.state.pool.acquire() as conn:
+        assert not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_users WHERE id=$1)",empty)
+        assert await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_users WHERE id=$1)",historical)
+        assert await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_users WHERE id=$1)",active)
+        assert not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_sessions WHERE user_id=$1)",historical)
+        assert not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM board_members WHERE user_id=$1)",historical)
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"][0]["id"]=="ink"
+    assert (await client.get(root+"/comments",headers=owner)).json()[0]["body"]=="Preserve this comment"
+    assert (await client.get(root+"/visits",headers=owner)).json()[0]["user_name"]=="Historic Guest"
+    assert (await client.get(root,headers={"Authorization":"Bearer "+guests[2]["access_token"]})).status_code==200
+    after=(await client.get(path,headers=admin)).json()
+    assert after["guests"]["pending"]==0 and after["guests"]["historical"]==1
+    assert any(d["current"] and d["bytes"]>0 for d in after["databases"])

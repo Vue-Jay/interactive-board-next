@@ -78,6 +78,7 @@ async def lifespan(app: FastAPI):
     mail_task = None
     telegram_task = None
     android_mirror_task = None
+    guest_cleanup_task = None
     try:
         async with app.state.pool.acquire() as conn:
             if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
@@ -92,8 +93,13 @@ async def lifespan(app: FastAPI):
         # Ordinary local/test API instances do not poll the public release host.
         if os.getenv("LEKTRUS_ANDROID_RELEASE_DIR", "").strip():
             android_mirror_task = asyncio.create_task(run_android_release_mirror())
+        from share_links import run_guest_cleanup
+        guest_cleanup_task = asyncio.create_task(run_guest_cleanup(app.state.pool))
         yield
     finally:
+        if guest_cleanup_task:
+            guest_cleanup_task.cancel()
+            await asyncio.gather(guest_cleanup_task, return_exceptions=True)
         if android_mirror_task:
             android_mirror_task.cancel()
             await asyncio.gather(android_mirror_task, return_exceptions=True)

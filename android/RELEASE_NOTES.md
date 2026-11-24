@@ -1,5 +1,15 @@
 # Android release notes
 
+## 2026-11-25 — personal storage and database diagnostics
+
+Release candidate based on validated production commit `aad7923fe806c89845b161b7286bd2d41efb2250` (PR #428).
+
+- Show personal file storage, remaining quota and category breakdown on the tariff screen for Free and Pro accounts.
+- Add administrator storage diagnostics, PostgreSQL table sizes, indexes, WAL when permitted, and per-account file usage.
+- Preserve existing quota enforcement, data, signing identity and automatic in-app updates.
+
+The existing signed APK and production network verification gates remain mandatory.
+
 ## 2026-11-24 — full canvas and coordinates
 
 Release candidate based on validated production commit `157e26f86ee11813e78924a1b7e373ed0823c416` (PR #425).

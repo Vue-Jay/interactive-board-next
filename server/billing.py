@@ -36,7 +36,7 @@ WITH assets AS (
     SELECT owner_id, sum(billing_template_bytes(assets))::bigint AS bytes FROM board_templates
     WHERE ($1::uuid IS NULL OR owner_id=$1) GROUP BY owner_id
 ), usage AS (
-    SELECT u.id, u.display_name, u.email, u.is_admin,
+    SELECT u.id, u.display_name, u.email, u.is_admin, u.guest_board_id,
         coalesce(u.subscription_plan='pro' AND u.subscription_until>now(),false) AS pro,
         coalesce(a.bytes,0)::bigint AS board_bytes,
         coalesce(m.bytes,0)::bigint AS material_bytes,

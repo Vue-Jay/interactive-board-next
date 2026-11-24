@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from assets import assets_root, file_path
 from billing import STORAGE_BY_OWNER, storage_view
+from share_links import guest_storage_stats, cleanup_expired_guests
 from materials import material_path
 from board_templates import template_path
 from feedback_mail import feedback_email_address, send_test_emails
@@ -155,16 +156,29 @@ def make_admin_router(current_user) -> APIRouter:
                 wal_bytes = await conn.fetchval("SELECT coalesce(sum(size),0)::bigint FROM pg_ls_waldir()")
             except (asyncpg.InsufficientPrivilegeError, asyncpg.UndefinedFunctionError, asyncpg.FeatureNotSupportedError):
                 wal_bytes = None
+            databases = await conn.fetch("""
+                SELECT datname AS name, datname=current_database() AS current,
+                    CASE WHEN has_database_privilege(oid,'CONNECT') OR pg_has_role('pg_read_all_stats','USAGE')
+                         THEN pg_database_size(oid) ELSE NULL END AS bytes
+                FROM pg_database ORDER BY (datname=current_database()) DESC,datname
+            """)
+            guests = await guest_storage_stats(conn)
             accounts = await conn.fetch(STORAGE_BY_OWNER+"""
-                SELECT * FROM usage ORDER BY used_bytes DESC, id LIMIT 51 OFFSET $2
+                SELECT * FROM usage WHERE guest_board_id IS NULL ORDER BY used_bytes DESC, id LIMIT 51 OFFSET $2
             """, None, offset)
         return {"database_bytes":database_bytes, "wal_bytes":wal_bytes,
                 "tables":[dict(t) for t in tables],
+                "databases":[dict(d) for d in databases], "guests":guests,
                 "measured_at":datetime.now(timezone.utc),
                 "users":[{"id":a["id"],"name":a["display_name"],"email":a["email"],
                            "plan":"admin" if a["is_admin"] else "pro" if a["pro"] else "free",
                            **storage_view(a)} for a in accounts[:50]],
                 "offset":offset, "has_more":len(accounts)>50}
+
+    @router.post("/api/v1/admin/storage/cleanup-guests")
+    async def cleanup_guests(request: Request, user=Depends(current_user)):
+        require_admin(user)
+        return await cleanup_expired_guests(request.app.state.pool)
 
     @router.get("/api/v1/interface-layout")
     async def read_interface_layout(request: Request):

@@ -1,6 +1,7 @@
 """Access links for confirmed accounts and board-scoped guest sessions."""
 import asyncio
 import hashlib
+import logging
 import secrets
 import time
 from collections import deque
@@ -30,6 +31,80 @@ class GuestLink(RedeemLink):
 
 
 _guest_attempts: deque[float] = deque()
+
+GUEST_HOURS = 24
+GUEST_CLEANUP_INTERVAL = 3600
+GUEST_CLEANUP_BATCH = 100
+# Keep historical identities if removing the row could erase a teacher's
+# attendance, discussion, or other retained records. Guests cannot own a
+# workspace through the API; guard even against imported/inconsistent data.
+GUEST_DISPOSABLE = """
+    NOT EXISTS (SELECT 1 FROM board_visits v WHERE v.user_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM board_comments c WHERE c.author_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM boards b WHERE b.owner_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM learning_materials m WHERE m.owner_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM board_templates t WHERE t.owner_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM student_profiles p WHERE p.student_id=u.id OR p.teacher_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM student_sessions p WHERE p.student_id=u.id OR p.teacher_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM assignments p WHERE p.student_id=u.id OR p.teacher_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM submissions p WHERE p.student_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM scheduled_lessons p WHERE p.student_id=u.id OR p.teacher_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM live_lessons p WHERE p.student_id=u.id OR p.teacher_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM direct_conversation_members p WHERE p.user_id=u.id)
+    AND NOT EXISTS (SELECT 1 FROM direct_messages p WHERE p.sender_id=u.id)
+"""
+GUEST_EXPIRED = "u.guest_board_id IS NOT NULL AND u.guest_expires_at<=now()-interval '5 minutes'"
+GUEST_ACCESS_RECORDS = """
+    EXISTS (SELECT 1 FROM account_sessions s WHERE s.user_id=u.id)
+    OR EXISTS (SELECT 1 FROM board_members m WHERE m.user_id=u.id)
+    OR EXISTS (SELECT 1 FROM user_notifications n WHERE n.user_id=u.id)
+"""
+
+async def guest_storage_stats(conn):
+    row = await conn.fetchrow(f"""
+        SELECT count(*) FILTER (WHERE u.guest_expires_at>now()) AS active,
+            count(*) FILTER (WHERE u.guest_expires_at<=now()) AS expired,
+            count(*) FILTER (WHERE {GUEST_EXPIRED} AND (({GUEST_DISPOSABLE}) OR ({GUEST_ACCESS_RECORDS}))) AS pending,
+            count(*) FILTER (WHERE u.guest_expires_at<=now() AND NOT ({GUEST_DISPOSABLE})) AS historical
+        FROM account_users u WHERE u.guest_board_id IS NOT NULL
+    """)
+    return {**dict(row), "access_hours":GUEST_HOURS, "cleanup_interval_seconds":GUEST_CLEANUP_INTERVAL,
+            "grace_minutes":5,"batch_size":GUEST_CLEANUP_BATCH}
+
+async def cleanup_expired_guests(pool):
+    async with pool.acquire() as conn, conn.transaction():
+        # The grace period lets in-flight requests finish. Lock a bounded batch
+        # and skip already-cleaned historical identities on subsequent runs.
+        rows = await conn.fetch(f"""
+            SELECT u.id FROM account_users u WHERE {GUEST_EXPIRED}
+              AND (({GUEST_DISPOSABLE}) OR ({GUEST_ACCESS_RECORDS}))
+            ORDER BY u.guest_expires_at,u.id LIMIT $1 FOR UPDATE OF u SKIP LOCKED
+        """, GUEST_CLEANUP_BATCH)
+        ids = [r["id"] for r in rows]
+        if not ids:
+            return {"processed":0,"deleted":0,"retained":0}
+        await conn.execute("DELETE FROM account_sessions WHERE user_id=ANY($1::uuid[])", ids)
+        await conn.execute("DELETE FROM board_members WHERE user_id=ANY($1::uuid[])", ids)
+        await conn.execute("DELETE FROM user_notifications WHERE user_id=ANY($1::uuid[])", ids)
+        deleted = await conn.fetch(f"""
+            DELETE FROM account_users u WHERE u.id=ANY($1::uuid[])
+              AND {GUEST_EXPIRED} AND ({GUEST_DISPOSABLE}) RETURNING u.id
+        """, ids)
+        return {"processed":len(ids),"deleted":len(deleted),"retained":len(ids)-len(deleted)}
+
+async def run_guest_cleanup(pool):
+    logger = logging.getLogger("lektrus.guests")
+    await asyncio.sleep(60)
+    while True:
+        try:
+            result = await cleanup_expired_guests(pool)
+            if result["processed"]:
+                logger.info("Expired guest cleanup: processed=%d deleted=%d historical=%d",
+                            result["processed"],result["deleted"],result["retained"])
+        except Exception as exc:
+            logger.warning("Guest cleanup deferred: %s",type(exc).__name__)
+        await asyncio.sleep(GUEST_CLEANUP_INTERVAL)
+
 
 
 async def consume_link(conn, data: RedeemLink):
