@@ -120,4 +120,33 @@ const targets=new Map([[preview.id,new Set([untouched.id])]]);
 assert.equal(previewExports.previewRemoteErasures([untouched,nearby],new Map([[preview.id,preview]]),targets)[0],nearby,"Peer must see the whole line disappear before eraser release");
 assert.equal(previewExports.previewRemoteErasures([untouched],new Map([[preview.id,{...preview,eraserMode:"partial"}]]),targets).length,2,"Peer partial mode still shows both cut fragments");
 
-console.log("Eraser regression tests passed: partial, crossed, long, full, repeated, non-lockable and protected strokes.");
+const rotatedCut=eraseInkAlongPath([rotatedLine],[point(2500,1000)],5,()=>true,"partial");
+assert.equal(rotatedCut.length,2,"Partial mode cuts rotated ink in world coordinates");
+assert.ok(rotatedCut.every(x=>!x.rotation),"Rotated cut fragments are stored in world coordinates");
+assert.equal(eraseInkAlongPath([rotatedLine],[point(4000,0)],5,()=>true,"partial")[0],rotatedLine);
+const livePeer={id:"peer-live",kind:"pen",color:"#123456",weight:4,points:[point(10,50),point(110,50)]};
+const liveMap=new Map([[livePeer.id,livePeer]]);
+const peerPath=[point(60,50)];
+const touched=previewExports.touchedPeerInk(liveMap,[],peerPath,8);
+assert.equal(JSON.stringify(touched),JSON.stringify(["peer-live"]));
+assert.equal(previewExports.touchedPeerInk(liveMap,[],[point(60,150)],8).length,0);
+const actualPeer=modelExports.stroke("peer-live","pen",livePeer.points,"#123456",4);
+assert.equal(previewExports.touchedPeerInk(liveMap,[actualPeer],peerPath,8).length,0,"Already saved ink is handled by normal eraser");
+for(const mode of ["stroke","partial"]){
+ const pending=new Map([["peer-live",[{path:peerPath,radius:8,mode,expiresAt:200}]]]);
+ const unrelated={...actualPeer,id:"unrelated"};
+ const initial=[unrelated];
+ assert.equal(previewExports.applyPendingPeerErases(initial,pending,100),initial);
+ assert.equal(pending.size,1,"Keep the intended ID until its saved stroke arrives");
+ const saved=[unrelated,actualPeer];
+ const result=previewExports.applyPendingPeerErases(saved,pending,101);
+ assert.equal(result[0],unrelated,"Never erase unrelated later arrivals");
+ assert.equal(result.length,mode==="stroke"?1:3);
+ assert.equal(pending.size,0);
+ assert.equal(previewExports.applyPendingPeerErases(result,pending,102),result);
+}
+const expired=new Map([["peer-live",[{path:peerPath,radius:8,mode:"stroke",expiresAt:100}]]]);
+const late=[actualPeer];
+assert.equal(previewExports.applyPendingPeerErases(late,expired,101),late);
+assert.equal(expired.size,0);
+console.log("Eraser regression tests passed: partial, crossed, long, full, repeated, non-lockable, rotated, and pending peer strokes.");
