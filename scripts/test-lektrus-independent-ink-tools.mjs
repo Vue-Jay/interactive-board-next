@@ -75,12 +75,16 @@ assert.match(inkCss,/pointer-events:auto!important/,
 const app=fs.readFileSync("src/BoardApp.tsx","utf8");
 assert.match(app,/useState<Tool>\(\(\)=>readBoardSessionTool\(boardSummary\.id,authUser\.id\)\)/);
 assert.match(app,/writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/);
-assert.match(app,/const \[tool, setToolState\] = useState<Tool>/);
+assert.match(app,/const \[editingTool, setToolState\] = useState<Tool>/);
+assert.match(app,/const tool:Tool=canEdit\?editingTool:"hand"/,
+ "Viewers always navigate with the hand without overwriting their editing tool");
+assert.match(app,/const setTool: typeof setToolState = useCallback\(next=>\{\s*if\(!canEdit\)return;/,
+ "A viewer cannot switch to an editing tool");
 assert.match(app,/const setTool: typeof setToolState = useCallback/);
 assert.match(app,/const viewerToolRef = useRef\(tool\)/);
 assert.match(app,/viewerToolRef\.current=chosen;\s*writeBoardSessionTool\(boardSummary\.id,authUser\.id,chosen\);\s*setToolState\(chosen\)/,
  "The viewer's tool must be stored BEFORE React schedules a UI update");
-assert.match(app,/useLayoutEffect\(\(\)=>\{\s*viewerToolRef\.current=tool;\s*writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
+assert.match(app,/useLayoutEffect\(\(\)=>\{\s*viewerToolRef\.current=tool;\s*if\(canEdit\)writeBoardSessionTool\(boardSummary\.id,authUser\.id,tool\)/,
  "Keep individual tool selection intact on document re-render");
 const dockCss=fs.readFileSync("src/lektrusMobileWorkspacePolish.css","utf8");
 const style=fs.readFileSync("src/lektrusResponsive.css","utf8");

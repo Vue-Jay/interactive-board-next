@@ -8805,3 +8805,8 @@ html body .app.viewer-mode .workspace .board-controls{left:calc(12px + var(--lek
 .app.viewer-mode .board.board-panning,.app.viewer-mode .board.board-panning *{cursor:grabbing!important;}
 @media(max-width:700px){.app .topbar .board-access-status{padding:0 7px;gap:4px;font-size:10px;}}
 @media(max-width:540px){.app .topbar .board-access-status{width:30px;padding:0;}.app .topbar .board-access-status>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}}
+
+/* The read-only canvas is a camera surface, including embedded PDFs, maps
+   and widgets. Their controls must not consume a viewer's drag or wheel. */
+.app.viewer-mode:not(.presentation-mode) .board .world,
+.app.viewer-mode:not(.presentation-mode) .board .world *{pointer-events:none!important;}

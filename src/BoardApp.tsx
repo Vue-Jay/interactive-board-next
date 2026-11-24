@@ -4642,7 +4642,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // The board installs its own non-passive native wheel listener. React's
       // map onWheel runs later in the event path, so stop board zoom/pan HERE
       // before the map's local wheel handler sees the same event.
-      if(target.closest(".lektrus-atlas-map-box") && !target.closest(".lektrus-atlas--board-selection")){
+      if(target.closest(".lektrus-atlas-map-box") && canEdit && !target.closest(".lektrus-atlas--board-selection")){
         e.preventDefault();
         return;
       }
@@ -9916,24 +9916,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               pinchSelectionSnapshot.current=null;
               setPanning(false);
             }
-            // A viewer pans even when the gesture begins on an object.
-            if(!canEdit&&!presentation&&(e.button===0||e.button===1||e.button===2)){
-              if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
-              e.preventDefault();e.stopPropagation();
-              if(gesture.current)return;
-              const start=local(e.clientX,e.clientY);
-              gesture.current={pointer:e.pointerId,mode:"pan",start,view,before:itemsRef.current,ids:[],path:[world(start)],additive:false};
-              setPanning(true);
-              e.currentTarget.setPointerCapture(e.pointerId);
-              return;
-            }
             // Selection toolbar and embedded controls are UI, not the canvas.
             // Previously pressing "Настроить" deselected the object in capture
             // phase, unmounting the button before its click could fire.
             const boardGestureHandle=target.closest(
               "[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]"
             );
-            if(!boardGestureHandle&&target.closest(
+            if(canEdit&&!boardGestureHandle&&target.closest(
               ".selection-toolbar-screen,button,input,select,textarea,[role='button'],[role='slider'],[data-board-interactive]"
             ))return;
             // Let a map in its own editing mode own its fingers, including
@@ -9942,7 +9931,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             // Select at capture time because school widgets, PDF previews and
             // task controls can consume their own pointerdown events.
             // Preserve the atlas' dedicated edit mode and native form controls.
-            if((tool==="select"||tool==="hand"&&e.pointerType!=="touch")&&
+            if(canEdit&&(tool==="select"||tool==="hand"&&e.pointerType!=="touch")&&
               !space&&e.button===0&&!presentation&&!objectEditorOpen){
               if(!target.closest("[data-transform-handle],[data-group-transform-handle],[data-group-selection-drag],[data-board-selection-grip],[data-connector-endpoint]")){
                 const id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
@@ -9959,13 +9948,24 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             }
             const atlas=target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)");
             const mapSurface=target.closest(".lektrus-atlas-map-box");
-            if(atlas&&mapSurface){
+            if(canEdit&&atlas&&mapSurface){
               // An existing board pinch keeps both fingers even when the
               // second one happens to land on the embedded map.
               if(e.pointerType==="touch"&&touchPoints.current.size){
                 touchStart(e);
                 e.preventDefault();e.stopPropagation();
               }
+              return;
+            }
+            // A viewer pans even when the gesture begins on an object.
+            if(!canEdit&&!presentation&&(e.button===0||e.button===1||e.button===2)){
+              if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
+              e.preventDefault();e.stopPropagation();
+              if(gesture.current)return;
+              const start=local(e.clientX,e.clientY);
+              gesture.current={pointer:e.pointerId,mode:"pan",start,view,before:itemsRef.current,ids:[],path:[world(start)],additive:false};
+              setPanning(true);
+              e.currentTarget.setPointerCapture(e.pointerId);
               return;
             }
             const atlasControl=target.closest(
@@ -10364,7 +10364,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               transform: boardWorldTransform(view),
             }}
           >
-            {!items.length && (
+            {!items.length && canEdit && (
               <div className="welcome-card">
                 <div className="welcome-badge">Пустая доска</div>
                 <h1>С чего начнём?</h1>
