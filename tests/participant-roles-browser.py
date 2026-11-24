@@ -703,6 +703,15 @@ def check_billing_and_finance(browser):
         expect(member.get_by_role("heading",name="Тарифы и использование")).to_be_visible(timeout=30000)
         expect(member.locator(".billing-card")).to_have_count(2)
         expect(member.locator(".billing-usage-grid")).to_be_visible(timeout=30000)
+        card=member.get_by_role("region",name="Моё хранилище")
+        expect(card).to_be_visible(timeout=30000)
+        expect(card.get_by_text("из 250 МБ",exact=True)).to_be_visible()
+        expect(card.get_by_text("Файлы на досках",exact=True)).to_be_visible()
+        expect(card.get_by_role("progressbar")).to_have_attribute("max","262144000")
+        for w,h in ((390,844),(844,390),(768,1024),(1440,900)):
+            member.set_viewport_size({"width":w,"height":h})
+            assert card.evaluate("el=>el.scrollWidth<=el.clientWidth+2"),(w,h)
+        member.set_viewport_size({"width":390,"height":844})
         member.screenshot(path=str(OUT/"billing-free-phone.png"))
         admin.goto(BASE+"/app?section=admin")
         admin.get_by_role("button",name="Финансы",exact=True).click(timeout=30000)
@@ -713,6 +722,16 @@ def check_billing_and_finance(browser):
         panel.get_by_role("button",name="Зафиксировать баланс").click()
         expect(panel.get_by_text("Баланс по последней ручной сверке",exact=False)).to_be_visible(timeout=15000)
         admin.screenshot(path=str(OUT/"admin-finance-desktop.png"))
+        admin.get_by_role("button",name="Хранилище",exact=True).click()
+        storage=admin.get_by_role("region",name="Хранилище и база данных")
+        expect(storage.get_by_text("Размер базы PostgreSQL",exact=True)).to_be_visible(timeout=30000)
+        expect(storage.get_by_text("public.board_history",exact=True)).to_be_visible()
+        expect(storage.get_by_text("colleague@roles.example",exact=True)).to_be_visible()
+        for w,h in ((1440,900),(768,1024),(844,390),(390,844)):
+            admin.set_viewport_size({"width":w,"height":h})
+            assert storage.evaluate("el=>el.scrollWidth<=el.clientWidth+2"),(w,h)
+        admin.screenshot(path=str(OUT/"admin-storage-phone.png"))
+
     finally:
         for ctx in contexts:ctx.close()
 
