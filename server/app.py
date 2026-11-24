@@ -37,7 +37,7 @@ from board_history import ensure_baseline, record_revision, make_history_router
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
 from telegram_editor import telegram_enabled, run_telegram_editor, make_telegram_router
-from android_updates import router as android_updates_router
+from android_updates import router as android_updates_router, run_android_release_mirror
 
 ISSUER = "lektrus-selfhost"
 AUDIENCE = "lektrus"
@@ -77,6 +77,7 @@ async def lifespan(app: FastAPI):
     app.state.feedback_mail_wakeup = asyncio.Event()
     mail_task = None
     telegram_task = None
+    android_mirror_task = None
     try:
         async with app.state.pool.acquire() as conn:
             if os.getenv("LEKTRUS_APPLY_SCHEMA") == "true":
@@ -87,8 +88,15 @@ async def lifespan(app: FastAPI):
             mail_task = asyncio.create_task(run_feedback_mail(app.state.pool, app.state.feedback_mail_wakeup))
         if telegram_enabled():
             telegram_task = asyncio.create_task(run_telegram_editor(app.state.pool))
+        # Only the dedicated persistent release cache is proactively populated.
+        # Ordinary local/test API instances do not poll the public release host.
+        if os.getenv("LEKTRUS_ANDROID_RELEASE_DIR", "").strip():
+            android_mirror_task = asyncio.create_task(run_android_release_mirror())
         yield
     finally:
+        if android_mirror_task:
+            android_mirror_task.cancel()
+            await asyncio.gather(android_mirror_task, return_exceptions=True)
         if telegram_task:
             telegram_task.cancel()
             await asyncio.gather(telegram_task, return_exceptions=True)

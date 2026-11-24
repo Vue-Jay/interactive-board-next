@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import shutil
 import tempfile
 import threading
 from pathlib import Path
@@ -258,7 +259,7 @@ async def android_update(response: Response):
 # the source of truth; legacy updater clients keep their original JSON contract.
 APK_LIMIT = 100 * 1024 * 1024
 CHECKSUM = re.compile(r"([a-fA-F0-9]{64})[ \t]+\*?Lektrus-Android\.apk\s*")
-mirror_lock = threading.Lock()
+mirror_lock = threading.RLock()
 
 
 def release_directory():
@@ -302,6 +303,28 @@ def cached_release(folder, version):
         return None
 
 
+def prune_release_cache(root, current_version):
+    """Retain the current complete APK and at most one earlier complete APK."""
+    complete = sorted(
+        (entry.name for entry in root.iterdir()
+         if not entry.is_symlink() and entry.is_dir() and version_key(entry.name)
+         and cached_release(root, entry.name)),
+        key=version_key, reverse=True,
+    )
+    # A request racing a new catalog refresh cannot evict a newer mirror.
+    current = max([current_version, *complete], key=version_key)
+    previous = next((version for version in complete if version_key(version) < version_key(current)), None)
+    keep = {current, previous}
+    for entry in root.iterdir():
+        if entry.name in keep or not version_key(entry.name) or entry.is_symlink() or not entry.is_dir():
+            continue
+        try:
+            shutil.rmtree(entry)
+        except OSError as error:
+            logger.warning("Cannot remove obsolete Android APK %s: %s", entry.name, type(error).__name__)
+    return keep
+
+
 def mirror_release(release, root=None, opener=open_release_asset):
     version = release["version"]
     size = release["size_bytes"]
@@ -314,6 +337,8 @@ def mirror_release(release, root=None, opener=open_release_asset):
     with mirror_lock:
         existing = cached_release(root, version)
         if existing and existing[2] == size:
+            if version not in prune_release_cache(root, version):
+                raise ValueError("Android APK superseded")
             return existing
         target = root / version
         target.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -345,15 +370,8 @@ def mirror_release(release, root=None, opener=open_release_asset):
             # an existing good version. The current release is always retained.
             os.replace(partial, target / ASSET_NAMES[0])
             os.replace(sidecar, target / ASSET_NAMES[1])
-        # Keep the latest two complete versions, not an ever-growing APK archive.
-        # Do not remove the immediately previous version during an active transfer.
-        import shutil
-        versions = sorted((p for p in root.iterdir() if p.is_dir() and version_key(p.name)),
-                          key=lambda p: version_key(p.name), reverse=True)
-        keep = {target, *versions[:2]}
-        for old in versions:
-            if old not in keep:
-                shutil.rmtree(old, ignore_errors=True)
+        if version not in prune_release_cache(root, version):
+            raise ValueError("Android APK superseded")
         return target / ASSET_NAMES[0], target / ASSET_NAMES[1], size
 
 
@@ -371,6 +389,51 @@ def newest_mirrored_release():
                     "download_url": PUBLIC_RELEASES + "download/android-v" + version + "/" + ASSET_NAMES[0],
                     "size_bytes": found[2]}
     return None
+
+
+def previous_published_release(current_version, releases):
+    """Find the preceding complete stable release, even if versions were skipped."""
+    current = version_key(current_version)
+    if current is None or not isinstance(releases, list):
+        raise ValueError("Invalid Android release history")
+    candidates = [select_android_release([entry]) for entry in releases]
+    earlier = [entry for entry in candidates
+               if entry and version_key(entry["version"]) < current]
+    return max(earlier, key=lambda entry: version_key(entry["version"]), default=None)
+
+
+def synchronize_release_pair(release, root=None, opener=open_release_asset, loader=None):
+    """Populate both current and previous published versions, including on a cold disk."""
+    root = Path(root) if root is not None else release_directory()
+    # Never delete the old pair until the new current APK is fully verified.
+    mirror_release(release, root=root, opener=opener)
+    previous = previous_published_release(
+        release["version"], loader() if loader is not None else fetch_api_json(RELEASES))
+    if previous:
+        mirror_release(previous, root=root, opener=opener)
+    return previous["version"] if previous else None
+
+
+async def run_android_release_mirror():
+    """Warm the dedicated persistent Amvera cache without delaying app startup."""
+    synced_version = None
+    previous_version = None
+    while True:
+        try:
+            release = await site_release()
+            root = release_directory()
+            version = release["version"]
+            if not release.get("catalog_stale"):
+                if (version != synced_version or not cached_release(root, version)
+                        or (previous_version and not cached_release(root, previous_version))):
+                    previous_version = await asyncio.to_thread(synchronize_release_pair, release)
+                    synced_version = version
+            elif not cached_release(root, version):
+                # During an upstream outage, do not guess the preceding version.
+                await asyncio.to_thread(mirror_release, release)
+        except (HTTPException, OSError, ValueError, UnicodeError, HTTPProtocolError) as error:
+            logger.warning("Android APK mirror sync deferred: %s", type(error).__name__)
+        await asyncio.sleep(300)
 
 
 async def site_release():
