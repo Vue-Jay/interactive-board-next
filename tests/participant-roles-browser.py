@@ -225,6 +225,7 @@ def seed_legacy_empty_toolbar(page):
       const session=JSON.parse(localStorage.getItem('lektrus.selfhost.session.v1'));
       for(const role of ['teacher','student'])for(const device of ['desktop','touch']){
         localStorage.setItem('lectris.toolbar.v2.'+session.user.id+'.'+role+'.'+device,'[]');
+        localStorage.setItem('lectris.named-layouts.v1.'+session.user.id+'.'+role+'.'+device,JSON.stringify([{id:'qa-layout',name:'QA saved layout',mode:'standard',pinned:['pen','marker','eraser']}]));
       }
     }""")
 
@@ -534,6 +535,22 @@ def check_maintenance(browser,ident):
         seed_legacy_empty_toolbar(admin)
         assert_board(admin,ident,True,True)
         assert_role_toolbar(admin,True,True)
+        # Explicit desktop customization is reflected immediately and survives reload.
+        configure=admin.locator(".toolbar.compact-toolbar .lectris-tools-configure")
+        configure.click()
+        settings=admin.get_by_role("dialog",name="Настройка панели инструментов")
+        expect(settings).to_be_visible()
+        settings.get_by_role("button",name="Маркер: убрать в дополнительные").click()
+        settings.get_by_role("button",name="Сохранить",exact=True).click()
+        expect(admin.locator('.toolbar-pinned [data-interface-control="marker"]')).to_have_count(0)
+        admin.reload()
+        expect(admin.locator("section.board")).to_be_visible(timeout=90000)
+        expect(admin.locator('.toolbar-pinned [data-interface-control="marker"]')).to_have_count(0)
+        configure.click()
+        expect(settings).to_be_visible()
+        settings.get_by_role("button",name="По умолчанию").click()
+        settings.get_by_role("button",name="Сохранить",exact=True).click()
+        assert_role_toolbar(admin,True,True)
         login(ordinary,"learner")
         login(selected,"colleague")
         admin.goto(BASE+"/app?section=admin")
@@ -643,6 +660,11 @@ def main():
                 assert_drawing_saved(page,ident,name)
             if name=="observer":
                 assert_viewer_mode(page)
+                assert page.evaluate("""() => {
+                  const user=JSON.parse(localStorage.getItem('lektrus.selfhost.session.v1')).user.id;
+                  return Object.keys(localStorage).filter(k=>k.startsWith('lectris.toolbar.v3.'+user)||k.startsWith('lectris.named-layouts.v2.'+user)).length===0 &&
+                    JSON.parse(localStorage.getItem('lectris.named-layouts.v1.'+user+'.student.desktop'))[0].pinned.join(',')==='pen,marker,eraser';
+                }"""),"Viewing a read-only board must not overwrite toolbar preferences or named layouts"
                 canvas=page.locator("section.board")
                 world=canvas.locator(".world")
                 before=world.evaluate("el=>el.style.transform")

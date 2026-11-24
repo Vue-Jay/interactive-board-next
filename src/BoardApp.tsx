@@ -2696,27 +2696,37 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [lectrisPanelLayout,setLectrisPanelLayout]=useState<LectrisPanelLayout>(()=>readLectrisPanelLayout(lectrisPanelsKey));
   const [lectrisPanelSettingsOpen,setLectrisPanelSettingsOpen]=useState(false);
   useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisPanelsKey,JSON.stringify(lectrisPanelLayout))}catch{}},[lectrisPanelsKey,lectrisPanelLayout]);
-  const lectrisSavedLayoutKey="lectris.named-layouts.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
-  const [lectrisSavedLayouts,setLectrisSavedLayouts]=useState<LectrisSavedLayout[]>(()=>{
+  const lectrisSavedLayoutKey=lectrisToolbarKey.replace("lectris.toolbar.v3.","lectris.named-layouts.v2.");
+  const legacySavedLayoutKey=legacyToolbarKey.replace("lectris.toolbar.v2.","lectris.named-layouts.v1.");
+  const [savedLayoutChoice,setSavedLayoutChoice]=useState<{key:string;layouts:LectrisSavedLayout[]}|null>(null);
+  const lectrisSavedLayouts=useMemo<LectrisSavedLayout[]>(()=>{
+    if(savedLayoutChoice?.key===lectrisSavedLayoutKey)return savedLayoutChoice.layouts;
     try{
-      const parsed:unknown=JSON.parse(localStorage.getItem(lectrisSavedLayoutKey)||"[]");
+      const saved=localStorage.getItem(lectrisSavedLayoutKey);
+      const legacy=toolbarPreview==="actual"&&roleCapabilities.effectiveRole===accountRole?localStorage.getItem(legacySavedLayoutKey):null;
+      const parsed:unknown=JSON.parse(saved??legacy??"[]");
       if(!Array.isArray(parsed))return [];
       return parsed.filter((x):x is LectrisSavedLayout=>x!==null&&typeof x==="object"&&typeof x.id==="string"&&typeof x.name==="string"&&Array.isArray(x.pinned)&&(x.mode==="standard"||x.mode==="lesson"||x.mode==="focus")).slice(0,12)
-        .map(p=>({...p,name:p.name.slice(0,40),pinned:p.pinned.filter((v):v is Tool=>tools.some(t=>t.id===v)&&toolAllowedForRole(v))}));
+        .map(p=>({...p,name:p.name.slice(0,40),pinned:normalizeToolbarPins(p.pinned,tools.map(t=>t.id))}));
     }catch{return []}
-  });
+  },[savedLayoutChoice,lectrisSavedLayoutKey,legacySavedLayoutKey,toolbarPreview,roleCapabilities.effectiveRole,accountRole]);
+  const setLectrisSavedLayouts=(change:(previous:LectrisSavedLayout[])=>LectrisSavedLayout[])=>{
+    if(!canEdit)return;
+    const layouts=change(lectrisSavedLayouts);
+    setSavedLayoutChoice({key:lectrisSavedLayoutKey,layouts});
+    if(!demoMode)try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(layouts))}catch{}
+  };
   const [lectrisLayoutName,setLectrisLayoutName]=useState("");
-  useEffect(()=>{if(demoMode)return;try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(lectrisSavedLayouts))}catch{}},[lectrisSavedLayoutKey,lectrisSavedLayouts]);
   const saveLectrisLayout=()=>{
     const name=lectrisLayoutName.trim().slice(0,40);
-    if(!name)return;
+    if(!name||!canEdit)return;
     const entry:LectrisSavedLayout={id:crypto.randomUUID(),name,mode:lectrisLayout,pinned:[...lectrisPinned],panels:{...lectrisPanelLayout}};
     setLectrisSavedLayouts(prev=>[...prev.slice(-11),entry]);
     setLectrisLayoutName("");
   };
   const applyLectrisSavedLayout=(entry:LectrisSavedLayout)=>{
     setLectrisLayout(entry.mode);
-    setLectrisPinned(entry.pinned.filter(toolAllowedForRole));
+    setLectrisPinned(entry.pinned);
     if(entry.panels)setLectrisPanelLayout(normalizeLectrisPanelLayout(entry.panels));
   };
 
@@ -8703,7 +8713,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     <span aria-hidden="true">▦</span>{entry.name}
                   </button>
                   <button type="button" aria-label={"Удалить раскладку "+entry.name} title="Удалить сохранённую раскладку"
-                    onClick={()=>setLectrisSavedLayouts(prev=>prev.filter(p=>p.id!==entry.id))}>×</button>
+                    disabled={!canEdit} onClick={()=>setLectrisSavedLayouts(prev=>prev.filter(p=>p.id!==entry.id))}>×</button>
                 </div>)}
               </div>}
               <div className="lectris-layout-save">
@@ -8711,7 +8721,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   maxLength={40} value={lectrisLayoutName} onChange={e=>setLectrisLayoutName(e.target.value)}
                   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){e.preventDefault();saveLectrisLayout()}}}/>
                 <button type="button" className="lectris-panel-entry" onClick={e=>{setLectrisPanelSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}>Расположение панелей…</button>
-                <button type="button" disabled={!lectrisLayoutName.trim()} onClick={saveLectrisLayout}>Сохранить текущую</button>
+                <button type="button" disabled={!canEdit||!lectrisLayoutName.trim()} onClick={saveLectrisLayout}>Сохранить текущую</button>
                 <button type="button" onClick={()=>{setLectrisLayout("standard");setLectrisPinned(lectrisDefaultPinned);setLectrisPanelLayout({...defaultLectrisPanelLayout});setDesktopToolsExpanded(false)}}>Восстановить по умолчанию</button>
               </div>
               <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
