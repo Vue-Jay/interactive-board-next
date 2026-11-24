@@ -22,6 +22,21 @@ const creations=["select","hand","lasso","pen","marker","eraser","text","sticky"
  "connector","comment","image","pdf","frame","table","formula","graph","checklist",
  "quiz","flashcard","cover","linkmedia"];
 const protectedKinds=["frame","checklist","quiz","flashcard","cover","linkmedia"];
+const {resolveToolbarPins,toolbarPreferenceKey,TOOLBAR_DEFAULT_DESKTOP,TOOLBAR_DEFAULT_TOUCH}=api;
+const pinnable=creations.filter(id=>!["select","hand","lasso","formula","graph","comment","image","pdf"].includes(id));
+for(const role of ["teacher","student"]){
+ const allowed=pinnable.filter(id=>role==="teacher"||!STUDENT_BLOCKED_CREATE_TOOLS.includes(id));
+ for(const defaults of [TOOLBAR_DEFAULT_DESKTOP,TOOLBAR_DEFAULT_TOUCH]){
+  assert.deepEqual(resolveToolbarPins(null,[],defaults,allowed),[...defaults],"Recover old empty toolbar");
+  assert.deepEqual(resolveToolbarPins({version:3,pinned:[]},null,defaults,allowed),[],"Preserve explicitly emptied toolbar");
+  assert.deepEqual(resolveToolbarPins({version:3,pinned:["eraser","pen","eraser","invalid"]},null,defaults,allowed),["eraser","pen"],"Preserve custom order");
+  assert.deepEqual(resolveToolbarPins({version:3,pinned:["pen","table","checklist"]},null,defaults,allowed),role==="teacher"?["pen","table","checklist"]:["pen"]);
+ }
+}
+assert.deepEqual(resolveToolbarPins(null,["pen","eraser","sticky","text","shape"],TOOLBAR_DEFAULT_TOUCH,pinnable),[...TOOLBAR_DEFAULT_TOUCH]);
+const keys=new Set();
+for(const role of ["teacher","student"])for(const device of ["touch","desktop"])for(const preview of previews)keys.add(toolbarPreferenceKey("u",role,device,preview));
+assert.equal(keys.size,16,"Preview, device and effective role must never share preference keys");
 let cases=0;
 for(const boardRole of boardRoles){
  for(const accountRole of accountRoles){

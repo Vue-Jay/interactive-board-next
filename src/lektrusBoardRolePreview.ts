@@ -128,3 +128,31 @@ export function restrictStudentDiagramChange(
  // foreign-language sentence ordering already use local per-user state.
  return null;
 }
+
+
+// Toolbar preferences are presentation-only; never write a role-filtered
+// snapshot on mount. An explicit v3 empty array is a legitimate user choice,
+// but the legacy empty array was also produced by merely visiting a viewer board.
+export const TOOLBAR_DEFAULT_DESKTOP=["pen","marker","eraser"] as const;
+export const TOOLBAR_DEFAULT_TOUCH=["pen","marker","eraser","sticky","text","shape"] as const;
+const LEGACY_DESKTOP_DEFAULT=["pen","marker","eraser","connector","text","sticky","shape","media"];
+const LEGACY_TOUCH_DEFAULT=["pen","eraser","sticky","text","shape"];
+export function toolbarPreferenceKey(userId:string,role:"teacher"|"student",device:"touch"|"desktop",preview:BoardRolePreview){
+ return "lectris.toolbar.v3."+userId+"."+role+"."+device+(preview==="actual"?"":".preview."+preview);
+}
+export function normalizeToolbarPins<T extends string>(input:unknown,allowed:readonly T[]):T[]{
+ if(!Array.isArray(input))return [];
+ return input.filter((id,index):id is T=>typeof id==="string"&&allowed.includes(id as T)&&input.indexOf(id)===index);
+}
+export function resolveToolbarPins<T extends string>(saved:unknown,legacy:unknown,defaults:readonly T[],allowed:readonly T[]):T[]{
+ const fallback=normalizeToolbarPins(defaults,allowed);
+ if(saved&&typeof saved==="object"&&!Array.isArray(saved)&&"version" in saved&&saved.version===3&&"pinned" in saved&&Array.isArray(saved.pinned)){
+  return normalizeToolbarPins(saved.pinned,allowed);
+ }
+ if(!Array.isArray(legacy)||legacy.length===0)return fallback;
+ // Old automatic defaults were persisted even without a user action.
+ const signature=JSON.stringify(legacy);
+ if(signature===JSON.stringify(LEGACY_DESKTOP_DEFAULT)||signature===JSON.stringify(LEGACY_TOUCH_DEFAULT))return fallback;
+ const normalized=normalizeToolbarPins(legacy,allowed);
+ return normalized.length?normalized:fallback;
+}
