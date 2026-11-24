@@ -133,7 +133,7 @@ import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, g
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, makeStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
-import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planeAxisLabelFont,planeAxisLabelTicks,planePointFromClient,resizeCoordinatePlane,zoomCoordinatePlane} from "./coordinatePlane";
+import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planeAxisLabelFont,planeAxisLayout,planeLabelHalfWidth,isPlaneMajorTick,planePointFromClient,resizeCoordinatePlane,zoomCoordinatePlane} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
@@ -1206,7 +1206,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     strokeWidth:axisLabelFont*.14,strokeLinejoin:"round" as const,paintOrder:"stroke"
   }:undefined;
   // Omit edge labels rather than clamping several digits onto the same pixel.
-  const axisLabelHalfWidth=(value:number)=>axisLabelFont*(String(value).length*.36+.12);
+  const axisLabelHalfWidth=(value:number)=>planeLabelHalfWidth(value,axisLabelFont);
   const clampLabel=(value:number,low:number,high:number)=>Math.max(low,Math.min(Math.max(low,high),value));
   // Keep controls pinned to the upper-right edge of the variable-size plane.
   // Only exceptionally small planes need smaller controls to avoid clipping.
@@ -1224,13 +1224,14 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const motionAxes=isPhysicsMotionGraph(item.graphFigureId);
   const motionXTicks=motionAxes?motionAxisTicks(xMin,xMax,7):null;
   const motionYTicks=motionAxes?motionAxisTicks(yMin,yMax,5):null;
-  const gridX = motionXTicks?.grid??values(xMin,xMax), gridY = motionYTicks?.grid??values(yMin,yMax);
+  const planeLayout=planeViewport?planeAxisLayout({xMin,xMax,yMin,yMax},scale,step,axisLabelFont):null;
+  const gridX = planeLayout?.xGrid??motionXTicks?.grid??values(xMin,xMax), gridY = planeLayout?.yGrid??motionYTicks?.grid??values(yMin,yMax);
   const xLabelY=clampLabel(sy(0)+axisLabelFont+3,axisLabelFont,H-4);
   const yLabelX=(value:number)=>clampLabel(sx(0)+6,3,W-2*axisLabelHalfWidth(value)-3);
-  const planeXTicks=planeViewport?planeAxisLabelTicks(xMin,xMax,scale,step,axisLabelFont,"x")
-    .filter(value=>sx(value)-axisLabelHalfWidth(value)>=2&&sx(value)+axisLabelHalfWidth(value)<=W-2):null;
-  const planeYTicks=planeViewport?planeAxisLabelTicks(yMin,yMax,scale,step,axisLabelFont,"y")
-    .filter(value=>sy(value)>=axisLabelFont*2+5&&sy(value)<=H-axisLabelFont/2-2):null;
+  const planeXTicks=planeLayout?.xLabels
+    .filter(value=>sx(value)-axisLabelHalfWidth(value)>=2&&sx(value)+axisLabelHalfWidth(value)<=W-2)??null;
+  const planeYTicks=planeLayout?.yLabels
+    .filter(value=>sy(value)>=axisLabelFont*2+5&&sy(value)<=H-axisLabelFont/2-2)??null;
   const majorMotionX=new Set(motionXTicks?.labels??[]);
   const majorMotionY=new Set(motionYTicks?.labels??[]);
   const gp = (solid?projectSolid(item,orbitX,orbitY):(item.graphPoints??[])).map((p,i)=>purpose==="number-line"?{...p,y:0}:rayFigure&&i===1&&liveRay?{...p,...liveRay}:p);
@@ -1467,9 +1468,9 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&!isCoordinatePointGraph(item))&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
-        {gridX.map(x=><line key={`x${x}`} className={motionAxes?(majorMotionX.has(x)?"graph-grid-major":undefined):Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
+        {gridX.map(x=><line key={`x${x}`} className={planeLayout?(isPlaneMajorTick(x,planeLayout.labelStep)?"graph-grid-major":undefined):motionAxes?(majorMotionX.has(x)?"graph-grid-major":undefined):Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
           x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
-        {gridY.map(y=><line key={`y${y}`} className={motionAxes?(majorMotionY.has(y)?"graph-grid-major":undefined):Math.abs(y/(step*5)-Math.round(y/(step*5)))<1e-6?"graph-grid-major":undefined}
+        {gridY.map(y=><line key={`y${y}`} className={planeLayout?(isPlaneMajorTick(y,planeLayout.labelStep)?"graph-grid-major":undefined):motionAxes?(majorMotionY.has(y)?"graph-grid-major":undefined):Math.abs(y/(step*5)-Math.round(y/(step*5)))<1e-6?"graph-grid-major":undefined}
           x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}
       </g>}
       {item.graphFigureId==="free"&&onAddPoint&&
@@ -1513,7 +1514,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         {hasY&&xMin<=0&&xMax>=0&&<line x1={sx(0)} x2={sx(0)} y1={H} y2="5" markerEnd={`url(#graph-arrow-${item.id})`}/>}
         {hasX&&yMin<=0&&yMax>=0&&<line x1="0" x2={W-5} y1={sy(0)} y2={sy(0)} markerEnd={`url(#graph-arrow-${item.id})`}/>}
       </g>
-      {item.graphAxisLabels!==false&&<g className="graph-axis-labels">
+      {item.graphAxisLabels!==false&&<g className="graph-axis-labels" data-plane-label-step={planeLayout?.labelStep}>
         {hasX&&(planeXTicks??motionXTicks?.labels??gridX).filter(x=>x!==0).map(x=><text key={`xl${x}`} style={axisLabelStyle}
           data-plane-axis={planeViewport?"x":undefined}
           textAnchor={planeViewport?"middle":undefined}

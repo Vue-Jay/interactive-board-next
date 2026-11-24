@@ -1097,11 +1097,19 @@ try{
     const a=labels[i],b=labels[j];
     if(Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left)>1&&Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top)>1)collisions.push([a.axis,a.value,b.axis,b.value]);
    }
+   const step=Number(svg.querySelector(".graph-axis-labels").dataset.planeLabelStep);
    const xs=labels.filter(l=>l.axis==="x").map(l=>Number(l.value)).sort((a,b)=>a-b);
-   const gaps=xs.slice(1).map((v,i)=>v-xs[i]).filter(v=>v>0);
-   return {count:labels.length,collisions,xStep:gaps.length?Math.min(...gaps):null,xs};})()`);
+   const ys=labels.filter(l=>l.axis==="y").map(l=>Number(l.value)).sort((a,b)=>a-b);
+   const offInterval=[...xs,...ys].filter(v=>Math.abs(v/step-Math.round(v/step))>1e-6);
+   const misplaced=[...svg.querySelectorAll('[data-plane-axis]')].filter(el=>{
+    const axis=el.dataset.planeAxis,p=Number(el.getAttribute(axis==="x"?"x":"y"));
+    return ![...svg.querySelectorAll(".graph-grid .graph-grid-major")].some(line=>Math.abs(Number(line.getAttribute(axis==="x"?"x1":"y1"))-p)<.001);
+   }).map(el=>el.dataset.planeAxis+":"+el.textContent);
+   return {count:labels.length,collisions,xStep:step,xs,ys,offInterval,misplaced};})()`);
   assert.ok(result.count>2,"Coordinate labels unexpectedly disappeared");
   assert.deepEqual(result.collisions,[],"Coordinate labels overlap");
+  assert.deepEqual(result.offInterval,[],"Both axes use the same tick interval");
+  assert.deepEqual(result.misplaced,[],"Labels align with major grid lines");
   return result;
  };
  await checkPlaneLabels();
