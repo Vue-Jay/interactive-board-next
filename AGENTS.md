@@ -89,6 +89,19 @@ authenticated connector. A live tool call is still required.
 development task in the repo, not just the planning description.
 
 
+## Mandatory staging-to-production sequence (user-approved)
+
+**main is production. The Amvera webhook automatically deploys main. Never push an unvalidated functional change directly to main or the Amvera deployment branch.** This rule takes precedence over any convenience shortcut.
+
+1. Read the current main head and relevant repository code and workflow triggers. Create a short-lived task branch from the current main (for example, `fix/coordinate-axis-labels`). Do not change production while implementation or verification is unfinished.
+2. Batch the related implementation, regression tests and corrections in that branch. Open a pull request to main so the required branch/PR checks run against the candidate, not against already deployed code. Apply the CI economy rules below: normally 1–2 relevant workflows, with broader coverage only when required by the change or a release.
+3. Read actual Actions results and failing job logs. Fix failures in the same task branch; repeat only the necessary verification. Confirm all required and selected checks finished successfully on the exact final candidate SHA. Pending, cancelled, skipped required checks, unverified results and failures are NOT permission to merge. Never use skip-CI, force-push, or an administrative bypass to get unvalidated functional changes into main.
+4. Immediately before merging, verify the PR head, the current main base and mergeability. If the base or candidate changed in a way that invalidates the results, update the branch and revalidate the actual candidate. Merge only the validated PR. Prefer a merge strategy that preserves the tested tree; verify the resulting main tree matches the accepted candidate.
+5. Only after successful validation and merge may Amvera receive the functional update through its existing main webhook. Do not separately push a second deployment or race the webhook. Verify post-merge required checks, deployment state, and the live application/version where available; a green CI result alone does not prove publication. If post-merge validation fails, diagnose and correct or safely revert through the same staging process.
+6. Report the task branch, PR, tested SHA, CI conclusions, merge SHA and actual deployment status separately. If any stage remains incomplete, say which one; do not claim completion. Clean up only the task branch when safe, preserving unrelated branches.
+
+The only direct-main exception is a strictly documentation-only maintenance change that cannot change application behavior or deployment configuration, such as persisting these repository instructions, with safe skip-CI usage. This exception never covers source code, workflow edits, deployment settings or tests.
+
 ## CI economy: mandatory for every Lektrus development task
 
 - The user's default budget is **1–2 relevant workflow runs per batch of changes**, not 10–15 checks per small edit. Batch all related fixes and tests before committing or pushing; do not launch CI after each small correction.
