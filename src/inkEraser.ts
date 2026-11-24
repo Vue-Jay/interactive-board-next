@@ -143,13 +143,26 @@ export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
   const output:Item[]=[];
   let changed=false;
   for(const item of items){
-    if((item.kind!=="pen"&&item.kind!=="marker") || item.hidden || !canErase(item) || !item.points?.length ||
-      item.x>maxX+radius+50 || item.x+item.width<minX-radius-50 ||
-      item.y>maxY+radius+50 || item.y+item.height<minY-radius-50){
-      output.push(item);
-      continue;
+    if((item.kind!=="pen"&&item.kind!=="marker") || item.hidden || !canErase(item) || !item.points?.length){
+      output.push(item);continue;
     }
-    let fragments:Item[]=[item];
+    if(!item.rotation&&(item.x>maxX+radius+50 || item.x+item.width<minX-radius-50 ||
+      item.y>maxY+radius+50 || item.y+item.height<minY-radius-50)){
+      output.push(item);continue;
+    }
+    // Partial erasing must hit the displayed world geometry, just like the
+    // whole-stroke mode. Flatten rotated ink only after a real intersection.
+    let source=item;
+    if(item.rotation){
+      if(!inkTouchesEraser(item,path,radius)){output.push(item);continue;}
+      const angle=item.rotation*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+      const cx=item.x+item.width/2,cy=item.y+item.height/2;
+      source=piece({...item,rotation:undefined},item.points.map(p=>{
+        const dx=p.x-item.width/2,dy=p.y-item.height/2;
+        return {x:cx+dx*c-dy*s,y:cy+dx*s+dy*c};
+      }));
+    }
+    let fragments:Item[]=[source];
     for(let i=0;i<path.length && fragments.length;i++){
       fragments=eraseInkAt(fragments,path[Math.max(0,i-1)],path[i],radius);
     }

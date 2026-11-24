@@ -117,6 +117,43 @@ async def test_student_and_guest_can_erase_shared_ink_but_not_locked_lesson(clie
 
 
 @pytest.mark.asyncio
+async def test_shared_ink_eraser_in_both_directions(client):
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, pupil = await sign_in(client, "student@example.test")
+    _, colleague = await sign_in(client, "outsider@example.test")
+    board_id = (await client.post("/api/v1/boards",headers=owner,json={"title":"Shared eraser matrix"})).json()["id"]
+    root = "/api/v1/boards/"+board_id
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"student@example.test","role":"editor","participant_role":"student"})).status_code==200
+    assert (await client.post("/api/v1/account/role/teacher",headers=colleague)).status_code==200
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"outsider@example.test","role":"editor","participant_role":"co_teacher"})).status_code==200
+    link=(await client.post(root+"/share-links",headers=owner,json={"role":"editor","participant_role":"student"})).json()
+    guest=(await client.post("/api/v1/auth/guest",json={"token":link["token"],"name":"Guest Learner"})).json()
+    guest_headers={"Authorization":"Bearer "+guest["access_token"]}
+    locked={"id":"task","kind":"text","createdBy":str(TEACHER),"locked":True,"text":"Keep"}
+    doc={"version":1,"items":[locked]}
+    assert (await client.put(root+"/document",headers=owner,json={"expected_version":0,"document":doc})).status_code==200
+    version=1
+    roles=[(owner,str(TEACHER)),(pupil,str(STUDENT)),(colleague,str(OUTSIDER)),(guest_headers,guest["user"]["id"])]
+    for writer,writer_id in roles:
+        for eraser,eraser_id in roles:
+            for kind in ("pen","marker"):
+                original={"id":str(uuid4()),"kind":kind,"createdBy":writer_id,"points":[{"x":0,"y":0},{"x":20,"y":0}]}
+                response=await client.patch(root+"/document",headers=writer,json={"expected_version":version,"delta":{"items":{"upsert":[original]}}})
+                assert response.status_code==200,response.text
+                version+=1
+                fragment={**original,"id":str(uuid4()),"createdBy":eraser_id,"points":[{"x":0,"y":0},{"x":5,"y":0}]}
+                response=await client.patch(root+"/document",headers=eraser,json={"expected_version":version,"delta":{"items":{"remove":[original["id"]],"upsert":[fragment]}}})
+                assert response.status_code==200,response.text
+                version+=1
+                response=await client.patch(root+"/document",headers=writer,json={"expected_version":version,"delta":{"items":{"remove":[fragment["id"]]}}})
+                assert response.status_code==200,response.text
+                version+=1
+    result=(await client.get(root+"/document",headers=owner)).json()
+    assert result["document"]["items"]==[locked]
+    assert result["version"]==version
+
+
+@pytest.mark.asyncio
 async def test_photo_permissions_and_peer_document_convergence(client):
     from document_delta import apply_delta
     _, owner = await sign_in(client, "teacher@example.test")

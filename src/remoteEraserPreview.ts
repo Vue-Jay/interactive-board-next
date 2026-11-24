@@ -1,6 +1,40 @@
-import {isInkItem,type Item} from "./boardModel";
+import {isInkItem,stroke,type Item,type Point} from "./boardModel";
 import {remoteInkRuns,type RemoteLiveInkPreview} from "./boardLiveInk";
-import {eraseInkAlongPath} from "./inkEraser";
+import {eraseInkAlongPath,inkTouchesEraser,type EraserMode} from "./inkEraser";
+
+export type PendingPeerErase={path:Point[];radius:number;mode:EraserMode;expiresAt:number};
+
+/** Live previews are not authoritative objects. Remember only IDs actually
+ * touched by the eraser; apply the cut once the real stroke arrives. */
+export function touchedPeerInk(previews:ReadonlyMap<string,RemoteLiveInkPreview>,items:readonly Item[],path:Point[],radius:number):string[]{
+  const persisted=new Set(items.map(item=>item.id));
+  return [...previews.values()].filter(ink=>ink.kind!=="eraser"&&!ink.cancelled&&!persisted.has(ink.id)&&
+    remoteInkRuns(ink).some(run=>run.points.length>0&&inkTouchesEraser(
+      stroke(ink.id,ink.kind as "pen"|"marker",run.points,ink.color,ink.weight,8),path,radius)))
+    .map(ink=>ink.id);
+}
+export function applyPendingPeerErases(items:Item[],pending:Map<string,PendingPeerErase[]>,now:number):Item[]{
+  for(const [id,cuts] of pending){
+    const valid=cuts.filter(cut=>cut.expiresAt>now);
+    if(valid.length)pending.set(id,valid);else pending.delete(id);
+  }
+  if(!pending.size)return items;
+  let changed=false;
+  const next=items.flatMap(item=>{
+    const cuts=pending.get(item.id);
+    if(!cuts)return [item];
+    pending.delete(item.id);
+    if(!isInkItem(item)||item.hidden)return [item];
+    let fragments=[item];
+    for(const cut of cuts){
+      // Use authoritative geometry, not guessed preview fragments.
+      fragments=eraseInkAlongPath(fragments,cut.path,cut.radius,()=>true,cut.mode);
+    }
+    if(fragments.length!==1||fragments[0]!==item)changed=true;
+    return fragments;
+  });
+  return changed?next:items;
+}
 
 /** Visual-only cut fragments. Never commit these to the document or history.
  * Only cut original stroke IDs present when the remote gesture first arrived;

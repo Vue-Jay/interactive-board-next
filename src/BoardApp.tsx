@@ -116,7 +116,7 @@ import { connectBoardCursorChannel, type BoardCursorChannel } from "./boardBroad
 import { createRemoteCursorStore } from "./boardRemoteCursors";
 import { RemoteCursorOverlay, RemoteCursorCount } from "./RemoteCursorOverlay";
 import { createRemoteInkStore } from "./boardLiveInk";
-import { previewRemoteErasures } from "./remoteEraserPreview";
+import { previewRemoteErasures, touchedPeerInk, applyPendingPeerErases, type PendingPeerErase } from "./remoteEraserPreview";
 import { RemoteInkOverlay } from "./RemoteInkOverlay";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
@@ -2279,6 +2279,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [remoteInkStore] = useState(createRemoteInkStore);
   const [remoteEraseStore] = useState(createRemoteInkStore);
   const remoteEraseTargets=useRef(new Map<string,Set<string>>());
+  const pendingPeerErasures=useRef(new Map<string,PendingPeerErase[]>());
   const remoteErasures=useSyncExternalStore(remoteEraseStore.subscribe,remoteEraseStore.getSnapshot,remoteEraseStore.getSnapshot);
   const previousRemoteErasures=useRef<ReadonlyMap<string,unknown>>(new Map());
   useEffect(()=>{
@@ -3991,9 +3992,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       return next;
     });
     const next=stickerChanged?withStickers:erased;
+    const pendingIds=canEdit?touchedPeerInk(remoteInkStore.getSnapshot(),before,g.path,g.weight/2):[];
+    if(pendingIds.length){
+      const pending=pendingPeerErasures.current;
+      const cut:PendingPeerErase={path:g.path.slice(),radius:g.weight/2,mode:g.mode,expiresAt:Date.now()+120_000};
+      for(const id of pendingIds){
+        if(!pending.has(id)&&pending.size>=128)pending.delete(pending.keys().next().value!);
+        pending.set(id,[...(pending.get(id)??[]),cut].slice(-8));
+      }
+      // Show the same temporary cut locally while waiting for the saved ID.
+      // Do not invent or publish somebody else's unfinished stroke.
+      remoteEraseTargets.current.set(g.id,new Set(pendingIds));
+      remoteEraseStore.push({id:g.id,clientId:"local-eraser",userId:authUser.id,kind:"eraser",color:"#000000",
+        weight:g.weight,points:g.path.slice(),finished:true,eraserMode:g.mode});
+    }
     const remaining=next===before?null:new Set(next.map(item=>item.id));
     const cutIds=remaining?before.filter(item=>isInkItem(item)&&!remaining.has(item.id)).map(item=>item.id).slice(0,500):[];
-    sendLiveEraser(g,true,next===before,cutIds);
+    sendLiveEraser(g,true,next===before&&!pendingIds.length,cutIds);
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
@@ -4180,6 +4195,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         subject:lectrisBoardOrganization.subject,items:normalized});
     }
   };
+  // A visible peer stroke can precede its durable save. When its actual
+  // ID arrives, run the original eraser against the authoritative object.
+  useEffect(()=>{
+    if(!canEdit){pendingPeerErasures.current.clear();return;}
+    if(!pendingPeerErasures.current.size||gesture.current||eraserSession.current||boardResumePendingRef.current)return;
+    const before=itemsRef.current;
+    const next=applyPendingPeerErases(before,pendingPeerErasures.current,Date.now());
+    if(next===before)return;
+    commit(next,{immediatePaint:true});
+    flushSave();
+  },[items,canEdit,boardResumePending]);
   const autoFitExistingImage=(id:string,crop:Item["imageCrop"],sourceAspect:number)=>{
     const current=itemsRef.current.find(item=>item.id===id&&item.kind==="image");
     if(!current||current.imageCrop||!canCropImage(current)||
