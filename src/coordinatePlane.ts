@@ -48,7 +48,7 @@ export const planeRange=(item:Item):PlaneRange=>({
   xMin:item.graphXMin??-10,xMax:item.graphXMax??10,
   yMin:item.graphYMin??-10,yMax:item.graphYMax??10
 });
-const validRange=(r:PlaneRange)=>Object.values(r).every(Number.isFinite)&&r.xMax>r.xMin&&r.yMax>r.yMin;
+const validRange=(r:PlaneRange)=>[r.xMin,r.xMax,r.yMin,r.yMax].every(Number.isFinite)&&r.xMax>r.xMin&&r.yMax>r.yMin;
 const round=(n:number)=>Number(n.toPrecision(12));
 export function planeSizeForRange(previous:PlaneRange,size:PlaneSize,next:PlaneRange):PlaneSize{
   if(!validRange(previous)||!validRange(next))return size;
