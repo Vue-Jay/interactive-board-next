@@ -93,9 +93,30 @@ export function resizeCoordinatePlane(base:Item,resized:Item,handle:string):Item
   return {...resized,...rangeFields({xMin,xMax,yMin,yMax})};
 }
 /** Persist only explicit plane zoom, not a change of the coordinate bounds.
- * Limit the glyph scale so extreme zoom levels remain usable. */
+ * Bound the displayed font separately so reversing zoom restores its size. */
 export function planeAxisLabelScale(value?:number):number{
-  return typeof value==="number"&&Number.isFinite(value)?Math.max(.65,Math.min(3,value)):1;
+  return typeof value==="number"&&Number.isFinite(value)?Math.max(1e-9,Math.min(1e9,value)):1;
+}
+/** Gentle, bounded font scaling instead of enlarging digits as fast as the grid. */
+export function planeAxisLabelFont(value?:number):number{
+  return Math.max(12,Math.min(16,14*Math.pow(planeAxisLabelScale(value),.35)));
+}
+/** The fine grid is independent. Use a 1–2–5 progression for numeric labels,
+ * based on available local space and a conservative estimate of glyph width. */
+export function planeAxisLabelTicks(min:number,max:number,pixelsPerUnit:number,gridStep:number,font:number,axis:"x"|"y"):number[]{
+  if(![min,max,pixelsPerUnit,gridStep,font].every(Number.isFinite)||max<=min||pixelsPerUnit<=0||gridStep<=0||font<=0)return [];
+  const longest=Math.max(String(round(min)).length,String(round(max)).length,2);
+  const spacing=axis==="x"?font*.72*longest+9:font*1.5+5;
+  const required=Math.max(1,spacing/(pixelsPerUnit*gridStep),(max-min)/(gridStep*90));
+  if(!Number.isFinite(required))return [];
+  const magnitude=10**Math.floor(Math.log10(required));
+  const normalized=required/magnitude;
+  const multiple=(normalized<=1?1:normalized<=2?2:normalized<=5?5:10)*magnitude;
+  const step=gridStep*multiple;
+  if(!Number.isFinite(step)||step<=0)return [];
+  const first=Math.ceil(min/step-1e-9),last=Math.floor(max/step+1e-9);
+  const count=Math.min(101,Math.max(0,last-first+1));
+  return Array.from({length:count},(_,i)=>round((first+i)*step)).filter(value=>value!==0);
 }
 export function zoomPlaneAxisLabelScale(value:number|undefined,previous:PlaneRange,next:PlaneRange):number|undefined{
   if(!validRange(previous)||!validRange(next))return value;

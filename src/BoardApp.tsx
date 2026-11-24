@@ -133,7 +133,7 @@ import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, g
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, makeStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
-import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planeAxisLabelScale,planePointFromClient,resizeCoordinatePlane,zoomCoordinatePlane} from "./coordinatePlane";
+import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planeAxisLabelFont,planeAxisLabelTicks,planePointFromClient,resizeCoordinatePlane,zoomCoordinatePlane} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
@@ -1200,13 +1200,13 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const xMin = item.graphXMin ?? -10, xMax = item.graphXMax ?? 10, yMin = item.graphYMin ?? -10, yMax = item.graphYMax ?? 10;
   const planeViewport=isCoordinatePlane(item)?coordinatePlaneViewport(item):null;
   const W = planeViewport?.width??600, H = planeViewport?.height??360;
-  const axisLabelFont=planeViewport?14*planeAxisLabelScale(item.graphAxisLabelScale):10;
+  const axisLabelFont=planeViewport?planeAxisLabelFont(item.graphAxisLabelScale):10;
   const axisLabelStyle=planeViewport?{
     fontSize:axisLabelFont,fontWeight:650,fill:"#182334",stroke:"#ffffff",
     strokeWidth:axisLabelFont*.14,strokeLinejoin:"round" as const,paintOrder:"stroke"
   }:undefined;
-  // Keep edge labels within the SVG and align the numeric glyphs with their ticks.
-  const axisLabelHalfWidth=(value:number)=>Math.min(W/2,axisLabelFont*(String(value).length*.32+.12));
+  // Omit edge labels rather than clamping several digits onto the same pixel.
+  const axisLabelHalfWidth=(value:number)=>axisLabelFont*(String(value).length*.36+.12);
   const clampLabel=(value:number,low:number,high:number)=>Math.max(low,Math.min(Math.max(low,high),value));
   // Keep controls pinned to the upper-right edge of the variable-size plane.
   // Only exceptionally small planes need smaller controls to avoid clipping.
@@ -1225,6 +1225,12 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const motionXTicks=motionAxes?motionAxisTicks(xMin,xMax,7):null;
   const motionYTicks=motionAxes?motionAxisTicks(yMin,yMax,5):null;
   const gridX = motionXTicks?.grid??values(xMin,xMax), gridY = motionYTicks?.grid??values(yMin,yMax);
+  const xLabelY=clampLabel(sy(0)+axisLabelFont+3,axisLabelFont,H-4);
+  const yLabelX=(value:number)=>clampLabel(sx(0)+6,3,W-2*axisLabelHalfWidth(value)-3);
+  const planeXTicks=planeViewport?planeAxisLabelTicks(xMin,xMax,scale,step,axisLabelFont,"x")
+    .filter(value=>sx(value)-axisLabelHalfWidth(value)>=2&&sx(value)+axisLabelHalfWidth(value)<=W-2):null;
+  const planeYTicks=planeViewport?planeAxisLabelTicks(yMin,yMax,scale,step,axisLabelFont,"y")
+    .filter(value=>sy(value)>=axisLabelFont*2+5&&sy(value)<=H-axisLabelFont/2-2):null;
   const majorMotionX=new Set(motionXTicks?.labels??[]);
   const majorMotionY=new Set(motionYTicks?.labels??[]);
   const gp = (solid?projectSolid(item,orbitX,orbitY):(item.graphPoints??[])).map((p,i)=>purpose==="number-line"?{...p,y:0}:rayFigure&&i===1&&liveRay?{...p,...liveRay}:p);
@@ -1508,13 +1514,21 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         {hasX&&yMin<=0&&yMax>=0&&<line x1="0" x2={W-5} y1={sy(0)} y2={sy(0)} markerEnd={`url(#graph-arrow-${item.id})`}/>}
       </g>
       {item.graphAxisLabels!==false&&<g className="graph-axis-labels">
-        {hasX&&(motionXTicks?.labels??gridX).filter(x=>x!==0).map(x=><text key={`xl${x}`} style={axisLabelStyle}
+        {hasX&&(planeXTicks??motionXTicks?.labels??gridX).filter(x=>x!==0).map(x=><text key={`xl${x}`} style={axisLabelStyle}
+          data-plane-axis={planeViewport?"x":undefined}
           textAnchor={planeViewport?"middle":undefined}
-          x={planeViewport?clampLabel(sx(x),axisLabelHalfWidth(x),W-axisLabelHalfWidth(x)):sx(x)+3}
-          y={planeViewport?clampLabel(sy(0)+axisLabelFont+3,axisLabelFont,H-4):Math.min(H-4,Math.max(13,sy(0)+14))}>{x}</text>)}
-        {hasY&&(motionYTicks?.labels??gridY).filter(y=>y!==0).map(y=><text key={`yl${y}`} style={axisLabelStyle}
-          x={planeViewport?clampLabel(sx(0)+6,3,W-2*axisLabelHalfWidth(y)-3):Math.min(W-25,Math.max(3,sx(0)+6))}
-          y={planeViewport?clampLabel(sy(y)-4,axisLabelFont,H-4):sy(y)-4}>{y}</text>)}
+          x={planeViewport?sx(x):sx(x)+3}
+          y={planeViewport?xLabelY:Math.min(H-4,Math.max(13,sy(0)+14))}>{x}</text>)}
+        {hasY&&(planeYTicks??motionYTicks?.labels??gridY).filter(y=>y!==0).filter(y=>{
+          // At the crossing, omit only a Y number that would collide with X.
+          if(!planeViewport||!hasX||Math.abs(sy(y)-(xLabelY-axisLabelFont*.4))>axisLabelFont+4)return true;
+          const left=yLabelX(y),right=left+2*axisLabelHalfWidth(y);
+          return !planeXTicks?.some(x=>sx(x)+axisLabelHalfWidth(x)+3>left&&sx(x)-axisLabelHalfWidth(x)-3<right);
+        }).map(y=><text key={`yl${y}`} style={axisLabelStyle}
+          data-plane-axis={planeViewport?"y":undefined}
+          dominantBaseline={planeViewport?"central":undefined}
+          x={planeViewport?yLabelX(y):Math.min(W-25,Math.max(3,sx(0)+6))}
+          y={planeViewport?sy(y):sy(y)-4}>{y}</text>)}
         {hasX&&<text style={axisLabelStyle} x={planeViewport?Math.max(3,W-axisLabelFont-5):W-17} y={Math.max(axisLabelFont+2,Math.min(H-8,sy(0)-9))}>x</text>}
         {hasY&&<text style={axisLabelStyle} x={Math.max(5,Math.min(W-(planeViewport?axisLabelFont+5:18),sx(0)+9))} y={planeViewport?axisLabelFont+3:13}>y</text>}
       </g>}

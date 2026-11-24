@@ -1028,14 +1028,30 @@ try{
  // Measure a real glyph in screen pixels before and after dragging the
  // right and bottom resize handles. Board camera must stay unchanged.
  const planeLabelMetrics=()=>evaluate(`(()=>{const svg=document.querySelector('[data-object="qa-plane"] .graph-view > svg');
-  const text=[...svg.querySelectorAll('.graph-axis-labels text')].find(el=>el.textContent==='1');
+  const labels=[...svg.querySelectorAll('[data-plane-axis]')];
+  const text=labels.find(el=>el.textContent==='1')||labels[0];
   const r=text.getBoundingClientRect(),m=svg.getScreenCTM();
   const style=getComputedStyle(text);
-  return {width:r.width,height:r.height,font:parseFloat(style.fontSize),fill:style.fill,weight:parseFloat(style.fontWeight),scale:Math.hypot(m.a,m.b),viewWidth:svg.viewBox.baseVal.width,viewHeight:svg.viewBox.baseVal.height};})()`);
+  return {value:text.textContent,width:r.width,height:r.height,font:parseFloat(style.fontSize),fill:style.fill,weight:parseFloat(style.fontWeight),scale:Math.hypot(m.a,m.b),viewWidth:svg.viewBox.baseVal.width,viewHeight:svg.viewBox.baseVal.height};})()`);
  const originalMetrics=await planeLabelMetrics();
  assert.equal(originalMetrics.font,14,"Coordinate numbers should use the larger default font");
  assert.equal(originalMetrics.fill,"rgb(24, 35, 52)","Coordinate numbers must have a dark high-contrast fill");
  assert.ok(originalMetrics.weight>=600,"Coordinate numbers should be semibold");
+ const checkPlaneLabels=async()=>{
+  const result=await evaluate(`(()=>{const svg=document.querySelector('[data-object="qa-plane"] .graph-view > svg');
+   const labels=[...svg.querySelectorAll('[data-plane-axis]')].map(el=>({value:el.textContent,axis:el.dataset.planeAxis,r:el.getBoundingClientRect()}));
+   const collisions=[];
+   for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){
+    const a=labels[i],b=labels[j];
+    if(Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left)>1&&Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top)>1)collisions.push([a.axis,a.value,b.axis,b.value]);
+   }
+   const xs=labels.filter(l=>l.axis==="x").map(l=>Number(l.value)).filter(v=>v>0).sort((a,b)=>a-b);
+   return {count:labels.length,collisions,xStep:xs.length>=2?xs[1]-xs[0]:null};})()`);
+  assert.ok(result.count>2,"Coordinate labels unexpectedly disappeared");
+  assert.deepEqual(result.collisions,[],"Coordinate labels overlap");
+  return result;
+ };
+ const originalLabels=await checkPlaneLabels();
  const selectPlane=await svgPoint("qa-plane",planeCenter,planeHeight/2);
  await mouse("mousePressed",selectPlane.x,selectPlane.y,{pressed:true});
  await mouse("mouseReleased",selectPlane.x,selectPlane.y);
@@ -1048,9 +1064,11 @@ try{
   await mouse("mouseReleased",grip.x+dx,grip.y+dy);
   await wait(`(()=>{const v=document.querySelector('[data-object="qa-plane"] .graph-view > svg').viewBox.baseVal;return v.${handle==="e"?"width":"height"}>${handle==="e"?before.viewWidth:before.viewHeight}+5})()`,"Coordinate resize did not expand viewBox");
   const after=await planeLabelMetrics();
-  assert.ok(Math.abs(after.width-originalMetrics.width)<.5&&Math.abs(after.height-originalMetrics.height)<.5,
+  assert.ok(Math.abs(after.font-originalMetrics.font)<.01&&Math.abs(after.height-originalMetrics.height)<.5&&
+   (after.value!==originalMetrics.value||Math.abs(after.width-originalMetrics.width)<.5),
    "Numeric axis glyph changed size after "+handle+" resize: "+JSON.stringify({originalMetrics,after}));
   assert.ok(Math.abs(after.scale-originalMetrics.scale)<.001,"Local SVG scale changed during resize");
+  await checkPlaneLabels();
  }
  // SVG <g> does not implement HTMLElement.click(). Exercise the actual
  // mouse interaction, including board selection and pointer propagation.
@@ -1062,11 +1080,25 @@ try{
  await clickPlaneZoom("Увеличить масштаб плоскости");
  await wait(`parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] .graph-axis-labels text')).fontSize)>${originalMetrics.font}`,"Plane zoom-in did not enlarge numeric labels");
  const zoomedMetrics=await planeLabelMetrics();
- assert.ok(Math.abs(zoomedMetrics.font/originalMetrics.font-1.25)<.01,"Plane zoom must scale numeric labels proportionally");
+ assert.ok(zoomedMetrics.font>originalMetrics.font&&zoomedMetrics.font<=16,"Plane zoom must gently enlarge labels without huge digits");
+ await checkPlaneLabels();
  assert.ok(Math.abs(zoomedMetrics.scale-originalMetrics.scale)<.001,"Plane zoom must not resize the SVG");
  await clickPlaneZoom("Уменьшить масштаб плоскости");
  await wait(`Math.abs(parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] .graph-axis-labels text')).fontSize)-${originalMetrics.font})<.01`,"Plane zoom-out did not restore numeric label size");
- console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion; high-contrast labels scale only with zoom, not horizontal or vertical resize");
+ for(let i=0;i<4;i++){
+  const before=await planeLabelMetrics();
+  await clickPlaneZoom("Уменьшить масштаб плоскости");
+  if(before.font>12.01)await wait(`parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] [data-plane-axis]')).fontSize)<${before.font}`,"Zoom out did not reduce label font");
+  else await delay(100);
+  await checkPlaneLabels();
+ }
+ const distantLabels=await checkPlaneLabels();
+ assert.ok(distantLabels.xStep>originalLabels.xStep,"Zoom out must select a coarser numeric tick interval");
+ assert.ok((await planeLabelMetrics()).font>=12,"Axis labels became too small");
+ for(let i=0;i<4;i++){await clickPlaneZoom("Увеличить масштаб плоскости");await delay(100);}
+ await wait(`Math.abs(parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] [data-plane-axis]')).fontSize)-${originalMetrics.font})<.01`,"Reversing repeated zoom did not restore numeric label size");
+ await checkPlaneLabels();
+ console.log("✓ Coordinate plane and number line snap and point gestures; adaptive 1–2–5 labels, bounded zoom font and no overlapping numeric glyphs");
  await call("Page.navigate",{url});
  console.log("✓ Empty public demo, ephemeral ink, subject tools and text input focus");
 

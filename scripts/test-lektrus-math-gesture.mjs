@@ -45,9 +45,33 @@ assert.equal(plane.resizeCoordinatePlane(zoomed,{...zoomed,width:800},"e").graph
 assert.equal(plane.planeAxisLabelScale(wide.graphAxisLabelScale),1);
 assert.equal(plane.zoomPlaneAxisLabelScale(1,range,plane.scalePlaneRange(range,.8)),1.25);
 assert.equal(plane.zoomPlaneAxisLabelScale(1.25,range,range),1.25);
-assert.equal(plane.planeAxisLabelScale(100),3);
-assert.equal(plane.planeAxisLabelScale(.01),.65);
+assert.equal(plane.planeAxisLabelScale(1e12),1e9);
+assert.equal(plane.planeAxisLabelScale(1e-12),1e-9);
 assert.equal(plane.planeAxisLabelScale(NaN),1);
+assert.equal(plane.planeAxisLabelFont(),14);
+assert.equal(plane.planeAxisLabelFont(100),16);
+assert.equal(plane.planeAxisLabelFont(.01),12);
+assert.ok(plane.planeAxisLabelFont(1.25)>14&&plane.planeAxisLabelFont(1.25)<16);
+assert.ok(plane.planeAxisLabelFont(.8)<14&&plane.planeAxisLabelFont(.8)>12);
+const tickStep=(pixels,axis="x",extent=40)=>{
+ const ticks=plane.planeAxisLabelTicks(-extent,extent,pixels,1,14,axis).filter(x=>x>0);
+ return ticks.length>=2?ticks[1]-ticks[0]:ticks[0];
+};
+assert.equal(tickStep(100),1);
+assert.equal(tickStep(30),2);
+assert.equal(tickStep(10),5);
+assert.equal(tickStep(5),10);
+assert.equal(tickStep(2.5),20);
+assert.equal(tickStep(1,"x",100),50);
+assert.equal(tickStep(15,"y"),2);
+assert.deepEqual(plane.planeAxisLabelTicks(-5,5,40,1,14,"x"),[-5,-4,-3,-2,-1,1,2,3,4,5]);
+assert.deepEqual(plane.planeAxisLabelTicks(-1,1,200,.1,14,"x"),[-1,-.8,-.6,-.4,-.2,.2,.4,.6,.8,1]);
+assert.deepEqual(plane.planeAxisLabelTicks(-1,1,0,1,14,"x"),[]);
+let far=zoomItem;
+for(let i=0;i<8;i++)far=plane.zoomCoordinatePlane(far,1.25);
+for(let i=0;i<8;i++)far=plane.zoomCoordinatePlane(far,.8);
+assert.ok(Math.abs(plane.planeAxisLabelScale(far.graphAxisLabelScale)-1)<1e-8);
+assert.ok(Math.abs(plane.planeAxisLabelFont(far.graphAxisLabelScale)-14)<1e-6);
 assert.equal(plane.resizeCoordinatePlane({...zoomItem,graphPurpose:"geometry"},{...zoomItem,width:800},"e").graphXMax,10);
 for(const [handle,width,height,expected] of [
  ["w",800,200,[-30,10,-5,5]],
