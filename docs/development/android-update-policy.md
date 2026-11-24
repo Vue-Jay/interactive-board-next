@@ -32,9 +32,8 @@ it does not advertise a release the live catalog no longer lists.
   again on resume or manually. A successful mandatory gate is not bypassed
   by a subsequent transient request failure. Foreground checks do not replace
   or reload an active lesson.
-- Downloads open the exact official HTTPS release asset in Android's browser;
-  the user confirms installation via Android. No silent install, temporary
-  signing key or Play Protect bypass is used.
+- The official website serves APK and checksum bytes from `https://lektrus.ru/api/v1/mobile/android-apk/latest/Lektrus-Android.apk` (append `.sha256` for the checksum). The server mirrors only the current verified immutable release, verifies exact size and SHA-256, and stores the last two versions in the persistent Amvera directory `/data/android-releases`. GitHub remains the CI artifact origin, but users never follow a GitHub redirect. Older clients retain the legacy catalog URL for compatibility.
+- New Android clients download the versioned first-party URL into private cache, verify checksum, package name, version and installed signer, and immediately open Android's package installer. If Android requires permission to install unknown apps, the app opens its own permission settings and offers an Install button on return. No silent install, temporary signing key or Play Protect bypass is used. A browser cannot force the system installer to open automatically; the browser's download notification may be tapped. Previously installed builds must update once before the new native installer is available.
 - A user who missed several releases receives the complete newest APK, not a
   sequence of intermediate updates. Install over the existing `ru.lektrus.board`
   with the permanent signer and a greater timestamp-based versionCode. The

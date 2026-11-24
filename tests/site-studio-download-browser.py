@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 
 
 BASE = os.environ.get("LEKTRUS_TEST_SITE_URL", "http://127.0.0.1:5173")
-APK = "https://github.com/Vue-Jay/interactive-board-next/releases/latest/download/Lektrus-Android.apk"
+APK = "https://lektrus.ru/api/v1/mobile/android-apk/latest/Lektrus-Android.apk"
 OUT = Path("artifacts/site-studio")
 OUT.mkdir(parents=True, exist_ok=True)
 

@@ -208,3 +208,63 @@ def test_empty_successful_catalog_never_offers_removed_release():
                 await catalog.get()
             assert error.value.status_code == 503
     asyncio.run(scenario())
+
+
+def test_first_party_mirror_validates_and_reuses_bytes(tmp_path):
+    import hashlib
+    from io import BytesIO
+    data = b"test signed release bytes"
+    selected = select_android_release([release("1.0.5001")])
+    selected["size_bytes"] = len(data)
+    checksum = hashlib.sha256(data).hexdigest()
+    calls = []
+    def opener(url):
+        calls.append(url)
+        return BytesIO((checksum + "  Lektrus-Android.apk\n").encode() if url.endswith(".sha256") else data)
+    apk, sha, size = android_updates.mirror_release(selected, root=tmp_path, opener=opener)
+    assert apk.read_bytes() == data and size == len(data)
+    assert sha.read_text().startswith(checksum)
+    assert android_updates.mirror_release(selected, root=tmp_path, opener=opener) == (apk, sha, size)
+    assert len(calls) == 2
+    assert not list(tmp_path.rglob(".partial-*"))
+
+
+@pytest.mark.parametrize("bad_data", [b"bad", b"wrong same size!"])
+def test_first_party_mirror_rejects_corruption(tmp_path, bad_data):
+    import hashlib
+    from io import BytesIO
+    data = b"valid APK bytes!"
+    selected = select_android_release([release("1.0.5002")])
+    selected["size_bytes"] = len(data)
+    checksum = hashlib.sha256(data).hexdigest()
+    def opener(url):
+        return BytesIO((checksum + "  Lektrus-Android.apk\n").encode() if url.endswith(".sha256") else bad_data)
+    with pytest.raises(ValueError):
+        android_updates.mirror_release(selected, root=tmp_path, opener=opener)
+    assert not list(tmp_path.rglob("*.apk"))
+
+
+def test_site_serves_apk_not_redirect(tmp_path, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    data = b"APK file"
+    apk = tmp_path / "Lektrus-Android.apk"
+    checksum = tmp_path / "Lektrus-Android.apk.sha256"
+    apk.write_bytes(data)
+    checksum.write_text("checksum")
+    async def current():
+        return {"version": "1.0.5001"}
+    monkeypatch.setattr(android_updates, "site_release", current)
+    monkeypatch.setattr(android_updates, "mirror_release", lambda release: (apk, checksum, len(data)))
+    app = FastAPI()
+    app.include_router(android_updates.router)
+    client = TestClient(app)
+    prefix = "/api/v1/mobile/android-apk/"
+    result = client.get(prefix + "latest/Lektrus-Android.apk", follow_redirects=False)
+    assert result.status_code == 200 and result.content == data
+    assert result.headers["content-type"] == "application/vnd.android.package-archive"
+    assert "attachment" in result.headers["content-disposition"]
+    assert client.head(prefix + "1.0.5001/Lektrus-Android.apk").headers["content-length"] == str(len(data))
+    assert client.get(prefix + "1.0.5001/Lektrus-Android.apk.sha256").text == "checksum"
+    assert client.get(prefix + "1.0.4000/Lektrus-Android.apk").status_code == 409
+    assert client.get(prefix + "latest/evil.apk").status_code == 404

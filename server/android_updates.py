@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import tempfile
+import threading
+from pathlib import Path
 import json
 import logging
 import os
@@ -14,6 +18,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 from fastapi import APIRouter, HTTPException, Response
+from fastapi.responses import FileResponse
 
 REPOSITORY = "Vue-Jay/interactive-board-next"
 RELEASES = f"https://api.github.com/repos/{REPOSITORY}/releases?per_page=20"
@@ -244,4 +249,153 @@ catalog = AndroidUpdateCatalog(fallback=LAST_VERIFIED_RELEASE)
 @router.get("/api/v1/mobile/android-update")
 async def android_update(response: Response):
     response.headers["Cache-Control"] = "no-store"
-    return await catalog.get()
+    return await site_release()
+
+
+# The public download is served as bytes by Lektrus, never redirected to GitHub.
+# One bounded, checksum-verified mirror is shared by all users and survives
+# Amvera rebuilds. The release catalog and immutable signed CI artifacts remain
+# the source of truth; legacy updater clients keep their original JSON contract.
+APK_LIMIT = 100 * 1024 * 1024
+CHECKSUM = re.compile(r"([a-fA-F0-9]{64})[ \t]+\*?Lektrus-Android\.apk\s*")
+mirror_lock = threading.Lock()
+
+
+def release_directory():
+    return Path(os.getenv("LEKTRUS_ANDROID_RELEASE_DIR",
+                          str(Path(os.getenv("LEKTRUS_ASSETS_DIR", "/srv/lektrus-assets")) / ".android-releases")))
+
+
+def open_release_asset(url):
+    opener = build_opener(NoRedirect())
+    for _ in range(5):
+        parsed = urlsplit(url)
+        if (parsed.scheme != "https" or parsed.hostname not in ASSET_HOSTS | {"github.com"}
+                or parsed.username or parsed.password or parsed.port not in (None, 443)):
+            raise ValueError("Unofficial release asset host")
+        try:
+            response = opener.open(Request(url, headers={"User-Agent": "Lektrus-APK-Mirror"}), timeout=20)
+        except HTTPError as error:
+            if error.code not in (301, 302, 303, 307, 308):
+                raise
+            with error:
+                url = error.headers.get("Location", "")
+            continue
+        if response.status != 200:
+            response.close()
+            raise ValueError("Release asset unavailable")
+        return response
+    raise ValueError("Too many release redirects")
+
+
+def cached_release(folder, version):
+    apk = folder / version / ASSET_NAMES[0]
+    checksum = folder / version / ASSET_NAMES[1]
+    try:
+        size = apk.stat().st_size
+        if not 0 < size <= APK_LIMIT or checksum.stat().st_size > 1024:
+            return None
+        if not CHECKSUM.fullmatch(checksum.read_text(encoding="ascii").strip()):
+            return None
+        return apk, checksum, size
+    except (OSError, UnicodeError):
+        return None
+
+
+def mirror_release(release, root=None, opener=open_release_asset):
+    version = release["version"]
+    size = release["size_bytes"]
+    if version_key(version) is None or type(size) is not int or not 0 < size <= APK_LIMIT:
+        raise ValueError("Invalid Android release")
+    base = PUBLIC_RELEASES + "download/android-v" + version + "/"
+    if release["download_url"] != base + ASSET_NAMES[0]:
+        raise ValueError("Invalid Android release source")
+    root = Path(root) if root is not None else release_directory()
+    with mirror_lock:
+        existing = cached_release(root, version)
+        if existing and existing[2] == size:
+            return existing
+        target = root / version
+        target.mkdir(parents=True, exist_ok=True, mode=0o700)
+        # Read and verify the small checksum before transferring the APK.
+        with opener(base + ASSET_NAMES[1]) as source:
+            raw = source.read(1025)
+        if len(raw) > 1024:
+            raise ValueError("Oversized APK checksum")
+        match = CHECKSUM.fullmatch(raw.decode("ascii").strip())
+        if not match:
+            raise ValueError("Malformed APK checksum")
+        expected = match[1].lower()
+        digest = hashlib.sha256()
+        count = 0
+        with tempfile.TemporaryDirectory(prefix=".partial-", dir=target) as temp:
+            partial = Path(temp) / ASSET_NAMES[0]
+            with opener(base + ASSET_NAMES[0]) as source, partial.open("wb") as output:
+                while chunk := source.read(256 * 1024):
+                    count += len(chunk)
+                    if count > size or count > APK_LIMIT:
+                        raise ValueError("Unexpected APK length")
+                    digest.update(chunk)
+                    output.write(chunk)
+            if count != size or digest.hexdigest() != expected:
+                raise ValueError("APK checksum or size mismatch")
+            sidecar = Path(temp) / ASSET_NAMES[1]
+            sidecar.write_text(expected + "  " + ASSET_NAMES[0] + "\n", encoding="ascii")
+            # Publish only complete verified files; failed downloads never replace
+            # an existing good version. The current release is always retained.
+            os.replace(partial, target / ASSET_NAMES[0])
+            os.replace(sidecar, target / ASSET_NAMES[1])
+        # Keep the latest two complete versions, not an ever-growing APK archive.
+        # Do not remove the immediately previous version during an active transfer.
+        import shutil
+        versions = sorted((p for p in root.iterdir() if p.is_dir() and version_key(p.name)),
+                          key=lambda p: version_key(p.name), reverse=True)
+        keep = {target, *versions[:2]}
+        for old in versions:
+            if old not in keep:
+                shutil.rmtree(old, ignore_errors=True)
+        return target / ASSET_NAMES[0], target / ASSET_NAMES[1], size
+
+
+def newest_mirrored_release():
+    root = release_directory()
+    try:
+        versions = sorted((p.name for p in root.iterdir() if p.is_dir() and version_key(p.name)),
+                          key=version_key, reverse=True)
+    except OSError:
+        return None
+    for version in versions:
+        found = cached_release(root, version)
+        if found:
+            return {"version": version,
+                    "download_url": PUBLIC_RELEASES + "download/android-v" + version + "/" + ASSET_NAMES[0],
+                    "size_bytes": found[2]}
+    return None
+
+
+async def site_release():
+    release = await catalog.get()
+    if release.get("catalog_stale"):
+        local = await asyncio.to_thread(newest_mirrored_release)
+        if local and version_key(local["version"]) > version_key(release["version"]):
+            release = {**apply_policy(local, os.getenv("LEKTRUS_ANDROID_MINIMUM_VERSION", DEFAULT_MINIMUM).strip()),
+                       "catalog_stale": True}
+    return release
+
+
+@router.api_route("/api/v1/mobile/android-apk/{version}/{filename}", methods=["GET", "HEAD"])
+async def android_apk(version: str, filename: str):
+    if filename not in ASSET_NAMES or (version != "latest" and version_key(version) is None):
+        raise HTTPException(404, "Файл не найден")
+    release = await site_release()
+    if version != "latest" and version != release["version"]:
+        raise HTTPException(409, "Версия изменилась. Проверьте обновления ещё раз.")
+    try:
+        apk, checksum, _ = await asyncio.to_thread(mirror_release, release)
+    except (OSError, ValueError, UnicodeError, HTTPProtocolError) as error:
+        logger.warning("Android APK mirror unavailable: %s", type(error).__name__)
+        raise HTTPException(503, "APK временно недоступен. Повторите попытку.") from None
+    return FileResponse(apk if filename == ASSET_NAMES[0] else checksum,
+                        media_type="application/vnd.android.package-archive" if filename == ASSET_NAMES[0] else "text/plain",
+                        filename=filename, headers={"Cache-Control": "no-cache" if version == "latest" else "public, max-age=86400, immutable",
+                                                    "X-Content-Type-Options": "nosniff"})

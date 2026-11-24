@@ -3,6 +3,10 @@ set -euo pipefail
 
 # Amvera mounts /data at runtime. It can initially be owned by root.
 install -d -m 0700 -o lektrus -g lektrus /data/assets
+# APK cache is separate from private user attachments and persists across deploys.
+if ! install -d -m 0700 -o lektrus -g lektrus /data/android-releases; then
+  echo "Android APK cache unavailable" >&2
+fi
 # Only generated public build files are copied here, never user assets. An
 # unavailable/full cache must not prevent the new application from starting.
 if install -d -m 0700 -o lektrus -g lektrus /data/web-releases; then
