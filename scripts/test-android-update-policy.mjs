@@ -41,3 +41,14 @@ assert.match(gate,/Промежуточные версии устанавлив�
 const profile=readFileSync(new URL("../src/ProfileScreen.tsx",import.meta.url),"utf8");
 assert.doesNotMatch(profile,/<span>01<\/span>/);
 console.log("Android update policy: optional, mandatory, postponed, newer installed, malformed metadata, trusted download, profile heading OK.");
+
+assert.match(gate,/sizeBytes:offer.size_bytes/);
+assert.match(gate,/androidUpdateProgress/);
+assert.match(gate,/Скачать и установить/);
+assert.doesNotMatch(gate,/загрузках браузера/);
+const plugin=readFileSync(new URL("../android/app/src/main/java/ru/lektrus/board/LektrusSystemUiPlugin.java",import.meta.url),"utf8");
+for(const keyword of ["https://lektrus.ru/api/v1/mobile/android-apk/","setInstanceFollowRedirects(false)","canRequestPackageInstalls()","ACTION_MANAGE_UNKNOWN_APP_SOURCES","FileProvider.getUriForFile","application/vnd.android.package-archive","FLAG_GRANT_READ_URI_PERMISSION","GET_SIGNATURES","getLongVersionCode","SHA-256"])assert.ok(plugin.includes(keyword),keyword);
+assert.doesNotMatch(plugin,/github\.com/);
+assert.match(readFileSync(new URL("../android/app/src/main/AndroidManifest.xml",import.meta.url),"utf8"),/android.permission.REQUEST_INSTALL_PACKAGES/);
+
+assert.match(plugin,/call\.getInt\("sizeBytes"\)/,"APK size is a JSON integer, not a Java Long");

@@ -27,3 +27,5 @@
 .lektrus-update-recovery{display:block;margin-top:8px;padding:5px 0;text-align:left;color:var(--lt-primary,#3157c4);background:none;border:0;font:inherit;font-size:13px;font-weight:650;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:360px){.lektrus-update-dialog{padding:16px}.lektrus-update-heading h1{font-size:20px}.lektrus-update-heading img{width:44px;height:44px}}
 @media(max-height:480px){.lektrus-update-dialog{padding:15px}.lektrus-update-dialog>p{margin:8px 0}.lektrus-update-file{margin:8px 0}.lektrus-update-heading img{width:40px;height:40px}}
+
+.lektrus-update-progress{display:block;width:100%;height:8px;margin:10px 0 0;accent-color:var(--lt-primary,#3157c4);border-radius:999px}

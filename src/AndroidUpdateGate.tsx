@@ -1,12 +1,12 @@
 import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from "react";
 import {App as CapacitorApp} from "@capacitor/app";
-import {Capacitor,registerPlugin} from "@capacitor/core";
+import {Capacitor,registerPlugin,type PluginListenerHandle} from "@capacitor/core";
 import {isSelfhostBackendEnabled,selfhostAndroidUpdate} from "./selfhostApi";
 import {LEKTRUS_LOCAL_TEST_MODE} from "./lektrusLocalTestMode";
 import {androidUpdateKind,parseAndroidUpdate,resolveAndroidUpdate,shouldOfferAndroidUpdate,type AndroidUpdate} from "./androidUpdatePolicy";
 import "./lektrusAndroidUpdate.css";
 
-const nativeUi=registerPlugin<{openAndroidUpdate(options:{version:string}):Promise<void>;openAndroidReleasePage():Promise<void>}>("LektrusSystemUi");
+const nativeUi=registerPlugin<{openAndroidUpdate(options:{version:string;sizeBytes:number}):Promise<{state:"permission"|"installer"}>;openAndroidReleasePage():Promise<void>;addListener(event:"androidUpdateProgress",listener:(data:{received:number;total:number})=>void):Promise<PluginListenerHandle>}>("LektrusSystemUi");
 const DEFER_KEY="lektrus.android-update-deferred.v1";
 const KNOWN_KEY="lektrus.android-update-known.v1";
 const RESUME_INTERVAL=15*60*1000;
@@ -35,6 +35,7 @@ function AndroidUpdateController({children}:{children:ReactNode}){
   const [version,setVersion]=useState(""),[starting,setStarting]=useState(true),[checking,setChecking]=useState(false);
   const [message,setMessage]=useState(""),[offer,setOffer]=useState<AndroidUpdate|null>(null),[downloadStatus,setDownloadStatus]=useState(""),[recovery,setRecovery]=useState(false);
   const [busy,setBusy]=useState(false),[safe,setSafe]=useState(safeScreen);
+  const [progress,setProgress]=useState(0),[readyVersion,setReadyVersion]=useState("");
   const current=useRef(""),lastCheck=useRef(0),inFlight=useRef(false),alive=useRef(true);
   const pending=useRef<AndroidUpdate|null>(null);
   const dialog=useRef<HTMLDialogElement>(null);
@@ -85,9 +86,10 @@ function AndroidUpdateController({children}:{children:ReactNode}){
       if(Date.now()-lastCheck.current>=RESUME_INTERVAL)void check();
     };
     const listener=CapacitorApp.addListener("appStateChange",({isActive})=>{if(isActive)onRoute()});
+    const transfer=nativeUi.addListener("androidUpdateProgress",({received,total})=>{if(alive.current&&total>0)setProgress(Math.min(100,Math.round(received/total*100)))});
     window.addEventListener("popstate",onRoute);
     window.addEventListener("lektrus:workspace-route",onRoute);
-    return()=>{alive.current=false;window.removeEventListener("popstate",onRoute);window.removeEventListener("lektrus:workspace-route",onRoute);void listener.then(handle=>handle.remove()).catch(()=>{})};
+    return()=>{alive.current=false;window.removeEventListener("popstate",onRoute);window.removeEventListener("lektrus:workspace-route",onRoute);void listener.then(handle=>handle.remove()).catch(()=>{});void transfer.then(handle=>handle.remove()).catch(()=>{})};
   // The controller remains mounted for the lifetime of the native shell.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
@@ -107,9 +109,12 @@ function AndroidUpdateController({children}:{children:ReactNode}){
   };
   const download=async()=>{
     if(!offer||busy)return;
-    setBusy(true);setDownloadStatus("");
-    try{await nativeUi.openAndroidUpdate({version:offer.version});setDownloadStatus("Откройте скачанный APK в загрузках браузера и подтвердите установку.")}
-    catch{setDownloadStatus("Не удалось открыть загрузку. Повторите попытку или скачайте APK с lektrus.ru.")}
+    setBusy(true);setDownloadStatus("");setProgress(readyVersion===offer.version?100:0);
+    try{
+      const result=await nativeUi.openAndroidUpdate({version:offer.version,sizeBytes:offer.size_bytes});
+      setReadyVersion(offer.version);setProgress(100);
+      setDownloadStatus(result.state==="permission"?"Разрешите установку из Lektrus, вернитесь в приложение и нажмите «Установить».":"Подтвердите обновление в системном установщике Android. Если закрыли его, нажмите «Установить» ещё раз.");
+    }catch{setDownloadStatus("Не удалось скачать или проверить обновление. Повторите попытку или откройте страницу загрузки lektrus.ru.");}
     finally{setBusy(false)}
   };
   useEffect(()=>{
@@ -127,9 +132,10 @@ function AndroidUpdateController({children}:{children:ReactNode}){
       <p>{required?"Эта версия приложения больше не совместима с сервером. Установите обновление, чтобы продолжить работу.":offer.catalog_stale?"Каталог временно недоступен. Можно установить последнюю подтверждённую версию или проверить официальный список релизов.":"Установите актуальную версию, чтобы пользоваться последними улучшениями и возможностями Lektrus."}</p>
       <div className="lektrus-update-versions"><div><span>Установлена</span><strong>{version}</strong></div><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg><div><span>Доступна</span><strong>{offer.version}</strong></div></div>
       <div className="lektrus-update-file"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s7-3 7-12V5l-7-3-7 3v5c0 9 7 12 7 12Z"/><path d="m9 12 2 2 4-4"/></svg><span>Официальная подписанная сборка · {new Intl.NumberFormat("ru-RU",{maximumFractionDigits:1}).format(offer.size_bytes/1024/1024)} МБ</span></div>
-      <button type="button" className="lektrus-update-primary" disabled={busy} onClick={()=>void download()}>{busy?"Открываем загрузку…":"Скачать обновление"}</button>
+      <button type="button" className="lektrus-update-primary" disabled={busy} onClick={()=>void download()}>{busy?(progress===100?"Проверяем APK…":`Загрузка ${progress}%`):readyVersion===offer.version?"Установить":"Скачать и установить"}</button>
+      {busy&&<progress className="lektrus-update-progress" value={progress} max={100} aria-label="Загрузка обновления"/>}
       {offer.catalog_stale&&<button type="button" className="lektrus-update-later" onClick={openReleases}>Открыть официальные релизы</button>}
-      {!required&&<button type="button" className="lektrus-update-later" onClick={defer}>Позже</button>}
+      {!required&&<button type="button" className="lektrus-update-later" disabled={busy} onClick={defer}>Позже</button>}
       {downloadStatus&&<p className="lektrus-update-feedback" role="status">{downloadStatus}</p>}
       <small className="lektrus-update-note">Промежуточные версии устанавливать не нужно. Установите APK поверх текущего приложения, не удаляя его. Ваши доски и учётная запись сохранятся.</small>
     </dialog>}

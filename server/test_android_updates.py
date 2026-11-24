@@ -208,3 +208,126 @@ def test_empty_successful_catalog_never_offers_removed_release():
                 await catalog.get()
             assert error.value.status_code == 503
     asyncio.run(scenario())
+
+
+def test_first_party_mirror_validates_and_reuses_bytes(tmp_path):
+    import hashlib
+    from io import BytesIO
+    data = b"test signed release bytes"
+    selected = select_android_release([release("1.0.5001")])
+    selected["size_bytes"] = len(data)
+    checksum = hashlib.sha256(data).hexdigest()
+    calls = []
+    def opener(url):
+        calls.append(url)
+        return BytesIO((checksum + "  Lektrus-Android.apk\n").encode() if url.endswith(".sha256") else data)
+    apk, sha, size = android_updates.mirror_release(selected, root=tmp_path, opener=opener)
+    assert apk.read_bytes() == data and size == len(data)
+    assert sha.read_text().startswith(checksum)
+    assert android_updates.mirror_release(selected, root=tmp_path, opener=opener) == (apk, sha, size)
+    assert len(calls) == 2
+    assert not list(tmp_path.rglob(".partial-*"))
+
+
+@pytest.mark.parametrize("bad_data", [b"bad", b"wrong same size!"])
+def test_first_party_mirror_rejects_corruption(tmp_path, bad_data):
+    import hashlib
+    from io import BytesIO
+    data = b"valid APK bytes!"
+    selected = select_android_release([release("1.0.5002")])
+    selected["size_bytes"] = len(data)
+    checksum = hashlib.sha256(data).hexdigest()
+    def opener(url):
+        return BytesIO((checksum + "  Lektrus-Android.apk\n").encode() if url.endswith(".sha256") else bad_data)
+    with pytest.raises(ValueError):
+        android_updates.mirror_release(selected, root=tmp_path, opener=opener)
+    assert not list(tmp_path.rglob("*.apk"))
+
+
+def test_site_serves_apk_not_redirect(tmp_path, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    data = b"APK file"
+    apk = tmp_path / "Lektrus-Android.apk"
+    checksum = tmp_path / "Lektrus-Android.apk.sha256"
+    apk.write_bytes(data)
+    checksum.write_text("checksum")
+    async def current():
+        return {"version": "1.0.5001"}
+    monkeypatch.setattr(android_updates, "site_release", current)
+    monkeypatch.setattr(android_updates, "mirror_release", lambda release: (apk, checksum, len(data)))
+    app = FastAPI()
+    app.include_router(android_updates.router)
+    client = TestClient(app)
+    prefix = "/api/v1/mobile/android-apk/"
+    result = client.get(prefix + "latest/Lektrus-Android.apk", follow_redirects=False)
+    assert result.status_code == 200 and result.content == data
+    assert result.headers["content-type"] == "application/vnd.android.package-archive"
+    assert "attachment" in result.headers["content-disposition"]
+    assert client.head(prefix + "1.0.5001/Lektrus-Android.apk").headers["content-length"] == str(len(data))
+    assert client.get(prefix + "1.0.5001/Lektrus-Android.apk.sha256").text == "checksum"
+    assert client.get(prefix + "1.0.4000/Lektrus-Android.apk").status_code == 409
+    assert client.get(prefix + "latest/evil.apk").status_code == 404
+
+
+def test_release_cache_keeps_two_and_only_prunes_after_verified_download(tmp_path):
+    import hashlib
+    from io import BytesIO
+    versions = ["1.0.5001", "1.0.5002", "1.0.5003", "1.0.5004"]
+    payloads = {version: ("APK " + version).encode() for version in versions}
+
+    def selected(version):
+        result = select_android_release([release(version)])
+        result["size_bytes"] = len(payloads[version])
+        return result
+
+    def opener(url):
+        version = url.split("/android-v")[1].split("/")[0]
+        data = payloads[version]
+        checksum = hashlib.sha256(data).hexdigest()
+        if url.endswith(".sha256"):
+            return BytesIO((checksum + "  Lektrus-Android.apk\n").encode())
+        return BytesIO(b"broken" if version == versions[-1] else data)
+
+    unrelated = tmp_path / "do-not-delete"
+    unrelated.mkdir()
+    (unrelated / "sentinel").write_text("keep")
+    for version in versions[:3]:
+        android_updates.mirror_release(selected(version), root=tmp_path, opener=opener)
+    retained = lambda: sorted(p.parent.name for p in tmp_path.glob("*/Lektrus-Android.apk"))
+    assert retained() == versions[1:3]
+    assert not (tmp_path / versions[0]).exists()
+    with pytest.raises(ValueError):
+        android_updates.mirror_release(selected(versions[3]), root=tmp_path, opener=opener)
+    assert retained() == versions[1:3]
+    assert unrelated.joinpath("sentinel").read_text() == "keep"
+    # A stale request for an older APK cannot evict either newer verified file.
+    with pytest.raises(ValueError, match="superseded"):
+        android_updates.mirror_release(selected(versions[0]), root=tmp_path, opener=opener)
+    assert retained() == versions[1:3]
+    # A cache hit also cleans an obsolete incomplete directory after a failure.
+    android_updates.mirror_release(selected(versions[2]), root=tmp_path, opener=opener)
+    assert not (tmp_path / versions[3]).exists()
+
+
+def test_initial_sync_populates_previous_published_version(tmp_path):
+    import hashlib
+    from io import BytesIO
+    current = release("1.0.5010")
+    prior = release("1.0.5007")
+    older = release("1.0.5001")
+    data = b"verified test APK"
+    for entry in [current, prior, older]:
+        entry["assets"][0]["size"] = len(data)
+    requests = []
+    def opener(url):
+        requests.append(url)
+        return BytesIO((hashlib.sha256(data).hexdigest() + "  Lektrus-Android.apk\n").encode()
+                       if url.endswith(".sha256") else data)
+    history = [older, current, prior, release("1.0.5009", draft=True), release("1.0.5008", assets=[])]
+    assert android_updates.synchronize_release_pair(
+        select_android_release([current]), root=tmp_path, opener=opener, loader=lambda: history
+    ) == "1.0.5007"
+    assert sorted(p.parent.name for p in tmp_path.glob("*/Lektrus-Android.apk")) == ["1.0.5007", "1.0.5010"]
+    assert len(requests) == 4
+    assert all("5001" not in url and "5009" not in url for url in requests)
