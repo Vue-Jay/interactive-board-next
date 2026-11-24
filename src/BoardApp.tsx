@@ -8883,10 +8883,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
 
-        <div className="mobile-undo-redo" aria-label="История изменений">
-          <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
-          <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
-        </div>
+        {canEdit&&!presentation&&!objectEditorOpen&&<div className="mobile-undo-redo" role="group" aria-label="История изменений" onPointerDown={e=>e.stopPropagation()}>
+          {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Гость · ученик":"Режим ученика"}</div>}
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить" title={isStudent&&!isBoardOwner?"Отменить своё действие · Ctrl+Z":"Отменить · Ctrl+Z"}><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить" title={isStudent&&!isBoardOwner?"Повторить своё действие · Ctrl+Y":"Повторить · Ctrl+Y"}><Icon name="redo" size={19}/></button>
+        </div>}
         {presentation && (
           <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>
             <button disabled={!presentationFrames.length} onClick={() => stepPresentation(-1)} title="Предыдущий фрейм · ← / PageUp"><Icon name="chevron-left" size={18} /></button>
@@ -9811,7 +9812,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
           onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>id!=="formula"&&id!=="graph"&&tools.some(t=>t.id===id)))}
           onClose={()=>setLectrisCustomizeOpen(false)}/>}
-        {!canEdit?<div className="student-board-mode" title="Доступен просмотр доски без редактирования.">Наблюдатель</div>:isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Гость · ученик":"Режим ученика"}</div>}
+        {!canEdit&&<div className="student-board-mode" title="Доступен просмотр доски без редактирования.">Наблюдатель</div>}
         {!isStudent&&attachmentRequests.length>0&&(()=>{
           const request=attachmentRequests[Math.min(attachmentRequestIndex,attachmentRequests.length-1)];
           return <aside className="teacher-media-request" onPointerDown={e=>e.stopPropagation()}>

@@ -203,7 +203,28 @@ def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
         expect(share).to_have_count(0)
     return scope
 
+def assert_history_controls(scope,editable):
+    history=scope.locator(".mobile-undo-redo")
+    if not editable:
+        expect(history).to_have_count(0)
+        return
+    expect(history).to_be_visible()
+    for label in ("Отменить","Повторить"):
+        button=history.get_by_role("button",name=label,exact=True)
+        expect(button).to_be_visible()
+        assert button.evaluate("""el => {
+            const r=el.getBoundingClientRect();
+            const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+            return r.width>0 && r.height>0 && el.contains(hit);
+        }"""), f"{label} is covered by another control"
+
+
 def assert_drawing_saved(page,ident,name):
+    history=page.locator(".mobile-undo-redo")
+    undo=history.get_by_role("button",name="Отменить",exact=True)
+    redo=history.get_by_role("button",name="Повторить",exact=True)
+    expect(undo).to_be_disabled()
+    expect(redo).to_be_disabled()
     pen=page.locator('[data-interface-control="pen"]:visible').first
     expect(pen).to_be_visible()
     pen.click()
@@ -221,10 +242,32 @@ def assert_drawing_saved(page,ident,name):
             saved=result.json()
             doc=saved["document"]
             items=doc["items"]+[entry["stroke"] for entry in doc.get("ink",[])]
-            if any(item.get("kind")=="pen" and item.get("createdBy")==saved["updated_by"] for item in items):
-                return
+            stroke=next((item for item in items if item.get("kind")=="pen" and item.get("createdBy")==saved["updated_by"]),None)
+            if stroke:
+                break
             page.wait_for_timeout(500)
-    raise AssertionError("Learner drawing did not persist to the real API")
+        else:
+            raise AssertionError("Learner drawing did not persist to the real API")
+        stroke_id=stroke["id"]
+        other_ids={item["id"] for item in items if item["id"]!=stroke_id}
+        def expect_saved(visible):
+            for _ in range(60):
+                result=client.get(f"/api/v1/boards/{ident}/document")
+                result.raise_for_status()
+                doc=result.json()["document"]
+                ids={item["id"] for item in doc["items"]+[entry["stroke"] for entry in doc.get("ink",[])]}
+                if (stroke_id in ids)==visible:
+                    assert other_ids<=ids, "Personal history removed another participant's work"
+                    return
+                page.wait_for_timeout(500)
+            raise AssertionError("Personal undo/redo did not persist")
+        expect(undo).to_be_enabled()
+        undo.click()
+        expect(redo).to_be_enabled()
+        expect_saved(False)
+        redo.click()
+        expect(undo).to_be_enabled()
+        expect_saved(True)
 
 def check_guest_and_registration(browser,ident):
     with httpx.Client(base_url=API,headers=headers("owner")) as client:
@@ -255,6 +298,7 @@ def check_guest_and_registration(browser,ident):
             scope=assert_board(page,ident,False,False,navigate=False,embedded=True)
             expect(page.get_by_role("button",name="Я преподаю",exact=True)).to_have_count(0)
             expect(scope.locator(".student-board-mode")).to_have_text("Гость · ученик" if role=="student" else "Наблюдатель")
+            assert_history_controls(scope,role=="student")
             pen=scope.locator('[data-interface-control="pen"]:visible')
             if role=="student":
                 expect(pen.first).to_be_visible()
@@ -544,6 +588,7 @@ def main():
                     assert client.get(f"/api/v1/boards/{ident}").json()["participant_role"]=="student"
             if owner: check_board_read_recovery(page,ident)
             assert_board(page,ident,author,owner)
+            assert_history_controls(page,name!="observer")
             page.screenshot(path=str(OUT/(name+"-desktop-board.png")))
             if name=="learner":
                 assert_drawing_saved(page,ident,name)
@@ -566,7 +611,8 @@ def main():
             for width,height in ((320,640),(390,844),(768,1024)):
                 assert_compact_workspace(phone,name,width,height)
             phone.set_viewport_size({"width":844,"height":390})
-            assert_board(phone,ident,author,owner,embedded=True)
+            scope=assert_board(phone,ident,author,owner,embedded=True)
+            assert_history_controls(scope,name!="observer")
             phone.screenshot(path=str(OUT/(name+"-phone-board.png")))
             mobile.close()
             assert not errors, f"{name}: browser exceptions {errors}"
