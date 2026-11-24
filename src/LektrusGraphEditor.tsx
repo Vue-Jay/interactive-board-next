@@ -13,7 +13,7 @@ import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./le
 import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 import {lockGeometryConstraint,forgetGeometryConstraint,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
 import {compileGraphExpression} from "./lektrusGraphExpression";
-import {planeSizeForRange,scalePlaneRange,type PlaneRange} from "./coordinatePlane";
+import {planeSizeForRange,scalePlaneRange,zoomPlaneAxisLabelScale,type PlaneRange} from "./coordinatePlane";
 
 /** Small vector thumbnails make the school shape library usable at a glance. */
 function LektrusGeometryPresetGlyph({id}:{id:MathPresetId}){
@@ -77,6 +77,7 @@ export type GraphDraft = {
   a: number; b: number; c: number;
   xMin: number; xMax: number; yMin: number; yMax: number;
   boardWidth?:number; boardHeight?:number;
+  axisLabelScale?:number;
   grid: boolean; points: NonNullable<Item["graphPoints"]>;
   freePathStart?:number;
   constraints:NonNullable<Item["graphConstraints"]>;magneticSnap:boolean;
@@ -370,7 +371,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
        source.xMin>=source.xMax||source.yMin>=source.yMax||
        !Number.isFinite(factor)||factor<=0)return;
     if(source.purpose==="coordinates"){
-      onChange({...source,...scalePlaneRange(source,factor)});
+      const next=scalePlaneRange(source,factor);
+      onChange({...source,...next,axisLabelScale:zoomPlaneAxisLabelScale(source.axisLabelScale,source,next)});
       return;
     }
     const spanX=source.xMax-source.xMin,spanY=source.yMax-source.yMin;
@@ -559,7 +561,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       intervalStartClosed:sample.graphIntervalStartClosed!==false,
       intervalEndClosed:sample.graphIntervalEndClosed!==false,
       showCurve:sample.graphShowCurve===true,projections:sample.graphProjections===true,
-      snap:sample.graphSnap===true,axisLabels:sample.graphAxisLabels!==false,showLabels:sample.graphShowLabels!==false
+      snap:sample.graphSnap===true,axisLabels:sample.graphAxisLabels!==false,axisLabelScale:sample.graphAxisLabelScale,showLabels:sample.graphShowLabels!==false
     });
   };
   const activeAngle=()=>{

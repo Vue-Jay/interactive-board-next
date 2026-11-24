@@ -37,7 +37,17 @@ assert.equal(zoomed.width,400);assert.equal(zoomed.height,200);
 assert.equal(zoomed.graphXMax-zoomed.graphXMin,16);
 assert.equal(zoomed.graphYMax-zoomed.graphYMin,8);
 assert.deepEqual(zoomed.graphPoints,zoomItem.graphPoints);
+assert.equal(plane.planeAxisLabelScale(zoomItem.graphAxisLabelScale),1);
+assert.equal(zoomed.graphAxisLabelScale,1.25);
+assert.equal(plane.zoomCoordinatePlane(zoomItem,1.25).graphAxisLabelScale,.8);
 assert.deepEqual(plane.zoomCoordinatePlane(zoomed,1.25),zoomItem);
+assert.equal(plane.resizeCoordinatePlane(zoomed,{...zoomed,width:800},"e").graphAxisLabelScale,1.25);
+assert.equal(plane.planeAxisLabelScale(wide.graphAxisLabelScale),1);
+assert.equal(plane.zoomPlaneAxisLabelScale(1,range,plane.scalePlaneRange(range,.8)),1.25);
+assert.equal(plane.zoomPlaneAxisLabelScale(1.25,range,range),1.25);
+assert.equal(plane.planeAxisLabelScale(100),3);
+assert.equal(plane.planeAxisLabelScale(.01),.65);
+assert.equal(plane.planeAxisLabelScale(NaN),1);
 assert.equal(plane.resizeCoordinatePlane({...zoomItem,graphPurpose:"geometry"},{...zoomItem,width:800},"e").graphXMax,10);
 for(const [handle,width,height,expected] of [
  ["w",800,200,[-30,10,-5,5]],
@@ -58,7 +68,7 @@ for(const [handle,width,height,expected] of [
 }
 assert.deepEqual(plane.coordinatePlaneViewport(coordinateItem),{width:600,height:300});
 // The rendered SVG user-unit to board-unit ratio is constant, so the
-// unchanged 10-unit axis font stays 10 board units at every object size.
+// explicit axis font scale stays constant at every object size.
 for(const [width,height] of [[1200,300],[300,300],[600,600],[600,150],[60,60],[1700,2400]]){
  const resized={...coordinateItem,width,height};
  const viewport=plane.coordinatePlaneViewport(resized);

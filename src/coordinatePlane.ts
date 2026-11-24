@@ -92,7 +92,25 @@ export function resizeCoordinatePlane(base:Item,resized:Item,handle:string):Item
   const [yMin,yMax]=axis(range.yMin,range.yMax,resized.height/base.height,handle.includes("s"),handle.includes("n"));
   return {...resized,...rangeFields({xMin,xMax,yMin,yMax})};
 }
+/** Persist only explicit plane zoom, not a change of the coordinate bounds.
+ * Limit the glyph scale so extreme zoom levels remain usable. */
+export function planeAxisLabelScale(value?:number):number{
+  return typeof value==="number"&&Number.isFinite(value)?Math.max(.65,Math.min(3,value)):1;
+}
+export function zoomPlaneAxisLabelScale(value:number|undefined,previous:PlaneRange,next:PlaneRange):number|undefined{
+  if(!validRange(previous)||!validRange(next))return value;
+  const factor=Math.min((previous.xMax-previous.xMin)/(next.xMax-next.xMin),
+    (previous.yMax-previous.yMin)/(next.yMax-next.yMin));
+  if(Math.abs(factor-1)<1e-10)return value;
+  const result=round(planeAxisLabelScale(planeAxisLabelScale(value)*factor));
+  return result===1?undefined:result;
+}
 export function zoomCoordinatePlane(item:Item,factor:number):Item{
   if(!isCoordinatePlane(item))return item;
-  return {...item,...rangeFields(scalePlaneRange(planeRange(item),factor))};
+  const previous=planeRange(item),next=scalePlaneRange(previous,factor);
+  const labelScale=zoomPlaneAxisLabelScale(item.graphAxisLabelScale,previous,next);
+  const updated={...item,...rangeFields(next)};
+  if(labelScale===undefined)delete updated.graphAxisLabelScale;
+  else updated.graphAxisLabelScale=labelScale;
+  return updated;
 }

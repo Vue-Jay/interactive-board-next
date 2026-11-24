@@ -1030,8 +1030,12 @@ try{
  const planeLabelMetrics=()=>evaluate(`(()=>{const svg=document.querySelector('[data-object="qa-plane"] .graph-view > svg');
   const text=[...svg.querySelectorAll('.graph-axis-labels text')].find(el=>el.textContent==='1');
   const r=text.getBoundingClientRect(),m=svg.getScreenCTM();
-  return {width:r.width,height:r.height,scale:Math.hypot(m.a,m.b),viewWidth:svg.viewBox.baseVal.width,viewHeight:svg.viewBox.baseVal.height};})()`);
+  const style=getComputedStyle(text);
+  return {width:r.width,height:r.height,font:parseFloat(style.fontSize),fill:style.fill,weight:parseFloat(style.fontWeight),scale:Math.hypot(m.a,m.b),viewWidth:svg.viewBox.baseVal.width,viewHeight:svg.viewBox.baseVal.height};})()`);
  const originalMetrics=await planeLabelMetrics();
+ assert.equal(originalMetrics.font,14,"Coordinate numbers should use the larger default font");
+ assert.equal(originalMetrics.fill,"rgb(24, 35, 52)","Coordinate numbers must have a dark high-contrast fill");
+ assert.ok(originalMetrics.weight>=600,"Coordinate numbers should be semibold");
  const selectPlane=await svgPoint("qa-plane",planeCenter,planeHeight/2);
  await mouse("mousePressed",selectPlane.x,selectPlane.y,{pressed:true});
  await mouse("mouseReleased",selectPlane.x,selectPlane.y);
@@ -1048,7 +1052,14 @@ try{
    "Numeric axis glyph changed size after "+handle+" resize: "+JSON.stringify({originalMetrics,after}));
   assert.ok(Math.abs(after.scale-originalMetrics.scale)<.001,"Local SVG scale changed during resize");
  }
- console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion; fixed-size labels after horizontal and vertical resize");
+ await click('[data-object="qa-plane"] [aria-label="Увеличить масштаб плоскости"]');
+ await wait(`parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] .graph-axis-labels text')).fontSize)>${originalMetrics.font}`,"Plane zoom-in did not enlarge numeric labels");
+ const zoomedMetrics=await planeLabelMetrics();
+ assert.ok(Math.abs(zoomedMetrics.font/originalMetrics.font-1.25)<.01,"Plane zoom must scale numeric labels proportionally");
+ assert.ok(Math.abs(zoomedMetrics.scale-originalMetrics.scale)<.001,"Plane zoom must not resize the SVG");
+ await click('[data-object="qa-plane"] [aria-label="Уменьшить масштаб плоскости"]');
+ await wait(`Math.abs(parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] .graph-axis-labels text')).fontSize)-${originalMetrics.font})<.01`,"Plane zoom-out did not restore numeric label size");
+ console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion; high-contrast labels scale only with zoom, not horizontal or vertical resize");
  await call("Page.navigate",{url});
  console.log("✓ Empty public demo, ephemeral ink, subject tools and text input focus");
 
