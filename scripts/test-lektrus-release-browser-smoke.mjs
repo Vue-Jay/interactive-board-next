@@ -991,12 +991,16 @@ try{
  await delay(350);
  const svgPoint=async(id,x,y)=>evaluate(`(()=>{const svg=document.querySelector('[data-object="${id}"] .graph-view > svg'),p=new DOMPoint(${x},${y}).matrixTransform(svg.getScreenCTM());return {x:p.x,y:p.y}})()`);
  const doubleClick=async p=>{for(const count of [1,2]){await mouse("mousePressed",p.x,p.y,{pressed:true,clickCount:count});await mouse("mouseReleased",p.x,p.y,{clickCount:count});}};
- const planeHeight=await evaluate('document.querySelector(\'[data-object="qa-plane"] .graph-view > svg\').viewBox.baseVal.height');
+ const planeSize=await evaluate('(()=>{const v=document.querySelector(\'[data-object="qa-plane"] .graph-view > svg\').viewBox.baseVal;return {width:v.width,height:v.height}})()');
+ const planeHeight=planeSize.height,planeCenter=planeSize.width/2;
+ // The fixture has a 20 × 12 coordinate range. Determine its real SVG
+ // unit step rather than assuming the old, fixed 600-unit viewBox.
+ const planeStep=Math.min(planeSize.width/20,planeHeight/12);
  assert.equal(await evaluate('document.querySelector(\'[data-object="qa-plane"] .lektrus-grid-control[aria-label*="привязку"]\').getAttribute("aria-pressed")'),"true");
- await doubleClick(await svgPoint("qa-plane",351,planeHeight/2+37));
+ await doubleClick(await svgPoint("qa-plane",planeCenter+1.7*planeStep,planeHeight/2+1.23*planeStep));
  await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===1',"Double-click did not add a point");
  const planeVertex=await evaluate('(()=>{const c=document.querySelector(\'[data-object="qa-plane"] .graph-point circle:not(.graph-point-hit)\');return {x:Number(c.getAttribute("cx")),y:Number(c.getAttribute("cy"))}})()');
- assert.ok(Math.abs(planeVertex.x-360)<.01&&Math.abs(planeVertex.y-(planeHeight/2+30))<.01,"Point did not snap to the integer grid");
+ assert.ok(Math.abs(planeVertex.x-(planeCenter+2*planeStep))<.01&&Math.abs(planeVertex.y-(planeHeight/2+planeStep))<.01,"Point did not snap to the integer grid");
  await doubleClick(await svgPoint("qa-plane",planeVertex.x,planeVertex.y));
  await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===0',"Double-click did not delete the point");
  assert.equal(await evaluate('!!document.querySelector(".graph-editor-backdrop,.lektrus-graph-dialog")'),false,"Point gestures opened the settings editor");
@@ -1013,15 +1017,38 @@ try{
   await call("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
   if(i===0)await delay(90);
  }};
- await doubleTap(await svgPoint("qa-plane",231,planeHeight/2-37));
+ await doubleTap(await svgPoint("qa-plane",planeCenter-2.3*planeStep,planeHeight/2-1.23*planeStep));
  await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===1',"Double tap did not add a coordinate point");
  await delay(700); // separate gestures, including the browser's native double-click suppression
- await doubleTap(await svgPoint("qa-plane",240,planeHeight/2-30));
+ await doubleTap(await svgPoint("qa-plane",planeCenter-2*planeStep,planeHeight/2-planeStep));
  await wait('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length===0',"Double tap did not delete the coordinate point");
  await delay(350);
  assert.equal(await evaluate('document.querySelectorAll(\'[data-object="qa-plane"] .graph-point\').length'),0,"Synthetic double click recreated the deleted point");
  await call("Emulation.setTouchEmulationEnabled",{enabled:false});
- console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion");
+ // Measure a real glyph in screen pixels before and after dragging the
+ // right and bottom resize handles. Board camera must stay unchanged.
+ const planeLabelMetrics=()=>evaluate(`(()=>{const svg=document.querySelector('[data-object="qa-plane"] .graph-view > svg');
+  const text=[...svg.querySelectorAll('.graph-axis-labels text')].find(el=>el.textContent==='1');
+  const r=text.getBoundingClientRect(),m=svg.getScreenCTM();
+  return {width:r.width,height:r.height,scale:Math.hypot(m.a,m.b),viewWidth:svg.viewBox.baseVal.width,viewHeight:svg.viewBox.baseVal.height};})()`);
+ const originalMetrics=await planeLabelMetrics();
+ const selectPlane=await svgPoint("qa-plane",planeCenter,planeHeight/2);
+ await mouse("mousePressed",selectPlane.x,selectPlane.y,{pressed:true});
+ await mouse("mouseReleased",selectPlane.x,selectPlane.y);
+ await wait('document.querySelector(\'[data-object="qa-plane"]\')?.classList.contains("selected")',"Coordinate plane not selected");
+ for(const [handle,dx,dy] of [["e",48,0],["s",0,36]]){
+  const before=await planeLabelMetrics();
+  const grip=await rect(".screen-handle-"+handle);
+  await mouse("mousePressed",grip.x,grip.y,{pressed:true});
+  await mouse("mouseMoved",grip.x+dx,grip.y+dy,{pressed:true});
+  await mouse("mouseReleased",grip.x+dx,grip.y+dy);
+  await wait(`(()=>{const v=document.querySelector('[data-object="qa-plane"] .graph-view > svg').viewBox.baseVal;return v.${handle==="e"?"width":"height"}>${handle==="e"?before.viewWidth:before.viewHeight}+5})()`,"Coordinate resize did not expand viewBox");
+  const after=await planeLabelMetrics();
+  assert.ok(Math.abs(after.width-originalMetrics.width)<.5&&Math.abs(after.height-originalMetrics.height)<.5,
+   "Numeric axis glyph changed size after "+handle+" resize: "+JSON.stringify({originalMetrics,after}));
+  assert.ok(Math.abs(after.scale-originalMetrics.scale)<.001,"Local SVG scale changed during resize");
+ }
+ console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion; fixed-size labels after horizontal and vertical resize");
  await call("Page.navigate",{url});
  console.log("✓ Empty public demo, ephemeral ink, subject tools and text input focus");
 
