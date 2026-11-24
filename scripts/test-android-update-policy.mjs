@@ -50,3 +50,5 @@ const plugin=readFileSync(new URL("../android/app/src/main/java/ru/lektrus/board
 for(const keyword of ["https://lektrus.ru/api/v1/mobile/android-apk/","setInstanceFollowRedirects(false)","canRequestPackageInstalls()","ACTION_MANAGE_UNKNOWN_APP_SOURCES","FileProvider.getUriForFile","application/vnd.android.package-archive","FLAG_GRANT_READ_URI_PERMISSION","GET_SIGNATURES","getLongVersionCode","SHA-256"])assert.ok(plugin.includes(keyword),keyword);
 assert.doesNotMatch(plugin,/github\.com/);
 assert.match(readFileSync(new URL("../android/app/src/main/AndroidManifest.xml",import.meta.url),"utf8"),/android.permission.REQUEST_INSTALL_PACKAGES/);
+
+assert.match(plugin,/call\.getInt\("sizeBytes"\)/,"APK size is a JSON integer, not a Java Long");

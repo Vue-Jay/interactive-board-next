@@ -157,7 +157,7 @@ public class LektrusSystemUiPlugin extends Plugin {
     @PluginMethod
     public void openAndroidUpdate(PluginCall call) {
         String version = call.getString("version", "");
-        Long size = call.getLong("sizeBytes");
+        Integer size = call.getInt("sizeBytes");
         if (!VERSION.matcher(version).matches() || size == null || size <= 0 || size > MAX_APK) {
             call.reject("Invalid update metadata");
             return;
