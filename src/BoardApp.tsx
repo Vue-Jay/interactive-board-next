@@ -545,11 +545,11 @@ const blobToDataUrl = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
-const fitItemToRect = (base: Item, rect: Bounds, keepWorldInk=false): Item => {
+const fitItemToRect = (base: Item, rect: Bounds, keepWorldInk=false, resizeHandle=""): Item => {
   const sx = rect.width / Math.max(1, base.width);
   const sy = rect.height / Math.max(1, base.height);
   const scaled = { ...base, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-  if(isCoordinatePlane(base))return resizeCoordinatePlane(base,scaled);
+  if(isCoordinatePlane(base))return resizeCoordinatePlane(base,scaled,resizeHandle);
   if(base.kind==="sticky")return resizeStickerInk(base,scaled,keepWorldInk);
   if (base.kind === "connector" && base.connectorStart && base.connectorEnd) {
     return {
@@ -5714,7 +5714,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           y:nextBounds.y+(base.y-baseBounds.y)*sy,
           width:Math.max(base.kind==="image"?0.001:8,base.width*sx),
           height:Math.max(base.kind==="image"?0.001:8,base.height*sy),
-        }));
+        },false,g.handle));
         if(!paintCompositorResize(g,resized)){
           const byId=new Map(resized.map(item=>[item.id,item] as const));
           display(g.before.map(item=>byId.get(item.id)??item));
@@ -5732,7 +5732,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           ?resizedImageRect(base,g.handle,localWx,localWy,g.imageAspect)
           :resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
         const rect = preserveRotatedAnchor(base,localRect,base.rotation??0);
-        const resized=fitItemToRect(base,rect,true);
+        const resized=fitItemToRect(base,rect,true,g.handle);
         if(!paintCompositorResize(g,[resized]))
           display(g.before.map(item=>item.id===base.id?resized:item));
       }

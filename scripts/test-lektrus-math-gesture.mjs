@@ -27,7 +27,8 @@ assert.deepEqual(plane.scalePlaneRange(editorDraft,.8),{xMin:-8,xMax:8,yMin:-4,y
 assert.deepEqual(plane.planeSizeForRange(range,rect,{...range,xMax:30}),{width:800,height:200});
 assert.deepEqual(plane.planeSizeForRange(range,rect,{...range,yMax:15}),{width:400,height:400});
 const zoomItem={...coordinateItem,width:400,height:200,graphXMin:-10,graphXMax:10,graphYMin:-5,graphYMax:5,graphPoints:[{x:2,y:3}]};
-const wide=plane.resizeCoordinatePlane(zoomItem,{...zoomItem,width:800,height:200});
+const wide=plane.resizeCoordinatePlane(zoomItem,{...zoomItem,width:800,height:200},"e");
+assert.equal(wide.graphXMin,-10);assert.equal(wide.graphXMax,30);
 assert.equal(wide.graphXMax-wide.graphXMin,40);
 assert.equal(wide.graphYMax-wide.graphYMin,10);
 assert.deepEqual(wide.graphPoints,zoomItem.graphPoints);
@@ -37,7 +38,24 @@ assert.equal(zoomed.graphXMax-zoomed.graphXMin,16);
 assert.equal(zoomed.graphYMax-zoomed.graphYMin,8);
 assert.deepEqual(zoomed.graphPoints,zoomItem.graphPoints);
 assert.deepEqual(plane.zoomCoordinatePlane(zoomed,1.25),zoomItem);
-assert.equal(plane.resizeCoordinatePlane({...zoomItem,graphPurpose:"geometry"},{...zoomItem,width:800}).graphXMax,10);
+assert.equal(plane.resizeCoordinatePlane({...zoomItem,graphPurpose:"geometry"},{...zoomItem,width:800},"e").graphXMax,10);
+for(const [handle,width,height,expected] of [
+ ["w",800,200,[-30,10,-5,5]],
+ ["n",400,400,[-10,10,-5,15]],
+ ["s",400,400,[-10,10,-15,5]],
+ ["nw",800,400,[-30,10,-5,15]],
+ ["ne",800,400,[-10,30,-5,15]],
+ ["sw",800,400,[-30,10,-15,5]],
+ ["se",800,400,[-10,30,-15,5]],
+ ["e",200,200,[-10,0,-5,5]],
+ ["w",200,200,[0,10,-5,5]],
+ ["n",400,100,[-10,10,-5,0]],
+ ["s",400,100,[-10,10,0,5]]
+]){
+ const resized=plane.resizeCoordinatePlane(zoomItem,{...zoomItem,width,height},handle);
+ assert.deepEqual([resized.graphXMin,resized.graphXMax,resized.graphYMin,resized.graphYMax],expected,handle);
+ assert.deepEqual(resized.graphPoints,zoomItem.graphPoints);
+}
 assert.deepEqual(plane.coordinatePlaneViewport(coordinateItem),{width:600,height:300});
 assert.deepEqual(plane.planePointFromSvg(coordinateItem,{x:345,y:175}),{x:2,y:-1});
 assert.deepEqual(plane.planePointFromSvg({...coordinateItem,graphSnap:false},{x:345,y:175}),{x:1.5,y:-.8333});

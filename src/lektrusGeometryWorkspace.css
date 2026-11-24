@@ -451,3 +451,26 @@
 .lektrus-coordinate-preview-zoom button{display:grid;place-items:center;min-width:40px;min-height:36px;border:1px solid var(--lt-border,#d5dce5);border-radius:9px;background:var(--lt-raised,#fff);color:var(--lt-text,#172033);font-size:21px;line-height:1;cursor:pointer}
 .lektrus-coordinate-preview-zoom button:disabled{opacity:.45;cursor:default}
 .lektrus-coordinate-preview-zoom span{font-size:12px;color:var(--lt-muted,#657184)}
+
+/* Coordinate ranges: two distinct axis groups, paired fields and a single
+   atomic apply action, with compact controls for touch and narrow screens. */
+.lektrus-graph-dialog .lektrus-coordinate-range-panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lektrus-coordinate-range-intro{display:grid;gap:4px}
+.lektrus-coordinate-range-intro strong{font-size:14px;font-weight:700}
+.lektrus-coordinate-range-panel small{font-size:11px;line-height:1.45;color:var(--lt-muted,#657184)}
+.lektrus-coordinate-axis-card{min-width:0;margin:0;padding:10px;border:1px solid var(--lt-border,#dbe2eb);border-radius:10px;display:grid;gap:8px}
+.lektrus-coordinate-axis-card legend{padding:0 5px;font-size:12px;font-weight:700;color:var(--lt-text,#293753)}
+.lektrus-coordinate-axis-icon{display:inline-grid;place-items:center;width:24px;height:22px;border-radius:6px;background:var(--lt-soft,#eaf0fa);color:var(--lt-accent,#4262bf);font-size:17px}
+.lektrus-coordinate-axis-fields{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:end}
+.lektrus-coordinate-axis-fields label{display:grid;gap:4px;min-width:0;font-size:11px;color:var(--lt-muted,#657184)}
+.lektrus-coordinate-axis-fields input{width:100%;min-width:0;box-sizing:border-box;min-height:40px;padding:8px;border:1px solid var(--lt-border,#cfd8e5);border-radius:8px;background:var(--lt-raised,#fff);color:var(--lt-text,#172033);font-size:15px;font-variant-numeric:tabular-nums}
+.lektrus-coordinate-axis-fields>span{align-self:end;display:grid;place-items:center;min-height:40px;color:var(--lt-muted,#657184)}
+.lektrus-coordinate-axis-fields input[aria-invalid=true]{border-color:#b42318}
+.lektrus-coordinate-axis-card small[role=alert]{color:#b42318}
+.lektrus-coordinate-range-presets{display:grid;gap:6px}
+.lektrus-coordinate-range-presets>div,.lektrus-coordinate-range-actions{display:flex;flex-wrap:wrap;gap:6px}
+.lektrus-coordinate-range-panel button{min-height:38px;border-radius:8px;padding:7px 10px;border:1px solid var(--lt-border,#d5dce5);background:var(--lt-raised,#fff);color:var(--lt-text,#293753);font-size:12px;cursor:pointer;touch-action:manipulation}
+.lektrus-coordinate-range-presets button{flex:1 0 auto}
+.lektrus-coordinate-range-actions button{flex:1 0 auto}
+.lektrus-coordinate-range-actions button.primary{background:var(--lt-accent,#4262bf);border-color:transparent;color:#fff;font-weight:650}
+.lektrus-coordinate-range-panel button:disabled{opacity:.45;cursor:default}

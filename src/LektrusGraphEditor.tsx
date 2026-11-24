@@ -13,7 +13,7 @@ import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./le
 import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 import {lockGeometryConstraint,forgetGeometryConstraint,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
 import {compileGraphExpression} from "./lektrusGraphExpression";
-import {planeSizeForRange,scalePlaneRange} from "./coordinatePlane";
+import {planeSizeForRange,scalePlaneRange,type PlaneRange} from "./coordinatePlane";
 
 /** Small vector thumbnails make the school shape library usable at a glance. */
 function LektrusGeometryPresetGlyph({id}:{id:MathPresetId}){
@@ -217,6 +217,47 @@ const finiteNumber=(text:string,fallback:number)=>{const value=Number(text);retu
 const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",hyperbola:"1/x",sin:"sin(x)",cos:"cos(x)"
 };
+
+const rangeKeys=["xMin","xMax","yMin","yMax"] as const;
+const rangeStrings=(range:PlaneRange)=>({xMin:String(range.xMin),xMax:String(range.xMax),yMin:String(range.yMin),yMax:String(range.yMax)});
+function CoordinateRangePanel({range,onApply}:{range:PlaneRange;onApply:(next:PlaneRange)=>void}){
+  const {xMin,xMax,yMin,yMax}=range;
+  const [fields,setFields]=useState(()=>rangeStrings(range));
+  useEffect(()=>setFields(rangeStrings({xMin,xMax,yMin,yMax})),[xMin,xMax,yMin,yMax]);
+  const read=(key:typeof rangeKeys[number])=>fields[key].trim()===""?NaN:Number(fields[key].replace(",","."));
+  const next={xMin:read("xMin"),xMax:read("xMax"),yMin:read("yMin"),yMax:read("yMax")};
+  const validX=Number.isFinite(next.xMin)&&Number.isFinite(next.xMax)&&Math.abs(next.xMin)<=1e6&&Math.abs(next.xMax)<=1e6&&next.xMax>next.xMin;
+  const validY=Number.isFinite(next.yMin)&&Number.isFinite(next.yMax)&&Math.abs(next.yMin)<=1e6&&Math.abs(next.yMax)<=1e6&&next.yMax>next.yMin;
+  const dirty=rangeKeys.some(key=>fields[key]!==String(range[key]));
+  const apply=(value:PlaneRange)=>{setFields(rangeStrings(value));onApply(value)};
+  return <form className="lektrus-graph-section lektrus-coordinate-range-panel" aria-label="Диапазон координатной плоскости" onSubmit={event=>{
+    event.preventDefault();if(validX&&validY&&dirty)apply(next);
+  }}>
+    <div className="lektrus-coordinate-range-intro"><strong>Границы плоскости</strong><small>Задайте видимые координаты. Размер плоскости изменится автоматически.</small></div>
+    {(["X","Y"] as const).map(axis=>{
+      const min=axis==="X"?"xMin":"yMin",max=axis==="X"?"xMax":"yMax";
+      const valid=axis==="X"?validX:validY;
+      return <fieldset key={axis} className="lektrus-coordinate-axis-card">
+        <legend><span className="lektrus-coordinate-axis-icon" aria-hidden="true">{axis==="X"?"↔":"↕"}</span> Ось {axis}</legend>
+        <div className="lektrus-coordinate-axis-fields">
+          <label>От<input type="text" inputMode="decimal" aria-label={axis+" от"} aria-invalid={!valid} value={fields[min]} onChange={event=>setFields(old=>({...old,[min]:event.target.value}))}/></label>
+          <span aria-hidden="true">→</span>
+          <label>До<input type="text" inputMode="decimal" aria-label={axis+" до"} aria-invalid={!valid} value={fields[max]} onChange={event=>setFields(old=>({...old,[max]:event.target.value}))}/></label>
+        </div>
+        {valid?<small>Длина оси: {formatGeometryMetric(next[max]-next[min])}</small>:<small role="alert">Конец должен быть больше начала. Введите числа до ±1 000 000.</small>}
+      </fieldset>;
+    })}
+    <div className="lektrus-coordinate-range-presets">
+      <small>Быстрый диапазон по обеим осям</small>
+      <div>{[5,10,20,50,100].map(half=><button key={half} type="button" onClick={()=>apply({xMin:-half,xMax:half,yMin:-half,yMax:half})}>±{half}</button>)}</div>
+    </div>
+    <div className="lektrus-coordinate-range-actions">
+      <button type="button" onClick={()=>apply({xMin:-10,xMax:10,yMin:-6,yMax:6})}>По умолчанию</button>
+      <button type="submit" className="primary" disabled={!dirty||!validX||!validY}>Применить</button>
+    </div>
+    <small>Кнопки + и − изменяют масштаб, не меняя размер плоскости.</small>
+  </form>;
+}
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,collaborative=false,onChange:emitChange,onSave,onCancel,onClose}:Props) {
   // Keep unfinished expressions local; collaborators must not receive half-typed syntax.
@@ -1184,21 +1225,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
             </div>
             {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
           </div>}
-          {mode!=="geometry"&&draft.purpose==="coordinates"&&tab==="range"&&<div className="lektrus-graph-section lektrus-graph-axis-ranges">
-            <strong>Диапазон осей X и Y</strong>
-            <small>Размер плоскости на доске автоматически подстраивается под границы осей. Координаты точек сохраняются.</small>
-            <div className="lektrus-geometry-range-inputs">
-              {([["Начало X","xMin"],["Конец X","xMax"],["Начало Y","yMin"],["Конец Y","yMax"]] as const).map(([label,key])=>
-                <label key={key}>{label}<input type="number" step="any" aria-label={label} key={key+":"+draft[key]}
-                  defaultValue={draft[key]} onBlur={e=>{
-                    const n=Number(e.target.value);
-                    const other=key==="xMin"?draft.xMax:key==="xMax"?draft.xMin:key==="yMin"?draft.yMax:draft.yMin;
-                    if(e.target.value.trim()&&Number.isFinite(n)&&Math.abs(n)<=1e6&&(key.endsWith("Min")?n<other:n>other))setAxisBoundary(key,n);
-                    else e.target.value=String(draft[key]);
-                  }} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur()}}}/></label>)}
-            </div>
-            <small>Для изменения масштаба без изменения размера используйте кнопки + и − под предпросмотром или на доске.</small>
-          </div>}
+          {mode!=="geometry"&&draft.purpose==="coordinates"&&tab==="range"&&<CoordinateRangePanel range={draft} onApply={range=>{
+            const source=historyRef.current.current;
+            const size=planeSizeForRange(source,{width:source.boardWidth??520,height:source.boardHeight??312},range);
+            onChange({...source,...range,boardWidth:size.width,boardHeight:size.height});
+          }}/>}
           {tab==="points"&&<div className="lektrus-graph-section">
             {mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&<div className="lektrus-point-quick-actions">
               <button type="button" onClick={()=>{setTab("connect");setCanvasTool(linkKind);setLinkPoints([]);setGeometryError("");}}>
