@@ -1243,3 +1243,18 @@ body .workspace section.mobile-tools-sheet .mobile-tools-sheet-head-actions>butt
   width:34px!important;height:34px!important;min-width:34px;
 }
 .lektrus-recent-board .lektrus-home-board-actions{width:150px;max-width:calc(100vw - 40px)}
+
+/* Keep a user's workspace directly inside their own card, across all grid columns. */
+.lectris-workspace-stage .admin-user-card.is-workspace-open{border-color:var(--lt-primary)!important}
+.lectris-workspace-stage .admin-user-actions>.admin-user-boards-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.lectris-workspace-stage .admin-user-boards-toggle[aria-expanded="true"]{background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important}
+.lectris-workspace-stage .admin-user-boards-toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+.lectris-workspace-stage .admin-user-workspace{grid-column:1/-1;min-width:0;display:grid;gap:9px;padding:12px;border-radius:10px;border:1px solid var(--lt-line);background:var(--lt-subtle);color:var(--lt-text)}
+.lectris-workspace-stage .admin-user-workspace-head{display:flex;align-items:center;gap:8px;min-width:0}
+.lectris-workspace-stage .admin-user-workspace-head h3{margin:0;font-size:13px;line-height:1.4}
+.lectris-workspace-stage .admin-user-workspace-head span{font-size:11px;color:var(--lt-muted)}
+.lectris-workspace-stage .admin-user-workspace>.admin-board-list{padding:0!important;border:0!important;background:transparent!important}
+.lectris-workspace-stage .admin-user-workspace .boards-empty{min-height:0;padding:12px;margin:0}
+.lectris-workspace-stage .admin-user-workspace-error{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;overflow-wrap:anywhere;font-size:12px}
+.lectris-workspace-stage .admin-user-workspace .admin-board-card>button{flex-shrink:0}
+@media(max-width:650px){.lectris-workspace-stage .admin-user-workspace{padding:8px}.lectris-workspace-stage .admin-user-workspace .admin-board-card{padding:9px;gap:8px;flex-wrap:wrap}}
