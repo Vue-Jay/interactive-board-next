@@ -514,3 +514,50 @@ async def test_telegram_editor_access_queue_and_no_duplicate(client, monkeypatch
         await conn.execute("DELETE FROM site_news WHERE title='Тест новой новости'")
         await conn.execute("DELETE FROM telegram_posts")
         await conn.execute("UPDATE telegram_editor_settings SET auto_news=false,auto_maintenance=false,auto_publish=false,verified_chat_id=NULL,verified_bot_id=NULL,verified_channel=NULL WHERE singleton")
+
+
+@pytest.mark.asyncio
+async def test_storage_diagnostics_and_exact_personal_quota(client):
+    _, owner = await sign_in(client,"teacher@example.test")
+    _, student = await sign_in(client,"student@example.test")
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1", OUTSIDER)
+    _, admin = await sign_in(client,"outsider@example.test")
+    path="/api/v1/admin/storage"
+    assert (await client.get(path,headers=student)).status_code==403
+    assert (await client.get(path)).status_code==401
+    board=UUID((await client.post("/api/v1/boards",headers=owner,json={"title":"Storage diagnostic"})).json()["id"])
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("""INSERT INTO board_assets(board_id,asset_id,storage_name,content_type,size_bytes,sha256,created_by)
+            VALUES($1,'storage-test',$2,'image/png',1024,$3,$4)""",board,uuid4(),"0"*64,STUDENT)
+        await conn.execute("""INSERT INTO learning_materials(id,owner_id,title,file_name,mime,size_bytes,storage_name)
+            VALUES($1,$2,'File','file.png','image/png',2048,$3)""",uuid4(),TEACHER,uuid4())
+        await conn.execute("""INSERT INTO board_templates(id,owner_id,title,document,assets)
+            VALUES($1,$2,'Template','{}'::jsonb,'[{"size":512}]'::jsonb)""",uuid4(),TEACHER)
+        enforced=await conn.fetchval("SELECT billing_storage($1)",TEACHER)
+    response=await client.get("/api/v1/billing",headers=owner)
+    assert response.status_code==200,response.text
+    personal=response.json()["storage"]
+    assert personal=={"used_bytes":3584,"limit_bytes":262144000,"remaining_bytes":262144000-3584,
+                      "board_bytes":1024,"material_bytes":2048,"template_bytes":512}
+    assert response.json()["usage"]["storage_bytes"]==enforced==personal["used_bytes"]
+    assert (await client.get("/api/v1/billing",headers=student)).json()["storage"]["used_bytes"]==0
+    report=await client.get(path,headers=admin)
+    assert report.status_code==200,report.text
+    report=report.json()
+    assert report["database_bytes"]>0
+    assert report["wal_bytes"] is None or report["wal_bytes"]>=0
+    assert report["offset"]==0 and not report["has_more"]
+    assert "board_history" in [t["name"] for t in report["tables"]]
+    assert all(t["total_bytes"]>=t["data_bytes"] and t["total_bytes"]>=t["index_bytes"] for t in report["tables"])
+    row=next(u for u in report["users"] if u["id"]==str(TEACHER))
+    assert all(row[k]==v for k,v in personal.items())
+    assert next(u for u in report["users"] if u["id"]==str(OUTSIDER))["limit_bytes"] is None
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET subscription_plan='pro',subscription_until=now()+interval '1 day' WHERE id=$1",TEACHER)
+    pro=(await client.get("/api/v1/billing",headers=owner)).json()["storage"]
+    assert pro["limit_bytes"]==5368709120 and pro["used_bytes"]==personal["used_bytes"]
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET subscription_until=now()-interval '1 day' WHERE id=$1",TEACHER)
+    assert (await client.get("/api/v1/billing",headers=owner)).json()["storage"]==personal
+    assert (await client.get(path+"?offset=-1",headers=admin)).status_code==422

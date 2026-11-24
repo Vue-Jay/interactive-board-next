@@ -11,10 +11,11 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from assets import assets_root, file_path
+from billing import STORAGE_BY_OWNER, storage_view
 from materials import material_path
 from board_templates import template_path
 from feedback_mail import feedback_email_address, send_test_emails
@@ -129,6 +130,41 @@ def access_view(row):
 
 def make_admin_router(current_user) -> APIRouter:
     router = APIRouter()
+
+    @router.get("/api/v1/admin/storage")
+    async def storage_report(request: Request, offset: int=Query(0,ge=0,le=1000000),
+                             user=Depends(current_user)):
+        require_admin(user)
+        # Catalog and file-size metadata only; do not scan or decompress
+        # the actual board JSON, run VACUUM, or delete any data.
+        async with request.app.state.pool.acquire() as conn:
+            database_bytes = await conn.fetchval("SELECT pg_database_size(current_database())")
+            tables = await conn.fetch("""
+                SELECT schemaname AS schema, relname AS name,
+                    pg_table_size(relid) AS data_bytes,
+                    pg_indexes_size(relid) AS index_bytes,
+                    pg_total_relation_size(relid) AS total_bytes,
+                    n_live_tup AS live_rows, n_dead_tup AS dead_rows,
+                    last_vacuum, last_autovacuum
+                FROM pg_stat_user_tables
+                ORDER BY total_bytes DESC, schemaname, relname
+            """)
+            # Managed PostgreSQL may restrict access to the WAL directory.
+            # Missing access must not appear as a fabricated zero.
+            try:
+                wal_bytes = await conn.fetchval("SELECT coalesce(sum(size),0)::bigint FROM pg_ls_waldir()")
+            except (asyncpg.InsufficientPrivilegeError, asyncpg.UndefinedFunctionError, asyncpg.FeatureNotSupportedError):
+                wal_bytes = None
+            accounts = await conn.fetch(STORAGE_BY_OWNER+"""
+                SELECT * FROM usage ORDER BY used_bytes DESC, id LIMIT 51 OFFSET $2
+            """, None, offset)
+        return {"database_bytes":database_bytes, "wal_bytes":wal_bytes,
+                "tables":[dict(t) for t in tables],
+                "measured_at":datetime.now(timezone.utc),
+                "users":[{"id":a["id"],"name":a["display_name"],"email":a["email"],
+                           "plan":"admin" if a["is_admin"] else "pro" if a["pro"] else "free",
+                           **storage_view(a)} for a in accounts[:50]],
+                "offset":offset, "has_more":len(accounts)>50}
 
     @router.get("/api/v1/interface-layout")
     async def read_interface_layout(request: Request):
