@@ -13,7 +13,7 @@ import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./le
 import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 import {lockGeometryConstraint,forgetGeometryConstraint,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
 import {compileGraphExpression} from "./lektrusGraphExpression";
-import {planeSizeForRange,scalePlaneRange,zoomPlaneAxisLabelScale,type PlaneRange} from "./coordinatePlane";
+import {planeSizeForRange,scalePlaneRange,zoomPlaneAxisLabelScale,validPlaneLabelStep,type PlaneRange} from "./coordinatePlane";
 
 /** Small vector thumbnails make the school shape library usable at a glance. */
 function LektrusGeometryPresetGlyph({id}:{id:MathPresetId}){
@@ -78,6 +78,7 @@ export type GraphDraft = {
   xMin: number; xMax: number; yMin: number; yMax: number;
   boardWidth?:number; boardHeight?:number;
   axisLabelScale?:number;
+  axisLabelStep?:number;
   grid: boolean; points: NonNullable<Item["graphPoints"]>;
   freePathStart?:number;
   constraints:NonNullable<Item["graphConstraints"]>;magneticSnap:boolean;
@@ -221,18 +222,24 @@ const formulas:Record<GraphDraft["type"],string>={
 
 const rangeKeys=["xMin","xMax","yMin","yMax"] as const;
 const rangeStrings=(range:PlaneRange)=>({xMin:String(range.xMin),xMax:String(range.xMax),yMin:String(range.yMin),yMax:String(range.yMax)});
-function CoordinateRangePanel({range,onApply}:{range:PlaneRange;onApply:(next:PlaneRange)=>void}){
+function CoordinateRangePanel({range,labelStep,onApply}:{range:PlaneRange;labelStep?:number;onApply:(next:PlaneRange,step?:number)=>void}){
   const {xMin,xMax,yMin,yMax}=range;
   const [fields,setFields]=useState(()=>rangeStrings(range));
+  const [automatic,setAutomatic]=useState(labelStep===undefined);
+  const [stepText,setStepText]=useState(String(labelStep??1));
+  useEffect(()=>{setAutomatic(labelStep===undefined);setStepText(String(labelStep??1))},[labelStep]);
   useEffect(()=>setFields(rangeStrings({xMin,xMax,yMin,yMax})),[xMin,xMax,yMin,yMax]);
   const read=(key:typeof rangeKeys[number])=>fields[key].trim()===""?NaN:Number(fields[key].replace(",","."));
   const next={xMin:read("xMin"),xMax:read("xMax"),yMin:read("yMin"),yMax:read("yMax")};
   const validX=Number.isFinite(next.xMin)&&Number.isFinite(next.xMax)&&Math.abs(next.xMin)<=1e6&&Math.abs(next.xMax)<=1e6&&next.xMax>next.xMin;
   const validY=Number.isFinite(next.yMin)&&Number.isFinite(next.yMax)&&Math.abs(next.yMin)<=1e6&&Math.abs(next.yMax)<=1e6&&next.yMax>next.yMin;
-  const dirty=rangeKeys.some(key=>fields[key]!==String(range[key]));
-  const apply=(value:PlaneRange)=>{setFields(rangeStrings(value));onApply(value)};
+  const manualValue=stepText.trim()===""?NaN:Number(stepText.replace(",","."));
+  const validStep=automatic||validPlaneLabelStep(manualValue);
+  const nextStep=automatic?undefined:manualValue;
+  const dirty=rangeKeys.some(key=>fields[key]!==String(range[key]))||nextStep!==labelStep;
+  const apply=(value:PlaneRange,step?:number)=>{setFields(rangeStrings(value));setAutomatic(step===undefined);setStepText(String(step??1));onApply(value,step)};
   return <form className="lektrus-graph-section lektrus-coordinate-range-panel" aria-label="Диапазон координатной плоскости" onSubmit={event=>{
-    event.preventDefault();if(validX&&validY&&dirty)apply(next);
+    event.preventDefault();if(validX&&validY&&validStep&&dirty)apply(next,nextStep);
   }}>
     <div className="lektrus-coordinate-range-intro"><strong>Границы плоскости</strong><small>Задайте видимые координаты. Размер плоскости изменится автоматически.</small></div>
     {(["X","Y"] as const).map(axis=>{
@@ -248,13 +255,20 @@ function CoordinateRangePanel({range,onApply}:{range:PlaneRange;onApply:(next:Pl
         {valid?<small>Длина оси: {formatGeometryMetric(next[max]-next[min])}</small>:<small role="alert">Конец должен быть больше начала. Введите числа до ±1 000 000.</small>}
       </fieldset>;
     })}
-    <div className="lektrus-coordinate-range-presets">
-      <small>Быстрый диапазон по обеим осям</small>
-      <div>{[5,10,20,50,100].map(half=><button key={half} type="button" onClick={()=>apply({xMin:-half,xMax:half,yMin:-half,yMax:half})}>±{half}</button>)}</div>
-    </div>
+    <fieldset className="lektrus-coordinate-axis-card lektrus-coordinate-step-card">
+      <legend>Шаг подписей осей</legend>
+      <div className="lektrus-coordinate-step-mode" role="group" aria-label="Режим шага подписей">
+        <button type="button" aria-pressed={automatic} onClick={()=>setAutomatic(true)}>Автоматический</button>
+        <button type="button" aria-pressed={!automatic} onClick={()=>setAutomatic(false)}>Ручной</button>
+      </div>
+      {!automatic&&<label className="lektrus-coordinate-step-input">Шаг по X и Y
+        <input type="text" inputMode="decimal" aria-label="Шаг подписей" aria-invalid={!validStep} value={stepText} onChange={event=>setStepText(event.target.value)}/>
+      </label>}
+      {!validStep?<small role="alert">Введите шаг от 0,001 до 1 000 000.</small>:<small>{automatic?"Шаг подбирается по масштабу для обеих осей.":"Заданный шаг сохраняется. При отдалении подписи прореживаются кратно ему, чтобы цифры не перекрывались."}</small>}
+    </fieldset>
     <div className="lektrus-coordinate-range-actions">
       <button type="button" onClick={()=>apply({xMin:-10,xMax:10,yMin:-6,yMax:6})}>По умолчанию</button>
-      <button type="submit" className="primary" disabled={!dirty||!validX||!validY}>Применить</button>
+      <button type="submit" className="primary" disabled={!dirty||!validX||!validY||!validStep}>Применить</button>
     </div>
     <small>Кнопки + и − изменяют масштаб, не меняя размер плоскости.</small>
   </form>;
@@ -561,7 +575,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       intervalStartClosed:sample.graphIntervalStartClosed!==false,
       intervalEndClosed:sample.graphIntervalEndClosed!==false,
       showCurve:sample.graphShowCurve===true,projections:sample.graphProjections===true,
-      snap:sample.graphSnap===true,axisLabels:sample.graphAxisLabels!==false,axisLabelScale:sample.graphAxisLabelScale,showLabels:sample.graphShowLabels!==false
+      snap:sample.graphSnap===true,axisLabels:sample.graphAxisLabels!==false,axisLabelScale:sample.graphAxisLabelScale,axisLabelStep:sample.graphAxisLabelStep,showLabels:sample.graphShowLabels!==false
     });
   };
   const activeAngle=()=>{
@@ -1227,10 +1241,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
             </div>
             {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
           </div>}
-          {mode!=="geometry"&&draft.purpose==="coordinates"&&tab==="range"&&<CoordinateRangePanel range={draft} onApply={range=>{
+          {mode!=="geometry"&&draft.purpose==="coordinates"&&tab==="range"&&<CoordinateRangePanel range={draft} labelStep={draft.axisLabelStep} onApply={(range,axisLabelStep)=>{
             const source=historyRef.current.current;
             const size=planeSizeForRange(source,{width:source.boardWidth??520,height:source.boardHeight??312},range);
-            onChange({...source,...range,boardWidth:size.width,boardHeight:size.height});
+            onChange({...source,...range,axisLabelStep,boardWidth:size.width,boardHeight:size.height});
           }}/>}
           {tab==="points"&&<div className="lektrus-graph-section">
             {mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&<div className="lektrus-point-quick-actions">

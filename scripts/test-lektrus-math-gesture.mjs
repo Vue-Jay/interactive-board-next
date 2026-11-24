@@ -82,6 +82,19 @@ assert.ok(intervals.every((step,i)=>i===0||step>=intervals[i-1]),"Zoom out must 
 assert.ok(intervals.at(-1)>intervals[0]);
 for(let i=8;i>0;i--){labelProbe=plane.zoomCoordinatePlane(labelProbe,.8);assert.equal(labelInterval(labelProbe),intervals[i-1],"Reverse zoom restores the interval")}
 assert.deepEqual(plane.planeAxisLayout(square(1),0,1,14).xLabels,[]);
+const manualRange={xMin:-30,xMax:30,yMin:-20,yMax:20};
+const manual=plane.planeAxisLayout(manualRange,50,1,14,3);
+assert.equal(manual.labelStep,3);
+assert.ok(manual.xLabels.includes(3)&&manual.yLabels.includes(3));
+assert.equal(plane.planeAxisLayout(manualRange,5,1,14,3).labelStep,15);
+assert.equal(plane.planeAxisLayout(square(1),300,1,14,.25).labelStep,.25);
+assert.equal(plane.planeAxisLayout(manualRange,50,1,14,-1).labelStep,1);
+assert.equal(plane.validPlaneLabelStep(0),false);
+assert.equal(plane.validPlaneLabelStep(.001),true);
+assert.equal(plane.validPlaneLabelStep(1e7),false);
+const manualItem={...zoomItem,graphAxisLabelStep:3};
+assert.equal(plane.zoomCoordinatePlane(manualItem,.8).graphAxisLabelStep,3);
+assert.equal(plane.resizeCoordinatePlane(manualItem,{...manualItem,width:800},"e").graphAxisLabelStep,3);
 let far=zoomItem;
 for(let i=0;i<8;i++)far=plane.zoomCoordinatePlane(far,1.25);
 for(let i=0;i<8;i++)far=plane.zoomCoordinatePlane(far,.8);

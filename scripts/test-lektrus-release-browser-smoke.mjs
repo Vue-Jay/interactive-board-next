@@ -1165,7 +1165,19 @@ try{
  for(let i=0;i<8;i++){await clickPlaneZoom("Увеличить масштаб плоскости");await delay(100);}
  await wait(`Math.abs(parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] [data-plane-axis]')).fontSize)-${originalMetrics.font})<.01`,"Reversing repeated zoom did not restore numeric label size");
  await checkPlaneLabels();
- console.log("✓ Coordinate plane and number line snap and point gestures; adaptive 1–2–5 labels, bounded zoom font and no overlapping numeric glyphs");
+ // The range panel must persist the shared manual step without changing bounds.
+ await click('.lektrus-graph-edit-secondary');
+ await wait('!!document.querySelector(".lektrus-graph-dialog")',"Graph settings did not open");
+ await evaluate('[...document.querySelectorAll(".lektrus-graph-tabs button")].find(b=>b.textContent==="Диапазон").click()');
+ await wait('!!document.querySelector(".lektrus-coordinate-step-mode")',"Step controls missing in range panel");
+ assert.equal(await evaluate('document.querySelector(".lektrus-coordinate-range-panel").textContent.includes("Быстрый диапазон")'),false);
+ await evaluate('[...document.querySelectorAll(".lektrus-coordinate-step-mode button")].find(b=>b.textContent==="Ручной").click()');
+ await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Шаг подписей"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(input,"3");input.dispatchEvent(new Event("input",{bubbles:true}));return true})()`);
+ await click('.lektrus-coordinate-range-actions button.primary');
+ await wait('Number(document.querySelector(".lektrus-graph-dialog [data-plane-label-step]")?.dataset.planeLabelStep)%3===0',"Manual interval not reflected in preview");
+ await click('.lektrus-graph-dialog button[aria-label="Закрыть редактор без сохранения"]');
+ await wait('!document.querySelector(".lektrus-graph-dialog")',"Graph settings did not close");
+ console.log("✓ Coordinate plane shared adaptive ticks, aligned grid, manual range step and collision checks");
  await call("Page.navigate",{url});
  console.log("✓ Empty public demo, ephemeral ink, subject tools and text input focus");
 

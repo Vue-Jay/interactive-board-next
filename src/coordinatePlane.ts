@@ -115,13 +115,15 @@ export const isPlaneMajorTick=(value:number,step:number)=>Math.abs(value/step-Ma
 /** Square grids use one 1–2–5 interval on both axes. Fit neighboring
  * printed numbers rather than a worst-case string from the raw range.
  * The configured snap step is never changed by visual subdivisions. */
-export function planeAxisLayout(range:PlaneRange,pixelsPerUnit:number,gridStep:number,font:number){
+export const validPlaneLabelStep=(value:unknown):value is number=>typeof value==="number"&&Number.isFinite(value)&&value>=.001&&value<=1e6;
+export function planeAxisLayout(range:PlaneRange,pixelsPerUnit:number,gridStep:number,font:number,manualStep?:number){
   const empty={labelStep:1,gridStep:1,xLabels:[] as number[],yLabels:[] as number[],xGrid:[] as number[],yGrid:[] as number[]};
   if(!validRange(range)||![pixelsPerUnit,gridStep,font].every(Number.isFinite)||pixelsPerUnit<=0||gridStep<=0||font<=0)return empty;
   const {xMin,xMax,yMin,yMax}=range;
   const span=Math.max(xMax-xMin,yMax-yMin),minimumSpacing=font*1.5+5;
-  const raw=Math.max(minimumSpacing/pixelsPerUnit,span/90),base=gridStep;
-  const minPower=raw<base&&span<base*5?Math.min(0,Math.floor(Math.log10(raw/base))):0;
+  const manual=validPlaneLabelStep(manualStep);
+  const raw=Math.max(minimumSpacing/pixelsPerUnit,span/90),base=manual?manualStep:gridStep;
+  const minPower=!manual&&raw<base&&span<base*5?Math.min(0,Math.floor(Math.log10(raw/base))):0;
   const startPower=Math.max(minPower,Math.floor(Math.log10(raw/base)));
   for(let power=startPower;power<=startPower+24;power++){
     for(const m of [1,2,5]){
@@ -138,10 +140,10 @@ export function planeAxisLayout(range:PlaneRange,pixelsPerUnit:number,gridStep:n
       if(labelStep*pixelsPerUnit<spacing-1e-8)continue;
       // Every labelled tick must sit on a grid line, including far zoom.
       // Thin the minor grid using exact subdivisions of the major interval.
-      const fineMin=Math.max(Math.min(base,labelStep),6/pixelsPerUnit,span/90);
+      const fineMin=Math.max(Math.min(gridStep,labelStep),6/pixelsPerUnit,span/90);
       const fineCandidates=[labelStep/10,labelStep/5,labelStep/4,labelStep/2,labelStep]
         .map(round).filter(v=>v>=fineMin*(1-1e-9)&&
-         (v<base||Math.abs(v/base-Math.round(v/base))<1e-7));
+         (v<gridStep||Math.abs(v/gridStep-Math.round(v/gridStep))<1e-7));
       const visualStep=fineCandidates[0]??labelStep;
       return {labelStep,gridStep:visualStep,xLabels,yLabels,
         xGrid:planeTicks(xMin,xMax,visualStep),yGrid:planeTicks(yMin,yMax,visualStep)};
