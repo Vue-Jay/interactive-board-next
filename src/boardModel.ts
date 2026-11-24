@@ -626,6 +626,7 @@ export type Item = {
   graphSnap?: boolean;
   graphAxisLabels?: boolean;
   graphAxisLabelScale?: number;
+  graphAxisLabelStep?: number;
   graphGridStep?: number;
   graphShowCurve?: boolean;
   graphProjections?: boolean;
@@ -698,7 +699,7 @@ const persistedGraphKeys = [
   "graphGrid","graphPoints","graphShowLabels","graphSegments","graphAngles",
   "graphCircles","graphPolygons","graphTriangleLines","graphTriangleVertex",
   "graphShowArea","graphGivenSides","graphGivenAngles","graphTriangleInputMode",
-  "graphMidpoints","graphSnap","graphConstraints","graphMagneticSnap","graphFreePathStart","graphAxisLabels","graphAxisLabelScale","graphGridStep",
+  "graphMidpoints","graphSnap","graphConstraints","graphMagneticSnap","graphFreePathStart","graphAxisLabels","graphAxisLabelScale","graphAxisLabelStep","graphGridStep",
   "graphShowCurve","graphProjections"
 ] as const satisfies readonly (keyof Item)[];
 function persistedGraphData(item:Item):Partial<Item>{
@@ -1400,6 +1401,7 @@ export function parseDocument(raw: string): DocumentData {
       if (i.graphSnap != null && typeof i.graphSnap !== "boolean") throw new Error("Повреждена привязка графика");
       if (i.graphAxisLabels != null && typeof i.graphAxisLabels !== "boolean") throw new Error("Повреждены подписи осей графика");
       if (i.graphAxisLabelScale != null && (!finite(i.graphAxisLabelScale) || i.graphAxisLabelScale < 1e-9 || i.graphAxisLabelScale > 1e9)) throw new Error("Повреждён масштаб подписей осей");
+      if (i.graphAxisLabelStep != null && (!finite(i.graphAxisLabelStep) || i.graphAxisLabelStep < .001 || i.graphAxisLabelStep > 1e6)) throw new Error("Повреждён шаг подписей осей");
       if (i.graphGridStep != null && (!finite(i.graphGridStep) || i.graphGridStep <= 0 || i.graphGridStep > 1000)) throw new Error("Повреждён шаг сетки графика");
       if (i.graphShowCurve != null && typeof i.graphShowCurve !== "boolean") throw new Error("Повреждена видимость функции графика");
       if (i.graphProjections != null && typeof i.graphProjections !== "boolean") throw new Error("Повреждены проекции точек графика");

@@ -53,35 +53,48 @@ assert.equal(plane.planeAxisLabelFont(100),16);
 assert.equal(plane.planeAxisLabelFont(.01),12);
 assert.ok(plane.planeAxisLabelFont(1.25)>14&&plane.planeAxisLabelFont(1.25)<16);
 assert.ok(plane.planeAxisLabelFont(.8)<14&&plane.planeAxisLabelFont(.8)>12);
-const tickStep=(pixels,axis="x",extent=40)=>{
- const ticks=plane.planeAxisLabelTicks(-extent,extent,pixels,1,14,axis).filter(x=>x>0);
- return ticks.length>=2?ticks[1]-ticks[0]:ticks[0];
-};
-assert.equal(tickStep(100),1);
-assert.equal(tickStep(30),2);
-assert.equal(tickStep(10),5);
-assert.equal(tickStep(5),10);
-assert.equal(tickStep(2.5),20);
-assert.equal(tickStep(1,"x",100),50);
-assert.equal(tickStep(15,"y"),2);
-assert.deepEqual(plane.planeAxisLabelTicks(-5,5,40,1,14,"x"),[-5,-4,-3,-2,-1,1,2,3,4,5]);
-assert.deepEqual(plane.planeAxisLabelTicks(-1,1,200,.1,14,"x"),[-1,-.5,.5,1]);
-// Floating-point bounds from zoom must not be mistaken for printed labels.
-assert.deepEqual(plane.planeAxisLabelTicks(-10.123456789,10.987654321,26,1,14,"x"),
- plane.planeAxisLabelTicks(-10,10,26,1,14,"x"));
-assert.deepEqual(plane.planeAxisLabelTicks(-33,38,21,1,14,"x"),
- Array.from({length:36},(_,i)=>-32+i*2).filter(v=>v!==0));
+const square=extent=>({xMin:-extent,xMax:extent,yMin:-extent,yMax:extent});
+const layout=(pixels,extent=40,font=14,grid=1)=>plane.planeAxisLayout(square(extent),pixels,grid,font);
+for(const [p,e,want] of [[100,40,1],[30,40,2],[10,40,5],[5,40,10],[2.5,40,20],[1,100,50],[40,5,1],[2000,.1,.05]])assert.equal(layout(p,e).labelStep,want);
+assert.deepEqual(layout(40,5).xLabels,[-5,-4,-3,-2,-1,1,2,3,4,5]);
+const reported={xMin:-10,xMax:20,yMin:-6,yMax:6};
+const screenshot=plane.planeAxisLayout(reported,21,1,14);
+assert.equal(screenshot.labelStep,2);
+assert.deepEqual(screenshot.xLabels,[-10,-8,-6,-4,-2,2,4,6,8,10,12,14,16,18,20]);
+assert.deepEqual(screenshot.yLabels,[-6,-4,-2,2,4,6]);
+assert.equal(plane.planeAxisLayout(reported,60,1,14).labelStep,1);
+assert.equal(plane.planeAxisLayout(reported,8,1,14).labelStep,5);
+const floating=plane.planeAxisLayout({xMin:-10.123456789,xMax:10.987654321,yMin:-5.1,yMax:5.1},26,1,14);
+assert.equal(floating.labelStep,plane.planeAxisLayout({xMin:-10,xMax:10,yMin:-5,yMax:5},26,1,14).labelStep);
 let labelProbe={...zoomItem,width:1494,height:919,graphXMin:-33,graphXMax:38,graphYMin:-22,graphYMax:21};
 const labelInterval=item=>{
  const r=plane.planeRange(item),unit=Math.min(item.width/(r.xMax-r.xMin),item.height/(r.yMax-r.yMin));
- const ticks=plane.planeAxisLabelTicks(r.xMin,r.xMax,unit,1,plane.planeAxisLabelFont(item.graphAxisLabelScale),"x").filter(v=>v>0);
- return ticks[1]-ticks[0];
+ const l=plane.planeAxisLayout(r,unit,1,plane.planeAxisLabelFont(item.graphAxisLabelScale));
+ for(const [labels,grid] of [[l.xLabels,l.xGrid],[l.yLabels,l.yGrid]])for(const v of labels){
+  assert.ok(plane.isPlaneMajorTick(v,l.labelStep));
+  assert.ok(grid.some(g=>Math.abs(g-v)<1e-7),"Every label sits on a grid line");
+ }
+ return l.labelStep;
 };
 const intervals=[labelInterval(labelProbe)];
 for(let i=0;i<8;i++){labelProbe=plane.zoomCoordinatePlane(labelProbe,1.25);intervals.push(labelInterval(labelProbe));}
-assert.ok(intervals.every((step,i)=>i===0||step>=intervals[i-1]),"Zoom out must never densify the numeric labels");
-assert.ok(intervals.at(-1)>intervals[0],"Wide plane must actually switch to coarser tick intervals");
-assert.deepEqual(plane.planeAxisLabelTicks(-1,1,0,1,14,"x"),[]);
+assert.ok(intervals.every((step,i)=>i===0||step>=intervals[i-1]),"Zoom out must never densify labels");
+assert.ok(intervals.at(-1)>intervals[0]);
+for(let i=8;i>0;i--){labelProbe=plane.zoomCoordinatePlane(labelProbe,.8);assert.equal(labelInterval(labelProbe),intervals[i-1],"Reverse zoom restores the interval")}
+assert.deepEqual(plane.planeAxisLayout(square(1),0,1,14).xLabels,[]);
+const manualRange={xMin:-30,xMax:30,yMin:-20,yMax:20};
+const manual=plane.planeAxisLayout(manualRange,50,1,14,3);
+assert.equal(manual.labelStep,3);
+assert.ok(manual.xLabels.includes(3)&&manual.yLabels.includes(3));
+assert.equal(plane.planeAxisLayout(manualRange,5,1,14,3).labelStep,15);
+assert.equal(plane.planeAxisLayout(square(1),300,1,14,.25).labelStep,.25);
+assert.equal(plane.planeAxisLayout(manualRange,50,1,14,-1).labelStep,1);
+assert.equal(plane.validPlaneLabelStep(0),false);
+assert.equal(plane.validPlaneLabelStep(.001),true);
+assert.equal(plane.validPlaneLabelStep(1e7),false);
+const manualItem={...zoomItem,graphAxisLabelStep:3};
+assert.equal(plane.zoomCoordinatePlane(manualItem,.8).graphAxisLabelStep,3);
+assert.equal(plane.resizeCoordinatePlane(manualItem,{...manualItem,width:800},"e").graphAxisLabelStep,3);
 let far=zoomItem;
 for(let i=0;i<8;i++)far=plane.zoomCoordinatePlane(far,1.25);
 for(let i=0;i<8;i++)far=plane.zoomCoordinatePlane(far,.8);
