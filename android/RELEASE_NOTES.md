@@ -1,5 +1,15 @@
 # Android release notes
 
+## 2026-11-24 — full canvas and coordinates
+
+Release candidate based on validated production commit `157e26f86ee11813e78924a1b7e373ed0823c416` (PR #425).
+
+- Keep the board canvas full-height behind the floating pen, marker and eraser controls.
+- Create a square coordinate plane spanning −10 to +10 on both axes, with a unit grid and labels.
+- Keep existing saved boards unchanged.
+
+The existing signed APK and production network verification gates remain mandatory.
+
 ## 2026-11-24
 
 Release candidate based on production commit `248788b71a0efcab976e6c5b1957273d1e1ab7e4`.
