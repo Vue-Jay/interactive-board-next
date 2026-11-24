@@ -23,8 +23,9 @@ const tabletToolsOnly=process.argv.includes("--tablet-tools-only");
 const landscapeOnly=process.argv.includes("--landscape-only")||tabletToolsOnly;
 const interfaceOnly=process.argv.includes("--interface-only");
 const educationOnly=process.argv.includes("--education-only");
+const adminOnly=process.argv.includes("--admin-only");
 if(homeOnly||keyboardOnly||landscapeOnly||pwaOnly)process.env.VITE_LEKTRUS_LOCAL_TEST="true";
-if(interfaceOnly||educationOnly){
+if(interfaceOnly||educationOnly||adminOnly){
  process.env.VITE_LEKTRUS_BACKEND="selfhost";
  delete process.env.VITE_LEKTRUS_API_ORIGIN;
 }
@@ -39,7 +40,26 @@ const educationRows=[
  {id:"incoming",teacher_id:linkedTeacher,student_id:studioUser.id,teacher_name:"Учитель Тест",student_name:"Admin",title:"Полученное задание",description:"",board_id:linkedBoard,max_score:10,created_at:"2026-11-21T10:00:00Z",submissions:null},
 ];
 const server=await createServer({configFile:"./vite.config.ts",
- plugins:educationOnly?[{name:"education-api-fixture",configureServer(server){
+ plugins:adminOnly?[{name:"admin-api-fixture",configureServer(server){
+  const rows=[{user_id:"admin-a",name:"Алексей",email:"a@example.test"},{user_id:"admin-b",name:"Борис",email:"b@example.test"},{user_id:"admin-c",name:"Виктор",email:"c@example.test"}].map(row=>({...row,role:"student",teacher_status:"none",is_admin:false,subscription_plan:"free",subscription_until:null,created_at:"2026-11-20T10:00:00Z"}));
+  const board=(id,title,owner)=>({id,title,owner_id:owner.user_id,owner_name:owner.name,owner_email:owner.email,member_count:1,created_at:"2026-11-20T10:00:00Z",updated_at:"2026-11-20T10:00:00Z",deleted_at:null});
+  let failures=0;
+  server.middlewares.use(async(req,res,next)=>{
+   const path=req.url?.split("?")[0];if(!path?.startsWith("/api/v1/"))return next();
+   res.setHeader("Content-Type","application/json");const send=(value,status=200)=>{res.statusCode=status;res.end(JSON.stringify(value))};
+   if(path==="/api/v1/health")return send({ok:true,service:"lektrus-selfhost"});
+   if(path==="/api/v1/maintenance")return send({state:"off",access_allowed:true});
+   if(path==="/api/v1/auth/me")return send(studioUser);
+   if(path==="/api/v1/admin/users")return send(rows);
+   if(path==="/api/v1/admin/users/admin-a/boards"){await delay(750);return send([board("board-a","Доска Алексея",rows[0])])}
+   if(path==="/api/v1/admin/users/admin-b/boards")return send([board("board-b","Доска Бориса",rows[1])]);
+   if(path==="/api/v1/admin/users/admin-c/boards")return ++failures===1?send({detail:"Тестовый сбой"},503):send([]);
+   if(path==="/api/v1/account/profile")return send({display_name:"Admin",theme:"light",compact_ui:true,default_board_zoom:100});
+   if(path==="/api/v1/organization")return send({categories:[],boards:[]});
+   if(path==="/api/v1/interface-layout")return send({layout:null});
+   return send([]);
+  });
+ }}]:educationOnly?[{name:"education-api-fixture",configureServer(server){
   server.middlewares.use((req,res,next)=>{
    const path=req.url?.split('?')[0];if(!path?.startsWith("/api/v1/"))return next();
    res.setHeader("Content-Type","application/json");
@@ -76,7 +96,7 @@ const log=[];
 try{
  await server.listen();
  const port=server.httpServer.address().port;
- const route=homeOnly||interfaceOnly||educationOnly||keyboardOnly||landscapeOnly||pwaOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
+ const route=homeOnly||interfaceOnly||educationOnly||adminOnly||keyboardOnly||landscapeOnly||pwaOnly?"/app":"/demo/board?qa-release-fixture=1&scene=math&capture=1";
  const url=`http://127.0.0.1:${port}${route}`;
  const portServer=net.createServer();
  await new Promise((resolve,reject)=>portServer.once("error",reject).listen(0,"127.0.0.1",resolve));
@@ -166,7 +186,39 @@ try{
   if(wide)assert.ok(dock.gap<=90,'Ink dock too high: '+JSON.stringify(dock));
  };
 
- if(pwaOnly){
+ if(adminOnly){
+  const session={access_token:"test-admin-token",refresh_token:"test-refresh-token",expires_at:Math.floor(Date.now()/1000)+3600,user:studioUser};
+  await call("Page.addScriptToEvaluateOnNewDocument",{source:`localStorage.setItem('lektrus.selfhost.session.v1',${JSON.stringify(JSON.stringify(session))})`});
+  await call("Page.navigate",{url});
+  await wait('!!document.querySelector(\'.lectris-workspace-sidebar button[aria-label="Администрирование"]\')',"Admin navigation did not load",30000);
+  await click('.lectris-workspace-sidebar button[aria-label="Администрирование"]');
+  await wait('document.querySelectorAll(".admin-user-card").length===3',"Admin users did not render",30000);
+  const toggle=id=>click('[data-admin-user="'+id+'"] .admin-user-boards-toggle');
+  const panel=id=>'[data-admin-user="'+id+'"] .admin-user-workspace';
+  const hasBoard=(id,title)=>wait(`document.querySelector(${JSON.stringify(panel(id))})?.textContent.includes(${JSON.stringify(title)})`,"Board did not load: "+title);
+  await toggle("admin-a");
+  await wait('!!document.querySelector(".admin-user-workspace[aria-busy=true]")',"Loading must appear within selected user");
+  await toggle("admin-b");
+  await hasBoard("admin-b","Доска Бориса");
+  await delay(900);
+  assert.equal(await evaluate('document.querySelectorAll(".admin-user-workspace").length'),1);
+  assert.equal(await evaluate('document.querySelector(".admin-user-workspace").textContent.includes("Доска Алексея")'),false,"Late response must not overwrite the selected user");
+  await toggle("admin-b");
+  await wait('!document.querySelector(".admin-user-workspace")',"Second click must collapse boards");
+  await toggle("admin-a");await hasBoard("admin-a","Доска Алексея");
+  for(const [width,height] of [[1440,900],[768,1024],[390,844]]){
+   await call("Emulation.setDeviceMetricsOverride",{width,height,deviceScaleFactor:1,mobile:false});
+   await delay(200);
+   const geometry=await evaluate(`(()=>{const list=document.querySelector(".admin-users-list"),card=list.querySelector('[data-admin-user="admin-a"]'),section=card.querySelector(".admin-user-workspace"),next=card.nextElementSibling,r=section.getBoundingClientRect(),c=card.getBoundingClientRect();return {nested:section.parentElement===card,fullWidth:r.width>=c.width-30,below:r.top>=card.querySelector(".admin-user-main").getBoundingClientRect().bottom-1,beforeNext:!next||r.bottom<=next.getBoundingClientRect().top,inside:r.left>=c.left&&r.right<=c.right,overflow:section.scrollWidth>section.clientWidth+1}})()`);
+   assert.deepEqual(geometry,{nested:true,fullWidth:true,below:true,beforeNext:true,inside:true,overflow:false},"Inline workspace layout "+width);
+  }
+  await toggle("admin-c");await wait('!!document.querySelector(".admin-user-workspace-error")',"Request error should appear in selected card");
+  await click(".admin-user-workspace-error button");
+  await hasBoard("admin-c","Доступных досок нет.");
+  await toggle("admin-c");
+  assert.equal(await evaluate('document.querySelectorAll(".admin-user-workspace").length'),0);
+  console.log("✓ Admin workspace inline, desktop/tablet/mobile, stale response isolation, collapse, error and retry");
+ }else if(pwaOnly){
   await call("Emulation.setUserAgentOverride",{userAgent:"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",platform:"Linux armv8l"});
   await call("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:2,mobile:true});
   await call("Emulation.setTouchEmulationEnabled",{enabled:true,maxTouchPoints:5});

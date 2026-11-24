@@ -1,4 +1,4 @@
-import { useEffect,useMemo,useState } from "react";
+import { useEffect,useMemo,useRef,useState } from "react";
 import UserAvatar from "./UserAvatar";
 import type { AuthUser } from "./authStore";
 import { adminDeleteUser,canAdminDeleteUsers,adminSetSubscription,listAdminUsers,listTeacherRequests,reviewTeacherRequest,type AdminUser,type SubscriptionPlan,type TeacherRequest } from "./accountRoleStore";
@@ -24,14 +24,22 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
  const [previewUserId,setPreviewUserId]=useState<string|null>(null);
  const [workspaceBoards,setWorkspaceBoards]=useState<AdminBoardSummary[]>([]);
  const [workspaceLoading,setWorkspaceLoading]=useState(false);
+ const [workspaceError,setWorkspaceError]=useState("");
+ const workspaceRequest=useRef(0);
  const [unread,setUnread]=useState(0);
  const [drafts,setDrafts]=useState<Record<string,{plan:SubscriptionPlan;until:string}>>({});
  const load=async()=>{try{const [u,r,b]=await Promise.all([listAdminUsers(),listTeacherRequests(),listAdminBoards()]);setUsers(u);setRequests([...listPreviewTeacherRequests(),...r]);setBoards(b);setDrafts(current=>{const next={...current};for(const x of u)if(!next[x.userId])next[x.userId]={plan:x.subscriptionPlan,until:x.subscriptionUntil?.slice(0,10)??isoDate(30)};return next})}catch(e){setNotice(e instanceof Error?e.message:"Не удалось загрузить данные администратора")}};
- useEffect(()=>{void load();void listProductFeedback().then(rows=>setUnread(rows.filter(x=>x.status==="new").length)).catch(()=>{})},[]);
+ useEffect(()=>{void load();void listProductFeedback().then(rows=>setUnread(rows.filter(x=>x.status==="new").length)).catch(()=>{});return()=>{workspaceRequest.current++}},[]);
  const filtered=useMemo(()=>{const q=query.trim().toLocaleLowerCase("ru");const role=(x:AdminUser)=>x.isAdmin?"admin":x.role;const time=(x:AdminUser)=>x.createdAt?new Date(x.createdAt).getTime():0;return users.filter(x=>(!q||`${x.name} ${x.email}`.toLocaleLowerCase("ru").includes(q))&&(roleFilter==="all"||(roleFilter==="pending"?x.teacherStatus==="pending":role(x)===roleFilter))).sort((a,b)=>sort==="oldest"?time(a)-time(b):sort==="name"?a.name.localeCompare(b.name,"ru"):sort==="email"?a.email.localeCompare(b.email):sort==="role"?role(a).localeCompare(role(b))||a.name.localeCompare(b.name,"ru"):time(b)-time(a))},[users,query,sort,roleFilter]);
- const previewUser=users.find(x=>x.userId===previewUserId);
- const previewBoards=workspaceBoards;
- const openWorkspace=async(userId:string)=>{setPreviewUserId(userId);setWorkspaceBoards([]);setWorkspaceLoading(true);try{setWorkspaceBoards(await listAdminUserWorkspace(userId))}catch(e){setNotice(e instanceof Error?e.message:"Не удалось получить рабочее пространство")}finally{setWorkspaceLoading(false)}};
+ const closeWorkspace=()=>{workspaceRequest.current++;setPreviewUserId(null);setWorkspaceBoards([]);setWorkspaceLoading(false);setWorkspaceError("")};
+ const openWorkspace=async(userId:string)=>{
+  const request=++workspaceRequest.current;
+  setPreviewUserId(userId);setWorkspaceBoards([]);setWorkspaceError("");setWorkspaceLoading(true);
+  try{const rows=await listAdminUserWorkspace(userId);if(request===workspaceRequest.current)setWorkspaceBoards(rows)}
+  catch(e){if(request===workspaceRequest.current)setWorkspaceError(e instanceof Error?e.message:"Не удалось получить рабочее пространство")}
+  finally{if(request===workspaceRequest.current)setWorkspaceLoading(false)}
+ };
+ const toggleWorkspace=(userId:string)=>{if(previewUserId===userId)closeWorkspace();else void openWorkspace(userId)};
  const filteredBoards=useMemo(()=>{const q=boardQuery.trim().toLocaleLowerCase("ru");return !q?boards:boards.filter(x=>`${x.title} ${x.ownerName} ${x.ownerEmail}`.toLocaleLowerCase("ru").includes(q))},[boards,boardQuery]);
  const review=async(id:string,approve:boolean)=>{setBusy(id);try{await reviewTeacherRequest(id,approve);setNotice(approve?"Преподаватель одобрен":"Доступ преподавателя отозван");await load()}catch(e){setNotice(e instanceof Error?e.message:"Не удалось изменить доступ")}finally{setBusy("")}};
  const grant=async(x:AdminUser)=>{const draft=drafts[x.userId]??{plan:x.subscriptionPlan,until:isoDate(30)};setBusy(x.userId);try{await adminSetSubscription(x.userId,draft.plan,draft.plan==="free"?null:new Date(`${draft.until}T23:59:59`).toISOString());setNotice(draft.plan==="free"?`Тариф ${x.name} сброшен на бесплатный`:`${PLAN_LABEL[draft.plan]} выдан пользователю ${x.name}`);await load()}catch(e){setNotice(e instanceof Error?e.message:"Не удалось изменить тариф")}finally{setBusy("")}};
@@ -45,7 +53,7 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
    const result=await adminDeleteUser(x.userId,email.trim());
    setUsers(rows=>rows.filter(row=>row.userId!==x.userId));
    setRequests(rows=>rows.filter(row=>row.userId!==x.userId));
-   if(previewUserId===x.userId){setPreviewUserId(null);setWorkspaceBoards([])}
+   if(previewUserId===x.userId)closeWorkspace();
    setNotice(result.files_pending?`Пользователь ${x.email} удалён. Некоторые закрытые файлы требуют очистки.`:`Пользователь ${x.email} удалён.`);
    await load();
   }catch(e){setNotice(e instanceof Error?e.message:"Не удалось удалить пользователя")}
@@ -70,18 +78,17 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
     <div className="admin-approval-head"><h2>История решений</h2><span>{history.length}</span></div>
     <div className="admin-request-list">{history.map(x=><article key={x.userId}><div><strong>{x.name}</strong><span>{x.email}</span><small>{x.status==="approved"?"Одобрен":"Отклонён"} · {fmt(x.reviewedAt,true)}</small></div>{x.status==="approved"?<button className="danger" disabled={busy===x.userId} onClick={()=>void review(x.userId,false)}>Отозвать доступ</button>:<button disabled={busy===x.userId} onClick={()=>void review(x.userId,true)}>Одобрить</button>}</article>)}</div>
     </details>}
-    <div className="admin-users-list">{filtered.map(x=>{const draft=drafts[x.userId]??{plan:x.subscriptionPlan,until:x.subscriptionUntil?.slice(0,10)??isoDate(30)};const active=x.subscriptionPlan!=="free"&&(!x.subscriptionUntil||new Date(x.subscriptionUntil)>new Date());return <article className="admin-user-card" key={x.userId}>
-      <div className="admin-user-main"><div className="admin-user-avatar"><UserAvatar/></div><div className="admin-user-identity"><strong>{x.name}</strong><span>{x.email}</span><small>{x.isAdmin?"Администратор":x.role==="teacher"?"Преподаватель":"Ученик"}{x.createdAt?` · с ${fmt(x.createdAt)}`:""}</small></div><div className="admin-user-actions"><button type="button" className="boards-secondary" disabled={!!busy||x.isAdmin} onClick={()=>void openWorkspace(x.userId)}>Доски</button>{canAdminDeleteUsers()&&!x.isAdmin&&x.userId!==user.id&&<button type="button" className="boards-secondary danger" aria-label={`Удалить пользователя ${x.email}`} disabled={!!busy} onClick={()=>void removeUser(x)}>Удалить</button>}</div></div>
+    <div className="admin-users-list">{filtered.map(x=>{const draft=drafts[x.userId]??{plan:x.subscriptionPlan,until:x.subscriptionUntil?.slice(0,10)??isoDate(30)};const active=x.subscriptionPlan!=="free"&&(!x.subscriptionUntil||new Date(x.subscriptionUntil)>new Date());const expanded=previewUserId===x.userId;const panelId=`admin-workspace-${x.userId}`;return <article className={`admin-user-card${expanded?" is-workspace-open":""}`} key={x.userId} data-admin-user={x.userId}>
+      <div className="admin-user-main"><div className="admin-user-avatar"><UserAvatar/></div><div className="admin-user-identity"><strong>{x.name}</strong><span>{x.email}</span><small>{x.isAdmin?"Администратор":x.role==="teacher"?"Преподаватель":"Ученик"}{x.createdAt?` · с ${fmt(x.createdAt)}`:""}</small></div><div className="admin-user-actions"><button type="button" className="boards-secondary admin-user-boards-toggle" disabled={!!busy||x.isAdmin} aria-expanded={expanded} aria-controls={expanded?panelId:undefined} onClick={()=>toggleWorkspace(x.userId)}>{expanded?"Свернуть":"Доски"}<svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m4 6 4 4 4-4"/></svg></button>{canAdminDeleteUsers()&&!x.isAdmin&&x.userId!==user.id&&<button type="button" className="boards-secondary danger" aria-label={`Удалить пользователя ${x.email}`} disabled={!!busy} onClick={()=>void removeUser(x)}>Удалить</button>}</div></div>
       
       <div className="admin-user-current"><span>Текущий тариф</span><strong className={`admin-plan admin-plan-${x.subscriptionPlan}`}>{PLAN_LABEL[x.subscriptionPlan]}</strong><small>{x.subscriptionPlan==="free"?"Без подписки":active?`до ${fmt(x.subscriptionUntil)}`:`истёк ${fmt(x.subscriptionUntil)}`}</small></div>
       <details className="admin-user-settings"><summary>Изменить тариф</summary><div className="admin-user-grant"><label>Выдать тариф<select value={draft.plan} onChange={e=>setDrafts(v=>({...v,[x.userId]:{...draft,plan:e.target.value as SubscriptionPlan}}))}><option value="free">Бесплатный</option><option value="pro">PRO</option></select></label><label>До даты<input type="date" disabled={draft.plan==="free"} value={draft.until} min={new Date().toISOString().slice(0,10)} onChange={e=>setDrafts(v=>({...v,[x.userId]:{...draft,until:e.target.value}}))}/></label><div className="admin-duration-buttons"><button type="button" disabled={draft.plan==="free"} onClick={()=>setDrafts(v=>({...v,[x.userId]:{...draft,until:isoDate(30)}}))}>30 дн.</button><button type="button" disabled={draft.plan==="free"} onClick={()=>setDrafts(v=>({...v,[x.userId]:{...draft,until:isoDate(90)}}))}>90 дн.</button><button type="button" disabled={draft.plan==="free"} onClick={()=>setDrafts(v=>({...v,[x.userId]:{...draft,until:isoDate(365)}}))}>Год</button></div><button className="students-primary admin-grant-button" disabled={busy===x.userId||(!draft.until&&draft.plan!=="free")} onClick={()=>void grant(x)}>{busy===x.userId?"Сохраняем…":draft.plan==="free"?"Сбросить тариф":"Выдать"}</button></div></details>
+      {expanded&&<section id={panelId} className="admin-user-workspace" aria-label={`Доски пользователя ${x.name}`} aria-busy={workspaceLoading}>
+       <div className="admin-user-workspace-head"><h3>Доски пользователя</h3>{!workspaceLoading&&!workspaceError&&<span>{workspaceBoards.length}</span>}</div>
+       {workspaceLoading?<div className="boards-empty" role="status">Загрузка досок…</div>:workspaceError?<div className="admin-user-workspace-error" role="alert"><span>{workspaceError}</span><button type="button" className="boards-secondary" onClick={()=>void openWorkspace(x.userId)}>Повторить</button></div>:workspaceBoards.length===0?<div className="boards-empty">Доступных досок нет.</div>:
+        <div className="admin-board-list">{workspaceBoards.map(board=><article className="admin-board-card" key={board.id}><div className="admin-board-main"><div className="admin-board-icon">▣</div><div><strong>{board.title}</strong><span>Владелец: {board.ownerName}</span><small>Обновлена {fmt(board.updatedAt,true)}</small></div></div><button type="button" className="students-primary" onClick={()=>onOpenBoard(board)}>{adminEdit?"Редактировать":"Просмотреть"}</button></article>)}</div>}
+      </section>}
     </article>})}</div>
-    {previewUser&&<section className="admin-board-list" aria-label="Доски пользователя" style={{padding:"16px",border:"1px solid var(--border, #c6cad3)",borderRadius:12,marginTop:14}}>
-      <div className="admin-approval-head"><h2>Рабочее пространство: {previewUser.name}</h2><button type="button" className="boards-secondary" onClick={()=>setPreviewUserId(null)}>Закрыть</button></div>
-
-      {workspaceLoading?<div className="boards-empty">Загрузка досок…</div>:previewBoards.length===0?<div className="boards-empty">Доступных досок нет.</div>:
-        previewBoards.map(board=><article className="admin-board-card" key={board.id}><div className="admin-board-main"><div className="admin-board-icon">▣</div><div><strong>{board.title}</strong><span>Владелец: {previewUser.name}</span><small>Обновлена {fmt(board.updatedAt,true)}</small></div></div><button type="button" className="students-primary" onClick={()=>onOpenBoard(board)}>{adminEdit?"Редактировать":"Просмотреть"}</button></article>)}
-     </section>}
         {filtered.length===0&&<div className="boards-empty"><strong>Пользователи не найдены</strong><span>Измени строку поиска.</span></div>}
    </>:tab==="boards"?<>
     <div className="admin-users-toolbar"><div><h2>Все доски</h2><span>Режим открытия задаётся переключателем «Редактирование» рядом с «Невидимкой».</span></div><input value={boardQuery} onChange={e=>setBoardQuery(e.target.value)} placeholder="Название, владелец или email"/></div>
