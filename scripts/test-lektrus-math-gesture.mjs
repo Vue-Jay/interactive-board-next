@@ -57,6 +57,23 @@ for(const [handle,width,height,expected] of [
  assert.deepEqual(resized.graphPoints,zoomItem.graphPoints);
 }
 assert.deepEqual(plane.coordinatePlaneViewport(coordinateItem),{width:600,height:300});
+// The rendered SVG user-unit to board-unit ratio is constant, so the
+// unchanged 10-unit axis font stays 10 board units at every object size.
+for(const [width,height] of [[1200,300],[300,300],[600,600],[600,150],[60,60],[1700,2400]]){
+ const resized={...coordinateItem,width,height};
+ const viewport=plane.coordinatePlaneViewport(resized);
+ assert.deepEqual(viewport,{width,height});
+ assert.equal(width/viewport.width,1);
+ assert.equal(height/viewport.height,1);
+}
+// A point on the original plane stays at exactly the same local position
+// when expanding rightwards/downwards; clicking still resolves its coordinates.
+const right=plane.resizeCoordinatePlane(coordinateItem,{...coordinateItem,width:1200},"e");
+const bottom=plane.resizeCoordinatePlane(coordinateItem,{...coordinateItem,height:600},"s");
+for(const item of [coordinateItem,right,bottom]){
+ assert.deepEqual(plane.planePointFromSvg(item,{x:360,y:180}),{x:2,y:-1});
+}
+assert.deepEqual(plane.coordinatePlaneViewport({...coordinateItem,graphPurpose:"number-line",width:1200,height:200}),{width:600,height:360});
 assert.deepEqual(plane.planePointFromSvg(coordinateItem,{x:345,y:175}),{x:2,y:-1});
 assert.deepEqual(plane.planePointFromSvg({...coordinateItem,graphSnap:false},{x:345,y:175}),{x:1.5,y:-.8333});
 assert.deepEqual(plane.planePointFromSvg({...coordinateItem,graphPurpose:"number-line"},{x:345,y:175}),{x:2,y:0});

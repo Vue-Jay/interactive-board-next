@@ -13,7 +13,10 @@ export const graphPointSnapEnabled=(item:Item)=>item.graphSnap??isCoordinatePoin
 
 export function coordinatePlaneViewport(item:Item){
   if(item.graphPurpose==="number-line")return {width:600,height:360};
-  return {width:600,height:600*Math.max(1,item.height)/Math.max(1,item.width)};
+  // One SVG unit equals one local board unit, independently of the aspect ratio.
+  // A fixed width of 600 caused every glyph, point and control to scale with
+  // horizontal resizing even when the coordinate range expanded correctly.
+  return {width:Math.max(1,item.width),height:Math.max(1,item.height)};
 }
 
 export function planePointFromSvg(item:Item,point:Point):Point {
