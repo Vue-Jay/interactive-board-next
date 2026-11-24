@@ -1,5 +1,6 @@
 """Real-browser acceptance against disposable Lektrus API/Postgres, not DOM mocks."""
 import asyncio
+from functools import lru_cache
 import os
 import re
 from pathlib import Path
@@ -24,6 +25,9 @@ async def seed():
     finally:
         await conn.close()
 
+# These API-only sessions are independent of the real browser logins.
+# Reuse them throughout the suite instead of consuming the login rate limit.
+@lru_cache(maxsize=4)
 def headers(name):
     with httpx.Client(base_url=API) as client:
         response=client.post("/api/v1/auth/login",json={"email":name+"@roles.example","password":PASSWORD})
