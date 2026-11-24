@@ -310,6 +310,89 @@ def assert_drawing_saved(page,ident,name):
         expect(undo).to_be_enabled()
         expect_saved(True)
 
+def check_shared_eraser_sync(browser):
+    # Reproduce the race: a peer's finished ink preview is visible, but the
+    # authoritative document mutation is delayed. Both users have real sessions.
+    ident=setup_board()
+    url=f"/api/v1/boards/{ident}/document"
+    pattern=re.compile(re.escape(API+url)+r"(?:\?.*)?$")
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
+    teacher,pupil=[ctx.new_page() for ctx in contexts]
+    try:
+        login(teacher,"owner")
+        login(pupil,"learner")
+        assert_board(teacher,ident,True,True)
+        assert_board(pupil,ident,False,False)
+        with httpx.Client(base_url=API,headers=headers("owner")) as client:
+            def read():
+                response=client.get(url)
+                response.raise_for_status()
+                return response.json()
+            def inks(row):
+                doc=row["document"]
+                return [item for item in doc["items"]+[entry["stroke"] for entry in doc.get("ink",[])] if item["kind"] in ("pen","marker")]
+            for writer,eraser,mode,kind in ((pupil,teacher,"stroke","pen"),(teacher,pupil,"partial","marker")):
+                writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
+                eraser.locator('[data-interface-control="eraser"]:visible').first.click()
+                eraser.locator(f'[data-eraser-mode="{mode}"]:visible').first.click()
+                held=[]
+                def delay_write(route):
+                    if route.request.method in ("PUT","PATCH"):
+                        body=route.request.post_data_json
+                        payload=body.get("document",{})
+                        delta=body.get("delta",{})
+                        candidates=payload.get("items",[])+delta.get("items",{}).get("upsert",[])
+                        if any(item.get("kind")==kind for item in candidates):
+                            held.append(route)
+                            return
+                    route.continue_()
+                writer.route(pattern,delay_write)
+                try:
+                    box=writer.locator("section.board").bounding_box()
+                    x=box["x"]+box["width"]*.48
+                    y=box["y"]+box["height"]*.38
+                    writer.mouse.move(x,y)
+                    writer.mouse.down()
+                    writer.mouse.move(x+180,y,steps=15)
+                    writer.mouse.up()
+                    for _ in range(100):
+                        if held: break
+                        writer.wait_for_timeout(100)
+                    assert held,"Writer save was not intercepted"
+                    base=read()
+                    assert not inks(base),"The preview must precede the authoritative stroke"
+                    eraser.wait_for_function("""() => [...document.querySelectorAll('.remote-live-ink-layer polyline')].some(el=>el.getTotalLength()>40)""",timeout=20000)
+                    midpoint=eraser.evaluate("""() => {
+                        const el=[...document.querySelectorAll('.remote-live-ink-layer polyline')].find(el=>el.getTotalLength()>40);
+                        const p=el.getPointAtLength(el.getTotalLength()/2).matrixTransform(el.getScreenCTM());
+                        return {x:p.x,y:p.y};
+                    }""")
+                    eraser.mouse.click(midpoint["x"],midpoint["y"])
+                    # Only now permit the writer's original stroke to reach the API.
+                    for route in held: route.continue_()
+                    held.clear()
+                    writer.unroute(pattern,delay_write)
+                    for _ in range(120):
+                        row=read()
+                        if row["version"]>=base["version"]+2 and len(inks(row))==(0 if mode=="stroke" else 2):
+                            break
+                        eraser.wait_for_timeout(200)
+                    else:
+                        raise AssertionError(f"Peer {mode} eraser failed to converge: {row}")
+                    # Both clients must reopen the same authoritative result.
+                    for page in (writer,eraser):
+                        page.reload()
+                        expect(page.locator("section.board")).to_be_visible(timeout=90000)
+                    assert len(inks(read()))==(0 if mode=="stroke" else 2)
+                finally:
+                    for route in held:
+                        try: route.abort()
+                        except Exception: pass
+                    writer.unroute(pattern,delay_write)
+    finally:
+        for ctx in contexts: ctx.close()
+    print("Shared eraser: delayed pupil pen and teacher marker saves converge in both directions.")
+
 def check_guest_and_registration(browser,ident):
     with httpx.Client(base_url=API,headers=headers("owner")) as client:
         links={}
@@ -702,6 +785,7 @@ def main():
             mobile.close()
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
+        check_shared_eraser_sync(browser)
         check_guest_and_registration(browser,ident)
         check_maintenance(browser,ident)
         check_billing_and_finance(browser)
