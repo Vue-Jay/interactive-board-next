@@ -23,11 +23,26 @@ new Function("exports","isCoordinatePlane","resizeCoordinatePlane",compile(app.s
 const coordinate={id:"plane",kind:"graph",graphPurpose:"coordinates",x:75,y:36,
  width:400,height:200,graphXMin:-10,graphXMax:10,graphYMin:-5,graphYMax:5,
  graphPoints:[{x:2,y:3}]};
-const extended=model.fitItemToRect(coordinate,{x:75,y:36,width:800,height:300},true);
+const extended=model.fitItemToRect(coordinate,{x:75,y:36,width:800,height:300},true,"se");
+assert.equal(extended.graphXMin,-10);assert.equal(extended.graphXMax,30);
+assert.equal(extended.graphYMin,-10);assert.equal(extended.graphYMax,5);
 assert.equal(extended.graphXMax-extended.graphXMin,40);
 assert.equal(extended.graphYMax-extended.graphYMin,15);
 assert.deepEqual(extended.graphPoints,coordinate.graphPoints);
 assert.equal(extended.width,800);assert.equal(extended.height,300);
+for(const rotation of [0,35,90,-150]){
+ const base={...coordinate,rotation};
+ for(const handle of ["nw","n","ne","e","se","s","sw","w"]){
+  const dx=handle.includes("w")?-100:100,dy=handle.includes("n")?-80:80;
+  const rect=geometry.preserveRotatedAnchor(base,geometry.resizedRect(base,handle,dx,dy,60,60,false),rotation);
+  const result=model.fitItemToRect(base,rect,true,handle);
+  assert.equal(result.graphXMin,handle.includes("w")?-15:-10);
+  assert.equal(result.graphXMax,handle.includes("e")?15:10);
+  assert.equal(result.graphYMin,handle.includes("s")?-9:-5);
+  assert.equal(result.graphYMax,handle.includes("n")?9:5);
+  assert.deepEqual(result.graphPoints,base.graphPoints);
+ }
+}
 assert.equal(model.fitItemToRect({...coordinate,graphPurpose:"geometry"},
  {x:75,y:36,width:800,height:300}).graphXMax,10);
 const {canCompositeBoardResize,resizePreviewBounds,paintBoardResizePreview}=helpers;

@@ -67,9 +67,27 @@ export function scalePlaneRange(range:PlaneRange,xFactor:number,yFactor=xFactor)
   return validRange(next)?next:range;
 }
 const rangeFields=(r:PlaneRange)=>({graphXMin:r.xMin,graphXMax:r.xMax,graphYMin:r.yMin,graphYMax:r.yMax});
-export function resizeCoordinatePlane(base:Item,resized:Item):Item{
+/** Keep the opposite edge fixed in graph coordinates, including rotated
+ * objects (the board passes the LOCAL resize handle). A proportional group
+ * resize can also grow an axis that has no handle; that axis grows centrally. */
+export function resizeCoordinatePlane(base:Item,resized:Item,handle:string):Item{
   if(!isCoordinatePlane(base)||base.width===resized.width&&base.height===resized.height)return resized;
-  return {...resized,...rangeFields(scalePlaneRange(planeRange(base),resized.width/base.width,resized.height/base.height))};
+  const range=planeRange(base);
+  if(!validRange(range))return resized;
+  const span=(old:number,factor:number)=>Math.max(Math.min(.01,old),Math.min(Math.max(2e6,old),old*factor));
+  const axis=(min:number,max:number,factor:number,moveMin:boolean,moveMax:boolean):[number,number]=>{
+    if(factor===1||!Number.isFinite(factor)||factor<=0)return [min,max];
+    const length=span(max-min,factor);
+    let nextMin=min,nextMax=max;
+    if(moveMin)nextMin=round(max-length);
+    else if(moveMax)nextMax=round(min+length);
+    else{const center=min+(max-min)/2;nextMin=round(center-length/2);nextMax=round(center+length/2);}
+    return Number.isFinite(nextMin)&&Number.isFinite(nextMax)&&nextMin<nextMax?[nextMin,nextMax]:[min,max];
+  };
+  const [xMin,xMax]=axis(range.xMin,range.xMax,resized.width/base.width,handle.includes("w"),handle.includes("e"));
+  // SVG screen Y increases downwards, mathematical Y increases upwards.
+  const [yMin,yMax]=axis(range.yMin,range.yMax,resized.height/base.height,handle.includes("s"),handle.includes("n"));
+  return {...resized,...rangeFields({xMin,xMax,yMin,yMax})};
 }
 export function zoomCoordinatePlane(item:Item,factor:number):Item{
   if(!isCoordinatePlane(item))return item;
