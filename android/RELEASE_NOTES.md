@@ -1,5 +1,9 @@
 # Android release notes
 
+## Coordinate plane shared viewport
+
+Allow editable students and guests to persist coordinate plane zoom and resize. Center plus/minus vector symbols in board and editor. Preserve locked objects and other graph permissions.
+
 ## 2026-11-24 — full canvas and coordinates
 
 Release candidate based on validated production commit `157e26f86ee11813e78924a1b7e373ed0823c416` (PR #425).

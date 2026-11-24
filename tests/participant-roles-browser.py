@@ -314,6 +314,52 @@ def assert_drawing_saved(page,ident,name):
         expect(undo).to_be_enabled()
         expect_saved(True)
 
+def check_plane_controls(page, scope, ident, touch=False):
+    graph=scope.locator('.world [data-object="qa-student-plane"]')
+    plus=graph.get_by_role("button",name="Увеличить масштаб плоскости")
+    minus=graph.get_by_role("button",name="Уменьшить масштаб плоскости")
+    expect(plus).to_be_visible(timeout=30000)
+    expect(minus).to_be_visible()
+    # Compare vector bounds, not font metrics. This is invariant under
+    # browser device scale, graph aspect and board zoom.
+    for button in (plus,minus):
+        metrics=button.evaluate("""el=>{const r=el.querySelector('rect').getBBox(),p=el.querySelector('[data-plane-zoom-icon]').getBBox();return {dx:(p.x+p.width/2)-(r.x+r.width/2),dy:(p.y+p.height/2)-(r.y+r.height/2)}}""")
+        assert abs(metrics["dx"])<.01 and abs(metrics["dy"])<.01,metrics
+    url=f"/api/v1/boards/{ident}/document"
+    with httpx.Client(base_url=API,headers=headers("owner")) as client:
+        def read():
+            return next(x for x in client.get(url).json()["document"]["items"] if x["id"]=="qa-student-plane")
+        def await_range(expected):
+            for _ in range(80):
+                if abs(read()["graphXMax"]-expected)<.0001:return
+                page.wait_for_timeout(100)
+            raise AssertionError(f"Coordinate zoom not saved: {read()}")
+        original=read()
+        (plus.tap if touch else plus.click)()
+        await_range(original["graphXMax"]*.8)
+        (minus.tap if touch else minus.click)()
+        await_range(original["graphXMax"])
+        assert read()["width"]==original["width"]
+        if not touch:
+            graph.click(position={"x":100,"y":100})
+            handle=scope.locator('.screen-transform-overlay[data-object="qa-student-plane"] [data-transform-handle="e"]')
+            expect(handle).to_be_visible()
+            box=handle.bounding_box()
+            x,y=box["x"]+box["width"]/2,box["y"]+box["height"]/2
+            page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+40,y,steps=8);page.mouse.up()
+            for _ in range(80):
+                resized=read()
+                if resized["width"]>original["width"]+10:break
+                page.wait_for_timeout(100)
+            else:raise AssertionError("Pupil resize not saved")
+            assert resized["graphXMin"]==original["graphXMin"],resized
+            assert resized["graphXMax"]>original["graphXMax"],resized
+            assert resized["graphYMin"]==original["graphYMin"] and resized["graphYMax"]==original["graphYMax"],resized
+            # Restore through the student's real undo, then verify durable state.
+            page.keyboard.press("Control+z")
+            await_range(original["graphXMax"])
+    print("Coordinate zoom: centered icons, persisted +/- and editor resize passed",page.viewport_size)
+
 def check_shared_eraser_sync(browser):
     # Reproduce the race: a peer's finished ink preview is visible, but the
     # authoritative document mutation is delayed. Both users have real sessions.
@@ -719,6 +765,11 @@ def check_billing_and_finance(browser):
 def main():
     asyncio.run(seed())
     ident=setup_board()
+    plane_ident=setup_board()
+    with httpx.Client(base_url=API,headers=headers("owner")) as client:
+        plane={"id":"qa-student-plane","kind":"graph","x":120,"y":65,"width":340,"height":220,"text":"Координаты","graphPurpose":"coordinates","graphFigureId":"blank","graphXMin":-10,"graphXMax":10,"graphYMin":-10,"graphYMax":10,"graphGridStep":1,"graphPoints":[]}
+        response=client.put(f"/api/v1/boards/{plane_ident}/document",json={"expected_version":1,"document":{"version":1,"title":"Coordinate QA","view":{"x":0,"y":0,"zoom":1},"items":[plane]}})
+        response.raise_for_status()
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
         check_service_unavailable(browser,ident)
@@ -745,6 +796,10 @@ def main():
             page.screenshot(path=str(OUT/(name+"-desktop-board.png")))
             if name=="learner":
                 assert_drawing_saved(page,ident,name)
+                assert_board(page,plane_ident,False,False)
+                page.locator('[data-interface-control="select"]:visible').first.click()
+                check_plane_controls(page,page,plane_ident)
+                assert_board(page,ident,False,False)
             if name=="observer":
                 assert_viewer_mode(page)
                 assert page.evaluate("""() => {
@@ -786,6 +841,12 @@ def main():
             if name=="observer":
                 assert_viewer_mode(scope)
             phone.screenshot(path=str(OUT/(name+"-phone-board.png")))
+            if name=="learner":
+                for w,h in ((844,390),(1024,768),(768,1024),(390,844)):
+                    phone.set_viewport_size({"width":w,"height":h})
+                    plane_scope=assert_board(phone,plane_ident,False,False,embedded=True)
+                    plane_scope.locator('[data-interface-control="select"]:visible').first.tap()
+                    check_plane_controls(phone,plane_scope,plane_ident,touch=True)
             mobile.close()
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()

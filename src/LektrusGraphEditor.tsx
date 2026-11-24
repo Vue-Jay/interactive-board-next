@@ -1614,9 +1614,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
               }
             }}>{previewWithLink}</div>
           {mode!=="geometry"&&draft.purpose==="coordinates"&&<div className="lektrus-coordinate-preview-zoom" role="group" aria-label="Масштаб координатной плоскости">
-            <button type="button" aria-label="Уменьшить масштаб плоскости" title="Уменьшить масштаб" disabled={!validViewport} onClick={()=>zoomViewport(1.25)}>−</button>
+            <button type="button" aria-label="Уменьшить масштаб плоскости" title="Уменьшить масштаб" disabled={!validViewport} onClick={()=>zoomViewport(1.25)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12H19"/></svg></button>
             <span>Масштаб</span>
-            <button type="button" aria-label="Увеличить масштаб плоскости" title="Увеличить масштаб" disabled={!validViewport} onClick={()=>zoomViewport(.8)}>+</button>
+            <button type="button" aria-label="Увеличить масштаб плоскости" title="Увеличить масштаб" disabled={!validViewport} onClick={()=>zoomViewport(.8)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12H19M12 5V19"/></svg></button>
           </div>}
           {mode==="geometry"&&<div className="lektrus-geometry-canvas-actions" role="group" aria-label="Действия с текущим построением">
             <span className="lektrus-geometry-selection-summary" role="status">
