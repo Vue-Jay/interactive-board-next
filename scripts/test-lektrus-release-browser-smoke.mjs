@@ -1052,12 +1052,19 @@ try{
    "Numeric axis glyph changed size after "+handle+" resize: "+JSON.stringify({originalMetrics,after}));
   assert.ok(Math.abs(after.scale-originalMetrics.scale)<.001,"Local SVG scale changed during resize");
  }
- await click('[data-object="qa-plane"] [aria-label="Увеличить масштаб плоскости"]');
+ // SVG <g> does not implement HTMLElement.click(). Exercise the actual
+ // mouse interaction, including board selection and pointer propagation.
+ const clickPlaneZoom=async label=>{
+  const target=await rect('[data-object="qa-plane"] [aria-label="'+label+'"] > rect');
+  await mouse("mousePressed",target.x,target.y,{pressed:true});
+  await mouse("mouseReleased",target.x,target.y);
+ };
+ await clickPlaneZoom("Увеличить масштаб плоскости");
  await wait(`parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] .graph-axis-labels text')).fontSize)>${originalMetrics.font}`,"Plane zoom-in did not enlarge numeric labels");
  const zoomedMetrics=await planeLabelMetrics();
  assert.ok(Math.abs(zoomedMetrics.font/originalMetrics.font-1.25)<.01,"Plane zoom must scale numeric labels proportionally");
  assert.ok(Math.abs(zoomedMetrics.scale-originalMetrics.scale)<.001,"Plane zoom must not resize the SVG");
- await click('[data-object="qa-plane"] [aria-label="Уменьшить масштаб плоскости"]');
+ await clickPlaneZoom("Уменьшить масштаб плоскости");
  await wait(`Math.abs(parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] .graph-axis-labels text')).fontSize)-${originalMetrics.font})<.01`,"Plane zoom-out did not restore numeric label size");
  console.log("✓ Coordinate plane and number line default snap, double-click addition and deletion; high-contrast labels scale only with zoom, not horizontal or vertical resize");
  await call("Page.navigate",{url});
