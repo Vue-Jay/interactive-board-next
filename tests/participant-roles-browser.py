@@ -726,7 +726,13 @@ def check_billing_and_finance(browser):
         storage=admin.get_by_role("region",name="Хранилище и база данных")
         expect(storage.get_by_text("Размер базы PostgreSQL",exact=True)).to_be_visible(timeout=30000)
         expect(storage.get_by_text("public.board_history",exact=True)).to_be_visible()
+        storage.get_by_role("button",name="Пользователи",exact=True).click()
         expect(storage.get_by_text("colleague@roles.example",exact=True)).to_be_visible()
+        storage.get_by_role("button",name=re.compile("^Гости")).click()
+        expect(storage.get_by_role("heading",name="Гостевые аккаунты")).to_be_visible()
+        expect(storage.get_by_text("Ожидают очистки",exact=True)).to_be_visible()
+        storage.get_by_role("button",name="Таблицы",exact=True).click()
+        expect(storage.get_by_text("public.board_history",exact=True)).to_be_visible()
         for w,h in ((1440,900),(768,1024),(844,390),(390,844)):
             admin.set_viewport_size({"width":w,"height":h})
             assert storage.evaluate("el=>el.scrollWidth<=el.clientWidth+2"),(w,h)
