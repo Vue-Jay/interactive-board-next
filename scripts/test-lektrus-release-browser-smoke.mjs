@@ -1045,13 +1045,14 @@ try{
     const a=labels[i],b=labels[j];
     if(Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left)>1&&Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top)>1)collisions.push([a.axis,a.value,b.axis,b.value]);
    }
-   const xs=labels.filter(l=>l.axis==="x").map(l=>Number(l.value)).filter(v=>v>0).sort((a,b)=>a-b);
-   return {count:labels.length,collisions,xStep:xs.length>=2?xs[1]-xs[0]:null};})()`);
+   const xs=labels.filter(l=>l.axis==="x").map(l=>Number(l.value)).sort((a,b)=>a-b);
+   const gaps=xs.slice(1).map((v,i)=>v-xs[i]).filter(v=>v>0);
+   return {count:labels.length,collisions,xStep:gaps.length?Math.min(...gaps):null,xs};})()`);
   assert.ok(result.count>2,"Coordinate labels unexpectedly disappeared");
   assert.deepEqual(result.collisions,[],"Coordinate labels overlap");
   return result;
  };
- const originalLabels=await checkPlaneLabels();
+ await checkPlaneLabels();
  const selectPlane=await svgPoint("qa-plane",planeCenter,planeHeight/2);
  await mouse("mousePressed",selectPlane.x,selectPlane.y,{pressed:true});
  await mouse("mouseReleased",selectPlane.x,selectPlane.y);
@@ -1085,17 +1086,23 @@ try{
  assert.ok(Math.abs(zoomedMetrics.scale-originalMetrics.scale)<.001,"Plane zoom must not resize the SVG");
  await clickPlaneZoom("Уменьшить масштаб плоскости");
  await wait(`Math.abs(parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] .graph-axis-labels text')).fontSize)-${originalMetrics.font})<.01`,"Plane zoom-out did not restore numeric label size");
- for(let i=0;i<4;i++){
+ const baselineLabels=await checkPlaneLabels();
+ assert.ok(Number.isFinite(baselineLabels.xStep),"Expected multiple horizontal axis labels");
+ let previousStep=baselineLabels.xStep;
+ for(let i=0;i<8;i++){
   const before=await planeLabelMetrics();
   await clickPlaneZoom("Уменьшить масштаб плоскости");
   if(before.font>12.01)await wait(`parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] [data-plane-axis]')).fontSize)<${before.font}`,"Zoom out did not reduce label font");
   else await delay(100);
-  await checkPlaneLabels();
+  const current=await checkPlaneLabels();
+  assert.ok(Number.isFinite(current.xStep)&&current.xStep>=previousStep-1e-8,
+   "Zoom out must not make labels denser: "+JSON.stringify({previousStep,current}));
+  previousStep=current.xStep;
  }
  const distantLabels=await checkPlaneLabels();
- assert.ok(distantLabels.xStep>originalLabels.xStep,"Zoom out must select a coarser numeric tick interval");
+ assert.ok(distantLabels.xStep>baselineLabels.xStep,"Zoom out must select a coarser numeric tick interval: "+JSON.stringify({baselineLabels,distantLabels}));
  assert.ok((await planeLabelMetrics()).font>=12,"Axis labels became too small");
- for(let i=0;i<4;i++){await clickPlaneZoom("Увеличить масштаб плоскости");await delay(100);}
+ for(let i=0;i<8;i++){await clickPlaneZoom("Увеличить масштаб плоскости");await delay(100);}
  await wait(`Math.abs(parseFloat(getComputedStyle(document.querySelector('[data-object="qa-plane"] [data-plane-axis]')).fontSize)-${originalMetrics.font})<.01`,"Reversing repeated zoom did not restore numeric label size");
  await checkPlaneLabels();
  console.log("✓ Coordinate plane and number line snap and point gestures; adaptive 1–2–5 labels, bounded zoom font and no overlapping numeric glyphs");
