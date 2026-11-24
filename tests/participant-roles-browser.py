@@ -205,7 +205,7 @@ def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
 
 def assert_viewer_mode(scope):
     expect(scope.locator("section.board.board-tool-hand")).to_be_visible()
-    expect(scope.locator(".compact-toolbar,.mobile-board-tools,.mobile-tools-sheet,.mobile-undo-redo")).to_have_count(0)
+    expect(scope.locator(".compact-toolbar,.mobile-board-tools,.mobile-tools-sheet,.mobile-undo-redo,.welcome-actions")).to_have_count(0)
     expect(scope.locator(".viewer-banner,.student-board-mode")).to_have_count(0)
     status=scope.locator(".topbar .board-access-status")
     expect(status).to_be_visible()
@@ -617,7 +617,7 @@ def main():
                 box=canvas.bounding_box()
                 page.mouse.move(box["x"]+box["width"]*.5,box["y"]+box["height"]*.5)
                 page.mouse.down()
-                page.mouse.move(box["x"]+box["width"]*.5+80,box["y"]*.0+box["y"]+box["height"]*.5+40,steps=8)
+                page.mouse.move(box["x"]+box["width"]*.5+80,box["y"]+box["height"]*.5+40,steps=8)
                 page.mouse.up()
                 page.wait_for_function("(before)=>document.querySelector(\"section.board .world\").style.transform!==before",arg=before)
                 page.keyboard.press("v")

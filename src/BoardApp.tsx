@@ -10364,7 +10364,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               transform: boardWorldTransform(view),
             }}
           >
-            {!items.length && (
+            {!items.length && canEdit && (
               <div className="welcome-card">
                 <div className="welcome-badge">Пустая доска</div>
                 <h1>С чего начнём?</h1>
