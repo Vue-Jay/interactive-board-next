@@ -68,9 +68,9 @@ for(const [width,height] of [[1200,300],[300,300],[600,600],[600,150],[60,60],[1
 }
 // A point on the original plane stays at exactly the same local position
 // when expanding rightwards/downwards; clicking still resolves its coordinates.
-const right=plane.resizeCoordinatePlane(coordinateItem,{...coordinateItem,width:1200},"e");
-const bottom=plane.resizeCoordinatePlane(coordinateItem,{...coordinateItem,height:600},"s");
-for(const item of [coordinateItem,right,bottom]){
+const planeExpandedRight=plane.resizeCoordinatePlane(coordinateItem,{...coordinateItem,width:1200},"e");
+const planeExpandedBottom=plane.resizeCoordinatePlane(coordinateItem,{...coordinateItem,height:600},"s");
+for(const item of [coordinateItem,planeExpandedRight,planeExpandedBottom]){
  assert.deepEqual(plane.planePointFromSvg(item,{x:360,y:180}),{x:2,y:-1});
 }
 assert.deepEqual(plane.coordinatePlaneViewport({...coordinateItem,graphPurpose:"number-line",width:1200,height:200}),{width:600,height:360});
