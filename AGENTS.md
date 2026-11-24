@@ -88,6 +88,17 @@ authenticated connector. A live tool call is still required.
 **Task priority:** When users say "дальше" on Lektrus, continue the latest
 development task in the repo, not just the planning description.
 
+
+## CI economy: mandatory for every Lektrus development task
+
+- The user's default budget is **1–2 relevant workflow runs per batch of changes**, not 10–15 checks per small edit. Batch all related fixes and tests before committing or pushing; do not launch CI after each small correction.
+- Before pushing or dispatching, inspect the actual `.github/workflows/*.yml` triggers for the affected files. A single commit is NOT the same thing as a single workflow run: a push to main may trigger many workflows. Do not claim the CI budget has been respected just because changes were grouped into one commit.
+- Prefer path-scoped triggers and targeted checks: UI/math changes need build/typecheck and relevant browser/math regression; board tools need board regression; server changes need API tests; chemistry changes need chemistry tests. Native Android/iOS and Windows packaging and unrelated full audits belong to explicit release checks or changes affecting those components, not every web-only fix.
+- If existing triggers would fan out unnecessarily, address trigger scoping before the next routine code push, keeping required checks, deployment gates, and full manual/release coverage intact. Do not silently disable required checks, use skip-CI on functional changes, or weaken assertions just to meet the budget. If required coverage needs more than two workflows, explain the exception.
+- On failure, inspect the logs, fix all identified causes together, and run the smallest relevant verification set; retry only failed jobs for transient failures. Never repeatedly rerun successful unrelated workflows. Prefer one final verification pass after the combined changes.
+- Report actual workflow count, conclusions and publication state separately. Never call an unfinished or unverified run green.
+- For documentation-only changes that cannot affect application behavior or deployment, use a skip-CI commit marker where safe; do not use it to bypass required release gates.
+
 ## Human anatomy: permanent evidence-led delivery contract
 
 Before **any** work on `LektrusHumanAnatomy`, its zoom/cutaways, cells,
