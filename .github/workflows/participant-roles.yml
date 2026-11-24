@@ -1,14 +1,28 @@
 name: Board participant roles acceptance
 on:
   pull_request:
-    branches: [main, qa/mobile-native-base-20261117, qa/mobile-roles-polish-20261119]
+    branches:
+      - 'main'
+      - 'qa/mobile-native-base-20261117'
+      - 'qa/mobile-roles-polish-20261119'
     paths:
-      - 'src/**'
+      - 'src/BoardApp.tsx'
+      - 'src/boardModel.ts'
+      - 'src/ShareDialog.tsx'
+      - 'src/shareLinks.ts'
+      - 'src/accountRoleStore.ts'
+      - 'src/authStore.ts'
+      - 'src/guestNameCache.ts'
+      - 'src/lektrusBoardObjectAuth.ts'
+      - 'src/lektrusBoardRolePreview.ts'
+      - 'src/selfhostApi.ts'
       - 'server/**'
       - 'tests/participant-roles-browser.py'
       - 'tests/production-browser-connectivity.py'
-      - '.github/workflows/participant-roles.yml'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
+
 permissions:
   contents: read
 jobs:

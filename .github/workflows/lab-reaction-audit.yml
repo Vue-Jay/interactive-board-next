@@ -1,9 +1,26 @@
 name: Lektrus full reaction audit
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - 'main'
+    paths:
+      - 'src/*Lab*'
+      - 'src/*lab*'
+      - 'src/*Chemistry*'
+      - 'src/*chemistry*'
+      - 'src/*Reaction*'
+      - 'src/*reaction*'
+      - 'src/*Chemical*'
+      - 'src/*chemical*'
+      - 'scripts/test-lektrus-lab-*'
+      - 'scripts/test-lektrus-chemistry*'
+      - 'scripts/audit-lektrus-lab-*'
+      - 'scripts/sync-lektrus-lab-*'
+      - 'package.json'
+      - 'package-lock.json'
   push:
-    branches: [main]
+    branches:
+      - 'release/**'
   workflow_dispatch:
 
 permissions:

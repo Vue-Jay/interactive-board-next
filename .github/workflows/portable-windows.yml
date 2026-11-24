@@ -2,7 +2,14 @@ name: Lektrus portable Windows browser build
 
 on:
   push:
-    branches: [main, feature/portable-windows-local-server]
+    branches:
+      - 'feature/portable-windows-local-server'
+      - 'release/**'
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'portable-windows/**'
   workflow_dispatch:
 
 permissions:

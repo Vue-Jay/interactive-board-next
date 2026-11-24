@@ -65,7 +65,22 @@ assert.equal(tickStep(2.5),20);
 assert.equal(tickStep(1,"x",100),50);
 assert.equal(tickStep(15,"y"),2);
 assert.deepEqual(plane.planeAxisLabelTicks(-5,5,40,1,14,"x"),[-5,-4,-3,-2,-1,1,2,3,4,5]);
-assert.deepEqual(plane.planeAxisLabelTicks(-1,1,200,.1,14,"x"),[-1,-.8,-.6,-.4,-.2,.2,.4,.6,.8,1]);
+assert.deepEqual(plane.planeAxisLabelTicks(-1,1,200,.1,14,"x"),[-1,-.5,.5,1]);
+// Floating-point bounds from zoom must not be mistaken for printed labels.
+assert.deepEqual(plane.planeAxisLabelTicks(-10.123456789,10.987654321,26,1,14,"x"),
+ plane.planeAxisLabelTicks(-10,10,26,1,14,"x"));
+assert.deepEqual(plane.planeAxisLabelTicks(-33,38,21,1,14,"x"),
+ Array.from({length:36},(_,i)=>-32+i*2).filter(v=>v!==0));
+let labelProbe={...zoomItem,width:1494,height:919,graphXMin:-33,graphXMax:38,graphYMin:-22,graphYMax:21};
+const labelInterval=item=>{
+ const r=plane.planeRange(item),unit=Math.min(item.width/(r.xMax-r.xMin),item.height/(r.yMax-r.yMin));
+ const ticks=plane.planeAxisLabelTicks(r.xMin,r.xMax,unit,1,plane.planeAxisLabelFont(item.graphAxisLabelScale),"x").filter(v=>v>0);
+ return ticks[1]-ticks[0];
+};
+const intervals=[labelInterval(labelProbe)];
+for(let i=0;i<8;i++){labelProbe=plane.zoomCoordinatePlane(labelProbe,1.25);intervals.push(labelInterval(labelProbe));}
+assert.ok(intervals.every((step,i)=>i===0||step>=intervals[i-1]),"Zoom out must never densify the numeric labels");
+assert.ok(intervals.at(-1)>intervals[0],"Wide plane must actually switch to coarser tick intervals");
 assert.deepEqual(plane.planeAxisLabelTicks(-1,1,0,1,14,"x"),[]);
 let far=zoomItem;
 for(let i=0;i<8;i++)far=plane.zoomCoordinatePlane(far,1.25);

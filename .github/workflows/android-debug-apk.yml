@@ -1,10 +1,30 @@
 name: Lektrus Android Debug APK (VS Code equivalent)
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches:
+      - 'main'
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'src/native*'
+      - 'src/AndroidUpdateGate.tsx'
+      - 'src/androidUpdatePolicy.ts'
+      - 'src/lektrusAndroidUpdate.css'
+      - 'src/AuthScreen.tsx'
+      - 'src/auth*.ts'
+      - 'src/selfhostApi.ts'
+      - 'src/appEntry*'
+      - 'src/main.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/test-native*'
+      - 'scripts/test-signed-android*'
+      - 'scripts/run-android*'
+  push:
+    branches:
+      - 'release/**'
   workflow_dispatch:
 
 permissions:

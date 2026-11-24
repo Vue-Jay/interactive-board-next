@@ -1,8 +1,31 @@
 name: Native mobile API and realtime QA (isolated)
 on:
   pull_request:
-    branches: [main, qa/mobile-native-base-20261117]
+    branches:
+      - 'main'
+      - 'qa/mobile-native-base-20261117'
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'src/native*'
+      - 'src/AndroidUpdateGate.tsx'
+      - 'src/androidUpdatePolicy.ts'
+      - 'src/lektrusAndroidUpdate.css'
+      - 'src/AuthScreen.tsx'
+      - 'src/auth*.ts'
+      - 'src/selfhostApi.ts'
+      - 'src/appEntry*'
+      - 'src/main.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/test-native*'
+      - 'scripts/test-signed-android*'
+      - 'scripts/run-android*'
+      - 'server/**'
+      - 'scripts/test-native-mobile-runtime.py'
   workflow_dispatch:
+
 permissions:
   contents: read
 jobs:

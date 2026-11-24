@@ -105,18 +105,27 @@ export function planeAxisLabelFont(value?:number):number{
  * based on available local space and a conservative estimate of glyph width. */
 export function planeAxisLabelTicks(min:number,max:number,pixelsPerUnit:number,gridStep:number,font:number,axis:"x"|"y"):number[]{
   if(![min,max,pixelsPerUnit,gridStep,font].every(Number.isFinite)||max<=min||pixelsPerUnit<=0||gridStep<=0||font<=0)return [];
-  const longest=Math.max(String(round(min)).length,String(round(max)).length,2);
-  const spacing=axis==="x"?font*.72*longest+9:font*1.5+5;
-  const required=Math.max(1,spacing/(pixelsPerUnit*gridStep),(max-min)/(gridStep*90));
-  if(!Number.isFinite(required))return [];
-  const magnitude=10**Math.floor(Math.log10(required));
-  const normalized=required/magnitude;
-  const multiple=(normalized<=1?1:normalized<=2?2:normalized<=5?5:10)*magnitude;
-  const step=gridStep*multiple;
-  if(!Number.isFinite(step)||step<=0)return [];
-  const first=Math.ceil(min/step-1e-9),last=Math.floor(max/step+1e-9);
-  const count=Math.min(101,Math.max(0,last-first+1));
-  return Array.from({length:count},(_,i)=>round((first+i)*step)).filter(value=>value!==0);
+  // Pick a nice step by measuring the labels that will actually be drawn.
+  // Raw range boundaries become long floating-point strings after zooming;
+  // counting their characters causes arbitrary jumps in the tick interval.
+  const minMultiple=Math.max(1,(max-min)/(gridStep*90));
+  if(!Number.isFinite(minMultiple))return [];
+  const startPower=Math.max(0,Math.floor(Math.log10(minMultiple)));
+  for(let power=startPower;power<=startPower+24;power++){
+    for(const multiplier of [1,2,5]){
+      const step=gridStep*multiplier*10**power;
+      if(!Number.isFinite(step)||step<=0)return [];
+      const first=Math.ceil(min/step-1e-9),last=Math.floor(max/step+1e-9);
+      const count=Math.max(0,last-first+1);
+      if(count>91)continue;
+      const labels=Array.from({length:count},(_,i)=>round((first+i)*step)).filter(value=>value!==0);
+      if(!labels.length)return [];
+      const longest=Math.max(1,...labels.map(value=>String(value).length));
+      const spacing=axis==="x"?font*.72*longest+9:font*1.5+5;
+      if(step*pixelsPerUnit>=spacing||labels.length===1)return labels;
+    }
+  }
+  return [];
 }
 export function zoomPlaneAxisLabelScale(value:number|undefined,previous:PlaneRange,next:PlaneRange):number|undefined{
   if(!validRange(previous)||!validRange(next))return value;
