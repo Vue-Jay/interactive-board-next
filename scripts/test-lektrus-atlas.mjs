@@ -935,9 +935,14 @@ const wheelGuard=application.slice(
  application.indexOf('if(target.closest(".lektrus-atlas-map-box")'),
  application.indexOf('if (target.closest("textarea"))'));
 assert.ok(wheelGuard.includes('e.preventDefault();')&&wheelGuard.includes('return;'));
+assert.ok(wheelGuard.includes('&& canEdit &&'),"A read-only viewer zooms the board, not an editable atlas");
 const boardCapture=application.slice(application.indexOf('onPointerDownCapture={(e) => {'),
  application.indexOf('onPointerMoveCapture={(e) => {'));
 assert.ok(boardCapture.includes('.lektrus-atlas:not(.lektrus-atlas--board-selection)'));
+assert.ok(boardCapture.indexOf('if(canEdit&&atlas&&mapSurface)')>=0);
+assert.ok(boardCapture.indexOf('if(canEdit&&atlas&&mapSurface)')<
+ boardCapture.indexOf('if(!canEdit&&!presentation&&'),
+ "Editable atlas must claim its own touch gestures before the viewer-only pan path");
 assert.ok(boardCapture.indexOf('.lektrus-atlas:not(.lektrus-atlas--board-selection)')<
  boardCapture.indexOf('touchStart(e)'),
  "Atlas touch guard must run before the board records any touchpoints");
