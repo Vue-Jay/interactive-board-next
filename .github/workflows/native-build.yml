@@ -1,10 +1,54 @@
 name: Lektrus native Android APK and iOS simulator
 on:
   pull_request:
-    branches: [main, qa/mobile-native-base-20261117]
+    branches:
+      - 'main'
+      - 'qa/mobile-native-base-20261117'
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'src/native*'
+      - 'src/AndroidUpdateGate.tsx'
+      - 'src/androidUpdatePolicy.ts'
+      - 'src/lektrusAndroidUpdate.css'
+      - 'src/AuthScreen.tsx'
+      - 'src/auth*.ts'
+      - 'src/selfhostApi.ts'
+      - 'src/appEntry*'
+      - 'src/main.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/test-native*'
+      - 'scripts/test-signed-android*'
+      - 'scripts/run-android*'
   push:
-    branches: [main]
+    branches:
+      - 'main'
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'src/native*'
+      - 'src/AndroidUpdateGate.tsx'
+      - 'src/androidUpdatePolicy.ts'
+      - 'src/lektrusAndroidUpdate.css'
+      - 'src/AuthScreen.tsx'
+      - 'src/auth*.ts'
+      - 'src/selfhostApi.ts'
+      - 'src/appEntry*'
+      - 'src/main.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/test-native*'
+      - 'scripts/test-signed-android*'
+      - 'scripts/run-android*'
   workflow_dispatch:
+    inputs:
+      publish_android:
+        description: 'Publish the verified Android APK (main only)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -231,7 +275,7 @@ jobs:
 
   publish-android:
     name: Publish verified Android APK for the official download page
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_android == true))
     needs: [android-network, ios]
     runs-on: ubuntu-latest
     timeout-minutes: 10

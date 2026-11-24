@@ -3,13 +3,31 @@ name: Self-hosted Lektrus API
 on:
   push:
     branches:
-      - main
-      - migration/self-hosted-backend-20261114
-      - deploy/amvera-lektrus
+      - 'main'
+      - 'migration/self-hosted-backend-20261114'
+      - 'deploy/amvera-lektrus'
+    paths:
+      - 'server/**'
+      - 'supabase/**'
+      - 'deploy/**'
+      - 'Dockerfile'
+      - 'amvera.yaml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
   pull_request:
     branches:
-      - main
-      - deploy/amvera-lektrus
+      - 'main'
+      - 'deploy/amvera-lektrus'
+    paths:
+      - 'server/**'
+      - 'supabase/**'
+      - 'deploy/**'
+      - 'Dockerfile'
+      - 'amvera.yaml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
   workflow_dispatch:
 
 permissions:

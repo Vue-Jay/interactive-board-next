@@ -112,6 +112,10 @@ The only direct-main exception is a strictly documentation-only maintenance chan
 - Report actual workflow count, conclusions and publication state separately. Never call an unfinished or unverified run green.
 - For documentation-only changes that cannot affect application behavior or deployment, use a skip-CI commit marker where safe; do not use it to bypass required release gates.
 
+## CI routing and explicit releases
+
+Routine math/UI changes use Verify Lektrus on the PR, then Self-hosted main application after merge. The latter remains the exact-main check required by the manual Amvera fallback. Board core, API, roles, chemistry, anatomy and native changes may activate additional relevant checks. All previous suites remain manually available, and release branches trigger general release suites. Web-only fixes do not automatically publish Android packages; run the native workflow on main with explicit publish_android=true for a deliberate Android release, or let native/auth changes trigger its existing release gate. Full releases must run all applicable suites before publication. Changes to workflow logic itself require relevant manual validation in addition to the routing audit.
+
 ## Human anatomy: permanent evidence-led delivery contract
 
 Before **any** work on `LektrusHumanAnatomy`, its zoom/cutaways, cells,

@@ -3,13 +3,48 @@ name: Lektrus self-hosted main application
 on:
   push:
     branches:
-      - main
-      - migration/self-hosted-backend-20261114
-      - deploy/amvera-lektrus
+      - 'main'
+      - 'migration/self-hosted-backend-20261114'
+      - 'deploy/amvera-lektrus'
   pull_request:
     branches:
-      - main
-      - deploy/amvera-lektrus
+      - 'main'
+      - 'deploy/amvera-lektrus'
+    paths:
+      - 'src/AuthScreen.tsx'
+      - 'src/auth*.ts'
+      - 'src/accountRoleStore.ts'
+      - 'src/lektrusAuth*.css'
+      - 'src/selfhostApi.ts'
+      - 'src/*Realtime.ts'
+      - 'src/assetStore.ts'
+      - 'src/shareLinks.ts'
+      - 'src/ShareDialog.tsx'
+      - 'src/guestNameCache.ts'
+      - 'src/useServiceAvailability.ts'
+      - 'src/ServiceUnavailableScreen.tsx'
+      - 'src/serviceUnavailableDocument.html'
+      - 'src/lektrusBoardObjectAuth.ts'
+      - 'src/lektrusBoardRolePreview.ts'
+      - 'src/*Education*'
+      - 'src/*Assignment*'
+      - 'src/*Learning*'
+      - 'src/*education*'
+      - 'src/*assignment*'
+      - 'src/*learning*'
+      - 'src/appEntry*'
+      - 'src/App.tsx'
+      - 'src/main.tsx'
+      - 'src/routes.ts'
+      - 'public/sw*'
+      - 'public/manifest*'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'scripts/test-selfhost-*'
+      - 'scripts/test-lektrus-visit-retry.mjs'
+      - 'scripts/test-lektrus-chunk-recovery.mjs'
+      - 'tests/shareLinks.test.mjs'
   workflow_dispatch:
 
 permissions:

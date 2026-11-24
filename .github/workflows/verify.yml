@@ -1,9 +1,11 @@
 name: Verify Lektrus
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches:
+      - 'main'
+  push:
+    branches:
+      - 'release/**'
   workflow_dispatch:
 
 jobs:
@@ -18,6 +20,10 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Verify repository agent and CI trigger policies
+        run: |
+          node scripts/test-github-agent-guard.mjs
+          node scripts/test-ci-trigger-scope.mjs
       - name: Typecheck and build
         run: npm run build
       - name: Check curated subject catalogue, saved objects and sentence dragging
