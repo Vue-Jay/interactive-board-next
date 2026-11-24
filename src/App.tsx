@@ -110,42 +110,6 @@ export default function App() {
     !new URLSearchParams(window.location.search).has("password-reset") && Boolean(getCachedCurrentUser())
   );
   const authenticatedBoardRoute = authReady && !!authUser && route.kind === "board";
-  useLayoutEffect(() => {
-    if (!Capacitor.isNativePlatform() || !authenticatedBoardRoute) return;
-    const page = document.documentElement;
-    page.classList.add("lektrus-native-board");
-    let frame = 0;
-    let settle: ReturnType<typeof setTimeout> | undefined;
-    const resetOuterScroll = () => {
-      const focus = document.activeElement;
-      if (focus?.matches('input:not([type="button"]):not([type="checkbox"]):not([type="range"]),textarea,[contenteditable="true"]')) return;
-      // Older WebViews can scroll an overflow:hidden ancestor on focus. Do
-      // not reset the editor's own scroller or the infinite canvas camera.
-      window.scrollTo(0, 0);
-      for (const element of [page, document.body, document.getElementById("root"), document.querySelector("#root > .app")]) {
-        if (element) { element.scrollTop = 0; element.scrollLeft = 0; }
-      }
-    };
-    const afterKeyboard = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(resetOuterScroll);
-      clearTimeout(settle);
-      settle = setTimeout(resetOuterScroll, 360);
-    };
-    resetOuterScroll();
-    window.addEventListener("resize", afterKeyboard);
-    window.visualViewport?.addEventListener("resize", afterKeyboard);
-    document.addEventListener("focusout", afterKeyboard);
-    return () => {
-      page.classList.remove("lektrus-native-board");
-      window.removeEventListener("resize", afterKeyboard);
-      window.visualViewport?.removeEventListener("resize", afterKeyboard);
-      document.removeEventListener("focusout", afterKeyboard);
-      cancelAnimationFrame(frame);
-      clearTimeout(settle);
-    };
-  }, [authenticatedBoardRoute]);
-
   // Android system back should behave like Lektrus navigation, not dismiss the app.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -243,6 +207,42 @@ export default function App() {
   // A pending board link must NOT rotate the login or registration screen.
   const nativeBoardOpening = Capacitor.isNativePlatform() && (route.kind === "demo" ||
     authenticatedBoardRoute || Boolean(authReady && authUser && adminInspecting && (activeBoard || boardLoading)));
+  useLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform() || !nativeBoardOpening) return;
+    const page = document.documentElement;
+    page.classList.add("lektrus-native-board");
+    let frame = 0;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const resetOuterScroll = () => {
+      const focus = document.activeElement;
+      if (focus?.matches('input:not([type="button"]):not([type="checkbox"]):not([type="range"]),textarea,[contenteditable="true"]')) return;
+      // Older WebViews can scroll an overflow:hidden ancestor on focus. Do
+      // not reset the editor's own scroller or the infinite canvas camera.
+      window.scrollTo(0, 0);
+      for (const element of [page, document.body, document.getElementById("root"), document.querySelector("#root > .app")]) {
+        if (element) { element.scrollTop = 0; element.scrollLeft = 0; }
+      }
+    };
+    const afterKeyboard = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(resetOuterScroll);
+      clearTimeout(settle);
+      settle = setTimeout(resetOuterScroll, 360);
+    };
+    resetOuterScroll();
+    window.addEventListener("resize", afterKeyboard);
+    window.visualViewport?.addEventListener("resize", afterKeyboard);
+    document.addEventListener("focusout", afterKeyboard);
+    return () => {
+      page.classList.remove("lektrus-native-board");
+      window.removeEventListener("resize", afterKeyboard);
+      window.visualViewport?.removeEventListener("resize", afterKeyboard);
+      document.removeEventListener("focusout", afterKeyboard);
+      cancelAnimationFrame(frame);
+      clearTimeout(settle);
+    };
+  }, [nativeBoardOpening]);
+
   const [nativeLandscapeReady, setNativeLandscapeReady] = useState(false);
   useLayoutEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -711,7 +711,7 @@ export default function App() {
     const id=route.kind==="board"?route.boardId:activeBoard!.id;
     // Keep this iframe mounted throughout the loading -> interactive transition
     // and subsequent real screen rotations. The parent alone loads the board.
-    const payload=activeBoard?.id.toLowerCase()===id.toLowerCase()?{authUser,boardSummary:activeBoard,accountRole,isAppAdmin,
+    const payload=activeBoard?.id.toLowerCase()===id.toLowerCase()?{authUser,boardSummary:activeBoard.planReadOnly?{...activeBoard,role:"viewer" as const,participantRole:"observer" as const}:activeBoard,accountRole,isAppAdmin,
       globalRolePreview:appRolePreview,adminMaintenance:adminInspecting&&isAppAdmin&&adminEdit,
       adminInvisible,initialRemoteVersion:remoteVersion,selfhostMode:isSelfhostBackendEnabled(),mountKey:boardMountKey}:undefined;
     const path=route.kind==="board"?window.location.pathname+window.location.search+window.location.hash:`/board/${id}`;
@@ -770,7 +770,7 @@ export default function App() {
   }
 
   return (
-    <Suspense fallback={<BoardLoadingScreen/>}>{activeBoard.planReadOnly&&<div className="billing-board-readonly" role="status">Только просмотр · выберите эту доску в разделе «Тарифы»</div>}<BoardApp
+    <Suspense fallback={<BoardLoadingScreen/>}><BoardApp
       key={`${activeBoard.id}:${boardMountKey}`}
       authUser={authUser}
       boardSummary={activeBoard.planReadOnly?{...activeBoard,role:"viewer",participantRole:"observer"}:activeBoard}

@@ -203,6 +203,20 @@ def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
         expect(share).to_have_count(0)
     return scope
 
+def assert_viewer_mode(scope):
+    expect(scope.locator("section.board.board-tool-hand")).to_be_visible()
+    expect(scope.locator(".compact-toolbar,.mobile-board-tools,.mobile-tools-sheet,.mobile-undo-redo")).to_have_count(0)
+    expect(scope.locator(".viewer-banner,.student-board-mode")).to_have_count(0)
+    status=scope.locator(".topbar .board-access-status")
+    expect(status).to_be_visible()
+    expect(status).to_have_attribute("aria-label","Только просмотр")
+    assert status.evaluate("""el => {
+        const r=el.getBoundingClientRect(), header=el.closest('.topbar').getBoundingClientRect();
+        const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+        return r.top>=header.top-1 && r.bottom<=header.bottom+1 && el.contains(hit);
+    }"""), "View-only status must not overlap the header"
+
+
 def assert_history_controls(scope,editable):
     history=scope.locator(".mobile-undo-redo")
     if not editable:
@@ -297,7 +311,10 @@ def check_guest_and_registration(browser,ident):
             page.set_viewport_size({"width":844,"height":390})
             scope=assert_board(page,ident,False,False,navigate=False,embedded=True)
             expect(page.get_by_role("button",name="Я преподаю",exact=True)).to_have_count(0)
-            expect(scope.locator(".student-board-mode")).to_have_text("Гость · ученик" if role=="student" else "Наблюдатель")
+            if role=="student":
+                expect(scope.locator(".student-board-mode")).to_have_text("Гость · ученик")
+            else:
+                assert_viewer_mode(scope)
             assert_history_controls(scope,role=="student")
             pen=scope.locator('[data-interface-control="pen"]:visible')
             if role=="student":
@@ -593,7 +610,18 @@ def main():
             if name=="learner":
                 assert_drawing_saved(page,ident,name)
             if name=="observer":
-                expect(page.locator(".student-board-mode")).to_have_text("Наблюдатель")
+                assert_viewer_mode(page)
+                canvas=page.locator("section.board")
+                world=canvas.locator(".world")
+                before=world.evaluate("el=>el.style.transform")
+                box=canvas.bounding_box()
+                page.mouse.move(box["x"]+box["width"]*.5,box["y"]+box["height"]*.5)
+                page.mouse.down()
+                page.mouse.move(box["x"]+box["width"]*.5+80,box["y"]*.0+box["y"]+box["height"]*.5+40,steps=8)
+                page.mouse.up()
+                page.wait_for_function("(before)=>document.querySelector(\"section.board .world\").style.transform!==before",arg=before)
+                page.keyboard.press("v")
+                assert_viewer_mode(page)
             if owner:
                 page.locator('button[aria-label="Добавить участника"]:visible').first.click()
                 expect(page.get_by_role("button",name="Сопреподаватель",exact=False)).to_be_visible()
@@ -613,6 +641,8 @@ def main():
             phone.set_viewport_size({"width":844,"height":390})
             scope=assert_board(phone,ident,author,owner,embedded=True)
             assert_history_controls(scope,name!="observer")
+            if name=="observer":
+                assert_viewer_mode(scope)
             phone.screenshot(path=str(OUT/(name+"-phone-board.png")))
             mobile.close()
             assert not errors, f"{name}: browser exceptions {errors}"

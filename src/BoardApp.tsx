@@ -2565,21 +2565,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [attachmentPreview,setAttachmentPreview]=useState<AttachmentPreview|null>(null);
   // The active tool belongs to THIS viewer/tab, not to the shared document
   // or a collaborator's presence/editor state. Restore it after remounts.
-  const [tool, setToolState] = useState<Tool>(()=>readBoardSessionTool(boardSummary.id,authUser.id));
+  const [editingTool, setToolState] = useState<Tool>(()=>readBoardSessionTool(boardSummary.id,authUser.id));
+  const tool:Tool=canEdit?editingTool:"hand";
   const viewerToolRef = useRef(tool);
   // Persist before enqueueing React state: an incoming collaborator update
   // may remount the board BEFORE the queued React state updater runs.
   // The selected tool is never a shared board/presence field.
   const setTool: typeof setToolState = useCallback(next=>{
+    if(!canEdit)return;
     const chosen=typeof next==="function"?next(viewerToolRef.current):next;
     viewerToolRef.current=chosen;
     writeBoardSessionTool(boardSummary.id,authUser.id,chosen);
     setToolState(chosen);
-  },[boardSummary.id,authUser.id]);
+  },[boardSummary.id,authUser.id,canEdit]);
   useLayoutEffect(()=>{
     viewerToolRef.current=tool;
-    writeBoardSessionTool(boardSummary.id,authUser.id,tool);
-  },[boardSummary.id,authUser.id,tool]);
+    if(canEdit)writeBoardSessionTool(boardSummary.id,authUser.id,tool);
+  },[boardSummary.id,authUser.id,tool,canEdit]);
   // Opening the shape palette does not arm a previously chosen figure.
   useEffect(() => { if (tool !== "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
@@ -2974,6 +2976,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [desktopToolSection,setDesktopToolSection]=useState("create");
   const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}].map(group=>demoMode&&group.id==="media"?{...group,label:"Фото / PDF"}:group);
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
+  useEffect(()=>{if(!canEdit){setSelected([]);setEditing(null);setContextMenu(null);setMobileToolsOpen(false);setDesktopToolsExpanded(false);setLectrisCustomizeOpen(false);setLectrisInspectorOpen(false);setCommandPaletteOpen(false);setSpace(false)}},[canEdit]);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   const touchEditorViewport=isCoarsePointer||Capacitor.isNativePlatform();
   useLayoutEffect(()=>{
@@ -4987,6 +4990,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
   },[tool,boardSummary.id]);
   const openBoardContextMenu = (clientX:number,clientY:number,domId?:string) => {
+    if(!canEdit)return;
     finishEdit();
     const screen=local(clientX,clientY);
     const at=world(screen);
@@ -5845,6 +5849,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (presentation && !publicPresentation && e.code === "KeyB") { e.preventDefault(); setPresentationBlackout((value) => !value); return; }
       if (presentation && !publicPresentation && e.code === "KeyR") { e.preventDefault(); resetPresentationInteractions(); return; }
       if (presentation) return;
+      if(!canEdit){
+        const mod=e.ctrlKey||e.metaKey;
+        if(mod&&e.code==="Digit0"){e.preventDefault();setView({x:0,y:0,zoom:1});}
+        else if(mod&&e.code==="KeyF"){e.preventDefault();setSearchOpen(true);setSearchQuery("");}
+        return;
+      }
       if (gesture.current) return;
       if ((e.code === "Enter" || e.code === "F2") && selected.length === 1) {
         const item = itemsRef.current.find((i) => i.id === selected[0]);
@@ -5987,6 +5997,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (!target?.closest("[data-context-menu]")) setContextMenu(null);
     };
     const pasteFromSystem = (event: ClipboardEvent) => {
+      if(!canEdit)return;
       const target = event.target instanceof Element ? event.target : null;
       if (editing || target?.closest('input,textarea,select,[contenteditable="true"]')) return;
       const clipboardData = event.clipboardData;
@@ -8581,8 +8592,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
            </div>
            <button type="button" className="board-recent-full" onClick={()=>{setRecentChangesOpen(false);void openHistory()}}>Вся история изменений</button>
          </aside>}
-      {!layoutEditing&&adminMaintenance&&rolePreview==="actual" && <div className="viewer-banner" style={{background:"#fff3d6",color:"#805200"}}>Режим администратора · изменения сохраняются от вашего имени</div>}
-       {!layoutEditing && !canEdit && !publicPresentation && <div className="viewer-banner">Только просмотр</div>}
       {publicPresentation&&<div className="public-presentation-badge">Публичная презентация · ← → для навигации · F — полный экран</div>}
       {!online&&<div className="offline-banner" role="status"><strong>Офлайн</strong><span>Можно продолжать работу с уже открытой локальной доской. Серверная синхронизация возобновится после подключения.</span></div>}{updateReady&&<div className="update-banner" role="status"><span>Доступна новая версия Lektrus.</span><button type="button" onClick={applyUpdate}>Обновить</button><button type="button" className="secondary" onClick={()=>setUpdateReady(null)}>Позже</button></div>}<header className={`topbar lectris-layout-${lectrisLayout}`}>
         <div className="topbar-left">
@@ -8613,7 +8622,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           {authUser.isGuest&&!demoMode&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
           <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canManageBoard||boardSummary.ownerId!==authUser.id} onChange={changeBoardSubject}/>
         </div>
-        <div className="topbar-right"><details className="lectris-layout-picker">
+        <div className="topbar-right">
+          {!layoutEditing&&!publicPresentation&&!canEdit&&<span className="board-access-status" role="status" aria-label="Только просмотр" title={boardSummary.planReadOnly?"Только просмотр · выберите эту доску в разделе «Тарифы»":"Только просмотр · наблюдатель"}><Icon name="eye" size={16}/><span>Только просмотр</span></span>}
+          {!layoutEditing&&canEdit&&adminMaintenance&&rolePreview==="actual"&&<span className="board-access-status is-admin" role="status" title="Изменения сохраняются от вашего имени"><Icon name="settings" size={16}/><span>Администратор</span></span>}
+          <details className="lectris-layout-picker">
             <summary title="Настройки и раскладка доски" aria-label="Настройки и раскладка доски"><Icon name="settings" size={17}/></summary>
             <div className="lectris-layout-menu">
               <strong>Рабочая раскладка</strong>
@@ -8732,12 +8744,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
-                <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
-                <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
+                {canEdit&&<><button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button></>}
               </div>
               <div className="topbar-menu-section">
-                {!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
-                {previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
+                {canEdit&&!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
+                {canEdit&&previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
                 <button onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportBoard()}}><Icon name="download" size={16}/><span>Скачать копию</span></button>
               </div>
               {showAdminControls && <div className="topbar-menu-section">
@@ -8861,7 +8873,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
          </section></div>}
         {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
 
-        {!objectEditorOpen && !presentation && selectedItems.length===0 && <LectrisQuickProperties userId={authUser.id}
+        {canEdit && !objectEditorOpen && !presentation && selectedItems.length===0 && <LectrisQuickProperties userId={authUser.id}
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize} eraserMode={eraserMode} onEraserMode={setEraserMode}
@@ -8874,7 +8886,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           onColor={tool === "marker" ? setMarkerColor : tool === "pen" ? setPenColor : setColor}
           onWeight={setWeight}
           onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
-        {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
+        {canEdit && lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
             pdfPageCount={pdfPageCount}
             canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
@@ -8935,7 +8947,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             <p>{activePresentationFrame.notes?.trim() || "Для этого фрейма заметки ещё не добавлены."}</p>
           </div>
         )}
-        {commandPaletteOpen && (() => {
+        {canEdit && commandPaletteOpen && (() => {
           const commands: [string,string,()=>void,Tool?][] = [
             ["Выделение прямоугольником","Навигация",() => setTool("select"),"select"],["Петля","Инструмент",() => setTool("lasso"),"lasso"],
             ["Карандаш","Рисование",() => setTool("pen"),"pen"],["Маркер","Рисование",() => setTool("marker"),"marker"],["Ластик","Рисование",() => setTool("eraser"),"eraser"],
@@ -9654,7 +9666,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           </div>
         )}
 
-<nav className="mobile-board-tools" aria-label="Основные инструменты">
+{canEdit&&<nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
             {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
             <button type="button" data-lektrus-hand-tool="true" className={tool==="hand"?"active":""} aria-label="Рука — перемещать доску одним пальцем" title="Рука" aria-pressed={tool==="hand"} onClick={()=>{finishEdit();setTool("hand");setMobileToolsOpen(false);setSelected([])}}><Icon name="hand" size={20}/></button>
@@ -9670,14 +9682,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <span className="mobile-tool-separator" aria-hidden="true"/>
           {canCreateAssignments&&<button type="button" className={`lektrus-mobile-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" aria-expanded={subjectToolsOpen} onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg></button>}
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
-        </nav>
-        {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
+        </nav>}
+        {canEdit&&mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
           <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!demoMode&&canEdit&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiSubject(lectrisBoardOrganization.subject);setBoardAiMode("assistant");setBoardAiOpen(true);setBoardAiPreview([]);setBoardAiDetected("")}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
             {mobileToolGroups.map(group=>({...group,label:demoMode&&group.tools.includes("linkmedia")?"Фото / PDF":group.label,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
           </div>
         </section>}
-        <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
+        {canEdit&&<aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
           <div className="toolbar-pinned" aria-label="Основные инструменты">
             {(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
@@ -9705,8 +9717,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <button type="button" className="lectris-tools-configure" title="Настроить инструменты" aria-label="Настроить инструменты" onClick={()=>setLectrisCustomizeOpen(true)}>
             <Icon name="settings" size={17}/><span className="tool-tooltip">Настроить</span>
           </button>
-        </aside>
-        {desktopToolsExpanded&&<LektrusToolOverflow anchor={adaptiveToolbarRef.current} onClose={()=>setDesktopToolsExpanded(false)}>
+        </aside>}
+        {!canEdit&&<div className="viewer-shared-instruments"><GeometryInstruments view={view} boardRef={board} portalContainer={instrumentViewportHost} instruments={sharedInstruments} onAdd={addSharedInstrument} onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument} editable={false} renderOverlays /></div>}
+        {canEdit&&desktopToolsExpanded&&<LektrusToolOverflow anchor={adaptiveToolbarRef.current} onClose={()=>setDesktopToolsExpanded(false)}>
           <header className="lektrus-tool-overflow-head">
             <div><strong>Инструменты</strong><small>Выберите нужный инструмент</small></div>
             <button type="button" aria-label="Закрыть меню инструментов" onClick={()=>setDesktopToolsExpanded(false)}><Icon name="close" size={17}/></button>
@@ -9807,12 +9820,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             setSubjectToolsOpen(false);
           }
         }}/>}
-        {lectrisCustomizeOpen&&<LectrisToolbarSettings
+        {canEdit&&lectrisCustomizeOpen&&<LectrisToolbarSettings
           tools={tools.filter(t=>(!demoMode||t.id!=="linkmedia")&&t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso"&&t.id!=="graph"&&t.id!=="formula").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
           onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>id!=="formula"&&id!=="graph"&&tools.some(t=>t.id===id)))}
           onClose={()=>setLectrisCustomizeOpen(false)}/>}
-        {!canEdit&&<div className="student-board-mode" title="Доступен просмотр доски без редактирования.">Наблюдатель</div>}
         {!isStudent&&attachmentRequests.length>0&&(()=>{
           const request=attachmentRequests[Math.min(attachmentRequestIndex,attachmentRequests.length-1)];
           return <aside className="teacher-media-request" onPointerDown={e=>e.stopPropagation()}>
@@ -9903,6 +9915,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               pinchState.current=null;
               pinchSelectionSnapshot.current=null;
               setPanning(false);
+            }
+            // A viewer pans even when the gesture begins on an object.
+            if(!canEdit&&!presentation&&(e.button===0||e.button===1||e.button===2)){
+              if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
+              e.preventDefault();e.stopPropagation();
+              if(gesture.current)return;
+              const start=local(e.clientX,e.clientY);
+              gesture.current={pointer:e.pointerId,mode:"pan",start,view,before:itemsRef.current,ids:[],path:[world(start)],additive:false};
+              setPanning(true);
+              e.currentTarget.setPointerCapture(e.pointerId);
+              return;
             }
             // Selection toolbar and embedded controls are UI, not the canvas.
             // Previously pressing "Настроить" deselected the object in capture
@@ -10218,6 +10241,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden";
           }}
           onClickCapture={(e)=>{
+            if(!canEdit&&!presentation){e.preventDefault();e.stopPropagation();return;}
             if(tool==="eraser"&&!(e.target as HTMLElement).closest("button,input,select,textarea,[data-board-interactive]")){
               e.preventDefault();e.stopPropagation();return;
             }
@@ -10262,12 +10286,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             }
           }}
           onDragOver={(e) => {
+            if(!canEdit){e.preventDefault();e.dataTransfer.dropEffect="none";return;}
             if (Array.from(e.dataTransfer.types).includes("Files")) {
               e.preventDefault();
               e.dataTransfer.dropEffect = "copy";
             }
           }}
           onDrop={async (e) => {
+            if(!canEdit){e.preventDefault();return;}
             const files = Array.from(e.dataTransfer.files) as File[];
             if (!files.length) return;
             e.preventDefault();
@@ -11287,7 +11313,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           </button>
           <button aria-label="Увеличить" title="Увеличить" onClick={() => zoom(1.25)}><Icon name="zoom-in" size={16} /></button>
           <span className="board-controls-separator" />
-          <div className="lektrus-background-anchor">
+          {canEdit&&<><div className="lektrus-background-anchor">
           <button type="button" className={"grid-toggle lektrus-background-toggle"+(backgroundMenuOpen?" active":"")}
             aria-label="Настройки фона доски" aria-expanded={backgroundMenuOpen} aria-controls="lektrus-background-settings"
             onClick={()=>setBackgroundMenuOpen(x=>!x)} title="Фон доски: узор, цвет и прозрачность">
@@ -11333,7 +11359,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             title={snapEnabled?"Привязка включена · Alt временно отключает":"Привязка выключена · нажмите, чтобы включить"}
           >
             <Icon name="snap" size={16} />
-          </button>
+          </button></>}
           <button
             className="fit-button fit-all-button"
             aria-label="Показать всю доску"
@@ -11343,7 +11369,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           >
             <Icon name="fit" size={16} />
           </button>
-          <button
+          {canEdit&&<button
             className="fit-button fit-selection-button"
             aria-label="Приблизить выделение"
             disabled={!selectionBounds}
@@ -11351,7 +11377,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             title="Приблизить выделение"
           >
             <Icon name="select" size={16} />
-          </button>
+          </button>}
         </div>
         {items.length > 0 && (
           <div className="minimap" role="region" aria-label="Навигатор доски">
