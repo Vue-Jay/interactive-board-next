@@ -13,6 +13,7 @@ import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./le
 import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 import {lockGeometryConstraint,forgetGeometryConstraint,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
 import {compileGraphExpression} from "./lektrusGraphExpression";
+import {planeSizeForRange,scalePlaneRange} from "./coordinatePlane";
 
 /** Small vector thumbnails make the school shape library usable at a glance. */
 function LektrusGeometryPresetGlyph({id}:{id:MathPresetId}){
@@ -273,7 +274,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
     setLinkPoints([]);setCreatedLinkPoints([]);setGeometryError("");
     emitChange(next);refreshHistory(n=>n+1);
   };
-  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry"|"connect">("presets");
+  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry"|"connect"|"range">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [settingsOpen,setSettingsOpen]=useState(()=>mode!=="geometry"||typeof window==="undefined"||window.innerWidth>900);
   // Left-rail tools control the drawing itself. The sidebar only configures them.
@@ -327,6 +328,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
        !Number.isFinite(source.yMin)||!Number.isFinite(source.yMax)||
        source.xMin>=source.xMax||source.yMin>=source.yMax||
        !Number.isFinite(factor)||factor<=0)return;
+    if(source.purpose==="coordinates"){
+      onChange({...source,...scalePlaneRange(source,factor)});
+      return;
+    }
     const spanX=source.xMax-source.xMin,spanY=source.yMax-source.yMin;
     const nextX=Math.max(.4,Math.min(1e6,spanX*factor));
     const nextY=Math.max(.24,Math.min(6e5,spanY*factor));
@@ -352,7 +357,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
     const counterpart=key==="xMin"?draft.xMax:key==="xMax"?draft.xMin:key==="yMin"?draft.yMax:draft.yMin;
     if((key==="xMin"||key==="yMin")&&value>=counterpart)return;
     if((key==="xMax"||key==="yMax")&&value<=counterpart)return;
-    patch({[key]:value});
+    const next={...draft,[key]:value};
+    if(draft.purpose==="coordinates"){
+      const size=planeSizeForRange(draft,{width:draft.boardWidth??520,height:draft.boardHeight??312},next);
+      onChange({...next,boardWidth:size.width,boardHeight:size.height});
+    }else onChange(next);
   };
   const createSchool=(kind:SchoolConstruction,sides?:3|4|5|6|8)=>{
     const result=buildSchoolConstruction(draft,{kind,sides});
@@ -492,6 +501,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
     setGeometryError("");setLinkPoints([]);setCanvasTool(id==="free"?"point":"select");
     if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");setTab(id==="free"?"points":"presets");if(typeof window!=="undefined"&&window.innerWidth<=900)setSettingsOpen(false)}
     patch({
+      ...(sample.graphPurpose==="coordinates"?{boardWidth:sample.width,boardHeight:sample.height}:{}),
       figureId:id,rotationX:sample.graphRotationX??25,rotationY:sample.graphRotationY??-35,parallelMarks:[],title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
       connectPoints:sample.graphConnectPoints===true,grid:sample.graphGrid!==false,
@@ -670,6 +680,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Фигуры":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Размеры</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы</button>}
+        {mode!=="geometry"&&draft.purpose==="coordinates"&&<button type="button" className={tab==="range"?"active":""} onClick={()=>{setTab("range");setSettingsOpen(true)}}>Диапазон</button>}
         {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки</button>}
       </nav>;
   return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""} ${mode==="geometry"?"lektrus-geometry-workspace":""} ${!settingsOpen?"is-settings-hidden":""}`} style={subjectEditorStyle("mathematics")} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
@@ -737,32 +748,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
               </div>)}
 
             <label className="lektrus-graph-field"><span>Название построения</span><input value={draft.title} maxLength={100} onChange={e=>patch({title:e.target.value})}/></label>
-            {draft.purpose==="coordinates"&&<div className="lektrus-graph-axis-ranges">
-              <strong>Размер координатной плоскости</strong>
-              <small>Увеличьте ширину и высоту на доске, чтобы сделать координатные оси длиннее.</small>
-              <div className="lektrus-geometry-range-inputs">
-                {([["Ширина","boardWidth",520],["Высота","boardHeight",340]] as const).map(([label,key,fallback])=>
-                  <label key={key}>{label}, px
-                    <input type="number" min="200" max="4000" step="20" key={key+":"+draft[key]}
-                      defaultValue={draft[key]??fallback} onBlur={e=>{
-                        const n=Number(e.target.value);
-                        if(e.target.value.trim()&&Number.isFinite(n))patch({[key]:Math.max(200,Math.min(4000,n))});
-                        else e.target.value=String(draft[key]??fallback);
-                      }} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>
-                  </label>)}
-              </div>
-              <strong>Диапазон осей X и Y</strong>
-              <div className="lektrus-geometry-range-inputs">
-                {([["Начало X","xMin"],["Конец X","xMax"],["Начало Y","yMin"],["Конец Y","yMax"]] as const).map(([label,key])=>
-                  <label key={key}>{label}<input type="number" step="any" key={key+":"+draft[key]}
-                    defaultValue={draft[key]} onBlur={e=>{
-                      const n=Number(e.target.value);
-                      if(e.target.value.trim()&&Number.isFinite(n))setAxisBoundary(key,n);
-                      else e.target.value=String(draft[key]);
-                    }} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></label>)}
-              </div>
-              <label className="lektrus-graph-check"><input type="checkbox" checked={draft.snap} onChange={e=>patch({snap:e.target.checked})}/> Привязывать точки к сетке</label>
-            </div>}
+            {draft.purpose==="coordinates"&&<label className="lektrus-graph-check"><input type="checkbox" checked={draft.snap} onChange={e=>patch({snap:e.target.checked})}/> Привязывать точки к сетке</label>}
             {draft.purpose==="function"&&<div className="lektrus-graph-section"><strong>Функция</strong>
               <label className="lektrus-graph-field"><span>Шаблон построения</span>
                 <select value={draft.type} onChange={e=>{const type=e.target.value as GraphDraft["type"];setExpressionInput(formulas[type]);patch({type,expression:formulas[type],showCurve:true})}}>
@@ -1198,6 +1184,21 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
             </div>
             {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
           </div>}
+          {mode!=="geometry"&&draft.purpose==="coordinates"&&tab==="range"&&<div className="lektrus-graph-section lektrus-graph-axis-ranges">
+            <strong>Диапазон осей X и Y</strong>
+            <small>Размер плоскости на доске автоматически подстраивается под границы осей. Координаты точек сохраняются.</small>
+            <div className="lektrus-geometry-range-inputs">
+              {([["Начало X","xMin"],["Конец X","xMax"],["Начало Y","yMin"],["Конец Y","yMax"]] as const).map(([label,key])=>
+                <label key={key}>{label}<input type="number" step="any" aria-label={label} key={key+":"+draft[key]}
+                  defaultValue={draft[key]} onBlur={e=>{
+                    const n=Number(e.target.value);
+                    const other=key==="xMin"?draft.xMax:key==="xMax"?draft.xMin:key==="yMin"?draft.yMax:draft.yMin;
+                    if(e.target.value.trim()&&Number.isFinite(n)&&Math.abs(n)<=1e6&&(key.endsWith("Min")?n<other:n>other))setAxisBoundary(key,n);
+                    else e.target.value=String(draft[key]);
+                  }} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur()}}}/></label>)}
+            </div>
+            <small>Для изменения масштаба без изменения размера используйте кнопки + и − под предпросмотром или на доске.</small>
+          </div>}
           {tab==="points"&&<div className="lektrus-graph-section">
             {mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&<div className="lektrus-point-quick-actions">
               <button type="button" onClick={()=>{setTab("connect");setCanvasTool(linkKind);setLinkPoints([]);setGeometryError("");}}>
@@ -1565,6 +1566,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
                 pinchDistance.current=null;pinchGroup.current=null;
               }
             }}>{previewWithLink}</div>
+          {mode!=="geometry"&&draft.purpose==="coordinates"&&<div className="lektrus-coordinate-preview-zoom" role="group" aria-label="Масштаб координатной плоскости">
+            <button type="button" aria-label="Уменьшить масштаб плоскости" title="Уменьшить масштаб" disabled={!validViewport} onClick={()=>zoomViewport(1.25)}>−</button>
+            <span>Масштаб</span>
+            <button type="button" aria-label="Увеличить масштаб плоскости" title="Увеличить масштаб" disabled={!validViewport} onClick={()=>zoomViewport(.8)}>+</button>
+          </div>}
           {mode==="geometry"&&<div className="lektrus-geometry-canvas-actions" role="group" aria-label="Действия с текущим построением">
             <span className="lektrus-geometry-selection-summary" role="status">
               {isSolid?`Объёмная фигура: ${draft.title}`:

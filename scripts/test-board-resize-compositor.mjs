@@ -14,9 +14,22 @@ const app=readFileSync("src/BoardApp.tsx","utf8");
 const fitBegin=app.indexOf("const fitItemToRect =");
 const fitEnd=app.indexOf("const connectorItemFromPoints =",fitBegin);
 assert.ok(fitBegin>=0&&fitEnd>fitBegin);
+const plane={};
+new Function("exports",compile(readFileSync("src/coordinatePlane.ts","utf8")))(plane);
 const model={};
-new Function("exports",compile(app.slice(fitBegin,fitEnd)+
- "\nexports.fitItemToRect=fitItemToRect;"))(model);
+new Function("exports","isCoordinatePlane","resizeCoordinatePlane",compile(app.slice(fitBegin,fitEnd)+
+ "\nexports.fitItemToRect=fitItemToRect;"))(model,plane.isCoordinatePlane,plane.resizeCoordinatePlane);
+// Exercise the real fitItemToRect entry point, not a duplicate implementation.
+const coordinate={id:"plane",kind:"graph",graphPurpose:"coordinates",x:75,y:36,
+ width:400,height:200,graphXMin:-10,graphXMax:10,graphYMin:-5,graphYMax:5,
+ graphPoints:[{x:2,y:3}]};
+const extended=model.fitItemToRect(coordinate,{x:75,y:36,width:800,height:300},true);
+assert.equal(extended.graphXMax-extended.graphXMin,40);
+assert.equal(extended.graphYMax-extended.graphYMin,15);
+assert.deepEqual(extended.graphPoints,coordinate.graphPoints);
+assert.equal(extended.width,800);assert.equal(extended.height,300);
+assert.equal(model.fitItemToRect({...coordinate,graphPurpose:"geometry"},
+ {x:75,y:36,width:800,height:300}).graphXMax,10);
 const {canCompositeBoardResize,resizePreviewBounds,paintBoardResizePreview}=helpers;
 
 const sample=(id,kind="text")=>({id,kind,x:75,y:36,width:230,height:110,rotation:0});
