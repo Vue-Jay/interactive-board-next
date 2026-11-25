@@ -1,40 +1,113 @@
-.billing-page{min-height:100vh;padding:28px;background:#f7f8fb;color:#242733}.billing-head{display:flex;align-items:flex-start;gap:18px;max-width:1180px;margin:auto}.billing-head button,.billing-qa button{border:1px solid #dfe2ea;background:#fff;border-radius:10px;padding:9px 12px;cursor:pointer}.billing-head h1{margin:0}.billing-head p{margin:5px 0;color:#747987}.billing-current{max-width:1180px;margin:24px auto 14px;display:flex;gap:12px;align-items:center;padding:14px 16px;background:#fff;border:1px solid #e2e4ea;border-radius:14px}.billing-current span{color:#777c88}.billing-current em{font-style:normal;margin-left:auto}.billing-grid{max-width:1180px;margin:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.billing-card{display:flex;flex-direction:column;gap:14px;padding:20px;background:#fff;border:1px solid #e1e3e9;border-radius:16px}.billing-card.current{outline:2px solid #5355c9}.billing-card h2,.billing-card p{margin:0}.billing-card p{color:#777c88}.billing-card ul{padding:0;list-style:none;line-height:1.9;flex:1}.billing-card button{height:40px;border:0;border-radius:10px;background:#5355c9;color:#fff;cursor:pointer}.billing-card button:disabled{background:#e4e5eb;color:#777;cursor:default}.billing-qa{max-width:1180px;margin:18px auto;padding:18px;background:#fff;border:1px dashed #cfd2dc;border-radius:14px}.billing-qa div{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:760px){.billing-page{padding:16px}.billing-grid{grid-template-columns:1fr}.billing-current{align-items:flex-start;flex-wrap:wrap}.billing-current em{margin-left:0;width:100%}}.billing-limit-strip{display:grid;gap:4px;padding:9px 10px;background:#f7f8fb;border-radius:9px;font-size:12px;color:#6f7480}.billing-limit-strip span{display:flex;justify-content:space-between;gap:10px}.billing-limit-strip b{color:#343743}
-@media(max-width:1100px){
-  .billing-page{
-    box-sizing:border-box;
-    height:100dvh;
-    min-height:100dvh;
-    max-height:100dvh;
-    overflow-x:hidden;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-    touch-action:pan-y;
-    padding-bottom:max(88px,calc(56px + env(safe-area-inset-bottom)));
-  }
-}
-
-/* Lektrus surface and interaction tokens replace the legacy OnlineRepetitor palette.
-   The plan grid and all existing actions keep their established layout. */
-.billing-page{background:var(--lt-page);color:var(--lt-text)}
-.billing-head button,.billing-qa button{color:var(--lt-secondary);background:var(--lt-raised);border-color:var(--lt-line)}
-.billing-head button:hover,.billing-qa button:hover{color:var(--lt-text);background:var(--lt-hover);border-color:var(--lt-line-strong)}
-.billing-head h1,.billing-card h2,.billing-card>strong,.billing-current strong{color:var(--lt-text)}
-.billing-head p,.billing-card p,.billing-current>span{color:var(--lt-muted)}
-.billing-current,.billing-card,.billing-qa{background:var(--lt-surface);border-color:var(--lt-line);color:var(--lt-text)}
-.billing-card.current{outline:2px solid var(--lt-primary);outline-offset:-1px}
-.billing-card button{color:var(--lt-on-primary);background:var(--lt-primary)}
-.billing-card button:hover:not(:disabled){background:var(--lt-primary-hover)}
-.billing-card button:disabled{background:var(--lt-subtle);color:var(--lt-muted)}
-.billing-limit-strip{background:var(--lt-subtle);color:var(--lt-secondary)}
+/* Billing is a self-contained responsive workspace section. Use app theme tokens. */
+.billing-page{box-sizing:border-box;min-width:0;min-height:100%;padding:clamp(16px,3vw,32px);background:var(--lt-page);color:var(--lt-text);font-size:14px;line-height:1.5}
+.billing-page *{box-sizing:border-box}
+.billing-page> :is(header,section,div){max-width:1040px;margin-inline:auto;min-width:0}
+.billing-head{display:grid;gap:14px;margin-bottom:22px}
+.billing-head-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.billing-page button{font:inherit;cursor:pointer}
+.billing-head button,.billing-secondary,.billing-error button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:8px 13px;border:1px solid var(--lt-line);background:var(--lt-surface);color:var(--lt-secondary);border-radius:10px;font-weight:600}
+.billing-head button:hover:not(:disabled),.billing-secondary:hover:not(:disabled),.billing-error button:hover:not(:disabled){background:var(--lt-hover);color:var(--lt-text);border-color:var(--lt-line-strong)}
+.billing-page :is(button,input,summary,a):focus-visible,.billing-plans:focus-visible{outline:2px solid var(--lt-focus);outline-offset:3px}
+.billing-page button:disabled{opacity:.55;cursor:default}
+.billing-page svg{flex:none;vertical-align:middle}
+.billing-heading h1{font-size:clamp(24px,3vw,36px);line-height:1.15;letter-spacing:-.035em;margin:0;font-weight:750;overflow-wrap:anywhere}
+.billing-heading p{font-size:14px;line-height:1.5;margin:7px 0 0;color:var(--lt-muted)}
+.billing-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.billing-current,.billing-usage,.billing-card{min-width:0;background:var(--lt-surface);border:1px solid var(--lt-line);border-radius:16px;padding:clamp(15px,2.3vw,24px)}
+.billing-current{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(120deg,var(--lt-surface) 30%,var(--lt-subtle));border-color:var(--lt-line-strong)}
+.billing-plan-intro,.billing-section-title{display:flex;align-items:center;gap:12px;min-width:0}
+.billing-plan-intro>div,.billing-section-title>div{min-width:0}
+.billing-plan-icon,.billing-icon,.billing-plan-mini{display:grid;place-items:center;flex:none;background:var(--lt-subtle);color:var(--lt-primary);border-radius:12px;width:42px;height:42px}
+.billing-plan-icon{width:54px;height:54px;background:color-mix(in srgb,var(--lt-primary) 12%,var(--lt-surface));border-radius:15px}
+.billing-plan-icon svg{width:28px;height:28px}
+.billing-eyebrow{color:var(--lt-muted);font-size:12px;font-weight:600}
+.billing-current h2{font-size:clamp(22px,3vw,30px);line-height:1.2;margin:2px 0 5px;overflow-wrap:anywhere}
+.billing-current p,.billing-section-title p,.billing-card p{margin:0;color:var(--lt-muted);font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.billing-current-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+.billing-badge{display:inline-flex;align-items:center;justify-content:center;padding:5px 9px;border-radius:999px;background:var(--lt-subtle);color:var(--lt-secondary);font-size:11px;font-weight:700;line-height:1.4;white-space:normal;text-align:center}
+.billing-badge.active{color:var(--lt-primary);background:color-mix(in srgb,var(--lt-primary) 11%,var(--lt-surface))}
+.billing-link{display:inline-flex;align-items:center;justify-content:center;gap:3px;border:0;background:transparent;color:var(--lt-primary);font-weight:650;min-height:40px;padding:4px 0}
+.billing-link:hover{text-decoration:underline}
+.billing-section-title{margin-bottom:15px;align-items:center}
+.billing-section-title h2{margin:0;font-size:19px;letter-spacing:-.02em;line-height:1.25}
+.billing-section-title p{margin-top:3px}
+.billing-section-title .billing-icon{width:36px;height:36px;border-radius:10px}
+.billing-page .storage-meter{gap:8px}
+.billing-page .storage-meter-line{gap:6px;flex-wrap:wrap}
+.billing-page .storage-meter-line strong{font-size:clamp(24px,3vw,32px);letter-spacing:-.04em;line-height:1.15}
+.billing-page .storage-meter-line span{font-size:12px;font-weight:600}
+.billing-page progress{display:block;width:100%;min-width:0;height:8px;accent-color:var(--lt-primary);border:0;border-radius:20px;overflow:hidden}
+.billing-page progress::-webkit-progress-bar{background:var(--lt-subtle);border-radius:20px}
+.billing-page progress::-webkit-progress-value{background:var(--lt-primary);border-radius:20px}
+.billing-page progress::-moz-progress-bar{background:var(--lt-primary);border-radius:20px}
+.billing-page progress.full::-webkit-progress-value,.billing-page progress.storage-near-limit::-webkit-progress-value{background:#d97706}
+.billing-page progress.full::-moz-progress-bar,.billing-page progress.storage-near-limit::-moz-progress-bar{background:#d97706}
+.billing-page .billing-storage-breakdown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:15px 0 0}
+.billing-page .billing-storage-breakdown>div{padding:10px;border-radius:10px;background:var(--lt-subtle);display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.billing-storage-label{display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:12px!important;line-height:1.3;overflow-wrap:normal}
+.billing-storage-label svg{color:var(--lt-primary);width:18px;height:18px}
+.billing-storage-breakdown strong{font-size:15px;line-height:1.25;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.billing-info{margin-top:15px;border-top:1px solid var(--lt-line);padding-top:5px;color:var(--lt-muted)}
+.billing-info summary{min-height:42px;display:flex;align-items:center;gap:8px;color:var(--lt-secondary);font-size:13px;font-weight:600;cursor:pointer;list-style:none}
+.billing-info summary::-webkit-details-marker{display:none}
+.billing-info summary>svg:first-child{color:var(--lt-primary);width:17px;height:17px}
+.billing-info summary>svg:last-child{margin-left:auto;width:16px;height:16px;transition:transform .15s ease}
+.billing-info[open] summary>svg:last-child{transform:rotate(90deg)}
+.billing-info p{font-size:13px;line-height:1.55;margin:0 0 7px;padding-left:25px;color:var(--lt-muted)}
+.billing-usage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.billing-usage-grid article{min-width:0;border-radius:11px;background:var(--lt-subtle);padding:12px;display:grid;gap:7px;align-content:start}
+.billing-usage-row{display:grid;gap:8px;min-width:0}
+.billing-usage-label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--lt-secondary);line-height:1.35}
+.billing-usage-label svg{width:17px;height:17px;color:var(--lt-primary)}
+.billing-usage-row strong{font-size:23px;line-height:1.15;font-variant-numeric:tabular-nums}
+.billing-usage-grid small{font-size:11px;color:var(--lt-muted);font-weight:400}
+.billing-usage-row strong small{font-size:14px}
+.billing-usage-grid .billing-limit-reached{color:var(--lt-text);font-weight:650}
+.billing-board-section{margin-top:14px}
+.billing-board-counter{display:grid;gap:8px;margin-bottom:12px;font-size:13px}
+.billing-board-picker{display:grid;gap:6px;max-height:330px;overflow:auto;padding:2px}
+.billing-board-picker label{display:flex;align-items:center;gap:10px;min-height:44px;padding:10px 12px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-surface);cursor:pointer}
+.billing-board-picker label:has(input:checked){background:var(--lt-subtle);border-color:var(--lt-line-strong)}
+.billing-board-picker label:has(input:disabled){cursor:default}
+.billing-board-picker input{width:18px;height:18px;flex:none;margin:0;accent-color:var(--lt-primary)}
+.billing-board-picker label span{flex:1;min-width:0;overflow-wrap:anywhere}
+.billing-board-picker label svg{color:var(--lt-primary)}
+.billing-board-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:15px}
+.billing-save{min-height:44px;padding:9px 17px;border:1px solid transparent;border-radius:10px;background:var(--lt-primary);color:var(--lt-on-primary);font-weight:700}
+.billing-save:hover:not(:disabled){background:var(--lt-primary-hover)}
+.billing-board-notice{margin:10px 0 0;color:var(--lt-secondary);font-size:13px}
+.billing-plans{margin-top:24px;scroll-margin-top:16px}
+.billing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.billing-card{display:flex;flex-direction:column;gap:12px}
+.billing-card.current{border-color:var(--lt-primary);box-shadow:inset 0 0 0 1px var(--lt-primary)}
+.billing-card-top{display:flex;align-items:center;gap:9px;min-width:0}
+.billing-card-top h2{font-size:22px;margin:0;line-height:1.2}
+.billing-card-top .billing-badge{margin-left:auto}
+.billing-plan-mini{width:34px;height:34px;border-radius:9px}
+.billing-price{font-size:25px;letter-spacing:-.025em;line-height:1.25}
+.billing-card ul{display:grid;gap:9px;align-content:start;flex:1;list-style:none;margin:0;padding:12px 0 0;border-top:1px solid var(--lt-line);font-size:13px}
+.billing-card li{display:flex;align-items:flex-start;gap:8px;min-width:0;line-height:1.45}
+.billing-card li svg{width:16px;height:16px;margin-top:1px;color:var(--lt-primary)}
+.billing-card li span{min-width:0;overflow-wrap:anywhere}
+.billing-plan-state{display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;background:var(--lt-subtle);color:var(--lt-muted);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600;text-align:center}
+.billing-card.current .billing-plan-state{color:var(--lt-primary);background:color-mix(in srgb,var(--lt-primary) 10%,var(--lt-surface))}
+.billing-plan-state svg{width:17px;height:17px}
+.billing-payment-info{margin:12px 0 0;padding:8px 12px;border:1px solid var(--lt-line);border-radius:12px;background:var(--lt-surface)}
+.billing-status{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:13px;border:1px solid var(--lt-line);border-radius:12px;color:var(--lt-secondary);background:var(--lt-surface)}
+.billing-status span{flex:1;min-width:0;overflow-wrap:anywhere}
+.billing-error>svg{color:var(--lt-primary)}
+.billing-error button{flex:none;min-height:36px}
+.billing-qa{margin:18px auto;padding:18px;background:var(--lt-surface);border:1px dashed var(--lt-line);border-radius:14px}
+.billing-qa div{display:flex;gap:8px;flex-wrap:wrap}
+.billing-limit-strip{display:grid;gap:4px;padding:9px 10px;background:var(--lt-subtle);border-radius:9px;font-size:12px;color:var(--lt-secondary)}
+.billing-limit-strip span{display:flex;justify-content:space-between;gap:10px}
 .billing-limit-strip b{color:var(--lt-text)}
-.billing-page :is(button,input,select):focus-visible{outline:2px solid var(--lt-focus);outline-offset:2px}
-.billing-grid,.billing-card,.billing-head,.billing-current,.billing-qa{min-width:0}
-.billing-card :is(h2,p,li),.billing-current{overflow-wrap:anywhere}
+@media(max-width:1100px){.billing-page{height:100dvh;min-height:100dvh;max-height:100dvh;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding-bottom:max(88px,calc(56px + env(safe-area-inset-bottom)))}}
+@media(max-width:850px){.billing-overview{grid-template-columns:1fr}}
+@media(max-width:650px){.billing-page{padding-inline:14px;padding-top:12px}.billing-head{gap:10px;margin-bottom:16px}.billing-head button{min-height:42px}.billing-heading h1{font-size:26px}.billing-heading p{font-size:13px}.billing-current{align-items:flex-start;flex-direction:column;gap:12px}.billing-current-actions{flex-direction:row;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap}.billing-plan-icon{width:45px;height:45px}.billing-plan-icon svg{width:24px;height:24px}.billing-current h2{font-size:23px}.billing-usage,.billing-card{padding:14px}.billing-grid{grid-template-columns:1fr;gap:10px}.billing-usage-grid article{padding:10px}.billing-storage-label{font-size:11px!important}.billing-page .billing-storage-breakdown>div{padding:9px 7px}.billing-storage-breakdown strong{font-size:14px}.billing-plans{margin-top:18px}.billing-board-actions>button{flex:1}}
+@media(max-width:350px){.billing-page{padding-inline:10px}.billing-page .billing-storage-breakdown{grid-template-columns:1fr}.billing-page .billing-storage-breakdown>div{flex-direction:row;align-items:center}.billing-storage-label{flex-direction:row;align-items:center}.billing-usage-grid{grid-template-columns:1fr}.billing-refresh span{display:none}}
+@media(prefers-reduced-motion:reduce){.billing-info summary>svg:last-child{transition:none}}
 
-/* The content column is narrower than the full viewport inside Lektrus navigation:
-   use usable width rather than treating a 768px tablet as three wide cards. */
-.billing-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,248px),1fr))}
-
-.billing-current{justify-content:space-between;padding:20px 24px}.billing-current h2{margin:4px 0;font-size:30px}.billing-current p{margin:0;color:var(--lt-muted)}.billing-badge{border-radius:999px;background:var(--lt-subtle,#e8edff);color:var(--lt-primary,#3158b4);padding:6px 10px;font-size:12px;font-weight:700;white-space:nowrap}.billing-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.billing-card>strong{font-size:29px}.billing-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.billing-usage{max-width:1180px;margin:16px auto;background:var(--lt-surface);border:1px solid var(--lt-line);border-radius:16px;padding:20px}.billing-usage h2{margin:0 0 12px;font-size:19px}.billing-usage-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}.billing-usage-grid article{display:grid;gap:8px;padding:14px;background:var(--lt-subtle);border-radius:12px}.billing-usage-grid span,.billing-usage-grid small{color:var(--lt-muted);font-size:12px}.billing-usage-grid strong{font-size:21px}.billing-usage-grid progress{width:100%;height:8px;accent-color:var(--lt-primary,#3158b4)}.billing-usage-grid progress.full{accent-color:#d97706}.billing-board-picker{display:grid;gap:8px;margin:12px 0}.billing-board-picker label{display:flex;align-items:center;gap:8px}.billing-save{padding:10px 16px;border:0;border-radius:10px;color:var(--lt-on-primary,#fff);background:var(--lt-primary,#3158b4);font-weight:700}.billing-save:disabled{opacity:.5}.billing-status,.billing-disclaimer{max-width:1180px;margin:14px auto;color:var(--lt-muted)}.billing-board-readonly{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:90vw;z-index:1000;padding:10px 16px;border-radius:12px;background:#e4edff;color:#183c87;border:1px solid #9fbaee;font-weight:600;box-shadow:0 4px 18px #163c7820;pointer-events:none}
+.billing-board-readonly{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:90vw;z-index:1000;padding:10px 16px;border-radius:12px;background:#e4edff;color:#183c87;border:1px solid #9fbaee;font-weight:600;box-shadow:0 4px 18px #163c7820;pointer-events:none}
 .billing-limit-modal{position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;padding:20px;background:#11213b70;backdrop-filter:blur(3px)}.billing-limit-modal section{width:min(420px,100%);box-sizing:border-box;padding:25px;background:var(--lt-surface,#fff);color:var(--lt-text,#162740);border:1px solid var(--lt-line,#d2dded);border-radius:20px;box-shadow:0 24px 80px #142b4e40}.billing-limit-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#e3edff;color:#2656b5;font-weight:800;font-size:24px}.billing-limit-modal h2{font-size:22px;margin:14px 0 7px}.billing-limit-modal p{line-height:1.6;margin:0 0 12px}.billing-limit-modal aside{background:var(--lt-subtle,#edf2ff);padding:12px;border-radius:10px;color:var(--lt-secondary,#315588);font-size:13px}.billing-limit-modal button{display:block;width:100%;border:0;border-radius:11px;padding:12px;margin-top:18px;background:#3158b4;color:#fff;font-weight:700;cursor:pointer}
-@media(max-width:650px){.billing-grid{grid-template-columns:1fr}.billing-usage{padding:14px}}
+

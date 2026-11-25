@@ -50,6 +50,7 @@ const server=await createServer({configFile:"./vite.config.ts",
    if(path==="/api/v1/health")return send({ok:true,service:"lektrus-selfhost"});
    if(path==="/api/v1/maintenance")return send({state:"off",access_allowed:true});
    if(path==="/api/v1/auth/me")return send(studioUser);
+   if(path==="/api/v1/billing")return send({plan:"free",is_admin:true,unlimited:true,until:null,usage:{boards:2,students:3,groups:1,templates:0,storage_bytes:541860},boards:[],storage:{used_bytes:541860,limit_bytes:null,remaining_bytes:null,board_bytes:541860,material_bytes:0,template_bytes:0}});
    if(path==="/api/v1/admin/users")return send(rows);
    if(path==="/api/v1/admin/users/admin-a/boards"){await delay(750);return send([board("board-a","Доска Алексея",rows[0])])}
    if(path==="/api/v1/admin/users/admin-b/boards")return send([board("board-b","Доска Бориса",rows[1])]);
@@ -218,6 +219,25 @@ try{
   await toggle("admin-c");
   assert.equal(await evaluate('document.querySelectorAll(".admin-user-workspace").length'),0);
   console.log("✓ Admin workspace inline, desktop/tablet/mobile, stale response isolation, collapse, error and retry");
+  await call("Page.navigate",{url:url+"?section=billing"});
+  await wait('document.querySelector(".billing-current h2")?.textContent==="Администратор"',"Administrator billing data not loaded",30000);
+  assert.equal(await evaluate('document.querySelectorAll(".billing-card.current").length'),0,"Admin must not be falsely marked as Free");
+  assert.equal(await evaluate('document.querySelectorAll(".billing-storage-breakdown>div").length'),3);
+  for(const [width,height] of [[320,640],[390,844],[768,1024],[1440,900],[844,390]]){
+   await call("Emulation.setDeviceMetricsOverride",{width,height,deviceScaleFactor:1,mobile:false});
+   await delay(200);
+   const g=await evaluate(`(()=>{const p=document.querySelector(".billing-page"),b=p.querySelector(".billing-back"),h=p.querySelector(".billing-heading"),s=p.querySelector(".storage-usage-card"),r=b.getBoundingClientRect(),q=h.getBoundingClientRect();return {overflow:p.scrollWidth>p.clientWidth+2||s.scrollWidth>s.clientWidth+2,backAbove:r.bottom<=q.top+1,backHeight:r.height,usage:p.querySelectorAll(".billing-usage-grid article").length}})()`);
+   assert.equal(g.overflow,false,"Billing overflow at "+width);
+   assert.ok(g.backAbove&&g.backHeight>=39&&g.usage===4,"Billing header / usage at "+width+": "+JSON.stringify(g));
+  }
+  await click(".billing-info summary");
+  assert.equal(await evaluate('document.querySelector(".billing-info").open'),true);
+  await click(".billing-refresh");
+  await wait('!document.querySelector(".billing-refresh").disabled',"Refresh did not finish");
+  await click(".billing-back");
+  await wait('!!document.querySelector(".settings-shell")',"Billing back did not return to settings");
+  console.log("✓ Billing: admin tariff, responsive cards at five widths, expandable storage info, refresh and back");
+
  }else if(pwaOnly){
   await call("Emulation.setUserAgentOverride",{userAgent:"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",platform:"Linux armv8l"});
   await call("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:2,mobile:true});
