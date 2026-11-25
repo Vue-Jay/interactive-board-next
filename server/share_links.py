@@ -32,16 +32,13 @@ class GuestLink(RedeemLink):
 
 _guest_attempts: deque[float] = deque()
 
-GUEST_HOURS = 24
+GUEST_HOURS = 72
 GUEST_CLEANUP_INTERVAL = 3600
 GUEST_CLEANUP_BATCH = 100
-# Keep historical identities if removing the row could erase a teacher's
-# attendance, discussion, or other retained records. Guests cannot own a
-# workspace through the API; guard even against imported/inconsistent data.
+# Visits and comments keep immutable attribution snapshots independent of accounts.
+# Guests cannot own a workspace through the API; guard even against imported/inconsistent data.
 GUEST_DISPOSABLE = """
-    NOT EXISTS (SELECT 1 FROM board_visits v WHERE v.user_id=u.id)
-    AND NOT EXISTS (SELECT 1 FROM board_comments c WHERE c.author_id=u.id)
-    AND NOT EXISTS (SELECT 1 FROM boards b WHERE b.owner_id=u.id)
+    NOT EXISTS (SELECT 1 FROM boards b WHERE b.owner_id=u.id)
     AND NOT EXISTS (SELECT 1 FROM learning_materials m WHERE m.owner_id=u.id)
     AND NOT EXISTS (SELECT 1 FROM board_templates t WHERE t.owner_id=u.id)
     AND NOT EXISTS (SELECT 1 FROM student_profiles p WHERE p.student_id=u.id OR p.teacher_id=u.id)
@@ -86,6 +83,12 @@ async def cleanup_expired_guests(pool):
         await conn.execute("DELETE FROM account_sessions WHERE user_id=ANY($1::uuid[])", ids)
         await conn.execute("DELETE FROM board_members WHERE user_id=ANY($1::uuid[])", ids)
         await conn.execute("DELETE FROM user_notifications WHERE user_id=ANY($1::uuid[])", ids)
+        # Detach the foreign keys only for accounts actually eligible for deletion.
+        # Keep immutable UUIDs, names, comments and visit history intact.
+        for table in ("board_visits", "board_comments"):
+            await conn.execute(f"""UPDATE {table} SET account_user_id=NULL
+                WHERE account_user_id IN (SELECT u.id FROM account_users u
+                    WHERE u.id=ANY($1::uuid[]) AND {GUEST_EXPIRED} AND ({GUEST_DISPOSABLE}))""", ids)
         deleted = await conn.fetch(f"""
             DELETE FROM account_users u WHERE u.id=ANY($1::uuid[])
               AND {GUEST_EXPIRED} AND ({GUEST_DISPOSABLE}) RETURNING u.id
@@ -237,8 +240,8 @@ def make_share_router(current_user, board_access, board_view) -> APIRouter:
             # A guest is not an email account; the placeholder can never sign in.
             user = await conn.fetchrow(
                 """INSERT INTO account_users(id,email,password_hash,display_name,guest_board_id,guest_expires_at)
-                   VALUES($1,$2,'!guest',$3,$4,now()+interval '24 hours') RETURNING *""",
-                user_id, f"{user_id}@guest.invalid", name, board["id"])
+                   VALUES($1,$2,'!guest',$3,$4,now()+make_interval(hours => $5)) RETURNING *""",
+                user_id, f"{user_id}@guest.invalid", name, board["id"], GUEST_HOURS)
             await conn.execute("INSERT INTO board_members(board_id,user_id,role,participant_role) VALUES($1,$2,$3,$4)",
                                board["id"], user_id, role, participant)
             return await issue_tokens(conn, user)
