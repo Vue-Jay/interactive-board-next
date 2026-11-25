@@ -10,6 +10,7 @@ import AdminNewsPanel from "./AdminNewsPanel";
 import AdminMaintenancePanel from "./AdminMaintenancePanel";
 import AdminFinancePanel from "./AdminFinancePanel";
 import AdminStoragePanel from "./AdminStoragePanel";
+import AdminGuestsPanel from "./AdminGuestsPanel";
 import "./AdminScreen.css";
 
 type RolePreview="actual"|"teacher"|"student";
@@ -36,6 +37,7 @@ const adminTabs:readonly [AdminTab,string][]=[["users","Пользователи
 export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisible,onInvisibleChange,adminEdit,onAdminEditChange,rolePreview,onRolePreviewChange,onCheckRegistration}:Props){
  const [tab,setTab]=useState<AdminTab>(()=>new URLSearchParams(window.location.search).get("mail")==="1"?"feedback":"users");
  const [users,setUsers]=useState<AdminUser[]>([]),[requests,setRequests]=useState<Array<TeacherRequest&{isPreview?:boolean}>>([]),[boards,setBoards]=useState<AdminBoardSummary[]>([]);
+ const [usersTab,setUsersTab]=useState<"registered"|"guests">("registered"),[guestRefresh,setGuestRefresh]=useState(0);
  const [refreshing,setRefreshing]=useState(false),[loaded,setLoaded]=useState(false);
  const [busy,setBusy]=useState(""),[notice,setNotice]=useState(""),[query,setQuery]=useState(""),[boardQuery,setBoardQuery]=useState("");
  const [sort,setSort]=useState("newest"),[roleFilter,setRoleFilter]=useState("all");
@@ -80,7 +82,7 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
  const pending=requests.filter(x=>x.status==="pending"),history=requests.filter(x=>x.status!=="pending");
  return <main className="students-shell admin-users-shell admin-redesign">
   <section className="students-content">
-   <header className="admin-page-header"><div className="admin-page-actions"><button type="button" className="admin-back" onClick={onBack}><AdminIcon name="back"/>Назад</button><button type="button" className="admin-refresh" disabled={refreshing} onClick={()=>{setNotice("");void load();void listProductFeedback().then(rows=>setUnread(rows.filter(x=>x.status==="new").length)).catch(()=>{})}} aria-label="Обновить сводку"><AdminIcon name="refresh"/>{refreshing?"Обновление…":"Обновить"}</button></div><div className="admin-heading"><span className="admin-heading-icon"><AdminIcon name="shield"/></span><div><h1>Администрирование</h1><p>Управление платформой и пользователями</p></div></div></header>
+   <header className="admin-page-header"><div className="admin-page-actions"><button type="button" className="admin-back" onClick={onBack}><AdminIcon name="back"/>Назад</button><button type="button" className="admin-refresh" disabled={refreshing} onClick={()=>{setGuestRefresh(x=>x+1);setNotice("");void load();void listProductFeedback().then(rows=>setUnread(rows.filter(x=>x.status==="new").length)).catch(()=>{})}} aria-label="Обновить сводку"><AdminIcon name="refresh"/>{refreshing?"Обновление…":"Обновить"}</button></div><div className="admin-heading"><span className="admin-heading-icon"><AdminIcon name="shield"/></span><div><h1>Администрирование</h1><p>Управление платформой и пользователями</p></div></div></header>
    {notice&&<div className="access-notice admin-page-notice" role="status">{notice}<button type="button" onClick={()=>setNotice("")} aria-label="Закрыть сообщение">×</button></div>}
    <nav className="admin-section-nav" aria-label="Разделы администрирования">{adminTabs.map(([key,label])=>{const count=key==="users"&&loaded?users.length:key==="boards"&&loaded?boards.length:key==="feedback"&&unread>0?unread:null;return <button type="button" key={key} className={tab===key?"active":""} aria-pressed={tab===key} onClick={()=>setTab(key)}><AdminIcon name={key}/><span className="admin-nav-label">{label}</span>{count!==null&&<span className="admin-nav-count">{count}</span>}</button>})}</nav>
    <details className="admin-tools admin-control-panel"><summary><AdminIcon name="settings"/><span className="admin-control-summary"><strong>Режимы и инструменты</strong><small>{adminEdit?"Редактирование":"Только просмотр"} · {invisible?"Невидимка включена":"Присутствие видно"}</small></span><AdminIcon name="chevron"/></summary>
@@ -89,6 +91,8 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
     <div className="admin-tools-actions"><button className="boards-secondary" onClick={()=>void onOpenLayout().catch(e=>setNotice(e instanceof Error?e.message:"Не удалось открыть редактор интерфейса"))}>Конструктор интерфейса</button><button className="boards-secondary" onClick={()=>window.location.assign("/site-builder")}>Конструктор сайта</button></div>
    </details>
    {tab==="users"?<>
+    <nav className="admin-user-subnav" aria-label="Тип аккаунтов"><button type="button" aria-pressed={usersTab==="registered"} onClick={()=>setUsersTab("registered")}>Пользователи {loaded&&<small>{users.length}</small>}</button><button type="button" aria-pressed={usersTab==="guests"} onClick={()=>{closeWorkspace();setUsersTab("guests")}}>Гости</button></nav>
+    {usersTab==="guests"?<AdminGuestsPanel refreshKey={guestRefresh}/>:<>
     <div className="admin-users-toolbar"><div><h2>Пользователи</h2><span>{loaded?`Найдено ${filtered.length} из ${users.length}`:"Загрузка пользователей…"}</span></div></div>
     <div className="admin-user-filters"><label className="admin-search"><AdminIcon name="search"/><input type="search" aria-label="Поиск пользователей" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Имя или email"/></label><select aria-label="Роль пользователя" value={roleFilter} onChange={e=>setRoleFilter(e.target.value)}><option value="all">Все роли</option><option value="admin">Администраторы</option><option value="teacher">Преподаватели</option><option value="student">Ученики</option><option value="pending">Ожидают одобрения</option></select><select aria-label="Сортировка пользователей" value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="name">По имени</option><option value="email">По email</option><option value="role">По роли</option></select></div>
     {(pending.length>0||history.length>0)&&<details className="admin-teacher-requests"><summary><span className="admin-summary-title">Заявки преподавателей</span><span className="admin-count-pill">{pending.length} новых</span><AdminIcon name="chevron"/></summary>
@@ -109,7 +113,7 @@ export default function AdminScreen({user,onBack,onOpenBoard,onOpenLayout,invisi
       </section>}
     </article>})}</div>
         {loaded&&filtered.length===0&&<div className="boards-empty"><strong>Пользователи не найдены</strong><span>Измени строку поиска.</span></div>}
-   </>:tab==="boards"?<>
+   </>}</>:tab==="boards"?<>
     <div className="admin-users-toolbar"><div><h2>Все доски</h2><span>{adminEdit?"Режим редактирования включён":"Режим просмотра чужих досок"} · {filteredBoards.length} из {boards.length}</span></div><input type="search" aria-label="Поиск досок" value={boardQuery} onChange={e=>setBoardQuery(e.target.value)} placeholder="Название, владелец или email"/></div>
     <div className="admin-board-list">{filteredBoards.map(board=><article className="admin-board-card" key={board.id}><div className="admin-board-main"><div className="admin-board-icon"><AdminIcon name="boards"/></div><div><strong>{board.title}</strong><span>{board.ownerName}{board.ownerEmail?` · ${board.ownerEmail}`:""}</span><small>Обновлена {fmt(board.updatedAt,true)} · участников: {board.memberCount}</small></div></div><button type="button" className="students-primary" onClick={()=>onOpenBoard(board)}>Открыть</button></article>)}</div>
     {loaded&&filteredBoards.length===0&&<div className="boards-empty"><strong>Доски не найдены</strong><span>Измени строку поиска.</span></div>}
