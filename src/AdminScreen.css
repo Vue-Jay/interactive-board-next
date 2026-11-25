@@ -155,3 +155,30 @@ html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-new
  html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-heading-icon{width:35px;height:35px;flex-basis:35px}
  html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-user-grant :is(select,input[type="date"]){font-size:12px!important}
 }
+
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-user-subnav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:4px;background:var(--lt-surface);border:1px solid var(--lt-line);border-radius:11px;margin:0 0 14px;max-width:440px}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-user-subnav button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:42px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--lt-secondary);font:inherit;font-weight:650;cursor:pointer}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-user-subnav button[aria-pressed=true]{background:var(--lt-selected);border-color:var(--lt-line);color:var(--lt-primary)}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-user-subnav small{font-size:11px}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guests-panel{min-width:0;display:grid;gap:12px}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-search{width:min(100%,440px);min-height:42px;padding:9px 12px;border:1px solid var(--lt-line);border-radius:10px;background:var(--lt-surface);color:var(--lt-text);font:inherit;box-sizing:border-box}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-note{font-size:12px;line-height:1.5;color:var(--lt-muted);margin:0}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,345px),1fr));gap:10px;min-width:0}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-card{display:grid;gap:12px;padding:14px;border:1px solid var(--lt-line);background:var(--lt-surface);border-radius:14px;min-width:0;box-sizing:border-box}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-identity{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:9px;align-items:start}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-avatar{display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:var(--lt-selected);color:var(--lt-primary)}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-identity>div{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-identity strong{font-size:15px}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-identity small{font-size:11px;color:var(--lt-muted);font-variant-numeric:tabular-nums}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-identity div>span{font-size:12px;color:var(--lt-secondary)}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-status{font-size:11px;padding:4px 7px;border-radius:8px;background:var(--lt-subtle);color:var(--lt-secondary);font-weight:650}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-status.active{background:var(--lt-selected);color:var(--lt-primary)}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-dates>div{min-width:0;background:var(--lt-subtle);border-radius:9px;padding:9px}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-dates dt{font-size:11px;color:var(--lt-muted)}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-dates dd{margin:4px 0 0;font-size:12px;font-weight:650;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-countdown{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--lt-muted)}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-countdown strong{color:var(--lt-text);font-size:14px;font-variant-numeric:tabular-nums}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-card progress{width:100%;height:7px;accent-color:var(--lt-primary)}
+html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-pages{display:flex;align-items:center;justify-content:center;gap:12px;font-size:12px;color:var(--lt-muted)}
+@media(max-width:365px){html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-card{padding:10px}html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-identity{grid-template-columns:32px minmax(0,1fr) auto}html body .lectris-workspace .lectris-workspace-stage .admin-redesign .admin-guest-avatar{width:32px;height:32px}}
