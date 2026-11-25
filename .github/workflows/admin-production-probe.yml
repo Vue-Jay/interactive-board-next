@@ -1,0 +1,82 @@
+name: Admin publication verification and Android release request
+on:
+  push:
+    branches: [qa/admin-production-432]
+permissions:
+  contents: read
+jobs:
+  public-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify current live admin bundle and healthy API
+        run: |
+          python3 - <<'PY'
+          import json, re, time, urllib.request
+          root = "https://lektrus.ru"
+          def get(path):
+              request = urllib.request.Request(root + path, headers={"User-Agent":"Lektrus-release-verification", "Cache-Control":"no-cache"})
+              with urllib.request.urlopen(request, timeout=8) as response:
+                  return response.read(12_000_000).decode("utf-8")
+          def probe():
+              html = get("/app")
+              assert json.loads(get("/api/v1/health")).get("ok") is True
+              queue = re.findall(r'/assets/([\w.-]+\.js)', html)
+              seen = set()
+              while queue and len(seen)<32:
+                  queue.sort(key=lambda name: 0 if "AdminScreen" in name else 1 if "appEntry" in name or name.startswith("index-") else 2)
+                  name = queue.pop(0)
+                  if name in seen: continue
+                  seen.add(name)
+                  js = get("/assets/"+name)
+                  if all(s in js for s in ("Режимы и инструменты","admin-section-nav","admin-mode-switch")):
+                      print("Published redesigned admin screen:", name, "and healthy production API", flush=True)
+                      return
+                  queue.extend(n for n in re.findall(r'(?:/assets/|\./|assets/)([\w.-]+\.js)',js) if n not in seen and n not in queue)
+              raise RuntimeError("Current HTML dependency graph has no updated admin screen")
+          for attempt in range(15):
+              try:
+                  probe()
+                  break
+              except Exception as exc:
+                  print("Attempt",attempt+1,str(exc),flush=True)
+                  if attempt==14: raise
+                  time.sleep(20)
+          PY
+  request-android:
+    needs: public-probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_SHA: 74a88732375df496be8642137868998971b414c8
+    steps:
+      - name: Require exact main and successful production-branch checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            actual=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            test "$actual" = "$EXPECTED_SHA"
+            result=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&head_sha=$EXPECTED_SHA&event=push&per_page=100" --jq '.workflow_runs | if length==0 then "pending" elif any(.[]; .status=="completed" and .conclusion!="success") then "failed" elif all(.[]; .status=="completed" and .conclusion=="success") then "success" else "pending" end')
+            if [ "$result" = success ]; then exit 0; fi
+            if [ "$result" = failed ]; then exit 1; fi
+            sleep 15
+          done
+          exit 1
+      - name: Request existing official signed Android release workflow on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$actual" = "$EXPECTED_SHA"
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/native-build.yml/runs?branch=main&head_sha=$EXPECTED_SHA&event=workflow_dispatch&per_page=100" --jq '.total_count')
+          if [ "$existing" = 0 ]; then
+            gh workflow run native-build.yml --repo "$GITHUB_REPOSITORY" --ref main -f publish_android=true
+            echo "Requested official Android publication for $EXPECTED_SHA"
+          else
+            echo "Android workflow already requested for $EXPECTED_SHA; no duplicate release."
+          fi
