@@ -51,6 +51,9 @@ const server=await createServer({configFile:"./vite.config.ts",
    if(path==="/api/v1/maintenance")return send({state:"off",access_allowed:true});
    if(path==="/api/v1/auth/me")return send(studioUser);
    if(path==="/api/v1/billing")return send({plan:"free",is_admin:true,unlimited:true,until:null,usage:{boards:2,students:3,groups:1,templates:0,storage_bytes:541860},boards:[],storage:{used_bytes:541860,limit_bytes:null,remaining_bytes:null,board_bytes:541860,material_bytes:0,template_bytes:0}});
+   if(path==="/api/v1/admin/finance")return send({totals:{sales:0,other_income:0,expenses:0,amvera_expenses:0,topups:0,net:0},entries:[],orders:[],subscriptions:[],grants:[],balance:null,daily:[],balances:[],checkout_enabled:false});
+   if(path==="/api/v1/admin/storage")return send({database_bytes:100000,wal_bytes:null,measured_at:"2026-11-25T00:00:00Z",tables:[],users:[],offset:0,has_more:false,guests:{active:0,expired:0,pending:0,historical:0,access_hours:72,cleanup_interval_seconds:3600,grace_minutes:5,batch_size:100}});
+   if(path==="/api/v1/admin/maintenance")return send({state:"off",starts_at:null,ends_at:null,notice:"",allowed_accounts:[]});
    if(path==="/api/v1/admin/users")return send(rows);
    if(path==="/api/v1/admin/users/admin-a/boards"){await delay(750);return send([board("board-a","Доска Алексея",rows[0])])}
    if(path==="/api/v1/admin/users/admin-b/boards")return send([board("board-b","Доска Бориса",rows[1])]);
