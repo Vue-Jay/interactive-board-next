@@ -587,16 +587,19 @@ async def test_expired_guest_cleanup_preserves_shared_content_and_history(client
         await conn.execute("UPDATE account_users SET guest_expires_at=now()-interval '10 minutes' WHERE id=ANY($1::uuid[])",[historical,empty])
     path="/api/v1/admin/storage"
     before=(await client.get(path,headers=admin)).json()
+    assert before["guests"]["access_hours"]==72
     assert before["guests"]["active"]==1 and before["guests"]["expired"]==2 and before["guests"]["pending"]==2
     assert not any(u["id"] in [str(historical),str(empty),str(active)] for u in before["users"])
     assert (await client.post(path+"/cleanup-guests",headers=student)).status_code==403
     result=await client.post(path+"/cleanup-guests",headers=admin)
     assert result.status_code==200,result.text
-    assert result.json()=={"processed":2,"deleted":1,"retained":1}
+    assert result.json()=={"processed":2,"deleted":2,"retained":0}
     assert (await client.post(path+"/cleanup-guests",headers=admin)).json()=={"processed":0,"deleted":0,"retained":0}
     async with app.state.pool.acquire() as conn:
         assert not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_users WHERE id=$1)",empty)
-        assert await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_users WHERE id=$1)",historical)
+        assert not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_users WHERE id=$1)",historical)
+        assert await conn.fetchval("SELECT EXISTS(SELECT 1 FROM board_visits WHERE user_id=$1 AND account_user_id IS NULL)",historical)
+        assert await conn.fetchval("SELECT EXISTS(SELECT 1 FROM board_comments WHERE author_id=$1 AND account_user_id IS NULL)",historical)
         assert await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_users WHERE id=$1)",active)
         assert not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM account_sessions WHERE user_id=$1)",historical)
         assert not await conn.fetchval("SELECT EXISTS(SELECT 1 FROM board_members WHERE user_id=$1)",historical)
@@ -605,5 +608,5 @@ async def test_expired_guest_cleanup_preserves_shared_content_and_history(client
     assert (await client.get(root+"/visits",headers=owner)).json()[0]["user_name"]=="Historic Guest"
     assert (await client.get(root,headers={"Authorization":"Bearer "+guests[2]["access_token"]})).status_code==200
     after=(await client.get(path,headers=admin)).json()
-    assert after["guests"]["pending"]==0 and after["guests"]["historical"]==1
+    assert after["guests"]["pending"]==0 and after["guests"]["historical"]==0
     assert any(d["current"] and d["bytes"]>0 for d in after["databases"])
