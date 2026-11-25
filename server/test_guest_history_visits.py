@@ -29,6 +29,10 @@ async def test_guest_access_is_atomic_scoped_and_expiring(client):
     session = next(r.json() for r in attempts if r.status_code==200)
     assert session["user"]["guest_board_id"]==target
     assert session["user"]["email"]=="" and not session["user"]["is_admin"]
+    async with app.state.pool.acquire() as conn:
+        expires = await conn.fetchval("SELECT guest_expires_at FROM account_users WHERE id=$1", UUID(session["user"]["id"]))
+        hours = await conn.fetchval("SELECT extract(epoch FROM (guest_expires_at-created_at))/3600 FROM account_users WHERE id=$1", UUID(session["user"]["id"]))
+        assert hours == 72
     guest = {"Authorization":"Bearer "+session["access_token"]}
     assert (await client.get(root,headers=guest)).json()["role"]=="editor"
     assert (await client.get(f"/api/v1/boards/{other}",headers=guest)).status_code==404
@@ -47,6 +51,7 @@ async def test_guest_access_is_atomic_scoped_and_expiring(client):
     assert renewed.status_code==200 and renewed.json()["user"]["guest_board_id"]==target
     new = renewed.json()
     async with app.state.pool.acquire() as conn:
+        assert await conn.fetchval("SELECT guest_expires_at FROM account_users WHERE id=$1", UUID(session["user"]["id"])) == expires
         await conn.execute("UPDATE account_users SET guest_expires_at=now()-interval '1 second' WHERE id=$1",UUID(session["user"]["id"]))
     assert (await client.get(root,headers={"Authorization":"Bearer "+new["access_token"]})).status_code==401
     assert (await client.post("/api/v1/auth/refresh",json={"refresh_token":new["refresh_token"]})).status_code==401
