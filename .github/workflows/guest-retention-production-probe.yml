@@ -1,0 +1,47 @@
+name: Guest retention production verification
+on:
+  push:
+    branches: [qa/guest-retention-production-430]
+permissions:
+  contents: read
+jobs:
+  public-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify current live bundle and API readiness without modifying data
+        run: |
+          python3 - <<'PY'
+          import json, re, time, urllib.request, urllib.parse
+          root = "https://lektrus.ru"
+          expected = "Гостевые аккаунты удаляются, а комментарии и история посещений сохраняются независимо."
+          def get(path):
+              request = urllib.request.Request(root + path, headers={"User-Agent":"Lektrus-release-verification", "Cache-Control":"no-cache"})
+              with urllib.request.urlopen(request, timeout=8) as response:
+                  return response.read(8_000_000).decode("utf-8")
+          def probe():
+              html = get("/app")
+              health = json.loads(get("/api/v1/health"))
+              assert health.get("ok") is True, health
+              queue = re.findall(r'/assets/([\w.-]+\.js)', html)
+              seen = set()
+              while queue and len(seen)<18:
+                  queue.sort(key=lambda name: 0 if "AdminScreen" in name or "AdminStorage" in name else 1 if "appEntry" in name or name.startswith("index-") else 2)
+                  name = queue.pop(0)
+                  if name in seen: continue
+                  seen.add(name)
+                  js = get("/assets/"+name)
+                  if expected in js:
+                      print("Live guest-retention marker found in", name, "and production API healthy", flush=True)
+                      return True
+                  deps = re.findall(r'(?:/assets/|\./|assets/)([\w.-]+\.js)',js)
+                  queue.extend(n for n in deps if n not in seen and n not in queue)
+              raise RuntimeError("Current HTML dependency graph has no updated guest-retention marker")
+          for attempt in range(8):
+              try:
+                  if probe(): break
+              except Exception as exc:
+                  print("Attempt",attempt+1,str(exc),flush=True)
+                  if attempt==7: raise
+                  time.sleep(15)
+          PY
