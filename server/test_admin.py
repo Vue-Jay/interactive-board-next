@@ -610,3 +610,45 @@ async def test_expired_guest_cleanup_preserves_shared_content_and_history(client
     after=(await client.get(path,headers=admin)).json()
     assert after["guests"]["pending"]==0 and after["guests"]["historical"]==0
     assert any(d["current"] and d["bytes"]>0 for d in after["databases"])
+
+
+@pytest.mark.asyncio
+async def test_guest_directory_duplicate_names_and_lifetime(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    _, student=await sign_in(client,"student@example.test")
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1",OUTSIDER)
+    _, admin=await sign_in(client,"outsider@example.test")
+    board=(await client.post("/api/v1/boards",headers=owner,json={"title":"Directory board"})).json()["id"]
+    link=(await client.post(f"/api/v1/boards/{board}/share-links",headers=owner,json={"role":"editor"})).json()
+    ids=[]
+    for _ in range(2):
+        result=await client.post("/api/v1/auth/guest",json={"token":link["token"],"name":"Same Name"})
+        assert result.status_code==200,result.text
+        ids.append(result.json()["user"]["id"])
+    assert ids[0]!=ids[1]
+    path="/api/v1/admin/guests"
+    assert (await client.get(path)).status_code==401
+    assert (await client.get(path,headers=student)).status_code==403
+    assert (await client.get(path+"?offset=-1",headers=admin)).status_code==422
+    result=await client.get(path,headers=admin)
+    assert result.status_code==200,result.text
+    data=result.json()
+    assert data["access_hours"]==72 and not data["has_more"]
+    rows={g["id"]:g for g in data["guests"]}
+    assert set(rows)==set(ids)
+    for row in rows.values():
+        assert row["name"]=="Same Name" and row["board_title"]=="Directory board"
+        assert not row["protected"]
+        assert datetime.fromisoformat(row["expires_at"])-datetime.fromisoformat(row["joined_at"])==timedelta(hours=72)
+        assert datetime.fromisoformat(row["cleanup_eligible_at"])-datetime.fromisoformat(row["expires_at"])==timedelta(minutes=5)
+        assert datetime.fromisoformat(row["joined_at"])<=datetime.fromisoformat(data["server_time"])
+    assert len((await client.get(path+"?q=directory",headers=admin)).json()["guests"])==2
+    assert (await client.get(path+"?q=missing",headers=admin)).json()["guests"]==[]
+    assert not set(ids)&{row["user_id"] for row in (await client.get("/api/v1/admin/users",headers=admin)).json()}
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET guest_expires_at=now()-interval '10 minutes' WHERE id=$1",UUID(ids[0]))
+    expired=(await client.get(path,headers=admin)).json()
+    assert datetime.fromisoformat(next(g for g in expired["guests"] if g["id"]==ids[0])["expires_at"])<datetime.fromisoformat(expired["server_time"])
+    assert (await client.post("/api/v1/admin/storage/cleanup-guests",headers=admin)).json()["deleted"]==1
+    assert [g["id"] for g in (await client.get(path,headers=admin)).json()["guests"]]==[ids[1]]

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from assets import assets_root, file_path
 from billing import STORAGE_BY_OWNER, storage_view
-from share_links import guest_storage_stats, cleanup_expired_guests
+from share_links import GUEST_HOURS, GUEST_DISPOSABLE, guest_storage_stats, cleanup_expired_guests
 from materials import material_path
 from board_templates import template_path
 from feedback_mail import feedback_email_address, send_test_emails
@@ -277,6 +277,32 @@ def make_admin_router(current_user) -> APIRouter:
                 user["id"],
             )
         return access_view(row)
+
+    @router.get("/api/v1/admin/guests")
+    async def admin_list_guests(request: Request, offset: int=Query(0,ge=0,le=1000000),
+                                q: str=Query("",max_length=120), user=Depends(current_user)):
+        require_admin(user)
+        async with request.app.state.pool.acquire() as conn:
+            async with conn.transaction(readonly=True, isolation="repeatable_read"):
+                measured_at = await conn.fetchval("SELECT now()")
+                rows = await conn.fetch(f"""
+                    SELECT u.id,u.display_name,u.created_at,u.guest_expires_at,
+                           b.title AS board_title,
+                           ({GUEST_DISPOSABLE}) AS disposable,
+                           u.guest_expires_at+interval '5 minutes' AS cleanup_eligible_at
+                    FROM account_users u LEFT JOIN boards b ON b.id=u.guest_board_id
+                    WHERE u.guest_board_id IS NOT NULL
+                      AND ($2='' OR strpos(lower(coalesce(u.display_name,'') || ' ' || coalesce(b.title,'')),lower($2))>0)
+                    ORDER BY u.created_at DESC,u.id DESC LIMIT 51 OFFSET $1
+                """, offset, q.strip())
+        return {"server_time":measured_at,"access_hours":GUEST_HOURS,
+                "offset":offset,"has_more":len(rows)>50,
+                "guests":[{"id":str(row["id"]),"name":row["display_name"] or "Гость",
+                           "board_title":row["board_title"],
+                           "joined_at":row["created_at"],"expires_at":row["guest_expires_at"],
+                           "cleanup_eligible_at":row["cleanup_eligible_at"],
+                           "protected":not row["disposable"]}
+                          for row in rows[:50]]}
 
     @router.get("/api/v1/admin/users")
     async def admin_list_users(request: Request, user=Depends(current_user)):
