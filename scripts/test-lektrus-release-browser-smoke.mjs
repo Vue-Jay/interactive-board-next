@@ -54,6 +54,7 @@ const server=await createServer({configFile:"./vite.config.ts",
    if(path==="/api/v1/admin/finance")return send({totals:{sales:0,other_income:0,expenses:0,amvera_expenses:0,topups:0,net:0},entries:[],orders:[],subscriptions:[],grants:[],balance:null,daily:[],balances:[],checkout_enabled:false});
    if(path==="/api/v1/admin/storage")return send({database_bytes:100000,wal_bytes:null,measured_at:"2026-11-25T00:00:00Z",tables:[],users:[],offset:0,has_more:false,guests:{active:0,expired:0,pending:0,historical:0,access_hours:72,cleanup_interval_seconds:3600,grace_minutes:5,batch_size:100}});
    if(path==="/api/v1/admin/maintenance")return send({state:"off",starts_at:null,ends_at:null,notice:"",allowed_accounts:[]});
+   if(path==="/api/v1/admin/guests"){const now=Date.now(),iso=n=>new Date(n).toISOString();return send({server_time:iso(now),access_hours:72,offset:0,has_more:false,guests:[{id:"12345678-0000-4000-8000-000000000001",name:"Александр",board_title:"Общая доска",joined_at:iso(now-3600000),expires_at:iso(now+71*3600000),cleanup_eligible_at:iso(now+71*3600000+300000),protected:false},{id:"87654321-0000-4000-8000-000000000002",name:"Александр",board_title:"Общая доска",joined_at:iso(now-73*3600000),expires_at:iso(now-3600000),cleanup_eligible_at:iso(now-3300000),protected:false}]})}
    if(path==="/api/v1/admin/users")return send(rows);
    if(path==="/api/v1/admin/users/admin-a/boards"){await delay(750);return send([board("board-a","Доска Алексея",rows[0])])}
    if(path==="/api/v1/admin/users/admin-b/boards")return send([board("board-b","Доска Бориса",rows[1])]);
@@ -246,6 +247,22 @@ try{
    await wait(`!!document.querySelector(${JSON.stringify(selector)})`,"Admin tab did not open: "+selector);
    assert.equal(await evaluate('document.querySelectorAll(".admin-section-nav button[aria-pressed=true]").length'),1);
   }
+  await click(".admin-user-subnav button:nth-child(2)");
+  await wait('document.querySelectorAll(".admin-guest-card").length===2',"Guest directory did not render");
+  assert.equal(await evaluate('document.querySelectorAll(".admin-user-card").length'),0);
+  assert.equal(await evaluate('new Set([...document.querySelectorAll(".admin-guest-card")].map(e=>e.dataset.guestId)).size'),2);
+  assert.equal(await evaluate('[...document.querySelectorAll(".admin-guest-identity strong")].every(e=>e.textContent==="Александр")'),true);
+  assert.equal(await evaluate('document.querySelector(".admin-guest-status.expired").textContent'),"Истёк");
+  assert.ok(await evaluate('document.querySelector(".admin-guest-list").textContent.includes("12345678")&&document.querySelector(".admin-guest-list").textContent.includes("87654321")'));
+  assert.ok(await evaluate('document.querySelector(".admin-guest-list").textContent.includes("Ожидает автоудаления")'));
+  for(const [width,height] of [[320,640],[390,844],[768,1024],[1440,900]]){
+   await call("Emulation.setDeviceMetricsOverride",{width,height,deviceScaleFactor:1,mobile:false});
+   await delay(150);
+   assert.ok(await evaluate('[...document.querySelectorAll(".admin-guest-card,.admin-user-subnav")].every(e=>e.scrollWidth<=e.clientWidth+2)'),"Guest card overflow "+width);
+  }
+  await click(".admin-user-subnav button:nth-child(1)");
+  await wait('document.querySelectorAll(".admin-user-card").length===3',"Registered users not restored");
+  console.log("✓ Guest directory: separate identical names, distinct IDs, expired status, responsive layout");
   await click(".admin-refresh");
   await wait('!document.querySelector(".admin-refresh").disabled',"Admin refresh did not finish");
   await click(".admin-back");
