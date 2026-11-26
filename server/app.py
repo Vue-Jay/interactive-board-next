@@ -33,7 +33,7 @@ from schema import apply_schema
 from billing import MESSAGES, limit_detail, make_billing_router
 from finance import make_finance_router
 from fastapi.responses import JSONResponse
-from board_history import ensure_baseline, record_revision, make_history_router
+from board_history import ensure_baseline, record_revision, make_history_router, ink_history_group
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
 from telegram_editor import telegram_enabled, run_telegram_editor, make_telegram_router
@@ -954,7 +954,7 @@ async def persist_normalized_items(conn, board_id, previous, base, document, del
 
 async def persist_document(board_id: UUID, expected_version: int, request: Request,
                            user, version_only: bool, document: dict | None = None,
-                           delta: dict | None = None):
+                           delta: dict | None = None, ink_gesture: str | None = None):
     # Full saves remain supported for older clients and initial/recovery saves.
     serialized = serialize_document(document) if document is not None else None
     if delta is not None:
@@ -1041,6 +1041,7 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                 fast = False
             if delta is not None and not fast:
                 serialized = serialize_document(document)
+            history_group = await ink_history_group(conn,board_id,user,base,document,delta,ink_gesture)
             if normalized_delta:
                 revision = await persist_normalized_items(
                     conn, board_id, previous, base, document, delta, user["id"], fast,
@@ -1065,7 +1066,7 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             await conn.execute(
                 "UPDATE boards SET updated_at=now() WHERE id=$1", board_id,
             )
-            await record_revision(conn,board_id,revision,user,base,document,delta)
+            await record_revision(conn,board_id,revision,user,base,document,delta,history_group)
     version = revision["version"]
     if delta is not None:
         request.app.state.document_deltas.remember(board_id, version, delta)
@@ -1078,16 +1079,16 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
 
 @app.put("/api/v1/boards/{board_id}/document")
 async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
-                        version_only: bool = False, user=Depends(current_user)):
+                        version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128), user=Depends(current_user)):
     return await persist_document(board_id, data.expected_version, request, user, version_only,
-                                  document=data.document)
+                                  document=data.document,ink_gesture=ink_gesture)
 
 
 @app.patch("/api/v1/boards/{board_id}/document")
 async def patch_document(board_id: UUID, data: PatchDocumentInput, request: Request,
-                         version_only: bool = False, user=Depends(current_user)):
+                         version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128), user=Depends(current_user)):
     return await persist_document(board_id, data.expected_version, request, user, version_only,
-                                  delta=data.delta)
+                                  delta=data.delta,ink_gesture=ink_gesture)
 
 @app.websocket("/api/v1/boards/{board_id}/events")
 async def board_events(websocket: WebSocket, board_id: UUID):
