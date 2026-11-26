@@ -89,5 +89,24 @@
       "https://hpip.org/en/Contents/Place/501",
       "https://dur.ac.uk/research/institutes-and-centres/ethics-cultural-heritage/unescochair/research/sri-lanka/"
     ]
+  },
+  "marshallIslands": {
+    "years": [
+      1986,
+      1987,
+      1988,
+      1989
+    ],
+    "status": "archival-island-geography-candidate-awaiting-yearly-build-and-visual-review",
+    "addedCountryYears": 4,
+    "politicalIndependence": "1986-10-21",
+    "sourceCoastline": "Natural Earth 1:10m generalized modern coastline",
+    "historicMaps": [
+      "https://marshall.csu.edu.au/Marshalls/html/STATS/1986StatsAbstract.pdf",
+      "https://pubs.usgs.gov/of/1986/0419/report.pdf",
+      "https://digitallibrary.un.org/record/58340"
+    ],
+    "coastlineHistoricallySurveyed": false,
+    "territorialCasesClosed": 0
   }
 }

@@ -157,16 +157,19 @@ assert.equal(delhi.records.find(r=>r.from===1451&&r.role==='polity').name,'Lodi 
 assert.deepEqual(delhi.records.find(r=>r.from===1451&&r.role==='composite').sourceComponents,['Tughlaq Dynasty']);
 const zhou=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Later Zhou',-750,-451,square(),'Q1154556'),feature('Later Zhou',960,960,square(),'Q1154556'),feature('(Spring and Autumn States)',-750,-481,square(),'','POLITY','Later Zhou')]});
 assert.equal(independentIslands.states.find(s=>s.iso==='MHL').recognitionFrom,1986);
-assert.equal(independentIslands.states.find(s=>s.iso==='MHL').from,1990);
+const marshall=independentIslands.states.find(s=>s.iso==='MHL');
+assert.equal(marshall.from,1986);
+assert.equal(marshall.historicalCartography.from,1986);
+assert.equal(marshall.historicalCartography.to,1989);
+assert.equal(marshall.historicalCartography.precision,'not-georeferenced-from-1986-source');
+assert.ok(marshall.sources.some(s=>s.includes('1986StatsAbstract.pdf')));
+assert.ok(marshall.sources.some(s=>s.includes('/of/1986/0419/')));
+assert.ok(marshall.sources.some(s=>s.includes('digitallibrary.un.org/record/58340')));
 for(let year=1986;year<=1989;year++){
-  const gaps=documentedStateCoverageGaps(year,[],true);
-  assert.equal(gaps.length,1,'Missing statehood gap '+year);
-  assert.equal(gaps[0].kind,'documented-state');
-  assert.equal(gaps[0].date,'1986-10-21');
-  assert.equal(gaps[0].source,'https://history.state.gov/countries/marshall-islands');
-  assert.match(gaps[0].reasonRu,/1986–1989/);
+  assert.deepEqual(documentedStateCoverageGaps(year,[],true),[],'Marshall Island dated map gap must be closed '+year);
   assert.ok(historicalGapLocators['Marshall Islands'].historicalNote.includes('21 октября 1986'));
-  assert.equal(historicalGapLocators['Marshall Islands'].historicalSource,gaps[0].source);
+  assert.ok(historicalGapLocators['Marshall Islands'].historicalNote.includes('геодезические берега'));
+  assert.equal(historicalGapLocators['Marshall Islands'].historicalSource,'https://history.state.gov/countries/marshall-islands');
   assert.deepEqual(documentedStateCoverageGaps(year,[{sourceWikidata:'Q709',name:'Legacy source'}],true),[]);
   assert.deepEqual(documentedStateCoverageGaps(year,[{name:'Republic of the Marshall Islands'}],true),[]);
   assert.deepEqual(documentedStateCoverageGaps(year,[],false),[],'Small fixtures have no reviewed island supplementation');
@@ -376,7 +379,15 @@ if(outDir&&sourceFile){
       for(const d of independentIslands.states){
         const candidates=state.drawable.filter(({record})=>record.externalGeography?.iso===d.iso);
         assert.equal(candidates.length,year>=d.from?1:0,`${d.iso}/${year}`);
-        if(candidates.length){const {record}=candidates[0];assert.equal(record.name,d.transition&&year>=d.transition.year?d.transition.name:d.name);assert.ok(record.review.sources.includes(independentIslands.source.url));}
+        if(candidates.length){const {record}=candidates[0];assert.equal(record.name,d.transition&&year>=d.transition.year?d.transition.name:d.name);assert.ok(record.review.sources.includes(independentIslands.source.url));
+          if(d.iso==='MHL'&&year>=1986&&year<=1989){
+            assert.equal(record.externalGeography.kind,'modern-island-outline');
+            assert.ok(record.review.reasonRu.includes('1986'));
+            assert.ok(record.review.reasonRu.includes('генерализованный'));
+            assert.ok(record.review.sources.some(url=>url.includes('1986StatsAbstract.pdf')));
+            assert.ok(record.review.sources.some(url=>url.includes('digitallibrary.un.org/record/58340')));
+          }
+        }
       }
       for(const d of territorialResolutions.independenceGapRestorations)if(d.from===d.to&&year===d.from){
         const owners=state.drawable.filter(({record})=>record.editorialRestoration&&record.sourceIndex===d.source&&record.name===d.name);
@@ -881,7 +892,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2196);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2196);assert.equal(externalRecordYears,473);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(tianjinClosed,269);assert.equal(tianjinOpen,98);
   assert.equal(unresolvedSourceYears,859);assert.equal(unresolvedRegionYears,780);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);

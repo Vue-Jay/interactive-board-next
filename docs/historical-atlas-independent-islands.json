@@ -55,18 +55,32 @@
     {
       "iso": "MHL",
       "wikidata": "Q709",
-      "from": 1990,
+      "from": 1986,
       "name": "Republic of the Marshall Islands",
       "nameRu": "Республика Маршалловы Острова",
-      "reasonRu": "США признали независимость Маршалловых Островов 21 октября 1986 года при вступлении в силу Соглашения о свободной ассоциации. Резолюция Совета Безопасности ООН 683 (1990) позднее формально зафиксировала прекращение режима опеки. Датированный контур за 1986–1989 годы в нашей реконструкции отсутствует и не подменён обобщённой картой 1990 года. Островной контур атласа начинается с 1990 года; это не дата приобретения независимости.",
+      "reasonRu": "Республика Маршалловы Острова признана США 21 октября 1986 года. Современный генерализованный островной контур Nature Earth показан с 1986 года только как картографический кандидат: государственная карта в статистическом сборнике за 1986 год (издан 1987), карта USGS 1986 года и карта ООН октября 1988 года независимо подтверждают состав и расположение архипелага. Эти материалы не являются координатной оцифровкой каждого атолла и не доказывают точность современного берега в 1986 году. Договор об опеке ООН прекратил действие позднее, в 1990 году; эту дату не путать с началом независимости.",
       "sources": [
         "https://history.state.gov/countries/marshall-islands",
         "https://digitallibrary.un.org/record/103696",
         "https://www.archives.gov/federal-register/codification/proclamations/05564.html",
-        "https://www.govinfo.gov/content/pkg/USCODE-2022-title48/html/USCODE-2022-title48-chap14.htm"
+        "https://www.govinfo.gov/content/pkg/USCODE-2022-title48/html/USCODE-2022-title48-chap14.htm",
+        "https://marshall.csu.edu.au/Marshalls/html/STATS/1986StatsAbstract.pdf",
+        "https://pubs.usgs.gov/of/1986/0419/report.pdf",
+        "https://digitallibrary.un.org/record/58340"
       ],
       "recognitionFrom": 1986,
-      "unTerminationYear": 1990
+      "unTerminationYear": 1990,
+      "historicalCartography": {
+        "from": 1986,
+        "to": 1989,
+        "status": "approximate-island-outline-corroborated-by-dated-archipelago-maps",
+        "precision": "not-georeferenced-from-1986-source",
+        "mapSources": [
+          "https://marshall.csu.edu.au/Marshalls/html/STATS/1986StatsAbstract.pdf",
+          "https://pubs.usgs.gov/of/1986/0419/report.pdf",
+          "https://digitallibrary.un.org/record/58340"
+        ]
+      }
     },
     {
       "iso": "KIR",
