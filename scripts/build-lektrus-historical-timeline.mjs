@@ -1120,7 +1120,66 @@ export const malaccaCore={
  {source:8910,part:10,from:1645,to:1647,entity:'malacca-voc-core',name:'Malacca (VOC fortified town, documented core)',nameRu:'Малакка — крепость VOC (подтверждённая область)'},
  ],
 };
-export const documentedCores=[corsicaCore,malaccaCore];
+// Early VOC Ceylon: these tiny clips restore only the documentary
+// interiors of captured forts while the mixed Portuguese/VOC/Kandyan
+// west-coast cell remains unresolved. They are NOT the perimeter of a
+// colonial province, a cadastral fort survey, or a transferable modern border.
+// The old Portuguese town footprints survive inside the later urban layouts;
+// historic conquest dates come from the Rijksmuseum and archaeological studies.
+export const ceylonFortCores=[
+ {
+  id:'ceylon-galle-fort',
+  mask:[[[80.21615,6.02785],[80.21655,6.02785],[80.21655,6.02815],[80.21615,6.02815],[80.21615,6.02785]]],
+  sources:[
+   'https://whc.unesco.org/en/list/451/',
+   'https://whc.unesco.org/document/180038',
+   'https://mass.cultureelerfgoed.nl/documents/00000041.pdf',
+   'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002'
+  ],
+  review:{
+   reason:'Galle fell to the VOC in March 1640. An extremely small interior sample of the documented Portuguese/Dutch fortified town is clipped to the dated source region. Its four straight edges are NOT historic fortification or political borders; surrounding Portuguese/VOC territory remains unresolved.',
+   reasonRu:'Галле захвачен VOC в марте 1640 г. Восстановлен очень небольшой внутренний участок подтверждённого португальско-нидерландского укреплённого города внутри исходного контура. Прямые края фрагмента НЕ исторические крепостные или государственные границы; принадлежность остального побережья остаётся неуточнённой.'
+  },
+  periods:[
+   {source:8866,part:0,from:1640,to:1647,entity:'voc-galle-core',name:'Galle Fort (VOC, documented interior only)',nameRu:'Галле — крепость VOC (подтверждённый внутренний участок)'},
+   {source:8953,part:11,from:1648,to:1652,entity:'voc-galle-core',name:'Galle Fort (VOC, documented interior only)',nameRu:'Галле — крепость VOC (подтверждённый внутренний участок)'},
+   {source:9013,part:11,from:1653,to:1658,entity:'voc-galle-core',name:'Galle Fort (VOC, documented interior only)',nameRu:'Галле — крепость VOC (подтверждённый внутренний участок)'}
+  ],
+ },
+ {
+  id:'ceylon-colombo-fort',
+  mask:[[[79.84970,6.93270],[79.85010,6.93270],[79.85010,6.93310],[79.84970,6.93310],[79.84970,6.93270]]],
+  sources:[
+   'https://hpip.org/en/Contents/Place/501',
+   'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002',
+   'https://www.uda.gov.lk/attachments/outdated_dev_plans/Commercial%20City%20Development%20Plan/Volume%20I/English-Reduce.pdf'
+  ],
+  review:{
+   reason:'Colombo surrendered to the VOC on 12 May 1656. This is a deliberately tiny inland excerpt of the historic Fort District, not the Portuguese fortress perimeter or the post-1656 Dutch redesign. The 1656–58 west-coast control frontier remains unknown.',
+   reasonRu:'Коломбо капитулировал перед VOC 12 мая 1656 г. Показан очень небольшой внутренний фрагмент района исторического форта, а НЕ периметр португальской крепости или позднейшей голландской перестройки. Граница контроля побережья 1656–1658 гг. остаётся неизвестной.'
+  },
+  periods:[
+   {source:9013,part:11,from:1656,to:1658,entity:'voc-colombo-core',name:'Colombo Fort (VOC, documented interior only)',nameRu:'Коломбо — крепость VOC (подтверждённый внутренний участок)'}
+  ],
+ },
+ {
+  id:'ceylon-jaffna-fort',
+  mask:[[[80.00818,9.66205],[80.00858,9.66205],[80.00858,9.66235],[80.00818,9.66235],[80.00818,9.66205]]],
+  sources:[
+   'https://www.cambridge.org/core/journals/antiquity/article/antiquity-of-jaffna-fort-new-evidence-from-postdisaster-archaeological-investigations-in-northern-sri-lanka/C55CDA3934CC5C18EE40B903734C7215',
+   'https://dur.ac.uk/research/institutes-and-centres/ethics-cultural-heritage/unescochair/research/sri-lanka/',
+   'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002'
+  ],
+  review:{
+   reason:'The VOC took the Portuguese fortress of Jaffna after a siege in 1658. The clip is a limited interior witness at the documented fortress, not the modern Dutch rampart line or a historic frontier. Other 1658 coastal regions remain unresolved.',
+   reasonRu:'VOC взяла португальскую крепость Джафны после осады в 1658 г. Показан ограниченный внутренний фрагмент на месте документированной крепости, не линия позднейших бастионов и не историческая граница. Остальное побережье 1658 г. остаётся неуточнённым.'
+  },
+  periods:[
+   {source:9013,part:11,from:1658,to:1658,entity:'voc-jaffna-core',name:'Jaffna Fort (VOC, documented interior only)',nameRu:'Джафна — крепость VOC (подтверждённый внутренний участок)'}
+  ],
+ }
+];
+export const documentedCores=[corsicaCore,malaccaCore,...ceylonFortCores];
 // Whole-island attribution while a single documented colonial power
 // administered Saint Martin. Union of Natural Earth 1:10m MAF and SXM;
 // the modern internal border is deliberately discarded.
@@ -1891,7 +1950,8 @@ export function normalizeHistoricalSource(source) {
     assert.ok(origin);if(definition.hash)assert.equal(componentHash(part),definition.hash);
     const outline={type:'MultiPolygon',coordinates:[part]},outlineGeometryId=sha256(JSON.stringify(outline));geometries.set(outlineGeometryId,outline);
     const geometry=buildDocumentedCore(part,definition),geometryId=sha256(JSON.stringify(geometry));validateGeometry(geometry);geometries.set(geometryId,geometry);
-    const review=definition.id==='cap-corse'?{reason:'Confirmed northern part of Cap Corse, using only a conservative interior cut of the generalized source coastline. Dal Passo fig. 2 and Carrington confirm historic geography; Macinaggio fell in March 1765, and French troops secured the cape in August 1768. The southern cut is NOT a historical frontier. The 1761–64 siege and the rest of Corsica remain unresolved.',reasonRu:'Восстановлена только северная часть Кап-Корса (по генерализованному береговому контуру). Карта административного деления 1770 года, рис. 2 Ф. Даль Пассо, и исследование Д. Каррингтон подтверждают географию района; Мацинажо оставлен генуэзским гарнизоном в марте 1765 года, весь полуостров заняли французы в августе 1768 года. Южный срез условный, не историческая граница. Осада и переход власти 1761–1764 годов, а также остальная Корсика остаются неуточнёнными.'}:{reason:'Conservative interior summit core around the surviving Church of Our Lady of the Mount, inside the captured fortress. Schouten’s 1641 report and the georeferenced reconstruction (2009, fig. 5) support the site, not a complete 1641 perimeter. The rectangle is a limited interior excerpt, NOT the fort wall or the colony’s political boundary.',reasonRu:'Восстановлен только небольшой внутренний участок на холме у сохранившейся церкви Святого Павла, внутри захваченной крепости. Отчёт Схаутена 1641 года и геопривязанная реконструкция (2009, рис. 5) подтверждают место, но не полную границу 1641 года. Прямоугольник — условный внутренний фрагмент, не стена крепости и не граница колонии.'};
+    const defaultReview=definition.id==='cap-corse'?{reason:'Confirmed northern part of Cap Corse, using only a conservative interior cut of the generalized source coastline. Dal Passo fig. 2 and Carrington confirm historic geography; Macinaggio fell in March 1765, and French troops secured the cape in August 1768. The southern cut is NOT a historical frontier. The 1761–64 siege and the rest of Corsica remain unresolved.',reasonRu:'Восстановлена только северная часть Кап-Корса (по генерализованному береговому контуру). Карта административного деления 1770 года, рис. 2 Ф. Даль Пассо, и исследование Д. Каррингтон подтверждают географию района; Мацинажо оставлен генуэзским гарнизоном в марте 1765 года, весь полуостров заняли французы в августе 1768 года. Южный срез условный, не историческая граница. Осада и переход власти 1761–1764 годов, а также остальная Корсика остаются неуточнёнными.'}:{reason:'Conservative interior summit core around the surviving Church of Our Lady of the Mount, inside the captured fortress. Schouten’s 1641 report and the georeferenced reconstruction (2009, fig. 5) support the site, not a complete 1641 perimeter. The rectangle is a limited interior excerpt, NOT the fort wall or the colony’s political boundary.',reasonRu:'Восстановлен только небольшой внутренний участок на холме у сохранившейся церкви Святого Павла, внутри захваченной крепости. Отчёт Схаутена 1641 года и геопривязанная реконструкция (2009, рис. 5) подтверждают место, но не полную границу 1641 года. Прямоугольник — условный внутренний фрагмент, не стена крепости и не граница колонии.'};
+    const review=definition.review??defaultReview;
     const restored={...origin,id:identity('historical-documented-core',d.entity,d.from,d.to,geometryId),entityId:identity('reviewed-territory',d.entity),name:d.name,nameRu:d.nameRu,role:'polity',nameStatus:'reviewed',geometryStatus:'candidate',geometryId,sourceGeometryId:sha256(JSON.stringify(raw.geometry)),geometryRepair:'reviewed-map-partition',geometryParts:[{index:d.source,part:index}],mapPartition:{kind:'documented-core',area:0,outlineGeometryId,evidence:definition.sources[0]},from:d.from,to:d.to,editorialRestoration:true,components:[],memberOf:[],sourceComponents:origin.sourceComponents??origin.components,sourceMemberOf:origin.sourceMemberOf??origin.memberOf,review:{...review,sources:definition.sources}};
     delete restored.territorialIssues;delete restored.territorialAttributions;delete restored.geometrySubtractions;delete restored.geometryTemporalWitnesses;
     records.push(restored);counts.reviewedNames++;

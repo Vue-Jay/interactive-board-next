@@ -12,7 +12,7 @@ import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLo
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {buildChangeRegistry,componentHash,exactComponentConflicts,sourceComponentEvidence} from './audit-lektrus-historical-changes.mjs';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
-import {componentHash as sourceComponentHash,documentedCores,buildDocumentedCore,saintMartinSpanish,tobagoDutch,ceylonCoastalRoutes,ceylonEarlyRoutes,ceylonWarRoutes,capeTerritoryRoutes,capeTerritories,songAnnexations} from './build-lektrus-historical-timeline.mjs';
+import {componentHash as sourceComponentHash,documentedCores,buildDocumentedCore,ceylonFortCores,saintMartinSpanish,tobagoDutch,ceylonCoastalRoutes,ceylonEarlyRoutes,ceylonWarRoutes,capeTerritoryRoutes,capeTerritories,songAnnexations} from './build-lektrus-historical-timeline.mjs';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
 const elbaParts=buildElbaPartition().map(g=>g.coordinates),elbaUnion=polygonClipping.union(...elbaParts);
@@ -327,7 +327,9 @@ if(outDir&&sourceFile){
         if(r.mapPartition?.kind==='documented-core'){
           const definition=documentedCores.find(c=>c.periods.some(p=>p.source===r.sourceIndex&&p.from===r.from&&p.to===r.to));
           assert.ok(definition);const d=definition.periods.find(p=>p.source===r.sourceIndex&&p.from===r.from&&p.to===r.to),index=d.part??definition.part,outline=(f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates)[index];
-          assert.equal(sourceComponentHash(outline),definition.hash);
+          if(definition.hash)assert.equal(sourceComponentHash(outline),definition.hash);
+          else assert.ok(definition.id.startsWith('ceylon-')&&definition.review?.reasonRu.includes('неуточнён'));
+          assert.ok(definition.mask.length&&definition.sources.every(u=>u.startsWith('https://')));
           assert.deepEqual(pack.geometries[r.mapPartition.outlineGeometryId],{type:'MultiPolygon',coordinates:[outline]});
           assert.deepEqual(repaired,buildDocumentedCore(outline,definition));
           assert.deepEqual(r.geometryParts,[{index:d.source,part:index}]);
@@ -722,6 +724,30 @@ if(outDir&&sourceFile){
         for(const point of [[79.86,6.93],[80.025,9.66],[80.22,6.03],[81.23,8.58],[81.69,7.71]]){const owners=state.drawable.filter(({geometry})=>capitalInsideCountry(point,geometry));assert.equal(owners.length,1);assert.equal(owners[0].record.id,coast[0].record.id);}
         for(const name of coast[0].record.memberOf){const o=state.overlays.find(({record})=>record.name===name);assert.ok(o&&o.record.components.includes('Portuguese Ceylon'));assert.ok(!capitalInsideCountry([80.635,7.29],o.geometry));}
       }
+      // Source-backed micro-geometries inside the *fort sites*, not a
+      // fictitious whole-coast VOC boundary. The original 24 disputed
+      // Ceylon component-years must remain explicitly pending.
+      if(year>=1640&&year<=1658){
+        const expected=[
+          ['ceylon-galle-fort',1640,1658,'Galle Fort (VOC, documented interior only)'],
+          ['ceylon-colombo-fort',1656,1658,'Colombo Fort (VOC, documented interior only)'],
+          ['ceylon-jaffna-fort',1658,1658,'Jaffna Fort (VOC, documented interior only)']
+        ];
+        for(const [id,from,to,name] of expected){
+          const cores=state.drawable.filter(({record})=>record.name===name);
+          assert.equal(cores.length,year>=from&&year<=to?1:0,`VOC fort core ${id}/${year}`);
+          if(cores.length){
+            const {record,geometry}=cores[0],definition=ceylonFortCores.find(c=>c.id===id);
+            assert.equal(record.mapPartition.kind,'documented-core');
+            assert.equal(record.entityId,record.entityId);
+            assert.ok(record.review.reasonRu.includes('неуточнён'));
+            assert.ok(polygonClipping.intersection(geometry.coordinates,definition.mask).length);
+            assert.equal(polygonClipping.difference(geometry.coordinates,definition.mask).length,0);
+          }
+        }
+        assert.ok(state.territorialIssues.some(i=>i.group==='Цейлон — война VOC'),
+          'A few confirmed fort interiors must not hide the unresolved coastal frontier');
+      }
       if(year>=1659&&year<=1814){
         const dutch=year<1796,name=dutch?'Dutch Ceylon':'British Ceylon',group=dutch?'(Dutch Republic)':'(British Empire)';
         const candidates=state.drawable.filter(({record})=>record.name===name);assert.equal(candidates.length,1,`Missing or duplicate Ceylon coast ${year}`);
@@ -844,7 +870,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2173);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2196);assert.equal(externalRecordYears,469);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(tianjinClosed,269);assert.equal(tianjinOpen,98);
   assert.equal(unresolvedSourceYears,859);assert.equal(unresolvedRegionYears,780);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
@@ -855,7 +881,7 @@ if(outDir&&sourceFile){
   assert.equal(provisionalExactReviews.length,1);assert.equal(provisionalComponentYears,3);
   assert.deepEqual(Object.fromEntries(Object.entries(territorialOpenByGroup).map(([g,v])=>[g,v.sourceYears])),{Mindanao:158,Corsica:22,'Коморы':213,'Малакка':10,'Горе — материковый контур':11,'Цейлон — война VOC':24,'Дения — материковый контур':9,'Сен-Мартен — раздел острова':33,'Тобаго — колониальные поселения':12,'Тяньцзинь — концессия':98,'Кохинхина — кампания 1859 года':2,'Луайоте — местные вождества':17,'Кохинхина — поэтапная уступка':14,'Давао — местные правители':236});
   assert.equal(Object.values(exactOpenByGroup).reduce((sum,v)=>sum+v.componentYears,0),unresolvedExactComponentYears);
-  assert.deepEqual(documentedCoreByGroup,{'cap-corse':8,'malacca-fort':7});
+  assert.deepEqual(documentedCoreByGroup,{'cap-corse':8,'malacca-fort':7,'ceylon-galle-fort':19,'ceylon-colombo-fort':3,'ceylon-jaffna-fort':1});
   const groupLinkIssues=rows.flatMap(r=>r.groupLinkWarnings??[]);
   console.log('Remaining group links:',JSON.stringify([...new Set(groupLinkIssues.map(i=>JSON.stringify(i)))].map(s=>JSON.parse(s))));
   assert.equal(new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,7);assert.equal(groupLinkIssues.length,29);

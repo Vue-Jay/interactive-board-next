@@ -44,7 +44,8 @@
   "territorialCount": {
     "open": 859,
     "distinctRegionYears": 780,
-    "unchanged": true
+    "unchanged": true,
+    "partialCoreYearsExpected": 38
   },
   "sourceUrls": [
     "https://dutchportcities.globalasiaprogram.org/home/recife/",
@@ -56,5 +57,37 @@
   "nextGeometryWork": [
     "georeference actual dated 1630-1631 Recife fortified sites",
     "independently locate 1673 New Orange holdings rather than reuse 1663 colony"
-  ]
+  ],
+  "fortMicrogeometry": {
+    "status": "candidate-awaiting-annual-validation",
+    "region": "Ceylon VOC war 1640–1658",
+    "recordSegments": 5,
+    "partialGeometryYears": 23,
+    "sites": [
+      {
+        "name": "Galle",
+        "from": 1640,
+        "to": 1658
+      },
+      {
+        "name": "Colombo",
+        "from": 1656,
+        "to": 1658
+      },
+      {
+        "name": "Jaffna",
+        "from": 1658,
+        "to": 1658
+      }
+    ],
+    "wholeCoastlineBoundaryEstablished": false,
+    "territorialCasesClosed": 0,
+    "evidence": [
+      "https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002",
+      "https://mass.cultureelerfgoed.nl/documents/00000041.pdf",
+      "https://whc.unesco.org/en/list/451/",
+      "https://hpip.org/en/Contents/Place/501",
+      "https://dur.ac.uk/research/institutes-and-centres/ethics-cultural-heritage/unescochair/research/sri-lanka/"
+    ]
+  }
 }
