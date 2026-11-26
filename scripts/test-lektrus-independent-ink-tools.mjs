@@ -101,8 +101,14 @@ assert.doesNotMatch(dockCss,/board-ink-dock-open/,"No reserved non-canvas footer
 assert.match(dockCss,/\.lectris-quick-properties\.is-ink-properties\s*\{/);
 assert.match(editor,/viewBox="0 0 48 32"/);
 assert.match(app,/className=\{`app \$\{presentation \? "presentation-mode" : ""\}/);
-assert.match(app,/if \(gesture\.current \|\| eraserSession\.current\)/,
- "Remote document changes must defer while local ink is being drawn");
+const receive=app.slice(app.indexOf("  receiveRemote.current = row => {"));
+assert.match(receive,/if \(gesture\.current&&gesture\.current\.mode!=="draw"\)\s*\{/,
+ "Only non-ink gesture geometry defers remote documents until release");
+assert.match(receive,/peerRemovedDurableInk\(/,"Peer erasure must interrupt an active durable stroke");
+assert.match(receive,/if\(erasing\)erasing\.before=mergeBoardItems\(/,
+ "Live erasing rebases its undo snapshot against remote changes");
+assert.match(receive,/mergeBoardDocumentEdits\(acknowledgedBoardData\.current,local,remote\)/,
+ "Concurrent durable ink must merge with the acknowledged base");
 assert.match(app,/if \(decision === "conflict"\)/,
  "Independent remote drawing must merge, not replace local strokes");
 console.log("Independent tools PASS: two collaborators and two browser tabs cannot disarm each other, all five pen widths including 22px persist.");

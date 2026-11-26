@@ -24,6 +24,7 @@ jobs:
         run: |
           node scripts/test-github-agent-guard.mjs
           node scripts/test-ci-trigger-scope.mjs
+          node scripts/test-lektrus-independent-ink-tools.mjs
       - name: Typecheck and build
         run: npm run build
       - name: Check curated subject catalogue, saved objects and sentence dragging
