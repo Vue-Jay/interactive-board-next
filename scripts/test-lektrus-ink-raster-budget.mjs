@@ -113,3 +113,26 @@ for(let i=0;i<50;i++){
 assert.equal(oldRegroups,50);
 assert.equal(newRegroups,0);
 console.log("Canvas grouping: 50 plain-object selection changes, 50->0 forced raster regroupings; selection of actual ink unchanged.");
+
+const dirtyApi={};
+new Function("exports",ts.transpileModule(read("inkDirtyBounds.ts"),{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
+}).outputText)(dirtyApi);
+const {changedInkBounds}=dirtyApi;
+for(const kind of ["pen","marker"]){
+ const points=Array.from({length:1001},(_,x)=>({x,y:0}));
+ const original={id:"growing",kind,x:0,y:0,width:1004,height:4,weight:4,color:"#008080",points};
+ const extended={...original,width:1006,points:[...points,{x:1002,y:2}]};
+ const dirty=changedInkBounds(original,extended,1);
+ assert.ok(dirty.left>=995&&dirty.right>=1004,"Repaint only the changed tail and preceding round join");
+ assert.ok(dirty.right-dirty.left<20,"A 1000px unchanged prefix must not be cleared");
+ const translated={...extended,x:-3,points:extended.points.map(p=>({x:p.x+3,y:p.y}))};
+ assert.deepEqual(changedInkBounds(original,translated,1),dirty,"Bounding-box translation must not invalidate unchanged world geometry");
+ assert.equal(changedInkBounds(extended,translated,1),null);
+ const shortened={...original,width:503,points:points.slice(0,501)};
+ assert.ok(changedInkBounds(original,shortened,1).right>=1000,"Removed tail must be cleared");
+ const recolored={...original,color:"#ff0000"};
+ assert.ok(changedInkBounds(original,recolored,1).left<0,"Style changes repaint the entire stroke");
+ assert.ok(changedInkBounds(original,undefined,1).right>=1000,"Deleted stroke clears all of its previous pixels");
+}
+console.log("Permanent raster: changed world-coordinate tail only; marker joins, translated bounds and deletion verified.");
