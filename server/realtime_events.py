@@ -175,6 +175,41 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
         return {"type": kind, **identity, "selected_ids": selected,
                 "editing_id": editing, "sent_at": int(time.time() * 1000)}
 
+    if kind == "ink_frame":
+        if role not in ("owner", "editor"):
+            raise InvalidLiveEvent("read_only")
+        required = {"type", "client_id", "gesture", "seq", "base_version", "delta"}
+        if not required.issubset(frame) or set(frame) - required - {"cursor"}:
+            raise InvalidLiveEvent("invalid_ink_frame_fields")
+        client, gesture, seq, base_version, delta = (frame[key] for key in ("client_id","gesture","seq","base_version","delta"))
+        if (not _identifier(client, MAX_CLIENT_ID) or not isinstance(gesture,str)
+                or not re.fullmatch(r"[A-Za-z0-9:_-]{1,128}",gesture)
+                or type(seq) is not int or not 1 <= seq <= 2**53-1
+                or type(base_version) is not int or not 0 <= base_version <= 2**53-1
+                or not isinstance(delta,dict) or set(delta) != {"items"} or not _safe_json(delta)):
+            raise InvalidLiveEvent("invalid_ink_frame")
+        changes=delta["items"]
+        if not isinstance(changes,dict) or set(changes)-{"upsert","remove","order","point_edits"}:
+            raise InvalidLiveEvent("invalid_ink_frame_delta")
+        for field in ("upsert","remove","order","point_edits"):
+            if field in changes and not isinstance(changes[field],list):
+                raise InvalidLiveEvent("invalid_ink_frame_delta")
+        upserts,removes,edits,order=(changes.get(key,[]) for key in ("upsert","remove","point_edits","order"))
+        if (len(upserts)>64 or len(removes)>128 or len(edits)>1 or len(order)>10000
+                or not (upserts or removes or edits)
+                or any(not isinstance(item,dict) or item.get("kind") not in ("pen","marker","sticky")
+                       or not _identifier(item.get("id")) for item in upserts)
+                or any(not _identifier(key) for key in removes+order)
+                or any(not isinstance(edit,dict) or not _identifier(edit.get("id")) for edit in edits)):
+            raise InvalidLiveEvent("invalid_ink_frame_items")
+        result={"type":kind,**identity,"client_id":client,"gesture":gesture,"seq":seq,
+                "base_version":base_version,"delta":delta,"sent_at":int(time.time()*1000)}
+        if "cursor" in frame:
+            if not isinstance(frame["cursor"],dict):
+                raise InvalidLiveEvent("invalid_ink_frame_cursor")
+            result["cursor"]=validate_live_event({**frame["cursor"],"type":"cursor"},role=role,user_id=user_id,name=name)
+        return result
+
     if kind == "editor_mutation":
         if role not in ("owner", "editor"):
             raise InvalidLiveEvent("read_only")
@@ -343,6 +378,7 @@ class EventRateLimit:
         self.transforms: deque[float] = deque()
         self.views: deque[float] = deque()
         self.attachments: deque[float] = deque()
+        self.fast_ink: deque[float] = deque()
         self.violations = 0
 
     def check(self, event_type: str) -> bool:
@@ -351,6 +387,8 @@ class EventRateLimit:
             window, limit = self.cursors, 20
         elif event_type == "ink_commit":
             window, limit = self.ink_commits, 45
+        elif event_type == "ink_frame":
+            window, limit = self.fast_ink, 45
         elif event_type == "object_preview":
             window, limit = self.objects, 24
         elif event_type in ("live_ink", "live_erase"):

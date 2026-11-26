@@ -956,3 +956,65 @@ streamChannel();await Promise.resolve();
 console.log("Durable ink pipeline: three unacknowledged frames, bounded coalescing, predecessor and conflict recovery passed.");
 
 }
+
+{
+const f=await loadSelfhost(true),api=f.api;
+await api.selfhostLogin("teacher@example.test","test-password");
+const board=await api.selfhostCreateBoard("Нативная доска");
+const empty={version:1,title:"Нативная доска",view:{x:0,y:0,zoom:1},items:[]};
+const version=(await api.selfhostSaveDocument(board.id,0,empty)).version;
+f.enablePointCapability();await api.selfhostReadDocument(board.id,undefined,false);
+const channel=api.selfhostSubscribeBoard(board.id,()=>{},()=>{});
+await new Promise(resolve=>setTimeout(resolve,0));
+const ws=f.sockets.at(-1);
+ws.open();ws.emit({type:"ready",version,durable_ink_commits:true,ink_commit_chain:true,ink_fast_frames:true});
+const line=n=>({id:"fast-pen",kind:"pen",x:0,y:0,width:n+1,height:5,text:"",color:"#008080",weight:2,points:Array.from({length:n},(_,x)=>({x,y:0}))});
+const doc=n=>({...empty,items:[line(n)]});
+const a=api.selfhostPublishInkFrame(board.id,version,doc(2),"fast-pen",{x:1,y:0,client_id:"cursor"});
+const b=api.selfhostPublishInkFrame(board.id,version,doc(5),"fast-pen",{x:4,y:0,client_id:"cursor"});
+assert.ok(a&&b&&b.seq>a.seq);
+assert.equal(ws.sent.filter(x=>x.type==="ink_frame").length,2,"Fast frames do not wait for disk writes or ACK");
+assert.equal(api.selfhostStartInkPipeline(board.id,version,doc(2),"fast-pen",undefined,()=>{}),null,"Do not serialize fast frames behind a WS database write");
+const frame={...ws.sent.at(-1),user_id:"peer",role:"editor",name:"Peer",sent_at:Date.now()};
+const replica=api.createFastInkReplica();
+replica.sync(version,empty);
+assert.equal(replica.accept(frame),true);
+assert.equal(replica.changes()[0].after.points.length,5);
+replica.sync(version+1,doc(2),{...a,user_id:"peer"});
+assert.equal(replica.changes()[0].after.points.length,5,"Older same-gesture disk checkpoint cannot shorten displayed geometry");
+replica.sync(version+2,empty,{client_id:"other",gesture:"erase:test",seq:1,user_id:"eraser"});
+assert.equal(replica.changes().length,0,"Peer deletion defeats pending extension");
+assert.equal(replica.accept({...frame,seq:b.seq+1}),false,"Late frame cannot resurrect erased ink");
+const second=api.createFastInkReplica();second.sync(version,empty);
+assert.equal(second.accept(frame),true);
+second.sync(version+1,doc(5),{...b,user_id:"peer"});
+assert.equal(second.changes().length,0,"Exact checkpoint retires the frame without another object");
+const stored=await api.selfhostSaveDocument(board.id,version,doc(2),"fast-pen",undefined,a);
+assert.equal(stored.version,version+1);
+assert.equal(ws.sent.some(x=>x.type==="ink_commit"),false,"Fast mode checkpoints use independent HTTP");
+assert.ok(f.records.some(x=>x.method==="PATCH"&&x.query.includes("ink_frame_seq=")),"Tag the exact checkpoint");
+channel();await Promise.resolve();
+console.log("Fast permanent ink: frames before disk ACK, exact same-ID checkpoint, peer deletion and separate HTTP save passed.");
+}
+
+{
+ const sync={};
+ const compile=path=>ts.transpileModule(readFileSync(new URL("../src/"+path,import.meta.url),"utf8"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ new Function("exports",compile("boardSync.ts"))(sync);
+ const visual={};
+ new Function("exports","require",compile("boardFastInk.ts"))(visual,name=>{assert.equal(name,"./boardSync");return sync});
+ const old={id:"pen",kind:"pen",createdBy:"owner",x:0,y:0,width:10,height:3,points:[{x:0,y:0},{x:10,y:0}]};
+ const tail={...old,width:20,points:[...old.points,{x:20,y:0}]};
+ const shape={id:"shape",kind:"shape"};
+ const current=[shape,old];
+ const changes=[{id:"pen",before:old,after:tail}];
+ assert.deepEqual(visual.projectFastInkItems(current,changes),[shape,tail]);
+ const drawing=[shape,tail];
+ assert.deepEqual(visual.projectFastInkItems(drawing,[{id:"pen",before:old,after:null}]),[shape],"Peer erasure hides the active author's uncommitted tail");
+ const input=visual.projectFastInkItems(current,changes,true);
+ assert.equal(input[1].points.length,3);
+ assert.deepEqual(visual.restoreUntouchedFastInk(current,input,input),current,"Untouched peer geometry must never enter a save");
+ const fragment={...old,id:"fragment"};
+ assert.deepEqual(visual.projectFastInkItems(current,[{id:"pen",before:old,after:null},{id:"fragment",before:null,after:fragment}]),[shape,fragment]);
+ console.log("Fast ink projection: same ordinary ID, actual visible erase, no peer geometry in local saves.");
+}

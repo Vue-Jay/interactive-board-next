@@ -852,7 +852,7 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
 # These frames need no additional asynchronous validation between checking
 # permissions and starting peer delivery. Target/pilot events still perform
 # their separate database checks and use a fresh recipient lookup afterwards.
-INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "work_state", "editor_mutation",
+INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "ink_frame", "work_state", "editor_mutation",
                       "object_transform", "teacher_view", "guided_follow", "attachment_request")
 
 
@@ -860,7 +860,7 @@ async def authorize_live_frame(pool, board_id, sender, token, kind):
     if kind in INLINE_RELAY_TYPES:
         peers = {peer: peer_token for peer, peer_token in _subscribers.get(board_id, {}).items()
                  if peer is not sender}
-        rows = await lookup_board_sessions(pool, board_id, [token, *peers.values()])
+        rows = await lookup_board_sessions(pool, board_id, [token, *peers.values()], include_version=kind=="ink_frame")
         return require_board_session(rows, token), peers, rows
     return await lookup_board_session(pool, board_id, token, include_version=kind == "ping"), None, None
 
@@ -966,7 +966,8 @@ async def persist_normalized_items(conn, board_id, previous, base, document, del
 
 async def persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
                            user, version_only: bool, document: dict | None = None,
-                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None):
+                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None,
+                           ink_frame: dict | None = None):
     # Full saves remain supported for older clients and initial/recovery saves.
     serialized = serialize_document(document) if document is not None else None
     wire_delta = None
@@ -1116,6 +1117,8 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                 event["_ink_point_delta"] = True
     if ink_cursor is not None:
         event["ink_cursor"] = ink_cursor
+    if ink_frame is not None:
+        event["ink_frame"] = {**ink_frame, "user_id": str(user["id"])}
     await announce_board_event(board_id, event, request.app.state.pool)
     if version_only:
         return {"version": version}
@@ -1123,18 +1126,32 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             "updated_at": revision["updated_at"].isoformat(), "updated_by": str(user["id"])}
 
 
+def ink_checkpoint_tag(gesture, client, seq):
+    if client is None and seq is None:
+        return None
+    if not gesture or client is None or seq is None:
+        error(422, "Некорректная метка кадра штриха.")
+    return {"gesture":gesture,"client_id":client,"seq":seq}
+
+
 @app.put("/api/v1/boards/{board_id}/document")
 async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
-                        version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128), user=Depends(current_user)):
+                        version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128),
+                        ink_frame_client: str | None = Query(None,pattern=r"^[A-Za-z0-9_-]{1,96}$"),
+                        ink_frame_seq: int | None = Query(None,ge=1,le=2**53-1), user=Depends(current_user)):
     return await persist_document(board_id, data.expected_version, request, user, version_only,
-                                  document=data.document,ink_gesture=ink_gesture)
+                                  document=data.document,ink_gesture=ink_gesture,
+                                  ink_frame=ink_checkpoint_tag(ink_gesture,ink_frame_client,ink_frame_seq))
 
 
 @app.patch("/api/v1/boards/{board_id}/document")
 async def patch_document(board_id: UUID, data: PatchDocumentInput, request: Request,
-                         version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128), user=Depends(current_user)):
+                         version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128),
+                         ink_frame_client: str | None = Query(None,pattern=r"^[A-Za-z0-9_-]{1,96}$"),
+                         ink_frame_seq: int | None = Query(None,ge=1,le=2**53-1), user=Depends(current_user)):
     return await persist_document(board_id, data.expected_version, request, user, version_only,
-                                  delta=data.delta,ink_gesture=ink_gesture)
+                                  delta=data.delta,ink_gesture=ink_gesture,
+                                  ink_frame=ink_checkpoint_tag(ink_gesture,ink_frame_client,ink_frame_seq))
 
 @app.websocket("/api/v1/boards/{board_id}/events")
 async def board_events(websocket: WebSocket, board_id: UUID):
@@ -1156,7 +1173,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         ink_point_deltas = initial.get("ink_point_deltas", False)
         durable_ink_commits = initial.get("durable_ink_commits", False)
         ink_commit_chain = initial.get("ink_commit_chain", False)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool:
+        ink_fast_frames = initial.get("ink_fast_frames", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool or type(ink_fast_frames) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -1196,7 +1214,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         await websocket.send_json({"type": "ready", "version": current_version,
                                    **({"compact_ink": True} if compact_ink else {}),
                                    **({"durable_ink_commits": True} if durable_ink_commits else {}),
-                                   **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {})})
+                                   **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {}),
+                                   **({"ink_fast_frames": True} if durable_ink_commits and ink_fast_frames else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
@@ -1307,6 +1326,13 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         "type": "event_error", "reason": str(exc)
                     })
                     continue
+                if event["type"] == "ink_frame":
+                    if (not ink_fast_frames or refreshed_user["is_pilot"] or
+                        not 0 <= refreshed_user["version"]-event["base_version"] <= 16):
+                        await websocket.send_json({"type":"event_error","reason":"stale_ink_frame"})
+                        continue
+                    if presence_enabled and not presence_visible:
+                        event.pop("cursor",None)
                 if not limiter.check(event["type"]):
                     await websocket.send_json({
                         "type": "event_error", "reason": "rate_limited"

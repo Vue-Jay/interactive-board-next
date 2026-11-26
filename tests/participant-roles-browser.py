@@ -316,8 +316,9 @@ def assert_drawing_saved(page,ident,name):
         expect_saved(True)
 
 def check_shared_eraser_sync(browser):
-    # Two real sessions, real PostgreSQL. A visible stroke is already durable
-    # even before pointer-up; a delayed extension may never resurrect erased ink.
+    # Two real sessions, real PostgreSQL. Fast same-ID geometry must remain
+    # visible while the durable checkpoint is deliberately blocked. A delayed
+    # extension may never resurrect erased ink.
     ident=setup_board()
     url=f"/api/v1/boards/{ident}/document"
     pattern=re.compile(re.escape(API+url)+r"(?:\?.*)?$")
@@ -331,8 +332,9 @@ def check_shared_eraser_sync(browser):
             upstream=route.connect_to_server()
             def outgoing(message):
                 frame=json.loads(message)
-                if frame.get("type")=="ink_commit":
+                if frame.get("type") in ("ink_commit","ink_frame"):
                     control["commits"].append(frame)
+                if frame.get("type")=="ink_commit":
                     changes=frame.get("delta",{}).get("items",{})
                     if control["hold"] and any(i.get("id")==control["hold"] for i in changes.get("upsert",[])+changes.get("point_edits",[])):
                         control["held"].append((upstream,message));return
@@ -428,12 +430,45 @@ def check_shared_eraser_sync(browser):
                     const doc=JSON.parse(raw);
                     return doc.items.some(i=>i.id===id)===present;
                 }""",arg={"id":stroke_id,"ident":ident,"present":present},timeout=20000)
+            def ink_pixel(page, writer, screen_x, screen_y):
+                # Transform the writer's actual sample through board/world
+                # coordinates, then sample the ordinary permanent ink canvas.
+                point=writer.evaluate("""({x,y})=>{
+                    const world=document.querySelector('.world');
+                    const r=world.getBoundingClientRect();
+                    const zoom=new DOMMatrix(getComputedStyle(world).transform).a;
+                    return {x:(x-r.left)/zoom,y:(y-r.top)/zoom};
+                }""",arg={"x":screen_x,"y":screen_y})
+                page.wait_for_function("""point=>{
+                    const world=document.querySelector('.world');
+                    const r=world.getBoundingClientRect();
+                    const zoom=new DOMMatrix(getComputedStyle(world).transform).a;
+                    const x=r.left+point.x*zoom,y=r.top+point.y*zoom;
+                    return Array.from(document.querySelectorAll('.viewer-ink-canvas')).some(canvas=>{
+                        const b=canvas.getBoundingClientRect();
+                        if(x<b.left||x>b.right||y<b.top||y>b.bottom||!canvas.width||!canvas.height)return false;
+                        const px=Math.max(0,Math.min(canvas.width-1,Math.round((x-b.left)*canvas.width/b.width)));
+                        const py=Math.max(0,Math.min(canvas.height-1,Math.round((y-b.top)*canvas.height/b.height)));
+                        const sx=Math.max(0,px-4),sy=Math.max(0,py-4);
+                        const rgba=canvas.getContext('2d').getImageData(sx,sy,Math.min(9,canvas.width-sx),Math.min(9,canvas.height-sy)).data;
+                        return rgba.some((v,i)=>i%4===3&&v>30);
+                    });
+                }""",arg=point,timeout=2000)
             for writer,eraser,mode,kind in ((pupil,teacher,"stroke","pen"),(teacher,pupil,"partial","marker")):
                 writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
                 eraser.locator('[data-interface-control="eraser"]:visible').first.click()
                 eraser.locator(f'[data-eraser-mode="{mode}"]:visible').first.click()
                 original={i["id"] for i in inks(read())}
                 held=[]
+                first_held=[]
+                erase_held=[]
+                def hold_checkpoint(route, queue):
+                    if route.request.method in ("PUT","PATCH") and "ink_gesture=" in route.request.url:
+                        queue.append(route)
+                        return
+                    route.continue_()
+                first_route=lambda route:hold_checkpoint(route,first_held)
+                erase_route=lambda route:hold_checkpoint(route,erase_held)
                 control=controls[writer]
                 control["commits"].clear()
                 def delay_write(route):
@@ -449,16 +484,29 @@ def check_shared_eraser_sync(browser):
                     box=writer.locator("section.board").bounding_box()
                     x=box["x"]+box["width"]*.42
                     y=box["y"]+box["height"]*.38
+                    writer.route(pattern,first_route)
                     writer.mouse.move(x,y)
                     writer.mouse.down()
-                    writer.mouse.move(x+180,y,steps=18)
+                    writer.mouse.move(x+75,y,steps=9)
+                    # No durable commit has been permitted, but the peer
+                    # must already see the ordinary canvas pixels.
+                    ink_pixel(eraser,writer,x+75,y)
+                    assert {i["id"] for i in inks(read())}==original
+                    writer.mouse.move(x+180,y,steps=12)
+                    ink_pixel(eraser,writer,x+180,y)
+                    assert {i["id"] for i in inks(read())}==original
+                    assert first_held,"No independent durable checkpoint was issued"
+                    assert len([f for f in control["commits"] if f.get("type")=="ink_frame"])>=2
+                    writer.unroute(pattern,first_route)
+                    for route in first_held: route.continue_()
+                    first_held.clear()
                     row=wait_row(writer,lambda r:any(i["id"] not in original and i.get("width",0)>130 for i in inks(r)),
                                  "Unfinished stroke never reached the durable document")
                     stroke=next(i for i in inks(row) if i["id"] not in original)
                     stroke_id=stroke["id"]
                     stored(eraser,stroke_id)
                     expect(eraser.locator(".viewer-ink-canvas").first).to_be_attached(timeout=20000)
-                    assert any(frame.get("cursor") for frame in control["commits"]), "Drawing must send a committed cursor and ink together"
+                    assert any(frame.get("type")=="ink_frame" and frame.get("cursor") for frame in control["commits"]), "Fast geometry and cursor must be sent together"
                     # Check visible pixels at the actual remote cursor, not merely a stored ID.
                     eraser.wait_for_function("""()=>{
                         const cursor=document.querySelector(".lektrus-remote-cursor");
@@ -492,8 +540,19 @@ def check_shared_eraser_sync(browser):
                         const scale=new DOMMatrix(getComputedStyle(world).transform).a;
                         return {x:r.left+(stroke.x+stroke.width/2)*scale,y:r.top+(stroke.y+stroke.height/2)*scale};
                     }""",stroke)
+                    expect(writer.locator(f'[data-object="{stroke_id}"]')).to_be_attached(timeout=5000)
+                    eraser.route(pattern,erase_route)
                     eraser.mouse.move(midpoint["x"],midpoint["y"])
                     eraser.mouse.down()
+                    # The author is still holding the pen and its extension
+                    # is unconfirmed. Erasure must already remove that real
+                    # object's rendering before the erase write is released.
+                    expect(writer.locator(f'[data-object="{stroke_id}"]')).to_have_count(0,timeout=2000)
+                    assert any(i["id"]==stroke_id for i in inks(read()))
+                    assert erase_held,"No independent erase checkpoint was issued"
+                    eraser.unroute(pattern,erase_route)
+                    for route in erase_held: route.continue_()
+                    erase_held.clear()
                     erased=wait_row(eraser,lambda r:all(i["id"]!=stroke_id for i in inks(r)) and len(inks(r))==len(original)+(0 if mode=="stroke" else 2),
                                     f"Peer {mode} eraser failed to persist before pointer release")
                     eraser.mouse.up()
@@ -527,9 +586,14 @@ def check_shared_eraser_sync(browser):
                         try: route.abort()
                         except Exception: pass
                     writer.unroute(pattern,delay_write)
+                    writer.unroute(pattern,first_route)
+                    eraser.unroute(pattern,erase_route)
+                    for route in first_held+erase_held:
+                        try: route.abort()
+                        except Exception: pass
     finally:
         for ctx in contexts: ctx.close()
-    print("Durable ink: visible before release; concurrent eraser defeats delayed extensions in both directions.")
+    print("Fast permanent ink: two canvas samples and erasure visible while HTTP writes are blocked; durable conflict convergence in both directions.")
 
 
 def check_guest_and_registration(browser,ident):
