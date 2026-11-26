@@ -1548,8 +1548,10 @@ try{
  await click('button[aria-label="Отменить"]');
  await wait(`${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Undo must restore the entire original stroke");
  await eraserModeButton("stroke");
+ const inkAt=(x,y)=>'(()=>[...document.querySelectorAll(".viewer-ink-canvas")].some(c=>{const r=c.getBoundingClientRect();const x='+x+',y='+y+';if(!c.width||!c.height||!r.width||!r.height||x<r.left||x>=r.right||y<r.top||y>=r.bottom)return false;const px=Math.floor((x-r.left)*c.width/r.width),py=Math.floor((y-r.top)*c.height/r.height);const l=Math.max(0,px-2),t=Math.max(0,py-2),w=Math.min(5,c.width-l),h=Math.min(5,c.height-t);return w>0&&h>0&&c.getContext("2d").getImageData(l,t,w,h).data.some((v,i)=>i%4===3&&v>0)}))()';
+ await wait(inkAt(hitX,hitY),"Restored stroke must be visible in the permanent raster");
  await mouse("mousePressed",hitX,hitY,{pressed:true});
- await wait('document.querySelector("section.board").classList.contains("eraser-live")',"Whole stroke must disappear in the live preview before pointer release");
+ await wait("!("+inkAt(hitX,hitY)+")","Whole stroke must disappear from the permanent raster before pointer release");
  await mouse("mouseReleased",hitX,hitY);
  await wait(`${savedInkIds}.length===${originalInk.length-1}&&!${savedInkIds}.includes(${JSON.stringify(lineId)})`,"Whole stroke eraser must remove the complete line without fragments");
  console.log("✓ Real pencil, partial eraser, whole stroke eraser and undo");
