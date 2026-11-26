@@ -39,7 +39,7 @@ async function loadSelfhost(enabled, platform="web") {
     const result=lockTail.then(callback);lockTail=result.catch(()=>{});return result;
   }};
   const nativeBoardId="00000000-0000-4000-8000-000000000004";
-  let nativeDoc=null,nativeVersion=0,nativeDelta=null,brokenChain=false;
+  let nativeDoc=null,nativeVersion=0,nativeDelta=null,brokenChain=false;let pointCapability=false;
   const nativeComment={id:"comment-root",board_id:nativeBoardId,
     author_id:"00000000-0000-4000-8000-000000000001",author_name:"Учитель",
     parent_id:null,body:"Проверьте решение",resolved:false,
@@ -127,7 +127,7 @@ async function loadSelfhost(enabled, platform="web") {
         patches:brokenChain?[{items:{order:[]}}]:[nativeDelta],updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`)
       return ok({board_id:nativeBoardId,version:nativeVersion,document:nativeDoc,
-        updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
+        ...(pointCapability?{ink_point_deltas:true}:{}),updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     const assetBase=`/api/v1/boards/${nativeBoardId}/assets/`;
     if(u.pathname===assetBase+"asset_1"&&options.method==="HEAD")
       return new Response(null,{status:200});
@@ -296,7 +296,7 @@ async function loadSelfhost(enabled, platform="web") {
   return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
     setRefreshStatus:v=>{refreshStatus=v},setTransientRefresh401:()=>{transientRefresh401=true},rejectOldAccess:()=>{rejectOldAccess=true},
-    remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
+    enablePointCapability:()=>{pointCapability=true},remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
 }
 
 const disabled=await loadSelfhost(false);
@@ -432,6 +432,19 @@ env.remoteNativeEdit({set:{subject:"chemistry"}},true);
 assert.equal((await api.selfhostReadDocument(nativeBoard.id,undefined,true)).document.subject,"chemistry");
 assert.equal(records.at(-2).query,"?ink_point_deltas=true&since_version=3");
 assert.equal(records.at(-1).query,"?ink_point_deltas=true");
+// The real save queue negotiates support; a legacy server receives only
+// the established complete upsert format.
+const wireBase={...reordered,subject:"chemistry",items:[...reordered.items,inkItem]};
+let wireVersion=(await api.selfhostSaveDocument(nativeBoard.id,4,wireBase,"ink")).version;
+const wireNext={...wireBase,items:[...wireBase.items.slice(0,-1),extended]};
+wireVersion=(await api.selfhostSaveDocument(nativeBoard.id,wireVersion,wireNext,"ink")).version;
+assert.ok(records.at(-1).body.delta.items.upsert);
+env.enablePointCapability();
+await api.selfhostReadDocument(nativeBoard.id,undefined,false);
+const wireFinal={...wireNext,items:[...wireNext.items.slice(0,-1),{...extended,points:[...extended.points,{x:2,y:3}]}]};
+wireVersion=(await api.selfhostSaveDocument(nativeBoard.id,wireVersion,wireFinal,"ink")).version;
+assert.equal(records.at(-1).body.delta.items.point_edits[0].points.length,1);
+assert.deepEqual(JSON.parse(JSON.stringify((await api.selfhostReadDocument(nativeBoard.id,undefined,false)).document)),wireFinal);
 assert.equal(await api.selfhostAssetExists(nativeBoard.id,"asset_1"),true);
 assert.equal(await api.selfhostAssetExists(nativeBoard.id,"missing"),false);
 await api.selfhostUploadAsset(
