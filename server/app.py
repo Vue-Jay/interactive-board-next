@@ -852,7 +852,7 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
 # These frames need no additional asynchronous validation between checking
 # permissions and starting peer delivery. Target/pilot events still perform
 # their separate database checks and use a fresh recipient lookup afterwards.
-INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "work_state", "editor_mutation",
+INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "ink_motion", "ink_motion_ack", "work_state", "editor_mutation",
                       "object_transform", "teacher_view", "guided_follow", "attachment_request")
 
 
@@ -1156,7 +1156,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         ink_point_deltas = initial.get("ink_point_deltas", False)
         durable_ink_commits = initial.get("durable_ink_commits", False)
         ink_commit_chain = initial.get("ink_commit_chain", False)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool:
+        ink_motion = initial.get("ink_motion", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool or type(ink_motion) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -1196,7 +1197,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         await websocket.send_json({"type": "ready", "version": current_version,
                                    **({"compact_ink": True} if compact_ink else {}),
                                    **({"durable_ink_commits": True} if durable_ink_commits else {}),
-                                   **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {})})
+                                   **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {}),
+                                   **({"ink_motion": True} if ink_motion and durable_ink_commits else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
@@ -1295,6 +1297,9 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     continue
                 if refreshed_user["participant_role"] == "student" and message.get("type") in ("focus_view", "teacher_view", "guided_follow", "attachment_result"):
                     await websocket.send_json({"type": "event_error", "reason": "teacher_participant_required"})
+                    continue
+                if message.get("type") in ("ink_motion", "ink_motion_ack") and not (ink_motion and durable_ink_commits):
+                    await websocket.send_json({"type":"event_error","reason":"ink_motion_not_negotiated"})
                     continue
                 try:
                     event = validate_live_event(

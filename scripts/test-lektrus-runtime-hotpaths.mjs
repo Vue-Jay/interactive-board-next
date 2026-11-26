@@ -8,7 +8,8 @@ const read=(path)=>readFileSync(new URL("../src/"+path,import.meta.url),"utf8");
 const app=read("BoardApp.tsx"),preview=read("boardPreview.ts"),sync=read("boardSync.ts");
 const inkOverlay=read("RemoteInkOverlay.tsx");
 
-assert.doesNotMatch(app,/<RemoteInkOverlay|remoteInkStore|pendingPeerErasures/,"No transient stroke data in production board");
+assert.doesNotMatch(app,/<RemoteInkOverlay|remoteInkStore|pendingPeerErasures/,"No separate temporary ink overlay in production board");
+assert.match(app,/inkMotionLedger\.project\(visibleItems\)/,"One ordinary item render projection");
 assert.match(app,/parseRealtimeDocument\(row\.document,validatedRemoteItems\.current\)/);
 assert.match(app,/scheduleRemoteBackup\(data\)/);
 assert.match(app,/let runKey="ink-root"/,"Erasing first stroke must not remount the entire canvas run");

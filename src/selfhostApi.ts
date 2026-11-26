@@ -36,6 +36,7 @@ export type SelfhostAccess = {
   members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;added_at:string}>;
   invites:Array<{id:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;created_at:string}>;
 };
+import type {RemoteInkMotion} from "./boardInkMotion";
 export type SelfhostRealtimeStatus = "online"|"reconnecting"|"offline";
 export type SelfhostPoint={x:number;y:number};
 export type SelfhostLiveInkPacket={
@@ -47,6 +48,7 @@ export type SelfhostLiveInkPacket={
 };
 export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;online_at?:string};
 export type SelfhostLiveEvent=
+  | RemoteInkMotion
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
   | (SelfhostLiveInkPacket&{user_id:string;name:string;role:SelfhostBoardRole;sent_at:number})
   | SelfhostRemoteObjectPreview
@@ -71,6 +73,7 @@ const MAX_INK_IN_FLIGHT=3;
 export type SelfhostBoardChannel=(()=>void)&{
   canCommitInk:()=>boolean;
   canPipelineInk:()=>boolean;
+  canSendInkMotion:()=>boolean;
   commitInk:(request:InkCommitRequest)=>InkCommitPromise|null;
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
   sendInk:(ink:SelfhostLiveInkPacket)=>boolean;
@@ -1063,7 +1066,7 @@ function connectSelfhostBoard(
   let lastVersion=-1;
   let ready=false;
   let compactInk=false;
-  let durableInkCommits=false,inkCommitChain=false,commitSequence=0;
+  let durableInkCommits=false,inkCommitChain=false,inkMotion=false,commitSequence=0;
   let lastInkRequestId:string|undefined;
   const pendingCommits=new Map<string,{resolve:(value:{version:number})=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
   let lastCursorSent=0;
@@ -1086,6 +1089,7 @@ function connectSelfhostBoard(
   };
   const canCommitInk=()=>ready&&durableInkCommits&&socket?.readyState===WebSocket.OPEN;
   const canPipelineInk=()=>canCommitInk()&&inkCommitChain;
+  const canSendInkMotion=()=>ready&&inkMotion&&socket?.readyState===WebSocket.OPEN;
   const commitInk=(request:InkCommitRequest):InkCommitPromise|null=>{
     if(!canCommitInk())return null;
     if(request.after_request_id!==undefined){
@@ -1154,6 +1158,7 @@ function connectSelfhostBoard(
   };
   const sendEvent=(event:Record<string,unknown>):boolean=>{
     if(typeof event.type!=="string"||!event.type)return false;
+    if((event.type==="ink_motion"||event.type==="ink_motion_ack")&&(!canSendInkMotion()||(socket?.bufferedAmount??0)>128*1024))return false;
     let serialized="";
     try{serialized=JSON.stringify(event)}catch{return false}
     if(serialized.length>120_000)return false;
@@ -1187,7 +1192,7 @@ function connectSelfhostBoard(
   };
   const closeSocket=()=>{
     ready=false;
-    compactInk=false;durableInkCommits=false;inkCommitChain=false;lastInkRequestId=undefined;
+    compactInk=false;durableInkCommits=false;inkCommitChain=false;inkMotion=false;lastInkRequestId=undefined;
     for(const entry of pendingCommits.values()){
       clearTimeout(entry.timer);entry.reject(new SelfhostHttpError(409,"Соединение прервано. Сверяем версию доски."));
     }
@@ -1226,7 +1231,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,
+            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,ink_motion:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}
@@ -1251,6 +1256,7 @@ function connectSelfhostBoard(
             compactInk=message.compact_ink===true;
             durableInkCommits=message.durable_ink_commits===true;
             inkCommitChain=message.ink_commit_chain===true;
+            inkMotion=message.ink_motion===true;
             attempt=0;ready=true;onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
@@ -1322,7 +1328,7 @@ function connectSelfhostBoard(
               leaves:message.leaves.filter(valid),
             } as SelfhostLiveEvent);
           }
-          const relayedTypes=["work_state","editor_mutation","object_transform","focus_view",
+          const relayedTypes=["work_state","editor_mutation","object_transform","ink_motion","ink_motion_ack","focus_view",
             "teacher_view","guided_follow","attachment_request","attachment_result"];
           if(relayedTypes.includes(String(message?.type))&&typeof message.user_id==="string"&&
              typeof message.name==="string"&&
@@ -1376,7 +1382,7 @@ function connectSelfhostBoard(
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
-  return Object.assign(stop,{canCommitInk,canPipelineInk,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
+  return Object.assign(stop,{canCommitInk,canPipelineInk,canSendInkMotion,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
 }
 
 
@@ -1433,6 +1439,7 @@ class SharedSelfhostBoard {
 
   canCommitInk(){return !!this.socket?.canCommitInk()}
   canPipelineInk(){return !!this.socket?.canPipelineInk()}
+  canSendInkMotion(){return !!this.socket?.canSendInkMotion()}
   commitInk(request:InkCommitRequest){return this.socket?.commitInk(request)??null}
   sendCursor(cursor:InkCommitCursor){return this.socket?.sendCursor(cursor.client_id,cursor.x,cursor.y)??false}
   subscribe(listener:BoardListener):SelfhostBoardChannel{
@@ -1450,6 +1457,7 @@ class SharedSelfhostBoard {
     return Object.assign(stop,{
       canCommitInk:()=>this.listeners.has(listener)&&this.canCommitInk(),
       canPipelineInk:()=>this.listeners.has(listener)&&this.canPipelineInk(),
+      canSendInkMotion:()=>this.listeners.has(listener)&&this.canSendInkMotion(),
       commitInk:(request:InkCommitRequest)=>this.listeners.has(listener)?this.commitInk(request):null,
       sendCursor:(id:string,x:number,y:number)=>this.listeners.has(listener)&&!!this.socket?.sendCursor(id,x,y),
       sendInk:(ink:SelfhostLiveInkPacket)=>this.listeners.has(listener)&&!!this.socket?.sendInk(ink),
