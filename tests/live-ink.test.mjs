@@ -203,7 +203,7 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   assert.equal(api.mergeRemoteLiveInk(long,old),old,'legacy peers remain compatible');
   const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(app,/remoteInkStore\.push\(ink\)/);
-  assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
+  assert.match(app,/writeDurableInk\(itemsRef\.current/);
 });
 
 
