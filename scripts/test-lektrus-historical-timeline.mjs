@@ -76,6 +76,21 @@ for(const name of ['Union of Myanmar','Turkey','Republic of Cabo Verde']){
  for(let i=0;i<rules.length;i++)for(let j=i+1;j<rules.length;j++)
   assert.ok(rules[i][3]<rules[j][2]||rules[j][3]<rules[i][2],'Overlapping title years '+name);
 }
+// Additional modern-to-older names are verified against national acts and UN notices.
+const laterCountryNames=[["Samoa","Q683",1962,"Western Samoa"],["Independent State of Samoa","Q683",1962,"Independent State of Western Samoa"],["Western Samoa","Q683",1997,"Samoa"],["Republic of Cameroon","Q1009",1962,"Federal Republic of Cameroon"],["Republic of Cameroon","Q1009",1972,"United Republic of Cameroon"],["Federal Republic of Cameroon","Q1009",1972,"United Republic of Cameroon"],["United Republic of Cameroon","Q1009",1984,"Republic of Cameroon"],["Central African Republic","Q929",1977,"Central African Empire"],["Republic of the Congo","Q971",1970,"People's Republic of the Congo"],["Republic of Congo","Q971",1970,"People's Republic of the Congo"],["People's Republic of the Congo","Q971",1992,"Republic of the Congo"]];
+for(const [sourceName,sourceId,year,expected] of laterCountryNames){
+ const candidates=historicalTitleCorrections.filter(r=>r[0]===sourceName&&r[1]===sourceId&&r[2]<=year&&year<=r[3]);
+ assert.equal(candidates.length,1,'Missing historical transition '+sourceName+'/'+year);
+ assert.equal(candidates[0][4],expected,'False government title '+sourceName+'/'+year);
+ assert.ok(candidates[0][6].startsWith('https://'));
+}
+const allDatedNames=new Map();
+for(const rule of historicalTitleCorrections){
+ const key=rule[0]+'|'+rule[1];const history=allDatedNames.get(key)??[];
+ for(const prev of history)assert.ok(prev[3]<rule[2]||rule[3]<prev[2],
+  'Overlapping historical title intervals '+key);
+ history.push(rule);allDatedNames.set(key,history);
+}
 assert.equal(historicalCorsicaLiberationCenters(1942).length,0);
 const corsica1943=historicalCorsicaLiberationCenters(1943);
 const corsica1944=historicalCorsicaLiberationCenters(1944);
