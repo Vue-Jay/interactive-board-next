@@ -2,6 +2,6 @@
   "application": "lektrus",
   "source": "github-actions",
   "branch": "main",
-  "marker": "lektrus-session-participant-colors-2026-11-26",
-  "board_change": "session-presence-colors-v2"
+  "marker": "lektrus-board-reconnect-watchdog-2026-11-26",
+  "board_change": "board-reconnect-recovery-v3"
 }

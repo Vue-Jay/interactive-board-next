@@ -276,12 +276,15 @@ async function loadSelfhost(enabled, platform="web") {
     send(value){this.sent.push(JSON.parse(value))}
     close(){this.readyState=3}
     emit(data){this.onmessage?.({data:JSON.stringify(data)})}
+    reject(code=4401){this.readyState=3;this.onclose?.({code})}
     open(){this.readyState=1;this.onopen?.()}
   }
   const listeners=new Map();
   const makeContext=(withLocks=true)=>vm.createContext({
     exports:{},require:name=>{if(name==="./boardIdle"){const out={};new Function("exports",ts.transpileModule(readFileSync(new URL("../src/boardIdle.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(out);return out;}assert.equal(name,"@capacitor/core");return bridge;},fetch,URL,Headers,Response,AbortController,DOMException,FormData,TextEncoder,queueMicrotask,
-    navigator:{onLine:true,locks:withLocks?locks:undefined},WebSocket:Socket,
+    navigator:{onLine:true,locks:withLocks?locks:undefined},
+    document:{hidden:false,visibilityState:"visible",addEventListener(){},removeEventListener(){}},
+    WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
       addEventListener(name,fn){listeners.set(name,fn)},
@@ -293,7 +296,7 @@ async function loadSelfhost(enabled, platform="web") {
   const broadcastSource=readFileSync(new URL("../src/boardBroadcast.ts",import.meta.url),"utf8");
   const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
-  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
+  return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,nav:context.navigator,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
     setRefreshStatus:v=>{refreshStatus=v},setTransientRefresh401:()=>{transientRefresh401=true},rejectOldAccess:()=>{rejectOldAccess=true},
     enablePointCapability:()=>{pointCapability=true},remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
@@ -991,4 +994,42 @@ console.log("Durable ink pipeline: three unacknowledged frames, bounded coalesci
    second.emit({type:"ready",version:2,idle_lease:true});
  } finally {stop?.();Date.now=originalNow;await Promise.resolve();}
  console.log("Negotiated inactivity: no background reconnect, immediate wake on real activity.");
+}
+
+// Simulate false offline network state, stale WebSocket auth and the room
+// presence handshake without relying on real network or 10-minute timers.
+{
+ const recovery=await loadSelfhost(true);
+ await recovery.api.selfhostLogin("teacher@example.test","test-password");
+ recovery.nav.onLine=false;
+ const states=[];
+ const stop=recovery.api.selfhostSubscribeBoard("board-1",()=>{},status=>states.push(status),()=>{},
+   {visible:true,idle:true});
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(recovery.sockets.length,1,"False browser offline must not suppress an attempted WS");
+ const first=recovery.sockets[0];first.open();
+ first.emit({type:"ready",version:1,idle_lease:true});
+ assert.notEqual(states.at(-1),"online","Wait for room presence after WS ready");
+ first.emit({type:"presence_state",users:[{user_id:"teacher",name:"Teacher",role:"owner"}]});
+ assert.equal(states.at(-1),"online");
+ first.reject(4401);
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(recovery.refreshCount(),1,"Reject a bearer only once");
+ assert.equal(recovery.sockets.length,2,"Renewed auth reconnects despite navigator.onLine=false");
+ const second=recovery.sockets[1];second.open();
+ assert.equal(second.sent[0].token,"token-refreshed");
+ second.emit({type:"ready",version:1,idle_lease:true});
+ second.emit({type:"presence_state",users:[{user_id:"teacher",name:"Teacher",role:"owner"}]});
+ assert.equal(states.at(-1),"online");
+ second.reject(1006);
+ assert.equal(states.at(-1),"reconnecting");
+ await new Promise(resolve=>setTimeout(resolve,350));
+ assert.equal(recovery.sockets.length,3,"Automatic retry must survive a false offline flag");
+ const third=recovery.sockets[2];third.open();
+ third.emit({type:"ready",version:2,idle_lease:true});
+ third.emit({type:"presence_state",users:[]});
+ assert.equal(states.at(-1),"online","Empty but valid room snapshot is connected");
+ stop();await Promise.resolve();
+ assert.equal(third.readyState,3);
+ console.log("Reconnect regression: false offline, bearer refresh, room readiness and retry passed.");
 }
