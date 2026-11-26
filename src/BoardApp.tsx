@@ -3256,13 +3256,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
     if (layoutEditing || !documentSyncEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
-    const fingerprint = knownFingerprint ?? documentFingerprint(data);
-    if (fingerprint === acknowledgedDocument.current ||
-        fingerprint === acknowledgedSharedContent.current) return;
+    // An inverse edit can equal the OLD acknowledged version while a
+    // stroke checkpoint is in flight. Queue it before the equality check.
     if (remoteSaveInFlight.current) {
       queuedRemoteSnapshot.current = data;
       return;
     }
+    const fingerprint = knownFingerprint ?? documentFingerprint(data);
+    if (fingerprint === acknowledgedDocument.current ||
+        fingerprint === acknowledgedSharedContent.current) return;
     remoteSaveInFlight.current = true;
     try {
       // Verify/upload ONLY newly introduced attachments. Existing references
@@ -3417,7 +3419,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
       if (documentSyncEnabled && pendingRemote.current) return;
-      if(documentSyncEnabled && (
+      if(documentSyncEnabled && !remoteSaveInFlight.current && (
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
       )){
