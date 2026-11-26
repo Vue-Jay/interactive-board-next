@@ -2892,6 +2892,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const lastInkGesture=useRef<string|null>(null);
   const lastInkCursor=useRef<{gesture:string;cursor:InkCommitCursor}|null>(null);
   const pendingCommittedCursors=useRef(new Map<string,{version:number;cursor:SelfhostCommittedCursor}>());
+  const validatedRemoteItems=useRef(new WeakMap<object,Item>());
   const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
@@ -3487,7 +3488,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (automatic && labCheckpointStartedAt.current===null)
       labCheckpointStartedAt.current=now;
     saveTimer.current = setTimeout(flushSave,automatic?
-      labSimulationCheckpointDelayMs(now,labCheckpointStartedAt.current!):220);
+      labSimulationCheckpointDelayMs(now,labCheckpointStartedAt.current!):editing?150:75);
   }, [
     items,
     title,
@@ -5778,7 +5779,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const latest=pendingObjectTransform.current;
       pendingObjectTransform.current=null;
       if(latest&&gesture.current?.pointer===latest.pointerId)
-        move(latest as PE<HTMLElement>);
+        flushSync(()=>move(latest as PE<HTMLElement>));
     });
   };
 
@@ -8071,6 +8072,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const decision = dirty || !!pendingRemote.current ? "conflict" : "apply";
     try {
       const data = parseDocument(JSON.stringify(row.document));
+      // A versioned patch keeps unchanged wire item identities. Retain their
+      // validated model identities too, so Canvas and heavy subject widgets
+      // do not repaint thousands of unchanged objects on every peer sample.
+      const rawItems=(row.document as {items?:unknown[];ink?:unknown[]}).items;
+      if(Array.isArray(rawItems)&&!(row.document as {ink?:unknown[]}).ink?.length&&rawItems.length===data.items.length){
+        data.items=data.items.map((item,index)=>{
+          const raw=rawItems[index];
+          if(!raw||typeof raw!=="object")return item;
+          const cached=validatedRemoteItems.current.get(raw);
+          if(cached?.id===item.id)return cached;
+          validatedRemoteItems.current.set(raw,item);return item;
+        });
+      }
       const drawing=gesture.current;
       if(drawing?.mode==="draw"&&drawing.ink&&!drawing.inkInterrupted&&peerRemovedDurableInk(
         acknowledgedBoardData.current?expandDocumentInk(acknowledgedBoardData.current):[],expandDocumentInk(data),
@@ -8257,8 +8271,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     followTeacherRef.current = followTeacher;
   }, [followTeacher]);
 
-  // Retire previews once an authenticated document revision arrives.
-  useEffect(()=>{
+  // Retire previews before paint once an authenticated document revision arrives.
+  useLayoutEffect(()=>{
     const stale:string[]=[];
     for(const [id,baseline] of remoteLiveBases.current){
       const stored=itemById.get(id);
@@ -8295,7 +8309,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         const liveLab=stored?.graphFigureId==="chem-experiment-free"&&!!stored.scienceLabBench;
         if(!stored||stored.kind!=="graph"||
           !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"||
-            isMotionGraph(stored.graphFigureId)||stored.scienceMechanics||stored.scienceOptics||
+            isMotionGraph(stored.graphFigureId)||stored.graphFigureId?.startsWith("chem-organic-")||stored.graphFigureId?.startsWith("chem-formula-")||stored.scienceMechanics||stored.scienceOptics||
             stored.scienceCircuit||liveLab))return;
         if(!mutation.ops.length||JSON.stringify(mutation.ops).length>120000)return;
         const allowed=liveLab?
@@ -8304,6 +8318,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           (path:string|number)=>path==="schoolDiagram"||path==="text":
           (path:string|number)=>typeof path==="string"&&
             (path.startsWith("graph")||path==="text"||
+              path.startsWith("scienceOrganic")&&!!stored.graphFigureId?.startsWith("chem-organic-")||
+              path.startsWith("scienceReaction")&&!!stored.graphFigureId?.startsWith("chem-formula-")||
               path==="scienceMechanics"&&!!stored.scienceMechanics||
               path==="scienceOptics"&&!!stored.scienceOptics||
               path==="scienceCircuit"&&!!stored.scienceCircuit);
@@ -10401,7 +10417,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   // change together, so the object never snaps back.
                   left: pose?base.x:item.x,
                   top: pose?base.y:item.y,
-                  transition:pose?"left 75ms linear, top 75ms linear, width 75ms linear, height 75ms linear, transform 75ms linear":undefined,
+                  transition:pose?"left 42ms linear, top 42ms linear, width 42ms linear, height 42ms linear, transform 42ms linear":undefined,
                   width: item.width,
                   height: item.height,
                   transform: pose
