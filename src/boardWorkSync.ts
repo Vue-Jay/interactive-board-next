@@ -47,6 +47,9 @@ export function connectBoardWorkChannel(
     let lastFingerprint = "";
     let publishTimer: ReturnType<typeof setTimeout> | undefined;
     let transformTimer: ReturnType<typeof setTimeout> | undefined;
+    let editTimer:ReturnType<typeof setTimeout>|undefined;
+    const queuedEdits=new Map<string,LiveEditorOp[]>();
+    let lastEditSent=0;
     let pendingTransform: BoardObjectPose[] | null = null;
     let lastTransformSent = 0, editSequence = 0, transformSeq = 0;
     const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -74,10 +77,26 @@ export function connectBoardWorkChannel(
       });
       lastTransformSent = Date.now();
     };
+    const flushEdits=()=>{
+      clearTimeout(editTimer);editTimer=undefined;
+      if(stopped||!ready){queuedEdits.clear();return;}
+      const next=queuedEdits.entries().next().value;
+      if(!next)return;
+      const [itemId,ops]=next;
+      const batch=ops.slice(0,300);
+      // Preserve the ordered mutations (append/remove are not interchangeable).
+      // If transport rejects an oversized batch, the committed snapshot still
+      // delivers the actual object without replaying a stale preview.
+      channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,ops:batch});
+      lastEditSent=Date.now();
+      if(ops.length>batch.length)queuedEdits.set(itemId,ops.slice(batch.length));else queuedEdits.delete(itemId);
+      if(queuedEdits.size)editTimer=setTimeout(flushEdits,34);
+    };
     channel = selfhostSubscribeBoard(boardId, () => {}, status => {
       ready = status === "online";
       lastFingerprint = "";
       if (ready) sendState();
+      else{clearTimeout(editTimer);editTimer=undefined;queuedEdits.clear();clearTimeout(transformTimer);transformTimer=undefined;pendingTransform=null;}
     }, event => {
       if (event.type === "presence_diff") {
         for (const user of event.leaves) onLeave(user.user_id);
@@ -153,10 +172,21 @@ export function connectBoardWorkChannel(
       },
       publishEdit: (itemId, ops) => {
         if (stopped || !publishSelf || !itemId || !ops.length || ops.length > 300) return;
-        channel.sendEvent({
-          type: "editor_mutation", id: clientId + ":" + (++editSequence),
-          item_id: itemId, client_id: clientId, ops,
-        });
+        if(!ready)return;
+        // Laboratory deltas carry a generation assertion. Combining two
+        // assertions in a single message would make its validator reject both.
+        // Keep each already-bounded lab operation packet intact.
+        if(ops.some(op=>op.path[0]==="scienceLabBench")){
+          channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,ops});
+          return;
+        }
+        const queue=[...(queuedEdits.get(itemId)??[]),...ops];
+        if(queue.length>1200||queuedEdits.size>64){queuedEdits.clear();return;}
+        queuedEdits.set(itemId,queue);
+        if(!editTimer){
+          const delay=34-(Date.now()-lastEditSent);
+          if(delay<=0)flushEdits();else editTimer=setTimeout(flushEdits,delay);
+        }
       },
       publishTransform: (items, finished = false) => {
         if (stopped || !publishSelf || !items.length || items.length > 64 || !ready) return;
@@ -170,12 +200,12 @@ export function connectBoardWorkChannel(
           lastTransformSent = Date.now();
           return;
         }
-        if (Date.now() - lastTransformSent >= 65) sendTransform();
-        else if (!transformTimer) transformTimer = setTimeout(sendTransform, Math.max(1, 65 - (Date.now() - lastTransformSent)));
+        if (Date.now() - lastTransformSent >= 42) sendTransform();
+        else if (!transformTimer) transformTimer = setTimeout(sendTransform, Math.max(1, 42 - (Date.now() - lastTransformSent)));
       },
       close: () => {
         stopped = true;
-        clearTimeout(publishTimer); clearTimeout(transformTimer);
+        clearTimeout(publishTimer); clearTimeout(transformTimer);clearTimeout(editTimer);queuedEdits.clear();
         channel(); onLeave(me.userId);
       },
     };

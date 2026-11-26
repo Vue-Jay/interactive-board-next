@@ -58,11 +58,15 @@ export function createRemoteCursorStore(scheduler:RemoteInkScheduler=browserSche
     subscribe:(subscriber:()=>void)=>{
       subscribers.add(subscriber);return()=>{subscribers.delete(subscriber)};
     },
-    push:(cursor:RemoteCursor)=>{
-      deadlines.set(cursor.userId,scheduler.now()+CURSOR_TTL);scheduleExpiry();
+    push:(cursor:RemoteCursor,committed=false)=>{
       const old=pending.get(cursor.userId)??snapshot.get(cursor.userId);
+      if(old&&old.updatedAt>cursor.updatedAt)return;
+      deadlines.set(cursor.userId,scheduler.now()+CURSOR_TTL);scheduleExpiry();
       if(old&&old.x===cursor.x&&old.y===cursor.y&&old.name===cursor.name&&old.role===cursor.role)return;
       pending.set(cursor.userId,cursor);
+      // The ink and its cursor belong to the same committed visual frame.
+      // Hover presence still uses the usual animation-frame coalescing.
+      if(committed){flush();return;}
       if(frame===undefined){
         frame=scheduler.requestFrame(flush);fallback=scheduler.setTimer(flush,FRAME_FALLBACK);
       }

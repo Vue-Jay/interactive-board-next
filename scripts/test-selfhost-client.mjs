@@ -518,6 +518,7 @@ assert.equal(sockets[0].sent[0].presence,true);
 assert.equal(sockets[0].sent[0].visible,true);
 assert.equal(sockets[0].sent[0].compact_ink,true);
 sockets[0].emit({type:"ready",version:3});
+assert.equal(unsubscribe.canCommitInk(),false,"Legacy server keeps HTTP saves");
 assert.equal(unsubscribe.sendCursor("pilot_client",10,20),true);
 await new Promise(resolve=>setTimeout(resolve,70));
 assert.ok(sockets[0].sent.some(x=>x.type==="cursor"&&x.x===10&&x.y===20));
@@ -615,7 +616,7 @@ boardSocket.onclose();
 await waitFor(()=>sockets.at(-1)!==boardSocket);
 const reconnectedSocket=sockets.at(-1);
 reconnectedSocket.open();
-reconnectedSocket.emit({type:"ready",version:7});
+reconnectedSocket.emit({type:"ready",version:7,durable_ink_commits:true});
 await waitFor(()=>handleDocumentVersions.length===2);
 assert.deepEqual(handleDocumentVersions,[6,7],"A reconnect should recover a revision missed while offline");
 const beforePushReads=countReads();
@@ -626,6 +627,20 @@ reconnectedSocket.emit({type:"document_changed",version:8,base_version:7,
 await waitFor(()=>handleDocumentVersions.length===3);
 assert.deepEqual(handleDocumentVersions,[6,7,8]);
 assert.equal(countReads(),beforePushReads,"Committed socket delta must not trigger an HTTP read");
+const commitChannel=api.selfhostSubscribeBoard("board-1",()=>{},()=>{});
+await Promise.resolve();
+assert.equal(commitChannel.canCommitInk(),true);
+const commitPromise=commitChannel.commitInk({expected_version:8,ink_gesture:"durable-ink",
+  delta:{items:{remove:["durable-ink"]}},cursor:{client_id:"pilot_client",x:1,y:2}});
+const committedFrame=reconnectedSocket.sent.at(-1);
+assert.equal(committedFrame.type,"ink_commit");
+assert.equal(committedFrame.cursor.x,1);
+reconnectedSocket.emit({type:"ink_commit_ack",request_id:committedFrame.request_id,version:9});
+assert.equal((await commitPromise).version,9);
+const rejected=commitChannel.commitInk({expected_version:8,ink_gesture:"durable-ink",delta:{items:{remove:["durable-ink"]}}});
+reconnectedSocket.emit({type:"ink_commit_ack",request_id:reconnectedSocket.sent.at(-1).request_id,status:409,detail:"version conflict"});
+await assert.rejects(rejected,error=>error.status===409);
+commitChannel();
 openedBoard();
 await Promise.resolve();
 

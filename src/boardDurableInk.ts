@@ -1,7 +1,7 @@
 import {stroke,type Item,type Point} from "./boardModel";
 import {makeStickerInk} from "./stickerInk";
 
-export const DURABLE_INK_SYNC_MS=75;
+export const DURABLE_INK_SYNC_MS=34;
 export type InkIdentity={id:string;stickerId?:string};
 export type InkStyle={id:string;kind:"pen"|"marker";color:string;weight:number};
 export function hasDurableInk(items:readonly Item[],identity:InkIdentity):boolean{

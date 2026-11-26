@@ -662,7 +662,7 @@ async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
     pairs = list(set(identities.values()))
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT u.id, s.id AS session_id, u.display_name,
+            """SELECT u.id, s.id AS session_id, u.display_name, u.is_admin, u.account_role, u.teacher_status,
                       b.is_pilot, b.owner_id, billing_unlimited(b.owner_id) AS unlimited, COALESCE(d.version, 0) AS version,
                       CASE WHEN b.id IS NULL THEN NULL
                            WHEN billing_readonly(b.id) AND NOT u.is_admin AND (b.owner_id=u.id OR m.user_id IS NOT NULL) THEN 'viewer'
@@ -964,9 +964,9 @@ async def persist_normalized_items(conn, board_id, previous, base, document, del
     )
 
 
-async def persist_document(board_id: UUID, expected_version: int, request: Request,
+async def persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
                            user, version_only: bool, document: dict | None = None,
-                           delta: dict | None = None, ink_gesture: str | None = None):
+                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None):
     # Full saves remain supported for older clients and initial/recovery saves.
     serialized = serialize_document(document) if document is not None else None
     wire_delta = None
@@ -1114,6 +1114,8 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             event.update(patch)
             if wire_delta is not None:
                 event["_ink_point_delta"] = True
+    if ink_cursor is not None:
+        event["ink_cursor"] = ink_cursor
     await announce_board_event(board_id, event, request.app.state.pool)
     if version_only:
         return {"version": version}
@@ -1152,7 +1154,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         compact_ink = initial.get("compact_ink", False)
         document_patches = initial.get("document_patches", False)
         ink_point_deltas = initial.get("ink_point_deltas", False)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool:
+        durable_ink_commits = initial.get("durable_ink_commits", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -1190,7 +1193,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             if presence_visible:
                 _subscriber_users[board_id][websocket] = user_meta
         await websocket.send_json({"type": "ready", "version": current_version,
-                                   **({"compact_ink": True} if compact_ink else {})})
+                                   **({"compact_ink": True} if compact_ink else {}),
+                                   **({"durable_ink_commits": True} if durable_ink_commits else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
@@ -1235,6 +1239,47 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     await announce_presence(board_id, joins=[updated_presence[0]], pool=websocket.app.state.pool)
                 if message.get("type") == "ping":
                     await websocket.send_json({"type": "pong", "version": refreshed_user["version"]})
+                    continue
+                if message.get("type") == "ink_commit":
+                    # Persist through exactly the same version lock, access,
+                    # history and student permission checks as HTTP PATCH.
+                    # Never relay uncommitted geometry or replay a lost ACK.
+                    request_id = message.get("request_id")
+                    try:
+                        if not durable_ink_commits or refreshed_user["is_pilot"] or current_role not in ("owner", "editor"):
+                            error(403, "Недостаточно прав для изменения доски.")
+                        if not limiter.check("ink_commit"):
+                            error(429, "Слишком много изменений.")
+                        if not isinstance(request_id, str) or not 1 <= len(request_id) <= 96:
+                            error(422, "Некорректный идентификатор запроса.")
+                        if set(message) - {"type","request_id","expected_version","delta","ink_gesture","cursor"}:
+                            error(422, "Некорректный запрос.")
+                        version, delta, gesture = message.get("expected_version"), message.get("delta"), message.get("ink_gesture")
+                        if type(version) is not int or not 1 <= version <= 2**63-1 or not isinstance(delta,dict) or not isinstance(gesture,str) or not 1 <= len(gesture) <= 128:
+                            error(422, "Некорректные изменения.")
+                        cursor = None
+                        if "cursor" in message:
+                            raw_cursor = message["cursor"]
+                            if not isinstance(raw_cursor,dict):
+                                error(422, "Некорректный курсор.")
+                            try:
+                                cursor = validate_live_event({**raw_cursor,"type":"cursor"}, role=current_role,
+                                    user_id=str(refreshed_user["id"]), name=str(refreshed_user["display_name"] or "Участник"))
+                            except InvalidLiveEvent:
+                                error(422, "Некорректный курсор.")
+                            # Respect invisible mode on the authenticated socket.
+                            if presence_enabled and not presence_visible:
+                                cursor = None
+                        # lookup_board_session has already verified maintenance,
+                        # guest scope, board membership and token revocation.
+                        # Reuse its permission fields; no second session query.
+                        saved = await persist_document(board_id, version, websocket, refreshed_user, True,
+                            delta=delta, ink_gesture=gesture, ink_cursor=cursor)
+                        await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,"version":saved["version"]})
+                    except HTTPException as exc:
+                        detail = exc.detail
+                        await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,
+                            "status":exc.status_code,"detail":detail})
                     continue
                 if refreshed_user["participant_role"] == "student" and message.get("type") in ("focus_view", "teacher_view", "guided_follow", "attachment_result"):
                     await websocket.send_json({"type": "event_error", "reason": "teacher_participant_required"})

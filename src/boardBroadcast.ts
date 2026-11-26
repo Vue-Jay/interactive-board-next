@@ -1,6 +1,6 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
 import type { BoardRole } from "./authStore";
-import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard, type InkCommitCursor } from "./selfhostApi";
 
 export type RemoteCursor = {
   userId: string;
@@ -15,6 +15,7 @@ export type LiveInkMessage = { clientId: string; userId: string; id: string; kin
 
 export type BoardCursorChannel = {
   sendCursor: (x: number, y: number) => void;
+  commitCursor?: (x:number,y:number)=>InkCommitCursor|undefined;
   sendInk: (ink: Omit<LiveInkMessage, "userId" | "clientId">) => void;
   close: () => void;
 };
@@ -110,6 +111,7 @@ export function connectBoardCursorChannel(
       }
     });
     return {
+      commitCursor:(x,y)=>publishSelf&&channel.canCommitInk()?{client_id:clientId,x,y}:undefined,
       sendCursor: (x, y) => {
         if (publishSelf) channel.sendCursor(clientId, x, y);
       },

@@ -62,7 +62,7 @@ for(let n=0;n<runs;n++){
 const viewer=readFileSync(new URL("../src/ViewerInkLayer.tsx",import.meta.url),"utf8");
 assert.match(viewer,/useMemo\(\(\)=>indexInkStrokes\(strokes\),\[strokes\]\)/,
  "Build spatial index once per immutable z-order run");
-assert.match(viewer,/queryInkStrokes\(spatialIndex,left,top,right,bottom\)/);
+assert.match(viewer,/queryInkStrokes\(spatialIndex,dirtyLeft,dirtyTop,dirtyRight,dirtyBottom\)/);
 assert.doesNotMatch(viewer,/for \(const item of strokes\)/,
  "Do not scan the full ink group on every viewport raster repaint");
 console.log(JSON.stringify({scenario:"15k strokes, "+viewports.length+
