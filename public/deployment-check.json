@@ -2,6 +2,6 @@
   "application": "lektrus",
   "source": "github-actions",
   "branch": "main",
-  "marker": "lektrus-permanent-ink-frame-performance-2026-11-26",
-  "board_change": "0d17b10281e0d8385223d64dd9ad4309ec1be502"
+  "marker": "lektrus-single-item-motion-2026-11-26",
+  "board_change": "ink-motion-v1"
 }

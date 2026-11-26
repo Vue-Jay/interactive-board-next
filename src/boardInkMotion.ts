@@ -194,7 +194,6 @@ export function createInkMotionLedger(){
       peer.last=event.seq;
       let changed=false;
       for(const change of event.changes){
-        if(change.seq<=peer.ack)continue;
         let value=change.value;
         if(value?.kind==="tail"){
           const expanded=expandTail(peer.wire.get(change.id),value);
@@ -203,12 +202,16 @@ export function createInkMotionLedger(){
         }
         if(value){
           peer.wire.delete(change.id);peer.wire.set(change.id,value);
-          if((tombstones.get(change.id)??0)>event.base_version){block(peer,event.gesture);return true;}
+          if((tombstones.get(change.id)??0)>event.base_version||
+             event.gesture===change.id&&tombstones.has(change.id)&&!authoritative.has(change.id)){
+            block(peer,event.gesture);return true;
+          }
           const saved=authoritative.get(change.id);
           if(value.kind==="sticky"&&(!saved||saved.kind!=="sticky"||saved.locked))continue;
           if(value.kind!=="sticky"&&saved&&!ink(saved))continue;
           if(!saved&&value.kind!=="sticky"&&value.createdBy!==event.user_id)continue;
         }else peer.wire.delete(change.id);
+        if(change.seq<=peer.ack)continue;
         const saved=authoritative.get(change.id);
         if(value&&saved&&same(value,shape(saved))){
           if(peer.pending.delete(change.id))changed=true;

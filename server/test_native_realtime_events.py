@@ -139,3 +139,20 @@ def test_live_erase_is_editor_only_and_validates_cancellation():
         with pytest.raises(InvalidLiveEvent):
             accept(bad)
 
+
+
+def test_single_item_ink_motion_validation():
+    from realtime_events import validate_live_event, InvalidLiveEvent
+    import pytest
+    item={"id":"s1","kind":"pen","createdBy":"owner1","x":0,"y":0,"width":20,"height":3,
+          "weight":2,"color":"#112233","points":[{"x":1,"y":1},{"x":19,"y":1}]}
+    packet={"type":"ink_motion","client_id":"c1","seq":1,"base_version":1,"gesture":"s1",
+            "x":19,"y":1,"changes":[{"id":"s1","index":0,"seq":1,"value":item}]}
+    validate=lambda frame,role="owner":validate_live_event(frame,role=role,user_id="owner1",name="Owner")
+    assert validate(packet)["changes"][0]["value"]==item
+    with pytest.raises(InvalidLiveEvent):validate(packet,"viewer")
+    with pytest.raises(InvalidLiveEvent):validate({**packet,"changes":[{"id":"s1","index":0,"seq":1,"value":{**item,"kind":"image"}}]})
+    with pytest.raises(InvalidLiveEvent):validate({**packet,"changes":[{"id":"s1","index":0,"seq":2,"value":item}]})
+    with pytest.raises(InvalidLiveEvent):validate({**packet,"changes":[{"id":"s1","index":0,"seq":1,"value":{**item,"points":[{"x":float("inf"),"y":0}]}}]})
+    assert validate({"type":"ink_motion_ack","client_id":"c1","seq":1,"version":2})["version"]==2
+    with pytest.raises(InvalidLiveEvent):validate({"type":"ink_motion_ack","client_id":"c1","seq":1,"version":2},"viewer")

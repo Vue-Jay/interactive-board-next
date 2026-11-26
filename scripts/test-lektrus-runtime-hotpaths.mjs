@@ -175,3 +175,41 @@ console.log(JSON.stringify({
   inboundBytes:changed.mock.calls[0].bytes},
  note:"Saved network bytes and computation counts are measured in mock transport; no live FPS or remote billing."
 }));
+
+const motionAPI={};
+vm.runInNewContext(ts.transpileModule(read("boardInkMotion.ts"),{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText,{exports:motionAPI,require:()=>({}),Map,Set,WeakMap,Date,setTimeout,clearTimeout});
+const ledger=motionAPI.createInkMotionLedger();
+const motionStroke={id:"stroke-a",kind:"pen",createdBy:"teacher",text:"",x:0,y:0,width:20,height:3,color:"#112233",weight:2,points:[{x:1,y:1},{x:19,y:1}]};
+const shape=(item)=>{const {text,...rest}=item;return rest};
+const motion=(seq,value,base=1,user="teacher",gesture="stroke-a",id="stroke-a")=>({
+ type:"ink_motion",client_id:"client-"+user,user_id:user,name:user,role:"owner",sent_at:seq,
+ gesture,base_version:base,seq,x:19,y:1,changes:[{id,index:0,seq,value}]
+});
+const baseItems=[];
+ledger.reconcile(baseItems,1);
+assert.equal(ledger.receive(motion(1,shape(motionStroke))),true);
+assert.equal(ledger.project(baseItems)[0].id,"stroke-a");
+assert.equal(baseItems.length,0,"Motion must never mutate persisted model");
+const extended={...motionStroke,width:40,points:[...motionStroke.points,{x:39,y:1}]};
+ledger.receive(motion(2,shape(extended)));
+assert.equal(ledger.project(baseItems)[0].width,40);
+ledger.reconcile([motionStroke],2,"teacher");
+assert.equal(ledger.project([motionStroke]).length,1);
+assert.equal(ledger.project([motionStroke])[0].width,40,"Older checkpoint cannot shorten geometry");
+ledger.receive({type:"ink_motion_ack",client_id:"client-teacher",user_id:"teacher",seq:2,version:3});
+assert.equal(ledger.project([motionStroke])[0].width,40,"ACK ahead of revision must not remove geometry");
+ledger.reconcile([extended],3,"teacher");
+assert.equal(ledger.project([extended])[0],extended,"Persisted object replaces projection without duplicate");
+ledger.receive(motion(3,shape({...extended,width:50}),3));
+ledger.receive(motion(1,null,3,"student","erase:brush"));
+assert.equal(ledger.project([extended]).length,0,"Peer erase wins over in-flight draw extension");
+ledger.reconcile([],4,"student");
+ledger.receive(motion(4,shape({...extended,width:60}),3));
+assert.equal(ledger.project([]).length,0,"Stale motion cannot resurrect deleted ID");
+ledger.receive(motion(5,shape({...extended,width:70}),4));
+assert.equal(ledger.project([]).length,0,"Even a new version cannot resurrect interrupted gesture");
+const changes=motionAPI.inkMotionChanges([extended],[{...extended,id:"cut-fragment",createdBy:"student"}]);
+assert.deepEqual(Array.from(changes,c=>[c.id,c.value?.kind??null]),[["stroke-a",null],["cut-fragment","pen"]]);
+console.log("Ink motion: one item identity, early rendering, ordered ACK, erase and tombstones verified.");
