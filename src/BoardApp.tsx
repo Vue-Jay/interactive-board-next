@@ -8377,8 +8377,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             applyEditorOps(base,mutation.ops);
           // Treat realtime as an untrusted visual hint, never as an
           // authoritative edit. Reject malformed objects before rendering.
-          if(!preview||preview.kind!==stored.kind||preview.id!==stored.id)return current;
+          if(!preview||preview.kind!==stored.kind||preview.id!==stored.id||
+             preview.graphFigureId!==stored.graphFigureId)return current;
           if(labMutation)return {...current,[mutation.itemId]:preview};
+          if(preview.kind==="graph"&&(
+            (preview.scienceMechanics&&!mechanicsValid(preview.scienceMechanics))||
+            (preview.scienceOptics&&!validOptics(preview.scienceOptics))||
+            (preview.scienceCircuit&&!circuitIsDocument(preview.scienceCircuit))||
+            (preview.graphFigureId==="contour-atlas"&&!isSchoolDiagram(preview.schoolDiagram))))return current;
           // The same item parser used by saved boards rejects invalid shapes,
           // editor values and malformed subject payloads before they render.
           try{
