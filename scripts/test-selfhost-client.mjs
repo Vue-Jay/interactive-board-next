@@ -996,3 +996,25 @@ assert.ok(f.records.some(x=>x.method==="PATCH"&&x.query.includes("ink_frame_seq=
 channel();await Promise.resolve();
 console.log("Fast permanent ink: frames before disk ACK, exact same-ID checkpoint, peer deletion and separate HTTP save passed.");
 }
+
+{
+ const sync={};
+ const compile=path=>ts.transpileModule(readFileSync(new URL("../src/"+path,import.meta.url),"utf8"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ new Function("exports",compile("boardSync.ts"))(sync);
+ const visual={};
+ new Function("exports","require",compile("boardFastInk.ts"))(visual,name=>{assert.equal(name,"./boardSync");return sync});
+ const old={id:"pen",kind:"pen",createdBy:"owner",x:0,y:0,width:10,height:3,points:[{x:0,y:0},{x:10,y:0}]};
+ const tail={...old,width:20,points:[...old.points,{x:20,y:0}]};
+ const shape={id:"shape",kind:"shape"};
+ const current=[shape,old];
+ const changes=[{id:"pen",before:old,after:tail}];
+ assert.deepEqual(visual.projectFastInkItems(current,changes),[shape,tail]);
+ const drawing=[shape,tail];
+ assert.deepEqual(visual.projectFastInkItems(drawing,[{id:"pen",before:old,after:null}]),[shape],"Peer erasure hides the active author's uncommitted tail");
+ const input=visual.projectFastInkItems(current,changes,true);
+ assert.equal(input[1].points.length,3);
+ assert.deepEqual(visual.restoreUntouchedFastInk(current,input,input),current,"Untouched peer geometry must never enter a save");
+ const fragment={...old,id:"fragment"};
+ assert.deepEqual(visual.projectFastInkItems(current,[{id:"pen",before:old,after:null},{id:"fragment",before:null,after:fragment}]),[shape,fragment]);
+ console.log("Fast ink projection: same ordinary ID, actual visible erase, no peer geometry in local saves.");
+}

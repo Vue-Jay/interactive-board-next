@@ -388,7 +388,7 @@ class EventRateLimit:
         elif event_type == "ink_commit":
             window, limit = self.ink_commits, 45
         elif event_type == "ink_frame":
-            window, limit = self.fast_ink, 40
+            window, limit = self.fast_ink, 45
         elif event_type == "object_preview":
             window, limit = self.objects, 24
         elif event_type in ("live_ink", "live_erase"):

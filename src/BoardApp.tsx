@@ -3276,7 +3276,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const previous=lastFastInkFrame.current;
     if(previous?.data===data&&previous.tag.gesture===inkGesture)return previous.tag;
     const now=Date.now();
-    if(!force&&now-lastFastInkAt.current<34)return;
+    if(!force&&now-lastFastInkAt.current<30)return;
     const tag=selfhostPublishInkFrame(boardSummary.id,remoteVersion.current??0,data as unknown as Record<string,unknown>,inkGesture,cursor);
     if(tag){lastFastInkAt.current=now;lastFastInkFrame.current={data,tag};return tag;}
   },[boardSummary.id,selfhostMode,documentSyncEnabled,layoutEditing,canEdit]);
@@ -5453,6 +5453,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (mode === "draw") {
       const active=gesture.current;
       lastInkGesture.current=active.ink!.id;
+      inkLastCheckpoint.current=0;
+      lastFastInkAt.current=0;
       setActiveDrawingId(active.sticker?null:active.ink!.id);
       inkLastBackup.current=Date.now();
       paintDurableInk(active);
@@ -8168,7 +8170,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // Receive server changes without closing an editor, dropping the selected
     // object or cancelling the current tool/undo history.
     const incomingItems=expandDocumentInk(data);
-    display(incomingItems,!!row.ink_cursors?.length);
+    display(incomingItems,!!row.ink_cursors?.length||selfhostFastInkEnabled(boardSummary.id));
     history.current=[eraserSession.current?.before??incomingItems];
     index.current=0;
     snapshot.current=data;
@@ -8273,7 +8275,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         try { localStorage.removeItem(storageKey + ".conflict-backup"); } catch {}
         // Do not call applyDocument(): it resets pointer state, selection,
         // editor windows and the undo stack on EVERY server version.
-        display(mergedItems,!!row.ink_cursors?.length);
+        display(mergedItems,!!row.ink_cursors?.length||selfhostFastInkEnabled(boardSummary.id));
         const mergedIds=new Set(mergedItems.map(item=>item.id));
         setSelected(current=>current.filter(id=>mergedIds.has(id)));
         if(editing){
@@ -8334,16 +8336,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if(!latest.document)return;
         const row={board_id:latest.board_id,version:latest.version,document:latest.document,
           updated_at:latest.updated_at??"",updated_by:latest.updated_by,ink_cursors:latest.ink_cursors};
-        if(latest.ink_cursors?.length)flushSync(()=>receiveRemote.current(row));
+        if(latest.ink_cursors?.length||selfhostFastInkEnabled(boardSummary.id))flushSync(()=>receiveRemote.current(row));
         else receiveRemote.current(row);
       },setRealtimeStatus,(changes,cursor)=>{
         try{
           const parseItem=(raw:Record<string,unknown>|null)=>raw?parseRealtimeDocument({version:1,title:"",view:{x:0,y:0,zoom:1},items:[raw]},validatedRemoteItems.current).items[0]:null;
           const next=changes.map(change=>({...change,before:parseItem(change.before),after:parseItem(change.after)}));
-          flushSync(()=>{
+          const present=()=>{
             fastInkChangesRef.current=next;setFastInkChanges(next);
             if(cursor)remoteCursorStore.push({userId:cursor.user_id,name:cursor.name,role:cursor.role,x:cursor.x,y:cursor.y,updatedAt:cursor.sent_at},true);
-          });
+          };
+          // A checkpoint and its presentation rebase must paint together,
+          // never remove the pending tail one React render before the saved data.
+          if(cursor)flushSync(present);else present();
         }catch{/* Invalid fast geometry never becomes a board item. */}
       });
       return ()=>{stop();fastInkChangesRef.current=[];setFastInkChanges([])};
@@ -10219,6 +10224,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const p=world(screen);
             eraserSession.current={id:createId(),pointer:e.pointerId,last:p,weight:eraserSize/view.zoom,path:[p],mode:eraserMode,before:itemsRef.current,changed:false};
             lastInkGesture.current="erase:"+eraserSession.current.id;
+            inkLastCheckpoint.current=0;
+            lastFastInkAt.current=0;
             inkLastBackup.current=Date.now();
             setSelected([]);
             paintDurableEraser();

@@ -919,76 +919,78 @@ function changedInkIds(before:JsonObject,after:JsonObject):Set<string>{
  * different gesture touching the same ID wins and blocks delayed frames.
  * No frame can be used as a save base or restore an erased object. */
 export function createFastInkReplica(){
-  type Revision={version:number;document:JsonObject;commit?:InkFrameCommit};
+  type Revision={version:number;document:JsonObject;items:Map<string,JsonObject>;affected:Set<string>;commit?:InkFrameCommit};
+  type Pending={frame:SelfhostInkFrame;desired:Map<string,JsonObject>;touched:Set<string>;expires:number};
   let history:Revision[]=[];
-  const pending=new Map<string,{frame:SelfhostInkFrame;expires:number}>();
+  const pending=new Map<string,Pending>();
   const seen=new Map<string,number>();
-  const resolve=(frame:SelfhostInkFrame)=>{
+  const advance=(entry:Pending,prev:Revision,row:Revision)=>{
+    if(row.commit&&inkFrameKey(row.commit)===inkFrameKey(entry.frame)){
+      if(row.commit.seq>=entry.frame.seq)return false;
+      for(const id of row.affected){
+        const old=prev.items.get(id),item=row.items.get(id);
+        if((old&&inkKind(old))||(item&&inkKind(item))||
+           (old?.kind==="sticky"&&item?.kind==="sticky"&&equalJson(without(old,["stickerInk"]),without(item,["stickerInk"])))){
+          entry.touched.add(id);
+        }else if(entry.touched.has(id))return false;
+      }
+    }else for(const id of row.affected)if(entry.touched.has(id))return false;
+    return true;
+  };
+  const resolve=(frame:SelfhostInkFrame,now:number):Pending|null=>{
     const index=history.findIndex(row=>row.version===frame.base_version);
     if(index<0)return null;
     const base=history[index].document;
     try{
       const next=applySelfhostDocumentDelta(base,frame.delta);
       if(frame.delta.set||frame.delta.remove||!inkPipelineDelta(base,next,frame.delta,frame.gesture))return null;
-      const touched=changedInkIds(base,next);
-      if(!touched.size)return null;
-      for(let i=index+1;i<history.length;i++){
-        const prev=history[i-1],row=history[i],affected=changedInkIds(prev.document,row.document);
-        if(row.commit&&inkFrameKey(row.commit)===inkFrameKey(frame)){
-          if(row.commit.seq>=frame.seq)return null;
-          const a=itemMap(prev.document.items)!,b=itemMap(row.document.items)!;
-          for(const id of affected){
-            const old=a.get(id),item=b.get(id);
-            if((old&&inkKind(old))||(item&&inkKind(item))||
-               (old?.kind==="sticky"&&item?.kind==="sticky"&&equalJson(without(old,["stickerInk"]),without(item,["stickerInk"])))){
-              touched.add(id);
-            }else if(touched.has(id))return null;
-          }
-        }else if([...affected].some(id=>touched.has(id)))return null;
-      }
-      return {next,touched};
+      const touched=changedInkIds(base,next),desired=itemMap(next.items);
+      if(!touched.size||!desired)return null;
+      const entry={frame,desired,touched,expires:now+3000};
+      for(let i=index+1;i<history.length;i++)if(!advance(entry,history[i-1],history[i]))return null;
+      return entry;
     }catch{return null}
   };
   const prune=(now:number)=>{
-    for(const [key,entry] of pending)if(entry.expires<=now||!resolve(entry.frame))pending.delete(key);
+    for(const [key,entry] of pending)if(entry.expires<=now)pending.delete(key);
   };
   return {
     sync(version:number,document:JsonObject,commit?:InkFrameCommit){
-      const latest=history[history.length-1];
-      if(latest&&version<=latest.version)return;
+      const latest=history[history.length-1],items=itemMap(document.items);
+      if(!items||latest&&version<=latest.version)return;
       if(latest&&version!==latest.version+1){history=[];pending.clear()}
-      history.push({version,document,commit});
+      const row={version,document,items,affected:latest?changedInkIds(latest.document,document):new Set<string>(),commit};
+      if(latest)for(const [key,entry] of pending)if(!advance(entry,latest,row))pending.delete(key);
+      history.push(row);
       if(history.length>16)history.shift();
       prune(Date.now());
     },
     accept(frame:SelfhostInkFrame,now=Date.now()){
       const key=inkFrameKey(frame);
       if(!Number.isSafeInteger(frame.seq)||frame.seq<1||!Number.isSafeInteger(frame.base_version)||
-         frame.seq<=(seen.get(key)??0)||!resolve(frame))return false;
+         frame.seq<=(seen.get(key)??0))return false;
+      const entry=resolve(frame,now);
+      if(!entry)return false;
       seen.delete(key);seen.set(key,frame.seq);
       if(seen.size>512)seen.delete(seen.keys().next().value!);
-      pending.delete(key);pending.set(key,{frame,expires:now+3000});
+      pending.delete(key);pending.set(key,entry);
       if(pending.size>24)pending.delete(pending.keys().next().value!);
       return true;
     },
     changes(now=Date.now()):FastInkChange[]{
       prune(now);
-      const latest=history[history.length-1],current=latest&&itemMap(latest.document.items);
+      const current=history[history.length-1]?.items;
       if(!current||!pending.size)return [];
       const result=new Map<string,FastInkChange>();
-      for(const {frame} of pending.values()){
-        const resolved=resolve(frame);
-        if(!resolved)continue;
-        const desired=itemMap(resolved.next.items)!;
-        for(const id of resolved.touched){
+      for(const {desired,touched} of pending.values()){
+        for(const id of touched){
           const before=current.get(id)??null,after=desired.get(id)??null;
-          if(!after&&!before)continue;
-          if(!after)result.set(id,{id,before,after});
+          if(!after&&before)result.set(id,{id,before,after});
         }
         const ordered=[...desired.values()];
         for(let i=0;i<ordered.length;i++){
           const after=ordered[i],id=String(after.id);
-          if(!resolved.touched.has(id))continue;
+          if(!touched.has(id))continue;
           const before=current.get(id)??null;
           if(!equalJson(before,after))result.set(id,{id,before,after,nextId:ordered[i+1]?.id as string|undefined});
         }

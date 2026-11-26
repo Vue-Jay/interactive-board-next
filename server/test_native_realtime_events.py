@@ -158,6 +158,6 @@ def test_fast_permanent_ink_frames_are_bounded_and_ink_only():
         with pytest.raises(InvalidLiveEvent):
             accept(bad)
     limiter=EventRateLimit()
-    assert all(limiter.check("ink_frame") for _ in range(40))
+    assert all(limiter.check("ink_frame") for _ in range(45))
     assert not limiter.check("ink_frame")
     assert limiter.check("ink_commit")

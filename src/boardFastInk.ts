@@ -18,6 +18,12 @@ export function projectFastInkItems(items:Item[],changes:FastInkItemChange[],exi
  const result:Item[]=[];
  for(const item of items){
    const entry=updates.get(item.id);
+   // An eraser must visually win even against a writer's newer local tail of
+   // the same ID. Only the confirmed revision may interrupt/persist that edit.
+   if(!existingOnly&&entry?.before&&!entry.after&&isInk(item)&&isInk(entry.before)&&
+      item.kind===entry.before.kind&&item.createdBy===entry.before.createdBy){
+     changed=true;continue;
+   }
    if(!entry?.before||!same(item,entry.before)){result.push(item);continue;}
    if(existingOnly){
      const after=entry.after;
