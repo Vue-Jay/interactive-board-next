@@ -920,3 +920,5 @@
 .lektrus-atlas-realm-context p{margin:5px 0 6px}
 .lektrus-atlas-realm-context>div{display:flex;flex-wrap:wrap;gap:6px 12px}
 .lektrus-atlas-realm-context a{color:#286197;text-decoration:underline}
+
+.lektrus-atlas-realm-context[data-atlas-conflict-context]{border-style:dashed}

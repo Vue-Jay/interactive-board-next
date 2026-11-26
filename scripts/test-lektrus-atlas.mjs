@@ -292,14 +292,31 @@ assert.equal(realmModule.historicalRealmContext("Norway",2010),null);
 assert.match(map,/data-atlas-realm-context/);
 const spatialReview=JSON.parse(fs.readFileSync(new URL("../docs/historical-atlas-spatial-adjudications-20261126.json",import.meta.url),"utf8"));
 const originalSpatial=JSON.parse(fs.readFileSync(new URL("../docs/historical-atlas-spatial-findings-20261124.json",import.meta.url),"utf8"));
-assert.equal(spatialReview.cases.length,3);
+assert.equal(spatialReview.cases.length,5);
 assert.equal(spatialReview.counts.remainingUnverifiedGeometries,476);
 for(const c of spatialReview.cases){
  const original=originalSpatial.findings.find(x=>x.id===c.id);
- assert.equal(original?.archiveName,"Denmark");
+ assert.equal(original?.archiveName,c.archiveName??"Denmark");
  assert.equal(original.candidates[0].geometryId,c.sourceCandidateGeometryId);
  assert.equal(original.candidates[0].iou,c.iou);
 }
+// Dated control reports do not establish the sovereign border geometry.
+const conflictModule={};
+new Function("exports",ts.transpileModule(fs.readFileSync(
+ new URL("../src/lektrusHistoricalConflictContext.ts",import.meta.url),"utf8"),
+ {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}
+).outputText)(conflictModule);
+for(const year of [1992,1993,1994,1995]){
+ const x=conflictModule.historicalConflictContext("Bosnia and Herzegovina",year);
+ assert.ok(x&&x.sources.length===2&&x.description.includes("государственными границами"));
+}
+for(const year of [1996,1997,1998,1999,2000,2001]){
+ const x=conflictModule.historicalConflictContext("Afghanistan",year);
+ assert.ok(x&&x.sources.length===2&&x.description.includes("Северный альянс"));
+}
+assert.equal(conflictModule.historicalConflictContext("Afghanistan",2002),null);
+assert.equal(conflictModule.historicalConflictContext("Bosnia and Herzegovina",1996),null);
+assert.match(map,/data-atlas-conflict-context/);
 const historicalInsigniaSource=fs.readFileSync(new URL("../src/lektrusHistoricalInsignia.ts",import.meta.url),"utf8");
 const historicalReferenceSource=fs.readFileSync(new URL("../src/lektrusHistoricalReferences.ts",import.meta.url),"utf8");
 const insigniaSource=fs.readFileSync(new URL("../src/lektrusAtlasCountrySymbols.ts",import.meta.url),"utf8");

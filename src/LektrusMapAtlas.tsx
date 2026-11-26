@@ -12,6 +12,7 @@ import LektrusMapBase,{LektrusAtlasGraticule} from "./LektrusMapBase";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LektrusAtlasCountrySymbol from "./LektrusAtlasCountrySymbol";
 import {historicalRealmContext} from "./lektrusHistoricalRealmContext";
+import {historicalConflictContext} from "./lektrusHistoricalConflictContext";
 import {atlasCountrySymbol} from "./lektrusAtlasCountrySymbols";
 import {listHistoricalStateInsignia,historicalReferenceSymbolYear,historicalInsigniaSourceUrl} from "./lektrusHistoricalInsignia";
 import {INK_WIDTHS,InkWidthSample} from "./LectrisObjectEditor";
@@ -981,6 +982,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   (russianPlaceName(selected)??""):
   ((correctedSelectionTitle??selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))||
    (historical?(historicalSourceName(selectedRaw)||"Историческая территория"):""))):"";
+ const selectedConflictContext=historical&&!modernReference&&!selectedPoliticalOverlay?
+  historicalConflictContext(selectedRaw,snapshot.year):null;
  const selectedRealmContext=historical&&!modernReference&&!selectedPoliticalOverlay?
   historicalRealmContext(selectedRaw,snapshot.year):null;
  const selectedCountrySymbol=selected&&!selectedIsCity&&(historical||mode==="political")&&
@@ -2128,6 +2131,11 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <small>Оценка населения округлена; площадь и территориальный охват справочника могут отличаться от контура карты. Не данные на конец 2026 года.</small>
      </div>}
      {featureSourceFacts(selected).filter(f=>!modernStats||f.label!=="Население (оценка картографического источника)").map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+     {selectedConflictContext&&<div className="lektrus-atlas-realm-context" data-atlas-conflict-context={snapshot.year}>
+      <strong>{selectedConflictContext.title}</strong><p>{selectedConflictContext.description}</p>
+      <div>{selectedConflictContext.sources.map(s=><a key={s.url} href={s.url}
+       target="_blank" rel="noopener noreferrer">{s.label} ↗</a>)}</div>
+     </div>}
      {selectedRealmContext&&<div className="lektrus-atlas-realm-context" data-atlas-realm-context={snapshot.year}>
       <strong>{selectedRealmContext.title}</strong><p>{selectedRealmContext.description}</p>
       <div>{selectedRealmContext.sources.map(source=><a href={source.url} key={source.url}
