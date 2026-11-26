@@ -336,6 +336,7 @@ class EventRateLimit:
     def __init__(self):
         self.cursors: deque[float] = deque()
         self.ink: deque[float] = deque()
+        self.ink_commits: deque[float] = deque()
         self.objects: deque[float] = deque()
         self.work: deque[float] = deque()
         self.mutations: deque[float] = deque()
@@ -347,6 +348,8 @@ class EventRateLimit:
         now = time.monotonic()
         if event_type == "cursor":
             window, limit = self.cursors, 20
+        elif event_type == "ink_commit":
+            window, limit = self.ink_commits, 45
         elif event_type == "object_preview":
             window, limit = self.objects, 24
         elif event_type in ("live_ink", "live_erase"):
