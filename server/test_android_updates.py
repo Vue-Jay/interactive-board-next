@@ -379,7 +379,7 @@ def test_previous_verified_apk_survives_catalog_change(tmp_path, monkeypatch):
     old["size_bytes"] = len(raw)
     checksum = hashlib.sha256(raw).hexdigest()
     def opener(url):
-        return BytesIO((checksum + "  Lektrus-Android.apk\\n").encode() if url.endswith(".sha256") else raw)
+        return BytesIO((checksum + "  Lektrus-Android.apk\n").encode() if url.endswith(".sha256") else raw)
     android_updates.mirror_release(old, root=tmp_path, opener=opener)
     monkeypatch.setattr(android_updates, "release_directory", lambda: tmp_path)
     async def current():

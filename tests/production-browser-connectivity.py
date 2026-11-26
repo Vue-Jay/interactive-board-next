@@ -85,7 +85,7 @@ with sync_playwright() as p:
     print("PRODUCTION_ANDROID_CATALOG "+json.dumps(update,ensure_ascii=False),flush=True)
     if update.get("status")==200 and update.get("version"):
         import re
-        if re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+",update["version"]):
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+",update["version"]):
             try:
                 prefix=ORIGIN+"/api/v1/mobile/android-apk/"+update["version"]+"/"
                 head=page.request.head(prefix+"Lektrus-Android.apk",timeout=90000,max_redirects=0)
