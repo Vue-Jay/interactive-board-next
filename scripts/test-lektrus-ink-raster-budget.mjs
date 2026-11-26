@@ -67,8 +67,10 @@ assert.match(source,/canvas\.width = 0; canvas\.height = 0;/,
 assert.match(source,/cacheRef\.current = null;/);
 assert.match(source,/ctx\.setTransform\(pixels\.scaleX, 0, 0, pixels\.scaleY,/);
 assert.match(source,/const reusedBacking=reuseInkCanvasBacking\(canvas,pixels\.width,pixels\.height\)/);
-assert.match(source,/if\(reusedBacking\)\{[\s\S]*?ctx\.clearRect\(0,0,canvas\.width,canvas\.height\);/,
- "Reused canvas backing must clear previous pixels before painting the new tile");
+assert.match(source,/if\(keepTile&&reusedBacking&&cached!\.pixelWidth===pixels\.width/);
+assert.match(source,/ctx\.clip\(\);\s*ctx\.clearRect\(dirtyLeft,dirtyTop,dirtyRight-dirtyLeft,dirtyBottom-dirtyTop\);/,
+ "Reused canvas backing must clear and clip the exact dirty region before repainting it");
+assert.match(source,/queryInkStrokes\(spatialIndex,dirtyLeft,dirtyTop,dirtyRight,dirtyBottom\)/);
 
 const app=read("BoardApp.tsx");
 const selectionStart=app.indexOf("  const selectedInkKey=useMemo(() => ");
