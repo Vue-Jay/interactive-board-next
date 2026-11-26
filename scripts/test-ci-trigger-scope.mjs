@@ -37,6 +37,7 @@ assert.ok(runs("pull_request","main",["server/app.py"]).includes("selfhost-api")
 assert.ok(runs("pull_request","main",["src/lektrusLabCatalog.ts"]).includes("lab-reaction-audit"));
 assert.ok(runs("pull_request","main",["android/app/build.gradle"]).includes("native-build"));
 assert.ok(runs("push","main",["android/app/build.gradle"]).includes("native-build"),"Native changes retain the official Android release gate");
+for(const file of ["src/BoardApp.tsx","src/boardDurableInk.ts","src/inkEraser.ts","src/boardSync.ts",".github/workflows/native-build.yml"]){assert.ok(runs("push","main",[file]).includes("native-build"),file+" must trigger signed APK release");}
 for(const name of selected)assert.ok(scoped[name].workflow_dispatch,name+" lost manual coverage");
 assert.match(readFileSync(directory+"/native-build.yml","utf8"),/inputs\.publish_android == true/);
 console.log("CI routing: math PR 1 + main 1; full manual coverage retained.");
