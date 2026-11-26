@@ -30,6 +30,7 @@ export type SelfhostBoard = {
 export type SelfhostDocument = {
   board_id:string;document:Record<string,unknown>|null;version:number;
   updated_by:string|null;updated_at:string|null;
+  ink_cursors?:SelfhostCommittedCursor[];
 };
 export type SelfhostAccess = {
   members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;added_at:string}>;
@@ -62,7 +63,12 @@ export type SelfhostLiveEvent=
   | {type:"ink_ack";client_id:string;stroke_id:string;offset:number;finished:boolean}
   | {type:"comments_changed"}
   | {type:"event_error";reason:string};
+export type SelfhostCommittedCursor=Extract<SelfhostLiveEvent,{type:"cursor"}>;
+export type InkCommitCursor={x:number;y:number;client_id:string};
+type InkCommitRequest={expected_version:number;delta:DocumentDelta;ink_gesture:string;cursor?:InkCommitCursor};
 export type SelfhostBoardChannel=(()=>void)&{
+  canCommitInk:()=>boolean;
+  commitInk:(request:InkCommitRequest)=>Promise<{version:number}>|null;
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
   sendInk:(ink:SelfhostLiveInkPacket)=>boolean;
   sendObjectPreview:(preview:SelfhostObjectPreview)=>boolean;
@@ -487,7 +493,7 @@ type JsonObject=Record<string,unknown>;
 type PointEdit={id:string;stroke_id?:string;count:number;keep:number;points:JsonObject[];geometry?:JsonObject};
 type DocumentDelta={set?:JsonObject;remove?:string[];items?:{upsert?:JsonObject[];remove?:string[];order?:string[];point_edits?:PointEdit[]}};
 type DeltaResponse=SelfhostDocument&{base_version?:number;patches?:DocumentDelta[];ink_point_deltas?:boolean};
-type RevisionPatch={base_version:number;delta:DocumentDelta;updated_at:string;updated_by:string};
+type RevisionPatch={base_version:number;delta:DocumentDelta;updated_at:string;updated_by:string;ink_cursor?:SelfhostCommittedCursor};
 const MAX_DELTA_BYTES=1024*1024;
 // The raw acknowledged document, not the normalized editor snapshot. Keep only
 // the currently used board to avoid retaining every board opened in a session.
@@ -744,7 +750,7 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
 export const selfhostReadDocumentVersion=(boardId:string,signal?:AbortSignal)=>selfhostRequest<{version:number}>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{signal}
 );
-export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string){
+export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string,inkCursor?:InkCommitCursor){
   const userId=loadSession()?.user.id;
   const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
   const prepared=base&&deltaSupported&&expectedVersion>0?prepareSmallDocumentDelta(base.document,document,expectedVersion,pointDeltasSupported?inkGesture:undefined):null;
@@ -754,6 +760,7 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
   const next=prepared?.next??JSON.parse(fullBody!).document as JsonObject;
   const path=documentPath(boardId)+"?version_only=true"+(inkGesture?"&ink_gesture="+encodeURIComponent(inkGesture):"");
   let result:{version:number}|undefined;
+  let sentOverSocket=false;
   if(base&&deltaSupported&&expectedVersion>0){
     const fullDelta=prepared?null:diffSelfhostDocument(base.document,next);
     const delta=fullDelta&&inkGesture&&pointDeltasSupported?compactInkPointDelta(base.document,fullDelta,inkGesture):fullDelta;
@@ -761,7 +768,15 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
       const body=prepared?.body??JSON.stringify({expected_version:expectedVersion,delta});
       const bytes=new TextEncoder().encode(body).byteLength;
       if(prepared||(fullBody&&bytes<MAX_DELTA_BYTES&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength))){
-        try{result=await selfhostRequest<{version:number}>(path,{method:"PATCH",body})}
+        try{
+          // Never replay an ambiguous websocket write as HTTP. A lost ACK
+          // takes the normal version-conflict recovery path.
+          const ws=inkGesture?selfhostBoardSockets.get(boardId)?.commitInk({
+            ...JSON.parse(body),ink_gesture:inkGesture,...(inkCursor?{cursor:inkCursor}:{})
+          }):null;
+          sentOverSocket=!!ws;
+          result=ws?await ws:await selfhostRequest<{version:number}>(path,{method:"PATCH",body});
+        }
         catch(error){
           // Older servers still support the version-checked full PUT. Do not
           // retry permissions/conflicts/unknown outcomes as a second write.
@@ -773,6 +788,7 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
   }
   result??=await selfhostRequest<{version:number}>(path,{method:"PUT",body:fullBody??JSON.stringify({expected_version:expectedVersion,document:next})});
   rememberDocument(boardId,userId,result.version,next);
+  if(inkCursor&&!sentOverSocket)selfhostBoardSockets.get(boardId)?.sendCursor(inkCursor);
   return result;
 }
 export type SelfhostObjectPreview={
@@ -956,6 +972,8 @@ function connectSelfhostBoard(
   let lastVersion=-1;
   let ready=false;
   let compactInk=false;
+  let durableInkCommits=false,commitSequence=0;
+  const pendingCommits=new Map<string,{resolve:(value:{version:number})=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
   let lastCursorSent=0;
   let pendingCursor:{clientId:string;x:number;y:number}|null=null;
   let cursorTimer:ReturnType<typeof setTimeout>|undefined;
@@ -973,6 +991,24 @@ function connectSelfhostBoard(
       socket.send(JSON.stringify(wire));return true
     }
     catch{reconnect();return false}
+  };
+  const canCommitInk=()=>ready&&durableInkCommits&&socket?.readyState===WebSocket.OPEN;
+  const commitInk=(request:InkCommitRequest):Promise<{version:number}>|null=>{
+    if(!canCommitInk()||pendingCommits.size)return null;
+    const request_id="ink_"+(++commitSequence);
+    const wire=JSON.stringify({type:"ink_commit",request_id,...request});
+    if(new TextEncoder().encode(wire).byteLength>120000)return null;
+    // A previously queued hover must not overtake the committed ink cursor.
+    clearTimeout(cursorTimer);cursorTimer=undefined;pendingCursor=null;
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{
+        pendingCommits.delete(request_id);
+        reject(new SelfhostHttpError(409,"Не получено подтверждение записи. Сверяем версию."));
+        reconnect();
+      },8000);
+      pendingCommits.set(request_id,{resolve,reject,timer});
+      try{socket!.send(wire)}catch{reconnect()}
+    });
   };
   const flushCursor=()=>{
     clearTimeout(cursorTimer);cursorTimer=undefined;
@@ -1052,7 +1088,11 @@ function connectSelfhostBoard(
   };
   const closeSocket=()=>{
     ready=false;
-    compactInk=false;
+    compactInk=false;durableInkCommits=false;
+    for(const entry of pendingCommits.values()){
+      clearTimeout(entry.timer);entry.reject(new SelfhostHttpError(409,"Соединение прервано. Сверяем версию доски."));
+    }
+    pendingCommits.clear();
     const old=socket;socket=null;
     if(!old)return;
     old.onopen=old.onclose=old.onmessage=old.onerror=null;
@@ -1087,7 +1127,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,
+            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}
@@ -1110,6 +1150,7 @@ function connectSelfhostBoard(
           if(message?.type==="ready"&&!ready){
             clearTimeout(responseDeadline);responseDeadline=undefined;
             compactInk=message.compact_ink===true;
+            durableInkCommits=message.durable_ink_commits===true;
             attempt=0;ready=true;onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
@@ -1192,6 +1233,20 @@ function connectSelfhostBoard(
             onLive?.(message as SelfhostLiveEvent);
           }
           if(!ready)return;
+          if(message?.type==="ink_commit_ack"){
+            const entry=pendingCommits.get(message.request_id);
+            if(!entry)return;
+            clearTimeout(entry.timer);pendingCommits.delete(message.request_id);
+            if(Number.isSafeInteger(message.version)&&message.version>0)entry.resolve({version:message.version});
+            else{
+              const detail=message.detail;
+              if(jsonObject(detail)&&detail.code==="plan_limit")notifyPlanLimit(detail);
+              entry.reject(new SelfhostHttpError(Number.isInteger(message.status)?message.status:500,
+                typeof detail==="string"?detail:typeof detail?.message==="string"?detail.message:"Ошибка записи штриха",
+                jsonObject(detail)&&typeof detail.code==="string"?detail.code:undefined));
+            }
+            return;
+          }
           if(message?.type==="comments_changed")onLive?.({type:"comments_changed"});
           if(message?.type==="ready"||message?.type==="document_changed"||message?.type==="pong"){
             const version=message.version;
@@ -1200,7 +1255,9 @@ function connectSelfhostBoard(
               const patch=message.type==="document_changed"&&message.base_version===version-1&&
                 jsonObject(message.delta)&&typeof message.updated_at==="string"&&typeof message.updated_by==="string"
                 ?{base_version:message.base_version,delta:message.delta as DocumentDelta,
-                  updated_at:message.updated_at,updated_by:message.updated_by}:undefined;
+                  updated_at:message.updated_at,updated_by:message.updated_by,
+                  ...(jsonObject(message.ink_cursor)&&message.ink_cursor.type==="cursor"&&typeof message.ink_cursor.user_id==="string"&&
+                    Number.isFinite(message.ink_cursor.x)&&Number.isFinite(message.ink_cursor.y)?{ink_cursor:message.ink_cursor as SelfhostCommittedCursor}:{})}:undefined;
               onRevision(version,patch);
             }
           }
@@ -1219,7 +1276,7 @@ function connectSelfhostBoard(
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
-  return Object.assign(stop,{sendCursor,sendInk,sendObjectPreview,sendEvent});
+  return Object.assign(stop,{canCommitInk,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
 }
 
 
@@ -1274,6 +1331,9 @@ class SharedSelfhostBoard {
     });
   }
 
+  canCommitInk(){return !!this.socket?.canCommitInk()}
+  commitInk(request:InkCommitRequest){return this.socket?.commitInk(request)??null}
+  sendCursor(cursor:InkCommitCursor){return this.socket?.sendCursor(cursor.client_id,cursor.x,cursor.y)??false}
   subscribe(listener:BoardListener):SelfhostBoardChannel{
     this.listeners.add(listener);
     this.reconcile();
@@ -1287,6 +1347,8 @@ class SharedSelfhostBoard {
       this.reconcile();
     };
     return Object.assign(stop,{
+      canCommitInk:()=>this.listeners.has(listener)&&this.canCommitInk(),
+      commitInk:(request:InkCommitRequest)=>this.listeners.has(listener)?this.commitInk(request):null,
       sendCursor:(id:string,x:number,y:number)=>this.listeners.has(listener)&&!!this.socket?.sendCursor(id,x,y),
       sendInk:(ink:SelfhostLiveInkPacket)=>this.listeners.has(listener)&&!!this.socket?.sendInk(ink),
       sendObjectPreview:(preview:SelfhostObjectPreview)=>this.listeners.has(listener)&&!!this.socket?.sendObjectPreview(preview),
@@ -1323,6 +1385,12 @@ export function selfhostWatchDocument(
   let status:SelfhostRealtimeStatus="reconnecting";
   let pollTimer:ReturnType<typeof setTimeout>|undefined;
   let accessDenied=false;
+  const committedCursors=new Map<string,{version:number;cursor:SelfhostCommittedCursor}>();
+  const attachCursors=(row:SelfhostDocument):SelfhostDocument=>{
+    const cursors:SelfhostCommittedCursor[]=[];
+    for(const [id,entry] of committedCursors){if(entry.version<=row.version){cursors.push(entry.cursor);committedCursors.delete(id)}}
+    return cursors.length?{...row,ink_cursors:cursors}:row;
+  };
   const schedule=()=>{
     if(controller.signal.aborted||accessDenied||reading||timer!==undefined||
        target<=Math.max(currentVersion(),delivered))return;
@@ -1334,7 +1402,7 @@ export function selfhostWatchDocument(
     try{
       const row=await selfhostReadDocument(boardId,controller.signal,true);
       if(controller.signal.aborted)return;
-      if(row.document&&row.version>Math.max(currentVersion(),delivered))onDocument(row);
+      if(row.document&&row.version>Math.max(currentVersion(),delivered))onDocument(attachCursors(row));
       delivered=Math.max(delivered,row.version);
       failures=row.version<target?Math.min(failures+1,5):0;
       if(!failures)onStatus(status);
@@ -1376,6 +1444,7 @@ export function selfhostWatchDocument(
   };
   const socket=selfhostSubscribeBoard(boardId,(version,patch)=>{
     target=Math.max(target,version);
+    if(patch?.ink_cursor&&version>Math.max(currentVersion(),delivered))committedCursors.set(patch.ink_cursor.user_id,{version,cursor:patch.ink_cursor});
     if(!controller.signal.aborted&&!accessDenied&&patch&&version>Math.max(currentVersion(),delivered)){
       const userId=loadSession()?.user.id;
       const base=documentBase;
@@ -1385,7 +1454,7 @@ export function selfhostWatchDocument(
           const row:SelfhostDocument={board_id:boardId,version,document:next,
             updated_at:patch.updated_at,updated_by:patch.updated_by};
           rememberDocument(boardId,userId,version,next);
-          onDocument(row);
+          onDocument(attachCursors(row));
           delivered=version;
           failures=0;
         }catch{/* A missed or invalid patch falls back to the versioned read. */}
