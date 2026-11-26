@@ -24,8 +24,8 @@ for(const pattern of [
   /if \(\(tool === "select" \|\| tool === "hand" \|\| tool === "lasso"\) && transformHandle/,
 ]) assert.match(app,pattern);
 assert.match(app,/else if \(tool === "pen" \|\| tool === "marker"\) \{\s*mode = "draw";/);
-assert.match(app,/beginInkPreview\(gesture\.current,p\)/);
-assert.match(app,/sendInk\(\{id:ink\.id,kind:ink\.kind,color:ink\.color,weight:ink\.weight,points:\[p\],finished:false\}\)/);
+assert.match(app,/paintDurableInk\(active\)/);
+assert.doesNotMatch(app,/cursorChannel\.current\?\.sendInk/);
 assert.match(app,/board\.current!\.setPointerCapture\(e\.pointerId\)/);
 assert.match(app,/onPointerMove=\{\(e\) => \{/);
 assert.match(app,/onPointerUp=\{\(e\) => \{/);

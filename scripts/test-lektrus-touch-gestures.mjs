@@ -31,8 +31,8 @@ assert.ok(touchStart.indexOf('consumedTouchIds.current.add(id)')<
 assert.match(touchStart,/if\(eraserSession\.current\)cancelEraser\(\)/,
  "Pinch must cancel the uncommitted eraser session");
 const eraseCancellation=slice("  const cancelEraser=","  const recordEraserPoint=");
-assert.match(eraseCancellation,/if\(g\)\{sendLiveEraser\(g,true,true\);g\.hiddenStickerInk\.forEach\(el=>el\.style\.removeProperty\("visibility"\)\);\}\s*eraserSession\.current=null;\s*stopEraserPreview\(\)/,
- "Cancelled gestures must roll back both local and remote eraser previews");
+assert.match(eraseCancellation,/if\(g\)g\.hiddenStickerInk\.forEach\(el=>el\.style\.removeProperty\("visibility"\)\);\s*eraserSession\.current=null;\s*stopEraserPreview\(\)/,
+ "Cancelled eraser gestures must restore local visuals without a remote preview");
 assert.match(touchStart,/pinchState\.current=\{distance:/);
 assert.ok(touchStart.includes("const pinchBaseView=viewerPendingPan.current??viewRef.current;"),
  "Pinch zoom must start from the live panned position, not stale React state");

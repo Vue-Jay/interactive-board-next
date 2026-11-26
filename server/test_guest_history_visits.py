@@ -144,3 +144,39 @@ async def test_free_history_retention_25_versions(client):
     assert (await client.get(root+"/history/10",headers=owner)).status_code==409
     async with app.state.pool.acquire() as conn:
         assert await conn.fetchval("SELECT count(*) FROM board_history WHERE board_id=$1",UUID(target))<=34
+
+
+@pytest.mark.asyncio
+async def test_durable_ink_checkpoints_keep_one_history_action_and_erase_wins(client):
+    _, owner = await sign_in(client,"teacher@example.test")
+    _, student = await sign_in(client,"student@example.test")
+    target = await board(client,owner)
+    root = f"/api/v1/boards/{target}"
+    url = root+"/document?version_only=true"
+    ink_url = url+"&ink_gesture=durable-pen"
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("INSERT INTO board_members(board_id,user_id,role,participant_role) VALUES($1,$2,'editor','student')",UUID(target),STUDENT)
+    initial = {"version":1,"title":"History","items":[]}
+    assert (await client.put(url,headers=owner,json={"expected_version":0,"document":initial})).status_code == 200
+    stroke = {"id":"durable-pen","kind":"pen","createdBy":str(STUDENT),"x":0,"y":0,"width":1,"height":3,"text":"","weight":3,"color":"#000000","points":[{"x":0,"y":0}]}
+    for version in range(1,41):
+        stroke = {**stroke,"width":version*5,"points":[{"x":0,"y":0},{"x":version*5,"y":0}]}
+        response=await client.patch(ink_url,headers=student,json={"expected_version":version,"delta":{"items":{"upsert":[stroke]}}})
+        assert response.status_code==200,response.text
+        if version==3:
+            saved=(await client.get(root+"/document",headers=owner)).json()
+            assert saved["document"]["items"][0]["id"]==stroke["id"]
+    history=(await client.get(root+"/history?limit=100",headers=owner)).json()
+    assert [r["version"] for r in history]==[41,1],history
+    assert (await client.get(root+"/history/1",headers=owner)).json()==initial
+    erased=await client.patch(url,headers=owner,json={"expected_version":41,"delta":{"items":{"remove":[stroke["id"]]}}})
+    assert erased.status_code==200,erased.text
+    stale=await client.patch(ink_url,headers=student,json={"expected_version":41,"delta":{"items":{"upsert":[{**stroke,"width":220}]}}})
+    assert stale.status_code==409,stale.text
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==[]
+    assert [r["version"] for r in (await client.get(root+"/history?limit=100",headers=owner)).json()]==[42,41,1]
+    restored=(await client.get(root+"/history/41",headers=owner)).json()
+    assert restored["items"][0]["id"]==stroke["id"]
+    async with app.state.pool.acquire() as conn:
+        count=await conn.fetchval("SELECT count(*) FROM board_history WHERE board_id=$1",UUID(target))
+        assert count<=13,count

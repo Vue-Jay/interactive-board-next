@@ -646,7 +646,7 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
 export const selfhostReadDocumentVersion=(boardId:string,signal?:AbortSignal)=>selfhostRequest<{version:number}>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{signal}
 );
-export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject){
+export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string){
   const userId=loadSession()?.user.id;
   const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
   const prepared=base&&deltaSupported&&expectedVersion>0?prepareSmallDocumentDelta(base.document,document,expectedVersion):null;
@@ -654,7 +654,7 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
   // The fast path owns a detached snapshot, too. Changed fields are normalized
   // before any network await; unchanged values come from the ACKed snapshot.
   const next=prepared?.next??JSON.parse(fullBody!).document as JsonObject;
-  const path=documentPath(boardId)+"?version_only=true";
+  const path=documentPath(boardId)+"?version_only=true"+(inkGesture?"&ink_gesture="+encodeURIComponent(inkGesture):"");
   let result:{version:number}|undefined;
   if(base&&deltaSupported&&expectedVersion>0){
     const delta=prepared?null:diffSelfhostDocument(base.document,next);
@@ -1222,7 +1222,7 @@ export function selfhostWatchDocument(
   const schedule=()=>{
     if(controller.signal.aborted||accessDenied||reading||timer!==undefined||
        target<=Math.max(currentVersion(),delivered))return;
-    timer=setTimeout(()=>{timer=undefined;void read()},failures?Math.min(8000,500*2**failures):120);
+    timer=setTimeout(()=>{timer=undefined;void read()},failures?Math.min(8000,500*2**failures):40);
   };
   const read=async()=>{
     if(controller.signal.aborted||accessDenied||target<=Math.max(currentVersion(),delivered))return;

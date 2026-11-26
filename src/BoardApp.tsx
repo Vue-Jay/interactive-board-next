@@ -1,7 +1,7 @@
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
 import {pwaInstall,usePwaInstall} from "./pwaInstall";
 import UserAvatar from "./UserAvatar";
-import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, useSyncExternalStore, type PointerEvent as PE, type CSSProperties } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useLayoutEffect, useState, type PointerEvent as PE, type CSSProperties } from "react";
 import { compileGraphExpression } from "./lektrusGraphExpression";
 import { boardWorldTransform, boardOverlayTransform, fitBoardCamera } from "./boardPanTransform";
 import { minimapViewport, minimapExtent, minimapViewBox, minimapTarget, minimapContentBounds, type MinimapRect } from "./boardMinimap";
@@ -115,9 +115,7 @@ import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel } from "./boardBroadcast";
 import { createRemoteCursorStore } from "./boardRemoteCursors";
 import { RemoteCursorOverlay, RemoteCursorCount } from "./RemoteCursorOverlay";
-import { createRemoteInkStore } from "./boardLiveInk";
-import { previewRemoteErasures, touchedPeerInk, applyPendingPeerErases, type PendingPeerErase } from "./remoteEraserPreview";
-import { RemoteInkOverlay } from "./RemoteInkOverlay";
+import { DURABLE_INK_SYNC_MS, hasDurableInk, peerRemovedDurableInk, removeDurableInk, writeDurableInk } from "./boardDurableInk";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./boardObjectMotion";
@@ -129,10 +127,10 @@ import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
 import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
-import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
+import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
-import { eraseStickerInk, makeStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
+import { eraseStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
 import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planeAxisLabelFont,planeAxisLayout,planeLabelHalfWidth,isPlaneMajorTick,planePointFromClient,resizeCoordinatePlane,zoomCoordinatePlane} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
@@ -394,6 +392,7 @@ type Gesture = {
   imageAspect?:number;
   ink?: { id: string; kind: "pen" | "marker"; color: string; weight: number };
   sticker?: Item;
+  inkInterrupted?: boolean;
   additive: boolean;
   connectorStartBinding?: ConnectorBinding;
   connectorEndBinding?: ConnectorBinding;
@@ -2276,25 +2275,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const loadVisitHistory=async()=>{setVisitLoading(true);setVisitError("");try{setVisitRows(await listBoardVisits(boardSummary.id))}catch(error){setVisitError(error instanceof Error?error.message:"Не удалось получить посещения")}finally{setVisitLoading(false)}};
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursorStore] = useState(createRemoteCursorStore);
-  const [remoteInkStore] = useState(createRemoteInkStore);
-  const [remoteEraseStore] = useState(createRemoteInkStore);
-  const remoteEraseTargets=useRef(new Map<string,Set<string>>());
-  const pendingPeerErasures=useRef(new Map<string,PendingPeerErase[]>());
-  const remoteErasures=useSyncExternalStore(remoteEraseStore.subscribe,remoteEraseStore.getSnapshot,remoteEraseStore.getSnapshot);
-  const previousRemoteErasures=useRef<ReadonlyMap<string,unknown>>(new Map());
-  useEffect(()=>{
-    for(const id of previousRemoteErasures.current.keys())if(!remoteErasures.has(id))remoteEraseTargets.current.delete(id);
-    previousRemoteErasures.current=remoteErasures;
-  },[remoteErasures]);
-  const acknowledgeRemoteInk=useCallback((data:DocumentData)=>{
-    const ids=expandDocumentInk(data).filter(isInkItem).map(item=>item.id);
-    remoteInkStore.acknowledge(ids);
-    if(remoteEraseTargets.current.size){
-      const retained=new Set(ids);
-      for(const targets of remoteEraseTargets.current.values())
-        for(const id of targets)if(!retained.has(id)&&!remoteInkStore.getSnapshot().has(id))targets.delete(id);
-    }
-  },[remoteInkStore]);
+  const [activeDrawingId,setActiveDrawingId]=useState<string|null>(null);
   const inkDiagnostics=useRef("подключается");
   const inkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
   const settingsInkDiagnosticsElement=useRef<HTMLSpanElement|null>(null);
@@ -2885,10 +2866,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       imageCropApplyRef.current=null;
     }
   },[items,imageCropEditorId,canEdit,authUser.id,isStudent,isBoardOwner]);
-  // A peer ink preview arrives independently of the server document. Avoid
-  // scanning the entire board once per preview stroke (previously O(ink*items)
-  // in JSX). Rebuild the ID index only when persisted items actually change.
-  const persistedItemIds=useMemo(()=>new Set(items.map(item=>item.id)),[items]);
   // Realtime broadcasts are untrusted display-only previews until the sender
   // persists the change through the board's RLS-protected server RPC.
   const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
@@ -2905,90 +2882,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return base?.id===latest.id?mergeEditedValue(base,{...base,...patch},latest):{...latest,...patch};
   };
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
-  // A server-confirmed stroke belongs exclusively to the document. Keeping its
-  // live preview after confirmation can resurrect it when an eraser removes
-  // the original ID and replaces it with cut fragments.
-
   const itemsRef = useRef(items);
   const [getCurrentItemIndex] = useState(()=>createCurrentItemIndex<Item>());
   const eraserSession = useRef<{id:string;pointer:number;last:Point;zoom:number;weight:number;path:Point[];mode:EraserMode;hiddenIds:Set<string>;hiddenStickerInk:Set<SVGElement>}|null>(null);
-  const sendLiveEraser=(g:NonNullable<typeof eraserSession.current>,finished=false,cancelled=false,cutIds:string[]=[])=>{
-    const offset=Math.max(0,g.path.length-(cancelled?1:500));
-    cursorChannel.current?.sendInk({id:g.id,kind:"eraser",color:"#000000",weight:g.weight,
-      points:g.path.slice(offset),offset,finished,cancelled,cutIds,eraserMode:g.mode});
-  };
   const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
   const eraserPreviewRatio=useRef(1);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
-  const inkPreviewCanvas=useRef<HTMLCanvasElement>(null);
-  const inkPreviewRatio=useRef(1);
-  const inkPreviewFrame=useRef<number|null>(null);
-  const pendingInkPreviewPoints=useRef<Point[]>([]);
-  const lastInkPreviewPoint=useRef<Point|null>(null);
-  const beginInkPreview=(g:Gesture,point:Point)=>{
-    const canvas=inkPreviewCanvas.current,host=board.current,ink=g.ink;
-    if(!canvas||!host||!ink)return;
-    const rect=host.getBoundingClientRect();
-    if(rect.width<=0||rect.height<=0)return;
-    const ratio=Math.min(2,window.devicePixelRatio||1);
-    inkPreviewRatio.current=ratio;
-    canvas.width=Math.max(1,Math.round(rect.width*ratio));
-    canvas.height=Math.max(1,Math.round(rect.height*ratio));
-    canvas.style.display="block";
-    canvas.style.opacity=ink.kind==="marker"?"0.32":"1";
-    const ctx=canvas.getContext("2d");
-    if(!ctx)return;
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
-    // Composite the entire active stroke once. Alpha on each incremental
-    // batch would darken round caps and self-intersections on the sender.
-    ctx.globalAlpha=1;
-    ctx.fillStyle=ink.color;
-    ctx.beginPath();ctx.arc(point.x,point.y,ink.weight/2,0,Math.PI*2);ctx.fill();
-    lastInkPreviewPoint.current=point;
-    pendingInkPreviewPoints.current=[];
-  };
-  const paintInkPreviewPoints=(g:Gesture,points:Point[])=>{
-    const canvas=inkPreviewCanvas.current,ink=g.ink;
-    if(!canvas||!ink||canvas.style.display!=="block"||!points.length)return;
-    const ctx=canvas.getContext("2d");
-    if(!ctx)return;
-    const ratio=inkPreviewRatio.current;
-    ctx.setTransform(ratio*g.view.zoom,0,0,ratio*g.view.zoom,ratio*g.view.x,ratio*g.view.y);
-    ctx.globalAlpha=1;
-    ctx.strokeStyle=ink.color;ctx.fillStyle=ink.color;
-    ctx.lineWidth=ink.weight;ctx.lineCap="round";ctx.lineJoin="round";
-    const previous=lastInkPreviewPoint.current??points[0];
-    if(!lastInkPreviewPoint.current){
-      ctx.beginPath();ctx.arc(points[0].x,points[0].y,ink.weight/2,0,Math.PI*2);ctx.fill();
-    }
-    ctx.beginPath();ctx.moveTo(previous.x,previous.y);
-    for(const point of points)ctx.lineTo(point.x,point.y);
-    ctx.stroke();
-    lastInkPreviewPoint.current=points[points.length-1];
-  };
-  const scheduleInkPreviewPaint=(point:Point)=>{
-    pendingInkPreviewPoints.current.push(point);
-    if(inkPreviewFrame.current!==null)return;
-    inkPreviewFrame.current=requestAnimationFrame(()=>{
-      inkPreviewFrame.current=null;
-      const active=gesture.current;
-      const points=pendingInkPreviewPoints.current.splice(0);
-      if(active?.mode==="draw"&&active.ink)paintInkPreviewPoints(active,points);
-    });
-  };
-  const flushInkPreviewPaint=(g:Gesture)=>{
-    if(inkPreviewFrame.current!==null){cancelAnimationFrame(inkPreviewFrame.current);inkPreviewFrame.current=null;}
-    const points=pendingInkPreviewPoints.current.splice(0);
-    if(points.length)paintInkPreviewPoints(g,points);
-  };
-  const stopInkPreview=()=>{
-    if(inkPreviewFrame.current!==null){cancelAnimationFrame(inkPreviewFrame.current);inkPreviewFrame.current=null;}
-    pendingInkPreviewPoints.current=[];
-    lastInkPreviewPoint.current=null;
-    if(inkPreviewCanvas.current)inkPreviewCanvas.current.style.display="none";
-  };
+  const inkPaintFrame=useRef<number|null>(null);
+  const inkCheckpointTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const inkLastBackup=useRef(0);
+  const lastInkGesture=useRef<string|null>(null);
   const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
@@ -3249,7 +3152,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (remoteRetryTimer.current) clearTimeout(remoteRetryTimer.current);
       if (displayFrame.current != null) cancelAnimationFrame(displayFrame.current);
       if (gesturePaintFrame.current != null) cancelAnimationFrame(gesturePaintFrame.current);
-      if (inkPreviewFrame.current != null) cancelAnimationFrame(inkPreviewFrame.current);
+      if (inkPaintFrame.current != null) cancelAnimationFrame(inkPaintFrame.current);
+      if(inkCheckpointTimer.current!==null)clearTimeout(inkCheckpointTimer.current);
       displayFrame.current = null;
       gesturePaintFrame.current = null;
       pendingDisplayItems.current = null;
@@ -3353,14 +3257,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
     if (layoutEditing || !documentSyncEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
-    const fingerprint = knownFingerprint ?? documentFingerprint(data);
-    if (fingerprint === acknowledgedDocument.current ||
-        fingerprint === acknowledgedSharedContent.current) return;
+    // An inverse edit can equal the OLD acknowledged version while a
+    // stroke checkpoint is in flight. Queue it before the equality check.
     if (remoteSaveInFlight.current) {
       queuedRemoteSnapshot.current = data;
       return;
     }
+    const fingerprint = knownFingerprint ?? documentFingerprint(data);
+    if (fingerprint === acknowledgedDocument.current ||
+        fingerprint === acknowledgedSharedContent.current) return;
     remoteSaveInFlight.current = true;
+    const inkGesture=lastInkGesture.current;
     try {
       // Verify/upload ONLY newly introduced attachments. Existing references
       // are already part of the previously persisted board, and checking them
@@ -3385,7 +3292,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(selfhostMode){
         try{
           const saved=await selfhostSaveDocument(
-            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>
+            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture??undefined
           );
           result={conflict:false,version:saved.version};
         }catch(error){
@@ -3421,7 +3328,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Reusing this hash avoids a second full document traversal per save.
       acknowledgedSharedContent.current = fingerprint;
       acknowledgedBoardData.current = data;
-      acknowledgeRemoteInk(data);
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
@@ -3479,7 +3385,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (queued && !needsRebase)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
-  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance, acknowledgeRemoteInk]);
+  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
 
   const flushSave = useCallback(() => {
     if (!canEdit || layoutEditing || demoMode) return;
@@ -3515,7 +3421,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
       if (documentSyncEnabled && pendingRemote.current) return;
-      if(documentSyncEnabled && (
+      if(documentSyncEnabled && !remoteSaveInFlight.current && (
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
       )){
@@ -3962,7 +3868,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const cancelEraser=()=>{
     const g=eraserSession.current;
-    if(g){sendLiveEraser(g,true,true);g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));}
+    if(g)g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));
     eraserSession.current=null;
     stopEraserPreview();
   };
@@ -3972,7 +3878,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(Math.hypot(point.x-g.last.x,point.y-g.last.y)>.1){
       g.path.push(point);
       g.last=point;
-      sendLiveEraser(g);
     }
   };
   const finishEraser=(point:Point|null)=>{
@@ -3992,23 +3897,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       return next;
     });
     const next=stickerChanged?withStickers:erased;
-    const pendingIds=canEdit?touchedPeerInk(remoteInkStore.getSnapshot(),before,g.path,g.weight/2):[];
-    if(pendingIds.length){
-      const pending=pendingPeerErasures.current;
-      const cut:PendingPeerErase={path:g.path.slice(),radius:g.weight/2,mode:g.mode,expiresAt:Date.now()+120_000};
-      for(const id of pendingIds){
-        if(!pending.has(id)&&pending.size>=128)pending.delete(pending.keys().next().value!);
-        pending.set(id,[...(pending.get(id)??[]),cut].slice(-8));
-      }
-      // Show the same temporary cut locally while waiting for the saved ID.
-      // Do not invent or publish somebody else's unfinished stroke.
-      remoteEraseTargets.current.set(g.id,new Set(pendingIds));
-      remoteEraseStore.push({id:g.id,clientId:"local-eraser",userId:authUser.id,kind:"eraser",color:"#000000",
-        weight:g.weight,points:g.path.slice(),finished:true,eraserMode:g.mode});
-    }
-    const remaining=next===before?null:new Set(next.map(item=>item.id));
-    const cutIds=remaining?before.filter(item=>isInkItem(item)&&!remaining.has(item.id)).map(item=>item.id).slice(0,500):[];
-    sendLiveEraser(g,true,next===before&&!pendingIds.length,cutIds);
     if(next!==before){
       // Keep the canvas preview until the actual SVG fragments have painted.
       flushSync(()=>{
@@ -4140,10 +4028,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[]}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
-    const current=itemsRef.current;
+    if(!options?.previousItems)lastInkGesture.current=null;
+    const current=options?.previousItems??itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
     const blocked=blockedBoardItemRemovals(current,next,authUser.id,isStudent,isBoardOwner);
@@ -4195,17 +4084,65 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         subject:lectrisBoardOrganization.subject,items:normalized});
     }
   };
-  // A visible peer stroke can precede its durable save. When its actual
-  // ID arrives, run the original eraser against the authoritative object.
-  useEffect(()=>{
-    if(!canEdit){pendingPeerErasures.current.clear();return;}
-    if(!pendingPeerErasures.current.size||gesture.current||eraserSession.current||boardResumePendingRef.current)return;
-    const before=itemsRef.current;
-    const next=applyPendingPeerErases(before,pendingPeerErasures.current,Date.now());
-    if(next===before)return;
-    commit(next,{immediatePaint:true});
-    flushSave();
-  },[items,canEdit,boardResumePending]);
+  // Paint the actual document item, not a second canvas that expires.
+  // Local paint follows animation frames; network checkpoints are coalesced
+  // through the same version-checked save queue as other board operations.
+  const cancelInkCheckpoint=()=>{
+    if(inkCheckpointTimer.current!==null)clearTimeout(inkCheckpointTimer.current);
+    inkCheckpointTimer.current=null;
+    if(inkPaintFrame.current!==null)cancelAnimationFrame(inkPaintFrame.current);
+    inkPaintFrame.current=null;
+  };
+  const scheduleInkCheckpoint=()=>{
+    if(saveBlocked||demoMode||layoutEditing||!canEdit||inkCheckpointTimer.current!==null)return;
+    inkCheckpointTimer.current=setTimeout(()=>{
+      inkCheckpointTimer.current=null;
+      const g=gesture.current;
+      if(g?.mode!=="draw"||!g.ink||g.inkInterrupted||!snapshot.current)return;
+      // Local backup at most once per second during a long gesture.
+      // All remote checkpoints share the single in-flight version queue.
+      const now=Date.now();
+      if(now-inkLastBackup.current>=1000||!documentSyncEnabled){
+        inkLastBackup.current=now;flushSave();
+      }else void pushRemoteSnapshot(snapshot.current);
+    },DURABLE_INK_SYNC_MS);
+  };
+  const paintDurableInk=(g:Gesture)=>{
+    if(!g.ink||g.inkInterrupted||!canEdit)return;
+    const next=writeDurableInk(itemsRef.current,g.ink,g.path,g.view.zoom,authUser.id,g.sticker?.id);
+    if(next===itemsRef.current)return;
+    display(next,true);
+    if(!saveBlocked)snapshot.current=currentDocument();
+    scheduleInkCheckpoint();
+  };
+  const scheduleDurableInkPaint=()=>{
+    if(inkPaintFrame.current!==null)return;
+    inkPaintFrame.current=requestAnimationFrame(()=>{
+      inkPaintFrame.current=null;
+      const g=gesture.current;
+      if(g?.mode==="draw")paintDurableInk(g);
+    });
+  };
+  const finishDurableInk=(g:Gesture,cancel:boolean)=>{
+    cancelInkCheckpoint();
+    setActiveDrawingId(null);
+    if(!g.ink||g.inkInterrupted)return;
+    const identity={id:g.ink.id,stickerId:g.sticker?.id};
+    const before=removeDurableInk(itemsRef.current,identity);
+    if(cancel){
+      lastInkGesture.current=null;
+      display(before,true);
+      if(!saveBlocked)snapshot.current=currentDocument();
+      return;
+    }
+    // One local undo step for the entire gesture, even if many durable
+    // checkpoints were already acknowledged while the pointer was down.
+    const baseline=history.current[index.current];
+    if(baseline&&hasDurableInk(baseline,identity))
+      history.current[index.current]=removeDurableInk(baseline,identity);
+    const next=writeDurableInk(itemsRef.current,g.ink,g.path,g.view.zoom,authUser.id,g.sticker?.id);
+    flushSync(()=>commit(next,{immediatePaint:true,previousItems:before}));
+  };
   const autoFitExistingImage=(id:string,crop:Item["imageCrop"],sourceAspect:number)=>{
     const current=itemsRef.current.find(item=>item.id===id&&item.kind==="image");
     if(!current||current.imageCrop||!canCropImage(current)||
@@ -4892,7 +4829,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         itemsRef.current=g.before.map(item=>latest.get(item.id)??item);
       }
     }
-    if(!cancel&&g.mode==="draw"&&g.ink)flushInkPreviewPaint(g);
     gesture.current = null;
     // The last pointer sample is applied synchronously before end(). Send it
     // immediately, even if the throttle currently holds an older preview.
@@ -4912,8 +4848,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses,true);
     }
-    if (g.mode === "draw" && g.ink && !g.sticker) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),offset:Math.max(0,g.path.length-500),finished:true});
-    if (cancel) {
+    if(g.mode==="draw"&&g.ink){
+      finishDurableInk(g,cancel);
+    } else if (cancel) {
       display(g.restore ?? g.before);
       setView(g.view);
     } else if (g.mode === "hand-smart") {
@@ -4930,17 +4867,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
       else commit(itemsRef.current);
     }
-    else if (g.mode === "draw" && g.ink && g.sticker) {
-      const sticker=g.sticker;
-      const attached=makeStickerInk(sticker,g.ink,g.path,g.view.zoom);
-      flushSync(()=>commit([...g.before.map(item=>item.id===sticker.id?
-        {...item,stickerInk:[...(item.stickerInk??[]),attached]}:item)],{immediatePaint:true}));
-    }
-    else if (g.mode === "draw" && g.ink)
-      flushSync(()=>commit([
-        ...g.before,
-        stroke(g.ink!.id, g.ink!.kind, g.path, g.ink!.color, g.ink!.weight, g.view.zoom),
-      ],{immediatePaint:true}));
     else if (g.mode === "connector") {
       const startPoint = g.path[0];
       const endPoint = g.path[g.path.length - 1] ?? startPoint;
@@ -5020,14 +4946,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setPath([]);
     setMarqueeRect(null);
     setPreview(null);
-    stopInkPreview();
     setPanning(false);
     clearGuides();
     if (board.current?.hasPointerCapture(g.pointer))
       board.current.releasePointerCapture(g.pointer);
-    if (!cancel && g.mode === "draw" && g.ink) {
-      // Do not wait for the standard 220ms debounce to persist a completed line.
-      // The realtime preview must quickly hand off to a durable board object.
+    if (g.mode === "draw" && g.ink&&!g.inkInterrupted) {
+      // Persist the final sample (or cancellation) without debounce.
       window.setTimeout(flushSave, 0);
     }
     // A collaborator's document is never applied in the middle of this stroke.
@@ -5488,9 +5412,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           : undefined,
     };
     if (mode === "draw") {
-      const ink = gesture.current.ink!;
-      beginInkPreview(gesture.current,p);
-      if(!gesture.current.sticker)cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
+      const active=gesture.current;
+      lastInkGesture.current=active.ink!.id;
+      setActiveDrawingId(active.sticker?null:active.ink!.id);
+      inkLastBackup.current=Date.now();
+      paintDurableInk(active);
     }
     if (mode === "connector") {
       setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding,undefined,"",arrowHeadStyle,arrowHeadSize));
@@ -5855,24 +5781,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       g.path = [g.path[0], point];
       scheduleGesturePaint();
     } else {
+      if(g.mode==="draw"&&g.inkInterrupted)return;
       const point = world(p),
         last = g.path[g.path.length - 1];
-      // Keep sub-pixel samples for smooth strokes; the canvas preview only
-      // paints newly arrived points, so this no longer drives React renders.
+      // Keep all sub-pixel samples; the actual item paints once per frame.
       const minSampleDistance=g.mode==="draw"?0.8:3;
       if (Math.hypot(point.x - last.x, point.y - last.y) * g.view.zoom < minSampleDistance)
         return;
       g.path.push(point);
-      // Publish directly from the pointer stream, independently of cursor visibility
-      // and React preview paint scheduling (including invisible admin sessions).
-      if (g.mode === "draw" && g.ink) {
-        if(!g.sticker)cursorChannel.current?.sendInk({
-          id: g.ink.id, kind: g.ink.kind, color: g.ink.color,
-          weight: g.ink.weight, points: g.path.slice(-500),
-          offset: Math.max(0,g.path.length-500), finished: false,
-        });
-        scheduleInkPreviewPaint(point);
-      }
+      if (g.mode === "draw" && g.ink&&!g.inkInterrupted) scheduleDurableInkPaint();
       if(g.mode!=="draw")scheduleGesturePaint();
     }
   };
@@ -7824,7 +7741,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit(itemsRef.current.filter(item=>item.id!==id));
   };
   const visibleItems = useMemo(() => items.filter((item) => !item.hidden && item.kind !== "instrument"), [items]);
-  const displayInkItems=useMemo(()=>previewRemoteErasures(visibleItems,remoteErasures,remoteEraseTargets.current),[visibleItems,remoteErasures]);
+  const displayInkItems=visibleItems;
   const visibleObjects = visibleItems;
   const objectCount = items.length;
   const drawingCount = useMemo(() => items.filter(isInkItem).length, [items]);
@@ -7855,7 +7772,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }).join("\u0000");
   const detailedInkIds=useMemo(() =>
     new Set([...(selectedInkKey?selectedInkKey.split("\u0000"):[]),
-      ...(remoteInkKey?remoteInkKey.split("\u0000"):[])]),[selectedInkKey,remoteInkKey]);
+      ...(remoteInkKey?remoteInkKey.split("\u0000"):[]),...(activeDrawingId?[activeDrawingId]:[])]),[selectedInkKey,remoteInkKey,activeDrawingId]);
   const inkLayers = useMemo(() => {
     type Layer =
       | { kind: "ink"; key: string; strokes: Item[]; bounds: Bounds }
@@ -8119,7 +8036,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     acknowledgedDocument.current = incomingFingerprint;
     acknowledgedSharedContent.current = incomingFingerprint;
     acknowledgedBoardData.current = data;
-    acknowledgeRemoteInk(data);
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
     remoteSaveFailures.current = 0;
@@ -8153,9 +8069,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   receiveRemote.current = row => {
     if (!boardMounted.current || row.board_id !== boardSummary.id) return;
-    // Applying a competing snapshot during an active pen/eraser gesture calls
-    // end(true), rolling that stroke back before it is ever saved.
-    if (gesture.current || eraserSession.current) {
+    // Real ink may reconcile while drawing; other gesture geometry still
+    // depends on its initial snapshot and must wait until release.
+    if ((gesture.current&&gesture.current.mode!=="draw") || eraserSession.current) {
       if (!deferredRemote.current || row.version > deferredRemote.current.version)
         deferredRemote.current = row;
       return;
@@ -8175,12 +8091,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const decision = dirty || !!pendingRemote.current ? "conflict" : "apply";
     try {
       const data = parseDocument(JSON.stringify(row.document));
+      const drawing=gesture.current;
+      if(drawing?.mode==="draw"&&drawing.ink&&!drawing.inkInterrupted&&peerRemovedDurableInk(
+        acknowledgedBoardData.current?expandDocumentInk(acknowledgedBoardData.current):[],expandDocumentInk(data),
+        {id:drawing.ink.id,stickerId:drawing.sticker?.id})){
+        // A peer erased the already-visible real stroke. Never write that ID
+        // again, including delayed pointer samples and the final pointer-up.
+        drawing.inkInterrupted=true;lastInkGesture.current=null;cancelInkCheckpoint();setActiveDrawingId(null);
+      }
       if (isOwnRemoteRevision(row, authUser.id, lastAttempt.current)) {
         remoteVersion.current = row.version;
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         acknowledgedBoardData.current = data;
-        acknowledgeRemoteInk(data);
         return;
       }
       // A different viewport is not new shared board content. Accept the
@@ -8210,7 +8133,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = remoteFingerprint;
         acknowledgedSharedContent.current = remoteFingerprint;
         acknowledgedBoardData.current = remote;
-        acknowledgeRemoteInk(remote);
         pendingRemote.current = null;
         setRemoteConflict(null);
         setConflictLocalBackup(null);
@@ -8236,7 +8158,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         queuedRemoteSnapshot.current=null;
         setSaveStatus("Синхронизировано");
         // The newest merged document is the ONLY valid save candidate.
-        window.setTimeout(()=>{if(boardMounted.current)void pushRemoteSnapshot(snapshot.current??merged)},0);
+        window.setTimeout(()=>{if(boardMounted.current)flushSave()},0);
         return;
       }
       applyServerDocument(row, data, remoteFingerprint);
@@ -8299,35 +8221,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(() => {
     if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     let active=true;
-    if(acknowledgedBoardData.current)acknowledgeRemoteInk(acknowledgedBoardData.current);
     const channel = connectBoardCursorChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
       cursor=>{if(active)remoteCursorStore.push(cursor)},
       true, // Keep the socket active independently of invisible mode; cursor emission is guarded at pointer-move.
-      ink=>{
-        if(!active)return;
-        if(ink.kind!=="eraser"){remoteInkStore.push(ink);return;}
-        const targets=remoteEraseTargets.current;
-        if(ink.cancelled)targets.delete(ink.id);
-        else if(!targets.has(ink.id)){
-          if(targets.size>=128){const oldest=targets.keys().next().value;if(oldest!==undefined){targets.delete(oldest);remoteEraseStore.acknowledge([oldest]);}}
-          targets.set(ink.id,new Set([...itemsRef.current.filter(isInkItem).map(item=>item.id),...remoteInkStore.getSnapshot().keys()]));
-        }
-        // A rapid draw-then-erase can remove a stroke before its first save.
-        // Retire that preview too; the durable fragments will arrive normally.
-        if(ink.finished&&!ink.cancelled&&ink.cutIds?.length){
-          if(ink.cutIds.length<500){
-            // Final affected IDs are exact, even when the original stroke
-            // or an earlier erase packet arrived out of order.
-            targets.set(ink.id,new Set(ink.cutIds));
-          }
-          remoteInkStore.acknowledge(ink.cutIds);
-        }
-        remoteEraseStore.push(ink);
-      },
+      undefined, // Ignore transient legacy ink packets; only server revisions render ink.
       status=>{if(active)setInkDiagnostics(status)},
-      true, // Drawings remain collaborative even when the admin hides their presence.
+      false, // Drawing is synchronized only by durable document operations.
     );
     cursorChannel.current = channel;
     return () => {
@@ -8335,10 +8236,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       cursorChannel.current = null;
       channel.close();
       remoteCursorStore.reset();
-      remoteInkStore.reset();
-      remoteEraseStore.reset();remoteEraseTargets.current.clear();
     };
-  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteInkStore, remoteEraseStore, acknowledgeRemoteInk, remoteCursorStore, setInkDiagnostics,demoMode,boardRealtimeAwake]);
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, layoutEditing, remoteCursorStore, setInkDiagnostics,demoMode,boardRealtimeAwake]);
 
   useEffect(() => {
     if(demoMode||layoutEditing||!boardRealtimeAwake)return;
@@ -10184,7 +10083,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const p=world(screen);
             if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
             eraserSession.current={id:createId(),pointer:e.pointerId,last:p,zoom:view.zoom,weight:eraserSize/view.zoom,path:[p],mode:eraserMode,hiddenIds:new Set(),hiddenStickerInk:new Set()};
-            sendLiveEraser(eraserSession.current);
             setSelected([]);
             if(eraserMode==="partial")beginEraserPreview();
             previewEraserSegment(screen,screen);
@@ -10452,7 +10350,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div ref={setInstrumentViewportHost}
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
-            <RemoteInkOverlay store={remoteInkStore} persistedItemIds={persistedItemIds} x={view.x} y={view.y} zoom={view.zoom} erasures={remoteErasures} eraseTargets={remoteEraseTargets.current}/>
             <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom}/>
           </div>
           <div
@@ -10861,7 +10758,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
             )}
           </div>
-          <canvas ref={inkPreviewCanvas} aria-hidden="true" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:49,display:"none"}} />
           <canvas ref={eraserPreviewCanvas} aria-hidden="true" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:50,display:"none"}} />
           {presentation && presentationLaser && presentationLaserPos && !presentationBlackout && <div className="presentation-laser-dot" style={{ left: presentationLaserPos.x, top: presentationLaserPos.y }} aria-hidden="true" />}
           {presentation && presentationSpotlight && presentationSpotlightPos && !presentationBlackout && (

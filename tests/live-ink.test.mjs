@@ -202,8 +202,8 @@ test('incremental previews stitch into long strokes, reject stale packets and bo
   const old={...packet(0,3)};delete old.offset;
   assert.equal(api.mergeRemoteLiveInk(long,old),old,'legacy peers remain compatible');
   const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
-  assert.match(app,/remoteInkStore\.push\(ink\)/);
-  assert.match(app,/offset:Math\.max\(0,g\.path\.length-500\)/);
+  assert.doesNotMatch(app,/remoteInkStore\.push\(ink\)/);
+  assert.match(app,/writeDurableInk\(itemsRef\.current/);
 });
 
 
@@ -408,9 +408,9 @@ test('live erase cuts only target ink without mutating the persistent board; voc
   const long=fitLanguageFlashcardItem({...deck,schoolDiagram:{...deck.schoolDiagram,cards:[{term:'a very long phrase',translation:'длинное предложение со многими словами',transcription:''}]}},deck);
   assert.ok(long.width>short.width&&long.height>short.height);
   const app=readFileSync(new URL('../src/BoardApp.tsx',import.meta.url),'utf8');
-  const paint=app.slice(app.indexOf('const beginInkPreview='),app.indexOf('const scheduleInkPreviewPaint='));
-  assert.match(paint,/canvas\.style\.opacity=ink\.kind==="marker"\?"0\.32":"1"/);
-  assert.equal([...paint.matchAll(/ctx\.globalAlpha=1/g)].length,2,'Both preview batches paint opaque before compositing');
+  assert.doesNotMatch(app,/inkPreviewCanvas|<RemoteInkOverlay/);
+  assert.match(app,/<g opacity=\{item\.kind === "marker" \? 0\.32 : 1\}>/);
+
 });
 test('cursor bursts retain the latest position per peer and never notify the board per packet',()=>{
   const h=inkStoreHarness(),store=loadMotionModule('boardRemoteCursors.ts').createRemoteCursorStore(h.scheduler);

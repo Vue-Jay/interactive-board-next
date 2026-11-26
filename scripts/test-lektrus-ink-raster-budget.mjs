@@ -78,8 +78,10 @@ assert.ok(selectionStart>=0&&layerStart>selectionStart&&layerEnd>layerStart);
 const layers=app.slice(selectionStart,layerEnd);
 assert.match(layers,/const selectedInkKey=useMemo\(\(\) => selectedIds\.size>24 \? "" :/);
 assert.match(layers,/const detailedInkIds=useMemo\(/);
-assert.match(app,/const displayInkItems=useMemo\(\(\)=>previewRemoteErasures\(visibleItems,remoteErasures,remoteEraseTargets\.current\),\[visibleItems,remoteErasures\]\)/,
- "The visual eraser layer changes only with visible items or remote erase previews");
+assert.match(app,/const displayInkItems=visibleItems;/,
+ "Raster ink is the real document, never a separate remote eraser overlay");
+assert.match(source,/a\.strokes\.every\(\(item,i\)=>item===b\.strokes\[i\]\)/,
+ "The unchanged permanent canvas is retained while a new stroke grows");
 assert.match(layers,/\}, \[displayInkItems, detailedInkIds\]\)/,
  "Non-ink selection must not re-create raster stroke arrays");
 assert.doesNotMatch(layers,/\[(?:visibleItems|displayInkItems), selectedIds\]/);

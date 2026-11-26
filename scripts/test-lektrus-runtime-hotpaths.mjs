@@ -8,13 +8,9 @@ const read=(path)=>readFileSync(new URL("../src/"+path,import.meta.url),"utf8");
 const app=read("BoardApp.tsx"),preview=read("boardPreview.ts"),sync=read("boardSync.ts");
 const inkOverlay=read("RemoteInkOverlay.tsx");
 
-assert.match(app,/const persistedItemIds=useMemo\(\(\)=>new Set\(items\.map\(item=>item\.id\)\),\[items\]\)/,
- "Build one persisted board ID index per items revision");
-assert.match(app,/<RemoteInkOverlay store=\{remoteInkStore\}/);
-assert.match(inkOverlay,/useSyncExternalStore\(store\.subscribe,store\.getSnapshot/);
-assert.match(inkOverlay,/\!persistedItemIds\.has\(ink\.id\)/);
-assert.doesNotMatch(app,/setRemoteInk\(/,
- "Do not rescan the entire board once per live stroke");
+assert.doesNotMatch(app,/<RemoteInkOverlay|remoteInkStore|pendingPeerErasures/,"No transient stroke data in production board");
+assert.match(app,/writeDurableInk\(itemsRef\.current/);
+assert.match(app,/requestAnimationFrame\(\(\)=>\{\s*inkPaintFrame\.current=null/);
 assert.match(app,/<RemoteCursorOverlay store=\{remoteCursorStore\}/);
 assert.match(app,/<RemoteCursorCount store=\{remoteCursorStore\}/);
 assert.doesNotMatch(app,/setRemoteCursors\(/,"Cursor activity must not rerender the board");
