@@ -109,7 +109,10 @@ def expand_point_edits(document, delta):
         dx = _cents(stroke.get("x")) - _cents(geometry["x"])
         dy = _cents(stroke.get("y")) - _cents(geometry["y"])
         if dx or dy:
-            prefix = [{"x": (_cents(p["x"]) + dx) / 100, "y": (_cents(p["y"]) + dy) / 100} for p in prefix]
+            shifted = [(_cents(p["x"]) + dx, _cents(p["y"]) + dy) for p in prefix]
+            if any(abs(x) > 2**53 - 1 or abs(y) > 2**53 - 1 for x, y in shifted):
+                raise ValueError("Invalid ink shift")
+            prefix = [{"x": x / 100, "y": y / 100} for x, y in shifted]
     updated = {**stroke, **geometry, "points": prefix + tail}
     if attached is not None:
         attached[edit["stroke_id"]] = updated
