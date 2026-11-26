@@ -989,7 +989,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,compact_ink:true,
+            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}
