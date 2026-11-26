@@ -63,6 +63,19 @@ assert.ok(!territorialResolutions.davaoTransfer.reasonRu.includes('к начал
  'Do not backdate Davao Gulf control to early 1849');
 assert.ok(territorialResolutions.davaoTransfer.reason.includes('The 1848 polygon is therefore'),
  '1848 conquest of the fortified settlement is not a survey of the entire gulf');
+// Evidence-led modern name chronology: national names never change the coastline.
+const recentlyDatedTitles=[["Turkey","Q43",2022,"Türkiye"],["Republic of Turkey","Q43",2022,"Republic of Türkiye"],["Türkiye","Q43",1923,"Turkey"],["Republic of Türkiye","Q43",1923,"Republic of Turkey"],["Republic of Cabo Verde","Q1011",1975,"Republic of Cape Verde"],["Cabo Verde","Q1011",1975,"Cape Verde"],["Republic of Cape Verde","Q1011",2013,"Republic of Cabo Verde"],["Cape Verde","Q1011",2013,"Cabo Verde"],["Union of Myanmar","Q836",1948,"Union of Burma"],["Union of Myanmar","Q836",1974,"Socialist Republic of the Union of Burma"],["Union of Myanmar","Q836",1988,"Union of Burma"],["Republic of the Union of Myanmar","Q836",1989,"Union of Myanmar"]];
+for(const [name,qid,year,title] of recentlyDatedTitles){
+ const matches=historicalTitleCorrections.filter(r=>r[0]===name&&r[1]===qid&&r[2]<=year&&year<=r[3]);
+ assert.equal(matches.length,1,'Missing/duplicate dated title '+name+'/'+year);
+ assert.equal(matches[0][4],title);
+ assert.ok(matches[0][6].startsWith('https://'));
+}
+for(const name of ['Union of Myanmar','Turkey','Republic of Cabo Verde']){
+ const rules=historicalTitleCorrections.filter(r=>r[0]===name);
+ for(let i=0;i<rules.length;i++)for(let j=i+1;j<rules.length;j++)
+  assert.ok(rules[i][3]<rules[j][2]||rules[j][3]<rules[i][2],'Overlapping title years '+name);
+}
 assert.equal(historicalCorsicaLiberationCenters(1942).length,0);
 const corsica1943=historicalCorsicaLiberationCenters(1943);
 const corsica1944=historicalCorsicaLiberationCenters(1944);
