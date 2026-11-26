@@ -101,7 +101,7 @@ for(const [year,count] of [[1629,0],[1630,2],[1631,2],[1632,0],[1672,0],[1673,1]
   for(const entry of entries){
     assert.equal(entry.year,year);
     assert.ok(entry.id.startsWith('historical-center-'));
-    assert.ok(entry.description.includes('Точка'));
+    assert.match(entry.description,/точка/i);
     assert.ok(entry.sources.length&&entry.sources.every(u=>u.startsWith('https://')));
     assert.ok(Number.isFinite(entry.lon)&&Number.isFinite(entry.lat));
   }
