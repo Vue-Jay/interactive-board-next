@@ -173,10 +173,20 @@ export function connectBoardWorkChannel(
       publishEdit: (itemId, ops) => {
         if (stopped || !publishSelf || !itemId || !ops.length || ops.length > 300) return;
         if(!ready)return;
+        // Laboratory deltas carry a generation assertion. Combining two
+        // assertions in a single message would make its validator reject both.
+        // Keep each already-bounded lab operation packet intact.
+        if(ops.some(op=>op.path[0]==="scienceLabBench")){
+          channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,ops});
+          return;
+        }
         const queue=[...(queuedEdits.get(itemId)??[]),...ops];
         if(queue.length>1200||queuedEdits.size>64){queuedEdits.clear();return;}
         queuedEdits.set(itemId,queue);
-        if(!editTimer)editTimer=setTimeout(flushEdits,Math.max(0,34-(Date.now()-lastEditSent)));
+        if(!editTimer){
+          const delay=34-(Date.now()-lastEditSent);
+          if(delay<=0)flushEdits();else editTimer=setTimeout(flushEdits,delay);
+        }
       },
       publishTransform: (items, finished = false) => {
         if (stopped || !publishSelf || !items.length || items.length > 64 || !ready) return;
