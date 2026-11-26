@@ -129,7 +129,7 @@ import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from ".
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
 import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
-import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
+import { eraseInkAlongPath, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
 import {coordinatePlaneViewport,graphPointSnapEnabled,isCoordinatePlane,isCoordinatePointGraph,planeAxisLabelFont,planeAxisLayout,planeLabelHalfWidth,isPlaneMajorTick,planePointFromClient,resizeCoordinatePlane,zoomCoordinatePlane} from "./coordinatePlane";
 import { inkIdsInLasso } from "./inkLasso";
@@ -2884,9 +2884,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
   const itemsRef = useRef(items);
   const [getCurrentItemIndex] = useState(()=>createCurrentItemIndex<Item>());
-  const eraserSession = useRef<{id:string;pointer:number;last:Point;zoom:number;weight:number;path:Point[];mode:EraserMode;hiddenIds:Set<string>;hiddenStickerInk:Set<SVGElement>}|null>(null);
-  const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
-  const eraserPreviewRatio=useRef(1);
+  const eraserSession = useRef<{id:string;pointer:number;last:Point;weight:number;path:Point[];mode:EraserMode;before:Item[];changed:boolean}|null>(null);
   const eraserCursorElement = useRef<HTMLDivElement>(null);
   const inkPaintFrame=useRef<number|null>(null);
   const inkCheckpointTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -3765,154 +3763,86 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (pending) setItems(pending);
     });
   };
-  // The original SVG strokes are replaced with a lightweight, instant canvas
-  // preview while erasing. This keeps the brush responsive on teacher boards
-  // without forcing the entire React object tree to render on every pointermove.
-  const beginEraserPreview=(hiddenIds?:ReadonlySet<string>)=>{
-    const canvas=eraserPreviewCanvas.current;
-    const host=board.current;
-    if(!canvas||!host)return;
-    const rect=host.getBoundingClientRect();
-    if(rect.width<=0||rect.height<=0)return;
-    const ratio=Math.min(2,window.devicePixelRatio||1);
-    eraserPreviewRatio.current=ratio;
-    canvas.width=Math.max(1,Math.round(rect.width*ratio));
-    canvas.height=Math.max(1,Math.round(rect.height*ratio));
-    const ctx=canvas.getContext("2d");
-    if(!ctx)return;
-    ctx.setTransform(ratio,0,0,ratio,0,0);
-    ctx.clearRect(0,0,rect.width,rect.height);
-    const z=view.zoom;
-    const left=-view.x/z,top=-view.y/z;
-    const right=(rect.width-view.x)/z,bottom=(rect.height-view.y)/z;
-    ctx.setTransform(ratio*z,0,0,ratio*z,ratio*view.x,ratio*view.y);
-    for(const item of itemsRef.current){
-      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||!item.points?.length||hiddenIds?.has(item.id))continue;
-      const pad=(item.weight??3)/2;
-      if(item.x+item.width+pad<left||item.x-pad>right||item.y+item.height+pad<top||item.y-pad>bottom)continue;
-      ctx.save();
-      if(item.rotation){
-        const cx=item.x+item.width/2,cy=item.y+item.height/2;
-        ctx.translate(cx,cy);ctx.rotate(item.rotation*Math.PI/180);ctx.translate(-cx,-cy);
-      }
-      ctx.globalAlpha=item.kind==="marker"?.32:1;
-      ctx.strokeStyle=item.color??"#000000";
-      ctx.fillStyle=item.color??"#000000";
-      ctx.lineWidth=item.weight??3;
-      ctx.lineJoin="round";
-      ctx.lineCap="round";
-      const pts=item.points;
-      if(pts.length===1){
-        ctx.beginPath();
-        ctx.arc(item.x+pts[0].x,item.y+pts[0].y,(item.weight??3)/2,0,Math.PI*2);
-        ctx.fill();
-      }else{
-        ctx.beginPath();
-        ctx.moveTo(item.x+pts[0].x,item.y+pts[0].y);
-        for(let i=1;i<pts.length;i++)ctx.lineTo(item.x+pts[i].x,item.y+pts[i].y);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-    canvas.style.display="block";
-    host.classList.add("eraser-live");
-  };
-  const previewEraserSegment=(from:Point,to:Point)=>{
+  // Both eraser modes modify the permanent document, at most once per frame.
+  // Only the newly swept segments are processed; never replay the whole gesture.
+  const paintDurableEraser=()=>{
     const g=eraserSession.current;
-    if(g?.mode==="stroke"){
-      const path=[world(from),world(to)];
-      let changed=false;
-      for(const item of itemsRef.current){
-        if(isInkItem(item)&&!g.hiddenIds.has(item.id)&&canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner)&&inkTouchesEraser(item,path,g.weight/2)){
-          g.hiddenIds.add(item.id);changed=true;
-        }else if(item.kind==="sticky"&&!item.hidden&&!item.locked&&canTransformBoardObject(item)&&item.stickerInk?.length){
-          const next=eraseStickerInk(item,path,g.weight/2,"stroke");
-          if(next===item)continue;
-          const remaining=new Set(next.stickerInk?.map(ink=>ink.id));
-          const node=board.current?.querySelector(`.board-object[data-object="${CSS.escape(item.id)}"]`);
-          for(const ink of item.stickerInk){
-            if(remaining.has(ink.id))continue;
-            const element=node?.querySelector<SVGElement>(`[data-sticker-ink="${CSS.escape(ink.id)}"]`);
-            if(element&&!g.hiddenStickerInk.has(element)){element.style.visibility="hidden";g.hiddenStickerInk.add(element);}
-          }
-        }
-      }
-      if(changed)beginEraserPreview(g.hiddenIds);
-      return;
-    }
-    const canvas=eraserPreviewCanvas.current;
-    if(!canvas||canvas.style.display!=="block")return;
-    const ctx=canvas.getContext("2d");
-    if(!ctx)return;
-    const ratio=eraserPreviewRatio.current;
-    ctx.save();
-    ctx.setTransform(ratio,0,0,ratio,0,0);
-    ctx.globalAlpha=1;
-    ctx.globalCompositeOperation="destination-out";
-    ctx.lineWidth=eraserSize;
-    ctx.lineCap="round";
-    ctx.lineJoin="round";
-    ctx.beginPath();
-    ctx.moveTo(from.x,from.y);
-    ctx.lineTo(to.x,to.y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(to.x,to.y,eraserSize/2,0,Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  };
-  const stopEraserPreview=()=>{
-    board.current?.classList.remove("eraser-live");
-    const canvas=eraserPreviewCanvas.current;
-    if(canvas)canvas.style.display="none";
-  };
-  const cancelEraser=()=>{
-    const g=eraserSession.current;
-    if(g)g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));
-    eraserSession.current=null;
-    stopEraserPreview();
-  };
-  const recordEraserPoint=(point:Point)=>{
-    const g=eraserSession.current;
-    if(!g)return;
-    if(Math.hypot(point.x-g.last.x,point.y-g.last.y)>.1){
-      g.path.push(point);
-      g.last=point;
-    }
-  };
-  const finishEraser=(point:Point|null)=>{
-    const g=eraserSession.current;
-    if(!g)return;
-    if(point)recordEraserPoint(point);
-    eraserSession.current=null;
-    // The model is changed once per gesture, as one undo/history operation.
+    if(!g||!g.path.length||!canEdit)return;
+    const path=g.path;
+    g.path=[];
     const before=itemsRef.current;
-    const erased=eraseInkAlongPath(before,g.path,g.weight/2,
+    const erased=eraseInkAlongPath(before,path,g.weight/2,
       item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner),g.mode);
     let stickerChanged=false;
     const withStickers=erased.map(item=>{
       if(item.kind!=="sticky"||item.hidden||item.locked||!canTransformBoardObject(item))return item;
-      const next=eraseStickerInk(item,g.path,g.weight/2,g.mode);
+      const next=eraseStickerInk(item,path,g.weight/2,g.mode);
       if(next!==item)stickerChanged=true;
       return next;
     });
-    const next=stickerChanged?withStickers:erased;
-    if(next!==before){
-      // Keep the canvas preview until the actual SVG fragments have painted.
-      flushSync(()=>{
-        commit(next,{immediatePaint:true});
-        setItems(itemsRef.current);
-      });
-      // Erasing should not wait for the generic document autosave debounce.
-      flushSave();
-    }
-    g.hiddenStickerInk.forEach(el=>el.style.removeProperty("visibility"));
-    stopEraserPreview();
+    const changed=stickerChanged?withStickers:erased;
+    if(changed===before)return;
+    // A cut creates new IDs. Authorize those fragments exactly as commit()
+    // does, before any intermediate checkpoint reaches the server.
+    const existing=new Set(before.map(item=>item.id));
+    const next=changed.map(item=>existing.has(item.id)?item:{...item,createdBy:authUser.id});
+    g.changed=true;
+    display(next,true);
+    updateInkSnapshot();
+    scheduleInkCheckpoint();
+  };
+  const settleEraserRemote=()=>{
     if (!remoteSaveInFlight.current && deferredRemote.current) {
       const delayed = deferredRemote.current;
       deferredRemote.current = null;
       window.setTimeout(() => receiveRemote.current(delayed), 0);
     }
+  };
+  const cancelEraser=()=>{
+    const g=eraserSession.current;
+    if(!g)return;
+    cancelInkCheckpoint();
+    eraserSession.current=null;
+    if(g.changed){
+      // An interrupted touch must undo only its own eraser gesture.
+      lastInkGesture.current=null;
+      // Restoring deleted IDs is an insertion under the server's author policy.
+      const present=new Set(itemsRef.current.map(item=>item.id));
+      const restored=g.before.map(item=>isStudent&&!isBoardOwner&&isInkItem(item)&&!present.has(item.id)?{...item,createdBy:authUser.id}:item);
+      display(restored,true);
+      updateInkSnapshot();
+      flushSave();
+    }
+    settleEraserRemote();
+  };
+  const recordEraserPoint=(point:Point)=>{
+    const g=eraserSession.current;
+    if(!g)return;
+    if(Math.hypot(point.x-g.last.x,point.y-g.last.y)<=.1)return;
+    if(!g.path.length)g.path.push(g.last);
+    g.path.push(point);
+    g.last=point;
+    if(inkPaintFrame.current!==null)return;
+    inkPaintFrame.current=requestAnimationFrame(()=>{
+      inkPaintFrame.current=null;
+      paintDurableEraser();
+    });
+  };
+  const finishEraser=(point:Point|null)=>{
+    const g=eraserSession.current;
+    if(!g)return;
+    if(point)recordEraserPoint(point);
+    cancelInkCheckpoint();
+    paintDurableEraser();
+    cancelInkCheckpoint();
+    eraserSession.current=null;
+    if(g.changed){
+      // One undo operation, with all intermediate samples already in the model.
+      flushSync(()=>commit(itemsRef.current,{immediatePaint:true,previousItems:g.before}));
+      updateInkSnapshot();
+      flushSave();
+    }
+    settleEraserRemote();
   };
   const currentDocument = (): DocumentData => packDocumentInk({
     version: 1,
@@ -4093,12 +4023,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(inkPaintFrame.current!==null)cancelAnimationFrame(inkPaintFrame.current);
     inkPaintFrame.current=null;
   };
+  const updateInkSnapshot=()=>{
+    if(saveBlocked)return;
+    // The document is already normalized. Avoid repacking all unchanged ink on every paint.
+    snapshot.current=snapshot.current?{...snapshot.current,items:itemsRef.current}:currentDocument();
+  };
   const scheduleInkCheckpoint=()=>{
     if(saveBlocked||demoMode||layoutEditing||!canEdit||inkCheckpointTimer.current!==null)return;
     inkCheckpointTimer.current=setTimeout(()=>{
       inkCheckpointTimer.current=null;
       const g=gesture.current;
-      if(g?.mode!=="draw"||!g.ink||g.inkInterrupted||!snapshot.current)return;
+      if((g?.mode!=="draw"||!g.ink||g.inkInterrupted)&&!eraserSession.current)return;
+      if(!snapshot.current)return;
       // Local backup at most once per second during a long gesture.
       // All remote checkpoints share the single in-flight version queue.
       const now=Date.now();
@@ -4112,7 +4048,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const next=writeDurableInk(itemsRef.current,g.ink,g.path,g.view.zoom,authUser.id,g.sticker?.id);
     if(next===itemsRef.current)return;
     display(next,true);
-    if(!saveBlocked)snapshot.current=currentDocument();
+    updateInkSnapshot();
     scheduleInkCheckpoint();
   };
   const scheduleDurableInkPaint=()=>{
@@ -8055,7 +7991,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // object or cancelling the current tool/undo history.
     const incomingItems=expandDocumentInk(data);
     display(incomingItems);
-    history.current=[incomingItems];
+    history.current=[eraserSession.current?.before??incomingItems];
     index.current=0;
     snapshot.current=data;
     setTitle(data.title);
@@ -8069,9 +8005,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   receiveRemote.current = row => {
     if (!boardMounted.current || row.board_id !== boardSummary.id) return;
-    // Real ink may reconcile while drawing; other gesture geometry still
-    // depends on its initial snapshot and must wait until release.
-    if ((gesture.current&&gesture.current.mode!=="draw") || eraserSession.current) {
+    // Real ink may reconcile while drawing or erasing; other gesture geometry
+    // still depends on its initial snapshot and must wait until release.
+    if (gesture.current&&gesture.current.mode!=="draw") {
       if (!deferredRemote.current || row.version > deferredRemote.current.version)
         deferredRemote.current = row;
       return;
@@ -8106,6 +8042,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedBoardData.current = data;
         return;
       }
+      // Rebase the pre-erase undo snapshot as well as the visible model.
+      // A competing edit must not block live eraser checkpoints until release.
+      const erasing=eraserSession.current;
+      if(erasing)erasing.before=mergeBoardItems(
+        acknowledgedBoardData.current?expandDocumentInk(acknowledgedBoardData.current):[],
+        erasing.before,expandDocumentInk(data));
       // A different viewport is not new shared board content. Accept the
       // version without resetting selected objects, active tool or ink layers.
       // Compute the validated remote fingerprint once for the clean/merge paths.
@@ -8147,7 +8089,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           if(!edited)setEditing(null);
           else{draftRef.current=edited.text;setDraft(edited.text);}
         }
-        history.current=[mergedItems];
+        history.current=[eraserSession.current?.before??mergedItems];
         index.current=0;
         snapshot.current=merged;
         setTitle(merged.title);
@@ -10082,10 +10024,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const screen=local(e.clientX,e.clientY);
             const p=world(screen);
             if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
-            eraserSession.current={id:createId(),pointer:e.pointerId,last:p,zoom:view.zoom,weight:eraserSize/view.zoom,path:[p],mode:eraserMode,hiddenIds:new Set(),hiddenStickerInk:new Set()};
+            eraserSession.current={id:createId(),pointer:e.pointerId,last:p,weight:eraserSize/view.zoom,path:[p],mode:eraserMode,before:itemsRef.current,changed:false};
+            lastInkGesture.current="erase:"+eraserSession.current.id;
+            inkLastBackup.current=Date.now();
             setSelected([]);
-            if(eraserMode==="partial")beginEraserPreview();
-            previewEraserSegment(screen,screen);
+            paintDurableEraser();
             setLiveEraserCursor(screen.x,screen.y,e.pointerType,true);
             board.current?.setPointerCapture(e.pointerId);
           }}
@@ -10126,8 +10069,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(g.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
             const screen=local(e.clientX,e.clientY);
-            const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
-            previewEraserSegment(previous,screen);
             const p=world(screen);
             if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
             recordEraserPoint(p);
@@ -10205,8 +10146,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             if(!g||g.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
             const screen=local(e.clientX,e.clientY);
-            const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
-            previewEraserSegment(previous,screen);
             const p=world(screen);
             if(!adminHidden)cursorChannel.current?.sendCursor(p.x,p.y);
             finishEraser(p);
@@ -10758,7 +10697,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
             )}
           </div>
-          <canvas ref={eraserPreviewCanvas} aria-hidden="true" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:50,display:"none"}} />
           {presentation && presentationLaser && presentationLaserPos && !presentationBlackout && <div className="presentation-laser-dot" style={{ left: presentationLaserPos.x, top: presentationLaserPos.y }} aria-hidden="true" />}
           {presentation && presentationSpotlight && presentationSpotlightPos && !presentationBlackout && (
             <div

@@ -583,6 +583,14 @@ reconnectedSocket.open();
 reconnectedSocket.emit({type:"ready",version:7});
 await waitFor(()=>handleDocumentVersions.length===2);
 assert.deepEqual(handleDocumentVersions,[6,7],"A reconnect should recover a revision missed while offline");
+const beforePushReads=countReads();
+env.changeDocument(8);
+reconnectedSocket.emit({type:"document_changed",version:8,base_version:7,
+  delta:{items:{upsert:[{id:"durable-ink",kind:"pen",points:[{x:1,y:2}]}]}},
+  updated_at:"2026-11-26T00:00:00Z",updated_by:"peer"});
+await waitFor(()=>handleDocumentVersions.length===3);
+assert.deepEqual(handleDocumentVersions,[6,7,8]);
+assert.equal(countReads(),beforePushReads,"Committed socket delta must not trigger an HTTP read");
 openedBoard();
 await Promise.resolve();
 
@@ -592,7 +600,7 @@ const channel=env.broadcast.connectBoardCursorChannel("board-1",{userId:"me",nam
 await new Promise(resolve=>setTimeout(resolve,0));
 const inkSocket=sockets.at(-1);
 inkSocket.open();
-inkSocket.emit({type:"ready",version:7,compact_ink:true});
+inkSocket.emit({type:"ready",version:8,compact_ink:true});
 const makeInk=(id,points,finished=false)=>({id,kind:"pen",color:"#112233",weight:3,offset:0,points,finished});
 const points=Array.from({length:300},(_,i)=>({x:i,y:i}));
 for(let i=1;i<=points.length;i++)channel.sendInk(makeInk("stroke_fast",points.slice(0,i)));
@@ -639,11 +647,11 @@ await Promise.resolve();
 
 // With a blocked WebSocket, lightweight revision polling still catches saved work.
 const fallbackVersions=[];
-const fallback=api.selfhostWatchDocument("board-1",()=>7,doc=>fallbackVersions.push(doc.version),()=>{});
+const fallback=api.selfhostWatchDocument("board-1",()=>8,doc=>fallbackVersions.push(doc.version),()=>{});
 await new Promise(resolve=>setTimeout(resolve,0));
-env.changeDocument(8);
+env.changeDocument(9);
 await waitFor(()=>fallbackVersions.length===1);
-assert.deepEqual(fallbackVersions,[8]);
+assert.deepEqual(fallbackVersions,[9]);
 assert.ok(records.some(x=>x.query==="?version_only=true"&&x.method==="GET"));
 const fullReads=records.filter(x=>x.path==="/api/v1/boards/board-1/document"&&x.method==="GET"&&!x.query).length;
 await new Promise(resolve=>setTimeout(resolve,2700));

@@ -43,7 +43,7 @@ def counts(base, document, delta):
 
 
 async def ink_history_group(conn, board_id, user, base, document, delta, gesture):
-    """Only a single authored stroke or sticker-ink edit can share a history group."""
+    """Group validated incremental drawing and eraser updates as one gesture."""
     if not gesture or not 1 <= len(gesture) <= 128:
         return None
     if base is None:
@@ -54,6 +54,52 @@ async def ink_history_group(conn, board_id, user, base, document, delta, gesture
     try:
         old = item_map(base["items"])
         new = item_map(document["items"])
+        # A continuously swept eraser can remove several strokes or replace
+        # them with fragments. Group only changes confined to ink, never
+        # ordinary object properties or unrelated document metadata.
+        if gesture.startswith("erase:"):
+            UUID(gesture[6:])
+            if delta is not None:
+                if set(delta.get("set", {})) - {"view", "preview"} or delta.get("remove"):
+                    return None
+                changes = delta.get("items", {})
+                upserts = changes.get("upsert", [])
+                removed = set(changes.get("remove", []))
+            else:
+                if {k:v for k,v in base.items() if k not in ("items","view","preview")} != {k:v for k,v in document.items() if k not in ("items","view","preview")}:
+                    return None
+                upserts = [v for k,v in new.items() if old.get(k)!=v]
+                removed = old.keys()-new.keys()
+            if not removed and not upserts:
+                return None
+            affected = removed | {item["id"] for item in upserts}
+            # Preserve the relative order of all unaffected ordinary objects.
+            if [k for k in old if k not in affected] != [k for k in new if k not in affected]:
+                return None
+            async def prior(key):
+                value = old.get(key)
+                if value == {"id":key}:
+                    value = decode(await conn.fetchval("SELECT item FROM board_document_items WHERE board_id=$1 AND item_id=$2",board_id,key))
+                return value
+            sources = []
+            for key in removed:
+                previous = await prior(key)
+                if not previous or previous.get("kind") not in ("pen","marker"):
+                    return None
+                sources.append(previous)
+            for item in upserts:
+                previous = await prior(item["id"])
+                if item.get("kind") in ("pen","marker"):
+                    # New fragment IDs belong to the erasing actor; visual
+                    # properties must agree with the removed shared ink.
+                    if previous is not None or item.get("createdBy")!=str(user["id"]) or not any(all(item.get(k)==source.get(k) for k in ("kind","color","weight")) for source in sources):
+                        return None
+                elif item.get("kind")=="sticky" and previous is not None:
+                    if {k:v for k,v in previous.items() if k!="stickerInk"} != {k:v for k,v in item.items() if k!="stickerInk"}:
+                        return None
+                else:
+                    return None
+            return str(user["id"])+":"+gesture
         if delta is not None:
             if set(delta.get("set", {})) - {"view", "preview"} or delta.get("remove"):
                 return None

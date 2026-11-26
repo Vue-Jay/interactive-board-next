@@ -391,9 +391,11 @@ def check_shared_eraser_sync(browser):
                         const scale=new DOMMatrix(getComputedStyle(world).transform).a;
                         return {x:r.left+(stroke.x+stroke.width/2)*scale,y:r.top+(stroke.y+stroke.height/2)*scale};
                     }""",stroke)
-                    eraser.mouse.click(midpoint["x"],midpoint["y"])
+                    eraser.mouse.move(midpoint["x"],midpoint["y"])
+                    eraser.mouse.down()
                     erased=wait_row(eraser,lambda r:all(i["id"]!=stroke_id for i in inks(r)) and len(inks(r))==len(original)+(0 if mode=="stroke" else 2),
-                                    f"Peer {mode} eraser failed to persist")
+                                    f"Peer {mode} eraser failed to persist before pointer release")
+                    eraser.mouse.up()
                     for route in held: route.continue_()
                     held.clear()
                     writer.unroute(pattern,delay_write)

@@ -31,8 +31,9 @@ assert.ok(touchStart.indexOf('consumedTouchIds.current.add(id)')<
 assert.match(touchStart,/if\(eraserSession\.current\)cancelEraser\(\)/,
  "Pinch must cancel the uncommitted eraser session");
 const eraseCancellation=slice("  const cancelEraser=","  const recordEraserPoint=");
-assert.match(eraseCancellation,/if\(g\)g\.hiddenStickerInk\.forEach\(el=>el\.style\.removeProperty\("visibility"\)\);\s*eraserSession\.current=null;\s*stopEraserPreview\(\)/,
- "Cancelled eraser gestures must restore local visuals without a remote preview");
+assert.match(eraseCancellation,/display\(restored,true\)/,
+ "Cancelled eraser gestures must roll back the permanent model");
+assert.match(eraseCancellation,/flushSave\(\)/,"Cancelled durable changes must also be saved");
 assert.match(touchStart,/pinchState\.current=\{distance:/);
 assert.ok(touchStart.includes("const pinchBaseView=viewerPendingPan.current??viewRef.current;"),
  "Pinch zoom must start from the live panned position, not stale React state");
@@ -45,9 +46,9 @@ assert.ok(cancel.includes('const consumed=touchEnd(e)'));
 assert.ok(cancel.includes('if(gesture.current?.pointer===e.pointerId){end(true);return;}'));
 assert.match(down,/if\(eraserSession\.current\|\|pinchState\.current\|\|touchPoints\.current\.size>1\|\|/);
 assert.ok(down.includes('setSelected([])'));
-assert.match(app,/const erased=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\),g\.mode\)/,
+assert.match(app,/const erased=eraseInkAlongPath\(before,path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\),g\.mode\)/,
  "Touch eraser persists one gesture and allows erasing every participant's stroke");
-assert.match(app,/eraseStickerInk\(item,g\.path,g\.weight\/2,g\.mode\)/,"Both eraser modes must also apply to attached sticker ink");
+assert.match(app,/eraseStickerInk\(item,path,g\.weight\/2,g\.mode\)/,"Both eraser modes must also apply to attached sticker ink");
 assert.ok(eraser.includes('item.kind!=="pen"&&item.kind!=="marker"'),
  "Brush must only erase ink strokes and marker strokes");
 assert.ok(interaction.includes('.board.board-tool-eraser [data-object] *'));
@@ -123,3 +124,8 @@ for(const css of [interaction,layout])
  assert.equal((css.match(/{/g)||[]).length,(css.match(/}/g)||[]).length,
   "Unbalanced CSS brackets");
 console.log("Touch release, object drag recovery, single-finger ink eraser, pinch navigation, and tablet Hand: source checks OK");
+
+const liveErase=slice("  const paintDurableEraser=","  const settleEraserRemote=");
+assert.ok(liveErase.includes("display(next,true)")&&liveErase.includes("scheduleInkCheckpoint()"),"Eraser changes real document before release");
+assert.ok(down.includes("paintDurableEraser()"),"Initial eraser contact edits immediately");
+assert.doesNotMatch(app,/eraserPreviewCanvas|previewEraserSegment/,"No separate eraser canvas");

@@ -101,7 +101,7 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
             async with websockets.connect(native_uri,origin="https://lektrus.ru") as first:
                 async with websockets.connect(native_uri,origin="https://lectrus.ru") as second:
                     for ws,session in ((first,owner_session),(second,student_session)):
-                        await ws.send(json.dumps({"type":"auth","token":session["access_token"]}))
+                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second}))
                         assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0}
                     for sender,receiver in ((first,second),(second,first)):
                         packet={"type":"live_ink","client_id":"native_1","stroke_id":"native_stroke","kind":"pen",
@@ -147,13 +147,17 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                         saved=await http.patch(url+"?version_only=true",headers=owner,
                             json={"expected_version":revision,"delta":delta})
                         assert saved.status_code==200,saved.text
-                        for ws in (first,second):
-                            assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"document_changed","version":revision+1}
+                        legacy=json.loads(await asyncio.wait_for(first.recv(),3))
+                        assert legacy=={"type":"document_changed","version":revision+1}
+                        push=json.loads(await asyncio.wait_for(second.recv(),3))
+                        assert push["type"]=="document_changed" and push["version"]==revision+1
+                        assert push["base_version"]==revision and push["delta"]==delta
+                        pushed=apply_delta(peer,push["delta"])
                         update=(await http.get(url+f"?since_version={revision}",headers=student)).json()
                         assert update["version"]==revision+1
                         for patch in update["patches"]:
                             peer=apply_delta(peer,patch)
-                        assert peer==(await http.get(url,headers=owner)).json()["document"]
+                        assert pushed==peer==(await http.get(url,headers=owner)).json()["document"]
                     assert peer["items"]==[]
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
