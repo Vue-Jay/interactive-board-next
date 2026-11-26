@@ -102,7 +102,15 @@ export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,h
   // Bound to the *same* historical polity and year, not merely a shared modern ISO.
   const record=findHistoricalReference(raw,year)??findHistoricalReference(title,year);
   const emblem=record?findHistoricalStateInsignia(record.id,year):undefined;
-  const sourceMatchesNation=!!code&&!!validHistoricalNames[code]?.some(name=>
+  // Bare labels are not proof of a single historical state or government.
+  // Germany was divided, the post-1949 name China is politically ambiguous,
+  // and wartime French administrations cannot be collapsed into one.
+  const ambiguousNationalLabel=
+   (code==="DE"&&year>=1949&&year<=1989&&raw==="Germany")||
+   (code==="CN"&&year>=1949&&raw==="China")||
+   (code==="FR"&&year>=1940&&year<=1944&&
+    (raw==="France"||raw==="French Republic"));
+  const sourceMatchesNation=!ambiguousNationalLabel&&!!code&&!!validHistoricalNames[code]?.some(name=>
    name.toLocaleLowerCase("en")===raw.toLocaleLowerCase("en"));
   // A dated present-day country name can use the dated flag archive. Ancient
   // states which merely inherit their territory's ISO never enter this branch.

@@ -352,6 +352,18 @@ for(const row of [...historicalSymbols.historicalStateInsignia,...historicalSymb
  assert.ok(row.from<=row.to&&/\.(?:svg|png|jpe?g|gif)$/i.test(row.file));
  assert.ok(historicalSymbols.historicalInsigniaSourceUrl(row.file).startsWith("https://commons.wikimedia.org/wiki/File:"));
 }
+// Recently attested flags must not be assigned to a broader ambiguous country.
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Germany","DE"),"Германия",1980,true).kind,"symbol",
+ "Divided Germany has no single country-wide FRG flag in 1980");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Federal Republic of Germany","DE"),"ФРГ",1980,true).kind,"historic",
+ "Specifically identified FRG may carry its documented flag");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Germany","DE"),"Германия",1994,true).kind,"historic");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("China","CN"),"Китай",1955,true).kind,"symbol",
+ "Unqualified China is not the same as the People's Republic in 1955");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("People's Republic of China","CN"),"КНР",1955,true).kind,"historic");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("France","FR"),"Франция",1942,true).kind,"symbol",
+ "Do not merge Vichy and Free French administrations into one emblem");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("France","FR"),"Франция",1960,true).kind,"historic");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("West Germany","DE"),"ФРГ",1994,true).kind,"symbol",
  "Do not assign a modern flag to a defunct German state");
 assert.equal(symbols.atlasCountryIso({type:"Feature",properties:{ISO_A2:"RU",NAME:"Perm Krai",adm1_code:"RU-PER"},
