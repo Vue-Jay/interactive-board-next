@@ -13,7 +13,7 @@ import {previewRemoteErasures} from '/src/remoteEraserPreview.ts';
 import {fitLanguageFlashcardItem} from '/src/languageFlashcardSize.ts';
 import '/src/lektrusThemes.css';
 import {BOARD_SELECTION_ARROW_PATH} from '/src/lektrusSelectionCursor.ts';
-import {fallbackParticipantColor} from '/src/boardParticipantColors.ts';
+import {TEACHER_COLOR,participantColors} from '/src/boardParticipantColors.ts';
 
 const store=createRemoteInkStore();
 const cursorStore=createRemoteCursorStore();
@@ -21,13 +21,14 @@ let cursorPublications=0;cursorStore.subscribe(()=>cursorPublications++);
 let parentRenders=0,publications=0;
 store.subscribe(()=>publications++);
 const root=createRoot(document.getElementById('root'));
+const cursorColors=participantColors(Array.from({length:30},(_,i)=>({userId:`cursor-${i}`,role:i===0?'owner':'editor'})),'cursor-0');
 const empty=new Set();
 const parent=({x=30,y=40,zoom=2,persistedItemIds=empty,erasures,eraseTargets})=>{
   parentRenders++;
   return React.createElement(React.Fragment,null,
     React.createElement('div',{'data-board-content':true},'Board content'),
     React.createElement(RemoteInkOverlay,{store,x,y,zoom,persistedItemIds,erasures,eraseTargets}),
-    React.createElement(RemoteCursorOverlay,{store:cursorStore,x,y,zoom}),
+    React.createElement(RemoteCursorOverlay,{store:cursorStore,x,y,zoom,colors:cursorColors,ownerId:'cursor-0'}),
     React.createElement('div',{id:'cursor-count'},React.createElement(RemoteCursorCount,{store:cursorStore})));
 };
 const render=(props={})=>flushSync(()=>root.render(React.createElement(parent,props)));
@@ -93,7 +94,7 @@ try{
   assert(paths().length===0,'Final erase did not retire unsaved original preview');
   store.reset();render();
   const cursorStart=parentRenders;
-  const cursor=(peer,x)=>({userId:`cursor-${peer}`,name:`Peer ${peer}`,role:'editor',x,y:x*2,updatedAt:0});
+  const cursor=(peer,x)=>({userId:`cursor-${peer}`,name:`Peer ${peer}`,role:peer===0?'owner':'editor',x,y:x*2,updatedAt:0});
   const cursors=()=>[...document.querySelectorAll('.remote-cursor')];
   let cursorPackets=0;
   for(let frame=0;frame<20;frame++){
@@ -112,8 +113,8 @@ try{
   assert(arrow.getAttribute('d')===BOARD_SELECTION_ARROW_PATH,'Peer pointer differs from the Lektrus cursor family');
   assert(getComputedStyle(pointer).width==='22px'&&getComputedStyle(pointer).height==='22px','Peer pointer lost its compact screen size');
   const toRgb=hex=>`rgb(${parseInt(hex.slice(1,3),16)}, ${parseInt(hex.slice(3,5),16)}, ${parseInt(hex.slice(5,7),16)})`;
-  const firstUserColor=fallbackParticipantColor('cursor-0'),firstUserRgb=toRgb(firstUserColor);
-  const secondCursor=cursors()[1],secondUserColor=fallbackParticipantColor('cursor-1');
+  const firstUserColor=TEACHER_COLOR,firstUserRgb=toRgb(firstUserColor);
+  const secondCursor=cursors()[1],secondUserColor=cursorColors.get('cursor-1');
   assert(firstCursor.style.getPropertyValue('--participant-color')===firstUserColor,'Peer cursor lost its assigned identity color');
   assert(secondCursor.style.getPropertyValue('--participant-color')===secondUserColor&&secondUserColor!==firstUserColor,'Distinct participants must display distinct colors');
   assert(getComputedStyle(arrow).fill==='rgb(255, 255, 255)'&&getComputedStyle(arrow).stroke===firstUserRgb,'Peer pointer does not use its assigned identity color');

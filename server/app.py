@@ -636,9 +636,11 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
         return {**document_view(row, board_id), **({"ink_point_deltas": True} if ink_point_deltas else {})}
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
-from board_presence_policy import participant_color, valid_idle_age, idle_deadline
+from board_presence_policy import TEACHER_COLOR, participant_color, valid_idle_age, idle_deadline
 
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
+# Per-board allocation cursor: only live visible users count; discard at empty room.
+_board_color_slots: dict[UUID, int] = {}
 _presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
 _compact_ink_subscribers: set[WebSocket] = set()
 _document_patch_subscribers: set[WebSocket] = set()
@@ -825,6 +827,7 @@ def _detach_subscribers(board_id: UUID, clients) -> list[dict[str, str]]:
         _presence_watchers.pop(board_id, None)
     if not _subscriber_users.get(board_id):
         _subscriber_users.pop(board_id, None)
+        _board_color_slots.pop(board_id, None)
     return [meta for user_id, meta in departed.items() if user_id not in remaining]
 
 
@@ -1184,18 +1187,21 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             await websocket.send_json({"type": "plan_limit", **limit_detail("participants")})
             await websocket.close(code=4409)
             return
+        user_id = str(user["id"])
+        # Assign only for visible presence joins; auxiliary sockets must not
+        # consume a color. Reconnecting tabs of the same person share one seat.
+        active_presence = list(_subscriber_users.get(board_id, {}).values())
+        already_present = any(meta.get("user_id") == user_id for meta in active_presence)
+        color = participant_color(user_id, active_presence, role=current_role,
+                                  sequence=_board_color_slots.get(board_id, 0))
         user_meta = {
-            "user_id": str(user["id"]),
+            "user_id": user_id,
             "name": str(user["display_name"] or "Участник")[:100],
             "role": current_role,
             "participant_role": user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student"),
             "online_at": str(int(time.time() * 1000)),
-            "color": participant_color(str(user["id"]), list(_subscriber_users.get(board_id, {}).values())),
+            "color": color,
         }
-        already_present = any(
-            meta.get("user_id") == user_meta["user_id"]
-            for meta in _subscriber_users.get(board_id, {}).values()
-        )
         _subscribers[board_id][websocket] = token
         if compact_ink:
             _compact_ink_subscribers.add(websocket)
@@ -1207,6 +1213,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             _presence_watchers[board_id].add(websocket)
             if presence_visible:
                 _subscriber_users[board_id][websocket] = user_meta
+                if not already_present and current_role != "owner":
+                    _board_color_slots[board_id] = _board_color_slots.get(board_id, 0) + 1
         await websocket.send_json({"type": "ready", "version": current_version,
                                    **({"compact_ink": True} if compact_ink else {}),
                                    **({"durable_ink_commits": True} if durable_ink_commits else {}),
@@ -1349,9 +1357,22 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 current_role = refreshed_user["role"]
                 participant_role = refreshed_user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student")
                 updated_presence = []
-                for meta in _subscriber_users.get(board_id, {}).values():
-                    if meta["user_id"] == str(refreshed_user["id"]) and (meta["role"] != current_role or meta.get("participant_role") != participant_role):
+                own_presence = [meta for meta in _subscriber_users.get(board_id, {}).values()
+                                if meta["user_id"] == str(refreshed_user["id"])]
+                role_changed = bool(own_presence and own_presence[0]["role"] != current_role)
+                new_color = None
+                if role_changed:
+                    new_color = participant_color(str(refreshed_user["id"]),
+                        [meta for meta in _subscriber_users.get(board_id, {}).values()
+                         if meta["user_id"] != str(refreshed_user["id"])],
+                        role=current_role, sequence=_board_color_slots.get(board_id, 0))
+                    if current_role != "owner":
+                        _board_color_slots[board_id] = _board_color_slots.get(board_id, 0) + 1
+                for meta in own_presence:
+                    if role_changed or meta.get("participant_role") != participant_role:
                         meta.update(role=current_role, participant_role=participant_role)
+                        if new_color is not None:
+                            meta["color"] = new_color
                         updated_presence.append(meta)
                 if updated_presence:
                     await announce_presence(board_id, joins=[updated_presence[0]], pool=websocket.app.state.pool)

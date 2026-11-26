@@ -325,6 +325,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     assert [u["user_id"] for u in owner_join["joins"]]==[str(STUDENT)]
                     assert owner_presence["users"][0]["participant_role"]=="owner"
                     assert owner_join["joins"][0]["participant_role"]=="observer"
+                    assert owner_presence["users"][0]["color"] == "#3056c8"
+                    assert owner_join["joins"][0]["color"] == "#087f69"
                     assert owner_presence["users"][0]["color"] != owner_join["joins"][0]["color"]
                     assert {u["user_id"]:u["color"] for u in student_presence["users"]} == {u["user_id"]:u["color"] for u in [owner_presence["users"][0],owner_join["joins"][0]]}
 
@@ -561,6 +563,7 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     with pytest.raises(ConnectionClosed) as closed:
                         await asyncio.wait_for(ws_owner.recv(),3)
                     assert closed.value.code==4403
+            assert board_id not in api._board_color_slots, "Empty classroom must reset its color queue"
             _subscribers.pop(board_id,None)
             _subscriber_users.pop(board_id,None)
             _presence_watchers.pop(board_id,None)
