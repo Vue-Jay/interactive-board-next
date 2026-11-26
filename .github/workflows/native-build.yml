@@ -136,6 +136,8 @@ jobs:
       - name: Record source and web asset inventory for the signed APK
         run: |
           python3 scripts/test-signed-android-bundle.py self-test
+          # Apache-only rewrite config is intentionally excluded by Android aapt.
+          rm -f dist/.htaccess
           python3 scripts/test-signed-android-bundle.py manifest dist "$(git rev-parse HEAD)"
       - name: Sync Android native files
         run: npx cap sync android
