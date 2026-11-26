@@ -10,18 +10,22 @@
       "year": 1630,
       "locations": [
         "Recife",
-        "Olinda"
+        "Olinda",
+        "Schans de Bruyne / Brum historical site",
+        "Frederik Hendrick / Cinco Pontas historical site"
       ],
-      "status": "dated-event-visible",
+      "status": "dated-city-event-and-fort-site-locations-visible",
       "polygon": "unresolved"
     },
     {
       "year": 1631,
       "locations": [
         "Recife",
-        "Olinda"
+        "Olinda",
+        "Schans de Bruyne / Brum historical site",
+        "Frederik Hendrick / Cinco Pontas historical site"
       ],
-      "status": "dated-event-visible",
+      "status": "dated-city-event-and-fort-site-locations-visible",
       "polygon": "unresolved"
     },
     {
@@ -52,9 +56,15 @@
     "https://www.loc.gov/item/2021668315/",
     "https://history.nycourts.gov/legal-history-by-era/new-york-under-dutch-rule/",
     "https://history.nycourts.gov/legal-history-by-era/colonial-new-york-under-british-rule/",
-    "https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf"
+    "https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf",
+    "https://whc.unesco.org/en/tentativelists/5997",
+    "https://sicg.iphan.gov.br/sicg/bem/visualizar/1753",
+    "https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php",
+    "https://history.nycourts.gov/figure/anthony-colve/"
   ],
   "nextGeometryWork": [
+    "georeference 1630 Van Buren / 1631 Drewisch plans before restoring fort polygons",
+    "independently validate 1673–1674 New Netherland submissions without reuse of 1663 maximal outline",
     "georeference actual dated 1630-1631 Recife fortified sites",
     "independently locate 1673 New Orange holdings rather than reuse 1663 colony"
   ],
@@ -138,5 +148,28 @@
       "https://www.un.org/dppa/decolonization/sites/www.un.org.dppa.decolonization/files/decon_num_15-1.pdf",
       "https://faolex.fao.org/docs/pdf/bi-67019.pdf"
     ]
+  },
+  "recifeFortSites": {
+    "years": [
+      1630,
+      1631
+    ],
+    "sites": 2,
+    "siteYearMarkers": 4,
+    "siteCoordinatesAreModern": true,
+    "politicalPolygonsCreated": 0,
+    "territorialCasesClosed": 0,
+    "sourceUrls": [
+      "https://whc.unesco.org/en/tentativelists/5997",
+      "https://sicg.iphan.gov.br/sicg/bem/visualizar/1753",
+      "https://dutchportcities.globalasiaprogram.org/home/recife/"
+    ]
+  },
+  "newOrangeHandover": {
+    "treatyYear": 1674,
+    "handoverDate": "1674-11-10",
+    "mixedAdministrativeControl": true,
+    "verifiedBoundaries": false,
+    "source": "https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php"
   }
 }

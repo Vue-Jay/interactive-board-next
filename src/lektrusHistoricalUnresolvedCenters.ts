@@ -131,6 +131,14 @@ export function historicalTreatyPortCenters(year:number){
 // neither a 1632 Brazilian outline nor a 1663 Hudson colony outline is
 // backdated to the year of conquest. Years of transition are mixed-control.
 const datedGapTransitions=[
+  {id:'recife-schans-de-bruyne-1630-1631',from:1630,to:1631,lon:-34.870895,lat:-8.053101,
+   group:'Ресифи — укрепления 1630–1631 годов',title:'Шанс-де-Брёйн — нидерландский редут Ресифи',
+   description:'В 1630 году нидерландцы укрепили захваченную позицию на перешейке между Ресифи и Олиндой. Точка отмечает нынешнее место памятника форт Брум по бразильскому реестру IPHAN. Позднее форт перестраивали: это не исторический контур стен 1630 года и не границы всей колонии.',
+   sources:['https://whc.unesco.org/en/tentativelists/5997','https://sicg.iphan.gov.br/sicg/bem/visualizar/1753','https://dutchportcities.globalasiaprogram.org/home/recife/']},
+  {id:'recife-frederik-hendrick-1630-1631',from:1630,to:1631,lon:-34.880833,lat:-8.071667,
+   group:'Ресифи — укрепления 1630–1631 годов',title:'Форт Фредерик-Хендрик — остров Антониу-Ваш',
+   description:'В 1630 году нидерландцы построили форт Фредерик-Хендрик на острове Антониу-Ваш, позднее известный как Синку-Понтас. Точка привязана к памятнику по заявке ЮНЕСКО, а не к точным границам бастионов 1630 года; после 1654 года укрепление перестраивали. Она не доказывает контроль VOC над всем Пернамбуку.',
+   sources:['https://whc.unesco.org/en/tentativelists/5997','https://dutchportcities.globalasiaprogram.org/home/recife/']},
   {id:'recife-dutch-capture-1630',from:1630,to:1630,lon:-34.881,lat:-8.054,
    group:'Ресифи — нидерландский захват 1630 года',title:'Ресифи — захват нидерландцами (1630)',
    description:'В 1630 году войска Нидерландской Вест-Индской компании овладели укреплённым портом Ресифи. На карте этого года раньше не было отдельной датированной записи о захвате. Точка отмечает исторический порт, но не даёт права закрашивать всё Пернамбуку: контроль внутренних районов оставался спорным.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/','https://www.loc.gov/item/2021668315/']},
@@ -145,10 +153,10 @@ const datedGapTransitions=[
    description:'В конце 1631 года нидерландские силы оставили и разрушили часть Олинды, сосредоточив оборону в Ресифи. Поэтому захват 1630 года не означает неизменного контроля над Олиндой во все последующие годы. Точка обозначает город и событие, не границу.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/']},
   {id:'new-orange-dutch-return-1673',from:1673,to:1673,lon:-74.013,lat:40.705,
    group:'Новые Нидерланды — возвращение 1673 года',title:'Новый Оранж — восстановление нидерландского управления (1673)',
-   description:'В 1673 году нидерландский флот вновь занял Нью-Йорк, город переименовали в Новый Оранж, а колониальную администрацию восстановили. Это подтверждённый переход власти, отсутствовавший в прежнем годовом представлении. Точка обозначает городской центр, а не старую максимальную территорию Новых Нидерландов.',sources:['https://history.nycourts.gov/legal-history-by-era/new-york-under-dutch-rule/','https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf']},
+   description:'В августе 1673 года нидерландский флот вновь занял Нью-Йорк. При Антони Колве город переименовали в Новый Оранж, форт Джеймс — в Вильгельм-Хендрик, а колонию вновь назвали Новыми Нидерландами. Это подтверждённый переход власти, отсутствовавший в прежнем годовом представлении. Точка обозначает городской центр, а не старую максимальную территорию Новых Нидерландов.',sources:['https://history.nycourts.gov/legal-history-by-era/new-york-under-dutch-rule/','https://history.nycourts.gov/figure/anthony-colve/','https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf']},
   {id:'new-orange-english-return-1674',from:1674,to:1674,lon:-74.013,lat:40.705,
    group:'Новые Нидерланды — возврат Англии 1674 года',title:'Новый Оранж / Нью-Йорк — возвращение английского управления (1674)',
-   description:'По Вестминстерскому мирному договору 1674 года колония вернулась под английское управление, город вновь получил название Нью-Йорк. Переход произошёл в течение года: 1674 нельзя целиком показывать ни исключительно нидерландским, ни исключительно английским. Точка обозначает город, не точную линию между колониями.',sources:['https://history.nycourts.gov/legal-history-by-era/colonial-new-york-under-british-rule/','https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf']}
+   description:'Вестминстерский договор был заключён в феврале 1674 года, но Антони Колве передал Новый Оранж и зависимые территории английскому губернатору лишь 10 ноября 1674 года по новому стилю. Таким образом, 1674 год нельзя целиком считать английским или нидерландским; после передачи городу вернули название Нью-Йорк. Точка обозначает город, не точную линию между колониями.',sources:['https://history.nycourts.gov/legal-history-by-era/colonial-new-york-under-british-rule/','https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php','https://history.nycourts.gov/wp-content/uploads/2023/11/Illustrated-Essay-with-edits-and-endnotes.pdf']}
 ] as const;
 
 export function historicalDatedGapCenters(year:number){

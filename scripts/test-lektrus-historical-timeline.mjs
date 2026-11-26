@@ -95,7 +95,7 @@ assert.equal(historicalTreatyPortCenters(1948).length,0);
 // Confirm that the missing dated 1630–31 WIC city control and the 1673–74
 // Dutch reconquest appear as sourced year-specific atlas content, never as
 // fabricated polygons or imported 1632/1663 outlines.
-for(const [year,count] of [[1629,0],[1630,2],[1631,2],[1632,0],[1672,0],[1673,1],[1674,1],[1675,0]]){
+for(const [year,count] of [[1629,0],[1630,4],[1631,4],[1632,0],[1672,0],[1673,1],[1674,1],[1675,0]]){
   const entries=historicalDatedGapCenters(year);
   assert.equal(entries.length,count,`dated gap transition ${year}`);
   for(const entry of entries){
@@ -106,6 +106,16 @@ for(const [year,count] of [[1629,0],[1630,2],[1631,2],[1632,0],[1672,0],[1673,1]
     assert.ok(Number.isFinite(entry.lon)&&Number.isFinite(entry.lat));
   }
 }
+for(const year of [1630,1631]){
+ const fortMarkers=historicalDatedGapCenters(year).filter(x=>/recife-(schans|frederik)/.test(x.id));
+ assert.equal(fortMarkers.length,2);
+ assert.ok(fortMarkers.every(x=>x.sources.includes('https://whc.unesco.org/en/tentativelists/5997')));
+ assert.ok(fortMarkers.every(x=>/не исторический контур|не к точным границам/.test(x.description)));
+ assert.ok(fortMarkers.every(x=>x.lon>-35&&x.lon<-34.8&&x.lat>-8.2&&x.lat<-8));
+}
+assert.ok(historicalDatedGapCenters(1673)[0].description.includes('Антони Колве'));
+assert.ok(historicalDatedGapCenters(1674)[0].description.includes('10 ноября 1674 года'));
+assert.ok(historicalDatedGapCenters(1674)[0].sources.includes('https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php'));
 assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Ресифи')));
 assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Олинда')));
 assert.ok(historicalDatedGapCenters(1673)[0].title.includes('Новый Оранж'));
