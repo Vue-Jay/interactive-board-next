@@ -937,5 +937,19 @@ streamSocket.emit({type:"ink_commit_ack",request_id:fourthFrame.request_id,statu
 assert.equal((await failed).status,409);
 assert.deepEqual(streamAcks,[streamVersion+1],"Only durable acknowledged frames advance the editor merge base");
 assert.equal(stream.offer(streamDocument(5),undefined,()=>{}),false,"Never replay an ambiguous or conflicted chain");
+const fragment=id=>({...streamDocument(1).items[0],id});
+const erasePartial={...streamBase,items:[fragment("left-cut"),fragment("right-cut")]};
+const eraseFinal={...streamBase,items:[erasePartial.items[1]]};
+const eraseAcks=[];
+const eraseStream=streamApi.selfhostStartInkPipeline(streamBoard.id,streamVersion+1,erasePartial,"erase:test",undefined,v=>eraseAcks.push(v));
+assert.ok(eraseStream,"Partial eraser fragment replacement can be pipelined");
+assert.ok(eraseStream.offer(eraseFinal,undefined,v=>eraseAcks.push(v)));
+const eraseFrames=streamSocket.sent.filter(frame=>frame.type==="ink_commit").slice(-2);
+assert.deepEqual(eraseFrames[0].delta.items.remove,["pipeline-pen"]);
+assert.deepEqual(eraseFrames[1].delta.items.remove,["left-cut"]);
+for(const [i,frame] of eraseFrames.entries())
+  streamSocket.emit({type:"ink_commit_ack",request_id:frame.request_id,version:streamVersion+2+i});
+assert.equal((await eraseStream.done).version,streamVersion+3);
+assert.deepEqual(eraseAcks,[streamVersion+2,streamVersion+3]);
 streamChannel();await Promise.resolve();
 console.log("Durable ink pipeline: three unacknowledged frames, bounded coalescing, predecessor and conflict recovery passed.");

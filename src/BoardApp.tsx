@@ -3433,7 +3433,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (queued && !needsRebase && !retryAfterFailure)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
-  }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
+  }, [boardSummary.id, authUser.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
 
   const flushSave = useCallback(() => {
     if (!canEdit || layoutEditing || demoMode) return;

@@ -235,6 +235,16 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                         assert rejected["status"]==409 and rejected["request_id"]==request_id
                     current=(await http.get(url,headers=owner)).json()
                     assert current["version"]==version and len(current["document"]["items"][0]["points"])==2
+                    await second.send(json.dumps({"type":"ink_commit","request_id":"peer-erase-chain","expected_version":version,
+                        "ink_gesture":"erase:peer","delta":{"items":{"remove":["chain-ink"]}}}))
+                    version+=1
+                    for ws in (first,second):
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))["version"]==version
+                    assert json.loads(await asyncio.wait_for(second.recv(),3))["version"]==version
+                    await first.send(json.dumps({**chain2,"request_id":"late-after-erase","after_request_id":"chain2","expected_version":version}))
+                    assert json.loads(await asyncio.wait_for(first.recv(),3))["status"]==409
+                    current=(await http.get(url,headers=owner)).json()
+                    assert current["version"]==version and current["document"]["items"]==[]
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass
