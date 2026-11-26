@@ -121,5 +121,8 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
 
   return <canvas ref={canvasRef} className="viewer-ink-canvas" aria-hidden="true"
     style={{ position: "absolute", pointerEvents: "none", maxWidth: "none", maxHeight: "none" }} />;
-});
+},(a,b)=>a.view.x===b.view.x&&a.view.y===b.view.y&&a.view.zoom===b.view.zoom&&
+ a.viewport.width===b.viewport.width&&a.viewport.height===b.viewport.height&&
+ a.bounds.x===b.bounds.x&&a.bounds.y===b.bounds.y&&a.bounds.width===b.bounds.width&&a.bounds.height===b.bounds.height&&
+ a.strokes.length===b.strokes.length&&a.strokes.every((item,i)=>item===b.strokes[i]));
 export default ViewerInkLayer;
