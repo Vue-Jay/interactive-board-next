@@ -3769,7 +3769,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const g=eraserSession.current;
     if(!g||!g.path.length||!canEdit)return;
     const path=g.path;
-    g.path=[g.last];
+    g.path=[];
     const before=itemsRef.current;
     const erased=eraseInkAlongPath(before,path,g.weight/2,
       item=>canRemoveBoardItem(item,authUser.id,isStudent,isBoardOwner),g.mode);
@@ -3812,6 +3812,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const g=eraserSession.current;
     if(!g)return;
     if(Math.hypot(point.x-g.last.x,point.y-g.last.y)<=.1)return;
+    if(!g.path.length)g.path.push(g.last);
     g.path.push(point);
     g.last=point;
     if(inkPaintFrame.current!==null)return;
@@ -3834,7 +3835,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       updateInkSnapshot();
       flushSave();
     }
-    lastInkGesture.current=null;
     settleEraserRemote();
   };
   const currentDocument = (): DocumentData => packDocumentInk({
