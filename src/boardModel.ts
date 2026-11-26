@@ -1577,6 +1577,38 @@ export function parseDocument(raw: string): DocumentData {
   });
 }
 
+// Versioned self-hosted patches preserve untouched raw object identities.
+// Validate every new object with the import validator, retaining aggregate limits.
+export type RealtimeItemCache=WeakMap<object,{item:Item;length:number;points:number}>;
+export function parseRealtimeDocument(value:unknown,cache:RealtimeItemCache):DocumentData{
+  if(!value||typeof value!=="object"||Array.isArray(value))throw new Error("Неверный формат доски");
+  const raw=value as Record<string,unknown>;
+  if(raw.ink!=null)return parseDocument(JSON.stringify(value));
+  if(!Array.isArray(raw.items)||raw.items.length>10000)throw new Error("Неверный формат доски");
+  const header=JSON.stringify({...raw,items:[]});
+  const doc=parseDocument(header);
+  const ids=new Set<string>();
+  let length=header.length,points=0;
+  for(const entry of raw.items){
+    if(!entry||typeof entry!=="object"||Array.isArray(entry))throw new Error("Повреждён объект доски");
+    let checked=cache.get(entry);
+    if(!checked){
+      const serialized=JSON.stringify(entry);
+      const item=parseDocument('{"version":1,"title":"","view":{"x":0,"y":0,"zoom":1},"items":['+serialized+']}').items[0];
+      checked={item,length:serialized.length,points:(isInkItem(item)?item.points?.length??0:0)+
+        (item.stickerInk??[]).reduce((n,ink)=>n+ink.points.length,0)};
+      cache.set(entry,checked);
+    }
+    if(ids.has(checked.item.id))throw new Error("Повреждён объект доски");
+    ids.add(checked.item.id);
+    points+=checked.points;
+    length+=checked.length+(doc.items.length?1:0);
+    if(points>500000||length>24*1024*1024)throw new Error("Файл слишком большой");
+    doc.items.push(checked.item);
+  }
+  return doc;
+}
+
 // Keep visually identical strokes lightweight in saved JSON and undo history:
 // simplify sub-pixel pointer jitter and round long floating-point coordinates.
 // This never changes the visible pencil/marker width or older saved strokes.
@@ -1622,9 +1654,9 @@ export function simplifyStrokePath(path: readonly Point[], zoom = 1): Point[] {
 
 export function stroke(
  id: string, kind: "pen" | "marker", path: Point[],
- colorValue: string, weight: number, zoom = 1
+ colorValue: string, weight: number, zoom = 1, alreadySimplified = false
 ): Item {
-  const reduced=simplifyStrokePath(path,zoom);
+  const reduced=alreadySimplified?path:simplifyStrokePath(path,zoom);
   const precise=(value:number)=>Math.round(value*100)/100;
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const p of reduced){

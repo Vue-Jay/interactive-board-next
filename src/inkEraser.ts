@@ -116,11 +116,50 @@ export function eraseInkAt(items:Item[],from:Point,to:Point,radius:number):Item[
   return changed?output:items;
 }
 
-/**
- * Apply a complete eraser gesture only once, after the immediate canvas preview.
- * Process candidate strokes independently so unrelated items on large teacher
- * boards are never scanned once per pointer movement.
- */
+// Union the swept capsules on each original segment and build final
+// fragments once. Do not re-cut every surviving fragment for each sample.
+function eraseInkSweep(item:Item,path:Point[],radius:number):Item[]{
+  const points=item.points!;
+  const r=radius+(item.weight??1)/2;
+  const ox=item.x,oy=item.y;
+  const local=path.map(p=>({x:p.x-ox,y:p.y-oy}));
+  const capsules=local.map((b,i)=>{
+    const a=local[Math.max(0,i-1)];
+    return {a,b,l:Math.min(a.x,b.x)-r,t:Math.min(a.y,b.y)-r,
+      r:Math.max(a.x,b.x)+r,bottom:Math.max(a.y,b.y)+r};
+  });
+  if(points.length===1)return capsules.some(c=>distance2(points[0],c.a,c.b)<=r*r)?[]:[item];
+  const runs:Point[][]=[];
+  let run:Point[]=[];
+  let changed=false;
+  const close=()=>{if(run.length){runs.push(run);run=[];}};
+  for(let i=1;i<points.length;i++){
+    const a=points[i-1],b=points[i];
+    const l=Math.min(a.x,b.x),right=Math.max(a.x,b.x),top=Math.min(a.y,b.y),bottom=Math.max(a.y,b.y);
+    const intervals:[number,number][]=[];
+    for(const c of capsules){
+      if(l>c.r||right<c.l||top>c.bottom||bottom<c.t)continue;
+      const cut=cutInterval(a,b,c.a,c.b,r);
+      if(cut)intervals.push(cut);
+    }
+    if(!intervals.length){push(run,a);push(run,b);continue;}
+    changed=true;
+    intervals.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+    let consumed=0;
+    for(const [start,end] of intervals){
+      if(start>consumed){
+        push(run,at(a,b,consumed));push(run,at(a,b,start));close();
+      }else if(consumed===0)close();
+      consumed=Math.max(consumed,end);
+    }
+    if(consumed<1){push(run,at(a,b,consumed));push(run,b);}
+    else close();
+  }
+  close();
+  return changed?runs.map(points=>piece(item,points.map(p=>({x:p.x+ox,y:p.y+oy})))):[item];
+}
+
+/** Cut permanent geometry once per display frame, without temporary ink. */
 export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
   canErase:(item:Item)=>boolean=()=>true, mode:EraserMode="partial"): Item[] {
   if (!path.length || radius <= 0) return items;
@@ -146,8 +185,9 @@ export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
     if((item.kind!=="pen"&&item.kind!=="marker") || item.hidden || !canErase(item) || !item.points?.length){
       output.push(item);continue;
     }
-    if(!item.rotation&&(item.x>maxX+radius+50 || item.x+item.width<minX-radius-50 ||
-      item.y>maxY+radius+50 || item.y+item.height<minY-radius-50)){
+    const pad=radius+(item.weight??3)/2;
+    if(!item.rotation&&(item.x>maxX+pad || item.x+item.width<minX-pad ||
+      item.y>maxY+pad || item.y+item.height<minY-pad)){
       output.push(item);continue;
     }
     // Partial erasing must hit the displayed world geometry, just like the
@@ -162,10 +202,7 @@ export function eraseInkAlongPath(items: Item[], path: Point[], radius: number,
         return {x:cx+dx*c-dy*s,y:cy+dx*s+dy*c};
       }));
     }
-    let fragments:Item[]=[source];
-    for(let i=0;i<path.length && fragments.length;i++){
-      fragments=eraseInkAt(fragments,path[Math.max(0,i-1)],path[i],radius);
-    }
+    const fragments=eraseInkSweep(source,path,radius);
     if(fragments.length!==1 || fragments[0]!==item)changed=true;
     output.push(...fragments);
   }

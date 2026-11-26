@@ -350,3 +350,19 @@ test('full WAL document bypasses extra lightweight revision checks',async()=>{
   assert.equal(h.reads(),reads,'Complete WAL record needs no REST request');
   h.stop();
 });
+
+// Cached and uncached hashes agree, changing only one immutable item
+// invalidates only that item's hash. Ordering remains shared board content.
+{
+ const first={id:"first",kind:"pen",points:[{x:0,y:0},{x:10,y:5}]};
+ const second={id:"second",kind:"text",text:"board"};
+ const doc={version:1,title:"Ink",items:[first,second]};
+ const cache=new WeakMap();
+ const original=documentFingerprint(doc,cache);
+ assert.equal(original,documentFingerprint(doc));
+ assert.ok(cache.has(first)&&cache.has(second));
+ const changed={...doc,items:[{...first,points:[...first.points,{x:20,y:10}]},second]};
+ assert.notEqual(documentFingerprint(changed,cache),original);
+ assert.equal(documentFingerprint(changed,cache),documentFingerprint(changed));
+ assert.notEqual(documentFingerprint({...doc,items:[second,first]},cache),original);
+}

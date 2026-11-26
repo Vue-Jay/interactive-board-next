@@ -181,3 +181,37 @@ for(const kind of ["pen","marker"]){
  assert.ok(peerRemovedDurableInk(second,[],identity));
 }
 console.log("Permanent ink keeps one identity through drawing, attached ink, and peer deletion.");
+
+// Growing strokes keep a stable prefix, the real last sample and immutable snapshots.
+const longPath=[];
+let previous=[];
+for(let i=0;i<2400;i++){
+ longPath.push({x:i*.8,y:Math.sin(i/19)*12});
+ if(i%7!==0)continue;
+ const next=durableExports.durableStrokePath(longPath,1);
+ assert.equal(next.at(-1).x,longPath.at(-1).x);
+ assert.equal(next.at(-1).y,longPath.at(-1).y);
+ const stable=Math.max(0,previous.length-48);
+ assert.equal(JSON.stringify(next.slice(0,stable)),JSON.stringify(previous.slice(0,stable)));
+ previous=next;
+}
+assert.ok(previous.length<1200,"Bounded simplification still reduces dense samples");
+const sweepPath=Array.from({length:160},(_,i)=>point(2480+i*.25,0));
+const swept=eraseInkAlongPath([stroke()],sweepPath,10);
+assert.equal(swept.length,2);
+const limits=spans(swept);
+assert.ok(Math.abs(limits[0][1]-(2480-12))<1e-5);
+assert.ok(Math.abs(limits[1][0]-(2480+159*.25+12))<1e-5);
+const zigzag=[point(1000,-80),point(1000,80),point(3000,80),point(3000,-80)];
+assert.equal(eraseInkAlongPath([stroke()],zigzag,10).length,3);
+const parsedCache=new WeakMap();
+const wire={version:1,title:"Realtime",view:{x:0,y:0,zoom:1},items:[card,stroke()]};
+const firstParsed=modelExports.parseRealtimeDocument(wire,parsedCache);
+const nextWire={...wire,items:[wire.items[0],{...wire.items[1],color:"#ff0000"}]};
+const nextParsed=modelExports.parseRealtimeDocument(nextWire,parsedCache);
+assert.equal(firstParsed.items[0],nextParsed.items[0],"Unchanged wire object validated only once");
+assert.notEqual(firstParsed.items[1],nextParsed.items[1]);
+assert.equal(JSON.stringify(nextParsed),JSON.stringify(modelExports.parseDocument(JSON.stringify(nextWire))));
+assert.throws(()=>modelExports.parseRealtimeDocument({...wire,items:[card,card]},parsedCache));
+assert.throws(()=>modelExports.parseRealtimeDocument({...wire,items:[{...wire.items[1],points:[]}]},parsedCache));
+console.log("Incremental permanent ink, single-pass swept eraser and cached remote validation verified.");
