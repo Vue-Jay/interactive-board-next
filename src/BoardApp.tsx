@@ -8104,7 +8104,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         acknowledgedBoardData.current = data;
-          return;
+        return;
       }
       // A different viewport is not new shared board content. Accept the
       // version without resetting selected objects, active tool or ink layers.
@@ -8158,7 +8158,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         queuedRemoteSnapshot.current=null;
         setSaveStatus("Синхронизировано");
         // The newest merged document is the ONLY valid save candidate.
-        window.setTimeout(()=>{if(boardMounted.current)void pushRemoteSnapshot(snapshot.current??merged)},0);
+        window.setTimeout(()=>{if(boardMounted.current)flushSave()},0);
         return;
       }
       applyServerDocument(row, data, remoteFingerprint);
