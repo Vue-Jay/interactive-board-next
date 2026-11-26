@@ -610,22 +610,35 @@ if(outDir&&sourceFile){
         for(const entry of state.drawable)if(entry!==nice[0])assert.equal(polygonClipping.intersection(entry.geometry.coordinates,nice[0].geometry.coordinates).length,0,`Nice overlaps ${entry.record.name}/${year}`);
       }
       const mindanaoIssues=state.territorialIssues.filter(i=>i.group==='Mindanao');
-      const core=state.drawable.filter(({record})=>record.mapPartition?.kind==='documented-core');
-      const corePeriod=documentedCores.flatMap(c=>c.periods).find(p=>p.from<=year&&year<=p.to);
-      assert.equal(core.length,corePeriod?1:0);
-      if(corePeriod){
-        const definition=documentedCores.find(c=>c.periods.includes(corePeriod));
+      const cores=state.drawable.filter(({record})=>record.mapPartition?.kind==='documented-core');
+      const expectedCores=documentedCores.flatMap(definition=>definition.periods
+        .filter(period=>period.from<=year&&year<=period.to)
+        .map(period=>({definition,period})));
+      assert.equal(cores.length,expectedCores.length,`Documented interior count in ${year}`);
+      for(const {definition,period} of expectedCores){
+        const current=cores.filter(({record})=>record.name===period.name&&record.entityId===
+          cores.find(({record})=>record.name===period.name)?.record.entityId);
+        assert.equal(current.length,1,`Documented interior ${definition.id}/${year}`);
+        const core=current[0];
         documentedCoreByGroup[definition.id]=(documentedCoreByGroup[definition.id]??0)+1;
-        assert.equal(core[0].record.name,corePeriod.name);
-        if(year>=1757){
-          assert.ok(capitalInsideCountry([9.4108,42.86],core[0].geometry));
-          assert.ok(!capitalInsideCountry([9.151,42.306],core[0].geometry));
+        assert.equal(core.record.mapPartition.kind,'documented-core');
+        if(definition.id==='cap-corse'){
+          assert.ok(capitalInsideCountry([9.4108,42.86],core.geometry));
+          assert.ok(!capitalInsideCountry([9.151,42.306],core.geometry));
           assert.equal(state.territorialIssues.filter(i=>i.group===(year===1768?exactConflictGroupPrefix+'Корсика — переход 1768 года':'Corsica')).length,2);
+        }else if(definition.id==='malacca-fort'){
+          assert.ok(capitalInsideCountry([102.249609,2.192621],core.geometry));
+          assert.ok(!capitalInsideCountry([102.0913,2.5897],core.geometry));
         }else{
-          assert.ok(capitalInsideCountry([102.249609,2.192621],core[0].geometry));
-          assert.ok(!capitalInsideCountry([102.0913,2.5897],core[0].geometry));
+          assert.ok(definition.id.startsWith('ceylon-'));
+          assert.ok(core.record.review.reasonRu.match(/неуточн|неизвест/));
+          assert.ok(polygonClipping.intersection(core.geometry.coordinates,definition.mask).length);
+          assert.equal(polygonClipping.difference(core.geometry.coordinates,definition.mask).length,0,
+            `Ceylon documented fragment must stay inside its conservative mask ${definition.id}/${year}`);
         }
-        for(const other of state.drawable)if(other!==core[0])assert.equal(polygonClipping.intersection(core[0].geometry.coordinates,other.geometry.coordinates).length,0,`Documented core overlaps ${other.record.name}/${year}`);
+        for(const other of state.drawable)if(other!==core)assert.equal(
+          polygonClipping.intersection(core.geometry.coordinates,other.geometry.coordinates).length,0,
+          `Documented interior overlaps ${other.record.name}/${year}/${definition.id}`);
       }
       if(year>=1512&&year<=1608){
         assert.equal(mindanaoIssues.length,year>=1521&&year<=1581?2:1);
@@ -739,7 +752,6 @@ if(outDir&&sourceFile){
           if(cores.length){
             const {record,geometry}=cores[0],definition=ceylonFortCores.find(c=>c.id===id);
             assert.equal(record.mapPartition.kind,'documented-core');
-            assert.equal(record.entityId,record.entityId);
             assert.ok(record.review.reasonRu.includes('неуточнён'));
             assert.ok(polygonClipping.intersection(geometry.coordinates,definition.mask).length);
             assert.equal(polygonClipping.difference(geometry.coordinates,definition.mask).length,0);
