@@ -1155,7 +1155,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         document_patches = initial.get("document_patches", False)
         ink_point_deltas = initial.get("ink_point_deltas", False)
         durable_ink_commits = initial.get("durable_ink_commits", False)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool:
+        ink_commit_chain = initial.get("ink_commit_chain", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -1194,13 +1195,15 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 _subscriber_users[board_id][websocket] = user_meta
         await websocket.send_json({"type": "ready", "version": current_version,
                                    **({"compact_ink": True} if compact_ink else {}),
-                                   **({"durable_ink_commits": True} if durable_ink_commits else {})})
+                                   **({"durable_ink_commits": True} if durable_ink_commits else {}),
+                                   **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
                 await announce_presence(board_id, joins=[user_meta],
                                         pool=websocket.app.state.pool, exclude=websocket)
         limiter = EventRateLimit()
+        last_ink_commit = None
         while True:
             remaining = float(claims["exp"]) - time.time()
             if remaining <= 0:
@@ -1252,11 +1255,18 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                             error(429, "Слишком много изменений.")
                         if not isinstance(request_id, str) or not 1 <= len(request_id) <= 96:
                             error(422, "Некорректный идентификатор запроса.")
-                        if set(message) - {"type","request_id","expected_version","delta","ink_gesture","cursor"}:
+                        if set(message) - {"type","request_id","expected_version","delta","ink_gesture","cursor","after_request_id"}:
                             error(422, "Некорректный запрос.")
                         version, delta, gesture = message.get("expected_version"), message.get("delta"), message.get("ink_gesture")
                         if type(version) is not int or not 1 <= version <= 2**63-1 or not isinstance(delta,dict) or not isinstance(gesture,str) or not 1 <= len(gesture) <= 128:
                             error(422, "Некорректные изменения.")
+                        if "after_request_id" in message:
+                            predecessor = message["after_request_id"]
+                            # A peer can fill a missing predicted version after
+                            # a conflict. Never let a successor accidentally
+                            # apply to that unrelated version.
+                            if not ink_commit_chain or not isinstance(predecessor,str) or predecessor == request_id or last_ink_commit != (predecessor, version):
+                                error(409, "Предыдущая запись штриха не подтверждена.")
                         cursor = None
                         if "cursor" in message:
                             raw_cursor = message["cursor"]
@@ -1275,8 +1285,10 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         # Reuse its permission fields; no second session query.
                         saved = await persist_document(board_id, version, websocket, refreshed_user, True,
                             delta=delta, ink_gesture=gesture, ink_cursor=cursor)
+                        last_ink_commit = (request_id, saved["version"])
                         await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,"version":saved["version"]})
                     except HTTPException as exc:
+                        last_ink_commit = None
                         detail = exc.detail
                         await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,
                             "status":exc.status_code,"detail":detail})

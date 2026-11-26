@@ -103,7 +103,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostSaveDocument, selfhostWatchDocument, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -2890,6 +2890,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const inkPaintFrame=useRef<number|null>(null);
   const inkCheckpointTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const inkLastBackup=useRef(0);
+  const inkLastCheckpoint=useRef(0);
+  const inkPipeline=useRef<{gesture:string;offer:(data:DocumentData)=>boolean}|null>(null);
   const lastInkGesture=useRef<string|null>(null);
   const lastInkCursor=useRef<{gesture:string;cursor:InkCommitCursor}|null>(null);
   const pendingCommittedCursors=useRef(new Map<string,{version:number;cursor:SelfhostCommittedCursor}>());
@@ -3270,14 +3272,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // stroke checkpoint is in flight. Queue it before the equality check.
     if (remoteSaveInFlight.current) {
       queuedRemoteSnapshot.current = data;
+      const stream=inkPipeline.current;
+      if(stream&&stream.gesture===lastInkGesture.current&&stream.offer(data))
+        queuedRemoteSnapshot.current=null;
       return;
     }
-    const fingerprint = knownFingerprint ?? documentFingerprint(data);
+    let fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current) return;
     remoteSaveInFlight.current = true;
     const inkGesture=lastInkGesture.current;
     const inkCursor=lastInkCursor.current?.gesture===inkGesture?lastInkCursor.current?.cursor:undefined;
+    let retryAfterFailure=false;
     try {
       // Verify/upload ONLY newly introduced attachments. Existing references
       // are already part of the previously persisted board, and checking them
@@ -3301,7 +3307,34 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       let result:{conflict:boolean;version:number;document?:unknown;updated_at?:string};
       if(selfhostMode){
         try{
-          const saved=await selfhostSaveDocument(
+          // Keep the normal serial save/recovery path for older servers and
+          // ordinary edits. Ink-only changes can fill a small versioned window.
+          const acknowledge=(accepted:DocumentData,version:number)=>{
+            if(!boardMounted.current)return;
+            data=accepted;fingerprint=documentFingerprint(accepted);
+            remoteVersion.current=version;
+            acknowledgedDocument.current=fingerprint;
+            acknowledgedSharedContent.current=fingerprint;
+            acknowledgedBoardData.current=accepted;
+            lastAttempt.current={version,fingerprint};
+            const waiting=queuedRemoteSnapshot.current;
+            if(waiting&&inkPipeline.current?.offer(waiting))queuedRemoteSnapshot.current=null;
+          };
+          const initial=data;
+          const stream=inkGesture?selfhostStartInkPipeline(
+            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture,inkCursor,
+            version=>acknowledge(initial,version)):null;
+          if(stream&&inkGesture){
+            inkPipeline.current={gesture:inkGesture,offer:next=>{
+              if(!boardMounted.current||lastInkGesture.current!==inkGesture||pendingRemote.current||
+                (deferredRemote.current&&deferredRemote.current.version>(remoteVersion.current??-1)&&
+                  deferredRemote.current.updated_by!==authUser.id))return false;
+              const cursor=next===snapshot.current&&lastInkCursor.current?.gesture===inkGesture?lastInkCursor.current.cursor:undefined;
+              return stream.offer({...next,preview:previousPreview??""} as unknown as Record<string,unknown>,cursor,
+                version=>acknowledge(next,version));
+            }};
+          }
+          const saved=stream?await stream.done:await selfhostSaveDocument(
             boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture??undefined,inkCursor
           );
           result={conflict:false,version:saved.version};
@@ -3309,7 +3342,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           if(error instanceof SelfhostHttpError&&error.status===409&&error.code!=="plan_limit"){
             const latest=await selfhostReadDocument(boardSummary.id);
             if(!boardMounted.current)return;
-            if(latest.document&&latest.version>expectedVersion){
+            if(latest.document&&latest.version>(remoteVersion.current??expectedVersion)){
               if(deferredRemote.current&&deferredRemote.current.version>=latest.version)return;
               deferredRemote.current={
                 board_id:latest.board_id,version:latest.version,
@@ -3363,6 +3396,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // It can finish even if the editor unmounts when returning to the dashboard.
       if(!selfhostMode)scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
     } catch (error) {
+      retryAfterFailure=true;
       const message=error instanceof Error?error.message:String(error);
       saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
       if(error instanceof SelfhostHttpError&&error.code==="plan_limit"){
@@ -3384,6 +3418,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         void pushRemoteSnapshot(snapshot.current);
       }, delay);
     } finally {
+      inkPipeline.current=null;
       remoteSaveInFlight.current = false;
       const deferred = deferredRemote.current;
       deferredRemote.current = null;
@@ -3395,7 +3430,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // save. Sending a previously queued, unrebased document overwrites ink.
       // An own/stale notification can be deferred during a save too. It is
       // ignored by receiveRemote, so it must not swallow the next queued edit.
-      if (queued && !needsRebase)
+      if (queued && !needsRebase && !retryAfterFailure)
         void pushRemoteSnapshot(snapshot.current??queued);
     }
   }, [boardSummary.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
@@ -4080,13 +4115,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const g=gesture.current;
       if((g?.mode!=="draw"||!g.ink||g.inkInterrupted)&&!eraserSession.current)return;
       if(!snapshot.current)return;
-      // Local backup at most once per second during a long gesture.
-      // All remote checkpoints share the single in-flight version queue.
+      // Send on the leading edge, then respect the shared write-rate budget.
+      // Local backup remains independent of the transport window.
       const now=Date.now();
+      inkLastCheckpoint.current=now;
       if(now-inkLastBackup.current>=1000||!documentSyncEnabled){
         inkLastBackup.current=now;flushSave();
       }else void pushRemoteSnapshot(snapshot.current);
-    },DURABLE_INK_SYNC_MS);
+    },Math.max(0,DURABLE_INK_SYNC_MS-(Date.now()-inkLastCheckpoint.current)));
   };
   const paintDurableInk=(g:Gesture)=>{
     if(!g.ink||g.inkInterrupted||!canEdit)return;
