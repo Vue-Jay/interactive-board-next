@@ -1412,8 +1412,8 @@ function connectSelfhostBoard(
       ws.onerror=()=>{if(active())reconnect()};
       ws.onclose=event=>{
         if(!active())return;
-        if(event.code===4410&&activity&&boardIdleExpired(activity()))pauseForIdle();
-        else reconnect(event.code===4410);
+        if(event?.code===4410&&activity&&boardIdleExpired(activity()))pauseForIdle();
+        else reconnect(event?.code===4410);
       };
     }catch{if(!stopped&&current===generation)reconnect()}
   };
