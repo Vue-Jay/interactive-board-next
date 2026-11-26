@@ -270,6 +270,27 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     settled=json.loads(await asyncio.wait_for(second.recv(),3))
                     assert settled["type"]=="ink_motion_ack" and settled["version"]==version
                     assert (await http.get(url,headers=owner)).json()["document"]["items"]==[live_item]
+            # Negotiate a nearly elapsed inactivity window to exercise the
+            # real server deadline without waiting ten minutes in CI.
+            async with websockets.connect(native_uri,origin="https://lektrus.ru") as idle:
+                await idle.send(json.dumps({"type":"auth","token":owner_session["access_token"],
+                    "presence":True,"visible":True,"idle_age_ms":598500}))
+                assert json.loads(await asyncio.wait_for(idle.recv(),3))["idle_lease"] is True
+                assert json.loads(await asyncio.wait_for(idle.recv(),3))["type"]=="presence_state"
+                await idle.send(json.dumps({"type":"ping"}))
+                assert json.loads(await asyncio.wait_for(idle.recv(),3))["type"]=="pong"
+                with pytest.raises(ConnectionClosed) as timed_out:
+                    await asyncio.wait_for(idle.recv(),4)
+                assert timed_out.value.code==4410,"Heartbeat must not extend user inactivity"
+            async with websockets.connect(native_uri,origin="https://lektrus.ru") as resumed:
+                await resumed.send(json.dumps({"type":"auth","token":owner_session["access_token"],
+                    "presence":True,"visible":True,"idle_age_ms":598500}))
+                assert json.loads(await asyncio.wait_for(resumed.recv(),3))["idle_lease"] is True
+                assert json.loads(await asyncio.wait_for(resumed.recv(),3))["type"]=="presence_state"
+                await resumed.send(json.dumps({"type":"activity","idle_age_ms":0}))
+                await asyncio.sleep(1.7)
+                await resumed.send(json.dumps({"type":"ping"}))
+                assert json.loads(await asyncio.wait_for(resumed.recv(),3))["type"]=="pong"
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass

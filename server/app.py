@@ -1219,6 +1219,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 await announce_presence(board_id, joins=[user_meta],
                                         pool=websocket.app.state.pool, exclude=websocket)
         limiter = EventRateLimit()
+        last_activity_auth = time.monotonic()
         last_ink_commit = None
 
         async def commit_one(message, refreshed_user=None):
@@ -1327,6 +1328,9 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         await websocket.send_json({"type":"event_error","reason":"invalid_activity"})
                         continue
                     # Authenticated socket-local lease, no DB traffic or peer fan-out.
+                    if time.monotonic() - last_activity_auth >= 30:
+                        await lookup_board_session(websocket.app.state.pool, board_id, token)
+                        last_activity_auth = time.monotonic()
                     activity_deadline = idle_deadline(message["idle_age_ms"])
                     continue
                 if message.get("type") == "ink_commit" and ink_worker is not None:

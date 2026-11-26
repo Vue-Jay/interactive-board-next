@@ -3152,6 +3152,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const boardResumeRequestRunning=useRef(false);
   const [boardResumeAttempt,setBoardResumeAttempt]=useState(0);
   const boardLastAction=useRef(Date.now());
+  const boardIdleSleeping=useRef(false);
 
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
@@ -3267,7 +3268,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   }, [presentation, presentationTimerRunning, presentationTimerMode]);
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
-    if (layoutEditing || !documentSyncEnabled || !canEdit || !boardMounted.current || pendingRemote.current) return;
+    if (layoutEditing || !documentSyncEnabled || !canEdit || !boardMounted.current || pendingRemote.current || boardIdleSleeping.current || boardResumePendingRef.current) return;
     // An inverse edit can equal the OLD acknowledged version while a
     // stroke checkpoint is in flight. Queue it before the equality check.
     if (remoteSaveInFlight.current) {
@@ -3416,6 +3417,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         ? "Сохранено локально · повторная синхронизация…"
         : "Сохранено локально · восстанавливаем связь с сервером…");
       if (remoteRetryTimer.current) clearTimeout(remoteRetryTimer.current);
+      if(boardIdleSleeping.current)return;
       remoteRetryTimer.current = setTimeout(() => {
         remoteRetryTimer.current = null;
         if (!boardMounted.current || !snapshot.current || pendingRemote.current) return;
@@ -3473,7 +3475,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
-      if (documentSyncEnabled && pendingRemote.current) return;
+      if (documentSyncEnabled && (pendingRemote.current || boardIdleSleeping.current || boardResumePendingRef.current)) return;
       if(documentSyncEnabled && !remoteSaveInFlight.current && (
         fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current
@@ -3573,6 +3575,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(demoMode||layoutEditing)return;
     // Exactly one inactivity window, visible or backgrounded.
     const suspend=()=>{
+      boardIdleSleeping.current=true;
+      if(remoteRetryTimer.current){clearTimeout(remoteRetryTimer.current);remoteRetryTimer.current=null;}
       boardResumePendingRef.current=false;
       setBoardResumePending(false);
       flushSave();
@@ -3581,10 +3585,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     let timeout:ReturnType<typeof setTimeout>|undefined;
     const arm=()=>{
-      clearTimeout(timeout);
-      if(!boardRealtimeAwake)return;
+      if(!boardRealtimeAwake||timeout!==undefined)return;
       const due=Math.max(0,boardIdleRemaining(boardLastAction.current));
       timeout=setTimeout(()=>{
+        timeout=undefined;
         if(!boardIdleExpired(boardLastAction.current)){arm();return;}
         suspend();
       },due);
@@ -3592,13 +3596,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const wake=()=>{
       const expired=boardIdleExpired(boardLastAction.current);
       boardLastAction.current=Date.now();
+      boardIdleSleeping.current=false;
       if(selfhostMode)selfhostNoteBoardActivity(boardSummary.id);
       if(!boardRealtimeAwake||expired){
         boardResumePendingRef.current=true;
         setBoardResumePending(true);
         setBoardRealtimeAwake(true);
+        arm();
       }else if(boardResumePendingRef.current&&!boardResumeRequestRunning.current){
-        // A failed reconnect is retried only after another actual user action.
+        // User action can also accelerate a failed document refresh.
         setBoardResumeAttempt(value=>value+1);
       }else arm();
     };
@@ -8313,13 +8319,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(()=>{
     if(!boardRealtimeAwake||!boardResumePending||demoMode||layoutEditing)return;
     let cancelled=false;
+    let retry:ReturnType<typeof setTimeout>|undefined;
+    const controller=new AbortController();
     boardResumeRequestRunning.current=true;
     const refresh=async()=>{
       try{
         // Force an authenticated revision check even when the realtime socket
         // reconnects before a change notification reaches this device.
         const row=selfhostMode
-          ? await selfhostReadDocument(boardSummary.id)
+          ? await selfhostReadDocument(boardSummary.id,controller.signal)
           : await getRemoteBoardDocument(boardSummary.id);
         if(cancelled)return;
         if(!row)throw new Error("Серверный документ недоступен");
@@ -8329,15 +8337,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         });
         boardResumePendingRef.current=false;
         setBoardResumePending(false);
+        // A local unsent change was deliberately kept off the wire in sleep.
+        // Resume saving only after the current server version is reconciled.
+        flushSave();
       }catch{
-        if(!cancelled)setNotice("Не удалось сверить доску с сервером. Повторите касание, чтобы подключиться снова.");
+        if(!cancelled){
+          setNotice("Восстанавливаем подключение к доске…");
+          retry=setTimeout(()=>setBoardResumeAttempt(value=>value+1),Math.min(2000,300*2**Math.min(boardResumeAttempt,3)));
+        }
       }finally{
         if(!cancelled)boardResumeRequestRunning.current=false;
       }
     };
     void refresh();
-    return()=>{cancelled=true;boardResumeRequestRunning.current=false};
-  },[boardRealtimeAwake,boardResumePending,boardResumeAttempt,selfhostMode,boardSummary.id,demoMode,layoutEditing]);
+    return()=>{cancelled=true;controller.abort();clearTimeout(retry);boardResumeRequestRunning.current=false};
+  },[boardRealtimeAwake,boardResumePending,boardResumeAttempt,selfhostMode,boardSummary.id,demoMode,layoutEditing,flushSave]);
   useEffect(()=>{
     if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     if(selfhostMode){
@@ -8369,6 +8383,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(!active)return;
       if(event.type==="idle_timeout"){
         if(boardIdleExpired(boardLastAction.current)){
+          boardIdleSleeping.current=true;
+          if(remoteRetryTimer.current){clearTimeout(remoteRetryTimer.current);remoteRetryTimer.current=null;}
+          flushSave();
           boardResumePendingRef.current=false;setBoardResumePending(false);setBoardRealtimeAwake(false);
         }else selfhostNoteBoardActivity(boardSummary.id);
         return;
