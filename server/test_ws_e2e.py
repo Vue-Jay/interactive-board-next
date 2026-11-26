@@ -101,8 +101,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
             async with websockets.connect(native_uri,origin="https://lektrus.ru") as first:
                 async with websockets.connect(native_uri,origin="https://lectrus.ru") as second:
                     for ws,session in ((first,owner_session),(second,student_session)):
-                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second}))
-                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0}
+                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second,"durable_ink_commits":True}))
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0,"durable_ink_commits":True}
                     for sender,receiver in ((first,second),(second,first)):
                         packet={"type":"live_ink","client_id":"native_1","stroke_id":"native_stroke","kind":"pen",
                                 "color":"#112233","weight":3,"offset":0,"points":[{"x":10,"y":20}],"finished":False}
@@ -178,11 +178,18 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     edit={"id":"durable-ink","count":200,"keep":199,"points":[{"x":0,"y":0},{"x":1,"y":1}],
                           "geometry":{"x":9,"y":18,"width":27,"height":12}}
                     delta={"items":{"point_edits":[edit]}}
-                    saved=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
-                    assert saved.status_code==200,saved.text
+                    packet={"type":"ink_commit","request_id":"write_1","expected_version":version,
+                            "delta":delta,"ink_gesture":"durable-ink","cursor":{"client_id":"ink_client","x":10,"y":19}}
+                    await first.send(json.dumps(packet))
                     assert json.loads(await asyncio.wait_for(first.recv(),3))=={"type":"document_changed","version":version+1}
                     push=json.loads(await asyncio.wait_for(second.recv(),3))
                     assert push["base_version"]==version and push["delta"]==delta
+                    assert push["ink_cursor"]["user_id"]==str(TEACHER)
+                    assert push["ink_cursor"]["x"]==10 and push["ink_cursor"]["y"]==19
+                    assert json.loads(await asyncio.wait_for(first.recv(),3))=={"type":"ink_commit_ack","request_id":"write_1","version":version+1}
+                    await first.send(json.dumps({**packet,"request_id":"stale"}))
+                    stale_ack=json.loads(await asyncio.wait_for(first.recv(),3))
+                    assert stale_ack["status"]==409 and stale_ack["request_id"]=="stale"
                     expected=apply_delta(base,delta)
                     legacy_update=(await http.get(url+f"?since_version={version}",headers=student)).json()
                     assert "upsert" in legacy_update["patches"][0]["items"]
@@ -198,12 +205,13 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     version += 1
                     bad=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
                     assert bad.status_code==422,bad.text
-                    erased=await http.patch(url+"?version_only=true",headers=owner,json={"expected_version":version,
-                        "delta":{"items":{"remove":["durable-ink"]}}})
-                    assert erased.status_code==200,erased.text
+                    await second.send(json.dumps({"type":"ink_commit","request_id":"erase_1","expected_version":version,
+                        "ink_gesture":"erase:gesture_1","delta":{"items":{"remove":["durable-ink"]}},
+                        "cursor":{"client_id":"student_1","x":10,"y":19}}))
                     version += 1
                     for ws in (first,second):
                         assert json.loads(await asyncio.wait_for(ws.recv(),3))["version"]==version
+                    assert json.loads(await asyncio.wait_for(second.recv(),3))=={"type":"ink_commit_ack","request_id":"erase_1","version":version}
                     erased_edit=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
                     assert erased_edit.status_code==422,erased_edit.text
                     assert (await http.get(url,headers=owner)).json()["document"]["items"]==[]
