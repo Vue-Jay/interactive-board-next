@@ -325,14 +325,18 @@ def check_shared_eraser_sync(browser):
     teacher,pupil=[ctx.new_page() for ctx in contexts]
     # Intercept the actual durable websocket path as well as legacy HTTP.
     # Never simulate loss by disabling the new protocol under test.
-    controls={page:{"hold":None,"held":[],"commits":[]} for page in (teacher,pupil)}
+    controls={page:{"hold":None,"hold_all":False,"held":[],"commits":[],"motion":[]} for page in (teacher,pupil)}
     for page,control in controls.items():
         def route_ws(route,control=control):
             upstream=route.connect_to_server()
             def outgoing(message):
                 frame=json.loads(message)
+                if frame.get("type")=="ink_motion":
+                    control["motion"].append(frame)
                 if frame.get("type")=="ink_commit":
                     control["commits"].append(frame)
+                    if control["hold_all"]:
+                        control["held"].append((upstream,message));return
                     changes=frame.get("delta",{}).get("items",{})
                     if control["hold"] and any(i.get("id")==control["hold"] for i in changes.get("upsert",[])+changes.get("point_edits",[])):
                         control["held"].append((upstream,message));return
@@ -428,6 +432,103 @@ def check_shared_eraser_sync(browser):
                     const doc=JSON.parse(raw);
                     return doc.items.some(i=>i.id===id)===present;
                 }""",arg={"id":stroke_id,"ident":ident,"present":present},timeout=20000)
+            # Hold all actual durable writes while the peer receives fast item
+            # updates. Verify real pixels, not just WebSocket packet counts.
+            def ink_pixels(page,points):
+                return page.evaluate("""points=>{
+                    const world=document.querySelector('.world');
+                    const r=world.getBoundingClientRect(),s=new DOMMatrix(getComputedStyle(world).transform).a;
+                    const canvases=[...document.querySelectorAll('.viewer-ink-canvas')];
+                    return points.map(p=>canvases.some(canvas=>{
+                      const b=canvas.getBoundingClientRect(),x=r.left+p.x*s,y=r.top+p.y*s;
+                      if(x<b.left||x>b.right||y<b.top||y>b.bottom||!canvas.width||!canvas.height)return false;
+                      const px=Math.max(0,Math.min(canvas.width-1,Math.round((x-b.left)*canvas.width/b.width)));
+                      const py=Math.max(0,Math.min(canvas.height-1,Math.round((y-b.top)*canvas.height/b.height)));
+                      const sx=Math.max(0,px-2),sy=Math.max(0,py-2);
+                      return canvas.getContext('2d').getImageData(sx,sy,Math.min(5,canvas.width-sx),Math.min(5,canvas.height-sy)).data.some((v,i)=>i%4===3&&v>25);
+                    }));
+                }""",points)
+            held_http=[]
+            def hold_durable_http(route):
+                if route.request.method in ("PUT","PATCH"):held_http.append(route)
+                else:route.continue_()
+            def release_writes(page,control):
+                control["hold_all"]=False
+                for upstream,message in control["held"]:upstream.send(message)
+                control["held"].clear()
+                for route in held_http:route.continue_()
+                held_http.clear()
+                page.unroute(pattern,hold_durable_http)
+            for writer,eraser,mode,kind in ((teacher,pupil,"stroke","pen"),(pupil,teacher,"partial","marker")):
+                writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
+                eraser.locator('[data-interface-control="eraser"]:visible').first.click()
+                eraser.locator(f'[data-eraser-mode="{mode}"]:visible').first.click()
+                original={i["id"] for i in inks(read())}
+                control=controls[writer]
+                control["motion"].clear();control["hold_all"]=True
+                writer.route(pattern,hold_durable_http)
+                box=writer.locator("section.board").bounding_box()
+                x,y=box["x"]+box["width"]*.40,box["y"]+box["height"]*.26
+                try:
+                    writer.mouse.move(x,y);writer.mouse.down()
+                    writer.mouse.move(x+140,y,steps=14)
+                    for _ in range(60):
+                        writer.wait_for_timeout(25)
+                        if control["motion"] and (control["held"] or held_http):
+                            frame=control["motion"][-1]
+                            if ink_pixels(eraser,[{"x":frame["x"],"y":frame["y"]}])==[True]:break
+                    else:raise AssertionError("Peer pixels absent while all durable writes are blocked")
+                    assert {i["id"] for i in inks(read())}==original
+                    first=control["motion"][-1]
+                    writer.mouse.move(x+220,y,steps=10)
+                    for _ in range(60):
+                        writer.wait_for_timeout(25)
+                        frame=control["motion"][-1]
+                        if frame["seq"]>first["seq"] and ink_pixels(eraser,[{"x":frame["x"],"y":frame["y"]}])==[True]:break
+                    else:raise AssertionError("Growing stroke stopped while database ACK was blocked")
+                    assert eraser.locator(".remote-live-ink-layer").count()==0
+                    writer.mouse.up()
+                finally:
+                    release_writes(writer,control)
+                saved=wait_row(writer,lambda r:any(i["id"] not in original and i.get("width",0)>180 for i in inks(r)),"Fast stroke was not persisted")
+                new_ink=[i for i in inks(saved) if i["id"] not in original]
+                assert len(new_ink)==1,"Fast drawing must create exactly one permanent ID"
+                stroke=new_ink[0]
+                stored(eraser,stroke["id"])
+                # Wait until the final saved stroke is visible in both clients.
+                writer.wait_for_timeout(300)
+                center={"x":stroke["x"]+stroke["width"]/2,"y":stroke["y"]+stroke["height"]/2}
+                target=eraser.evaluate("""p=>{
+                    const w=document.querySelector('.world'),r=w.getBoundingClientRect(),s=new DOMMatrix(getComputedStyle(w).transform).a;
+                    return {x:r.left+p.x*s,y:r.top+p.y*s};
+                }""",center)
+                control=controls[eraser];control["motion"].clear();control["hold_all"]=True
+                eraser.route(pattern,hold_durable_http)
+                try:
+                    assert ink_pixels(writer,[center])==[True]
+                    eraser.mouse.move(target["x"],target["y"]);eraser.mouse.down()
+                    for _ in range(60):
+                        eraser.wait_for_timeout(25)
+                        if control["motion"] and (control["held"] or held_http) and ink_pixels(writer,[center])==[False]:break
+                    else:raise AssertionError(f"Peer {mode} eraser did not clear pixels before its database ACK")
+                    assert any(i["id"]==stroke["id"] for i in inks(read()))
+                    eraser.mouse.up()
+                finally:
+                    release_writes(eraser,control)
+                final=wait_row(eraser,lambda r:all(i["id"]!=stroke["id"] for i in inks(r)),"Fast erase was not persisted")
+                stored(writer,stroke["id"],False)
+                assert len(inks(final))==len(original)+(0 if mode=="stroke" else 2)
+                if mode=="partial":
+                    # Remove the two test fragments so existing race tests
+                    # begin with the exact same clean document.
+                    latest=read()
+                    doc=latest["document"]
+                    doc["items"]=[i for i in doc["items"] if i["kind"] not in ("pen","marker") or i["id"] in original]
+                    client.put(url,json={"expected_version":latest["version"],"document":doc}).raise_for_status()
+                    for item in inks(final):
+                        if item["id"] not in original:
+                            for page in (writer,eraser):stored(page,item["id"],False)
+                print(f"Fast {kind} and {mode} eraser rendered actual pixels while all durable writes were blocked.")
             for writer,eraser,mode,kind in ((pupil,teacher,"stroke","pen"),(teacher,pupil,"partial","marker")):
                 writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
                 eraser.locator('[data-interface-control="eraser"]:visible').first.click()

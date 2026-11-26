@@ -5,6 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import net from 'node:net';
 import {setTimeout as delay} from 'node:timers/promises';
 import {createServer} from 'vite';
 
@@ -16,30 +17,28 @@ let chrome,ws;
 try{
   await server.listen();
   const url=`http://127.0.0.1:${server.httpServer.address().port}/tests/fixtures/lektrus-peer-ink.html`;
-  chrome=spawn(chromePath,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run',
-    '--remote-debugging-port=0','--remote-allow-origins=*',`--user-data-dir=${profile}`,url],{stdio:['ignore','ignore','pipe']});
-  const debuggerUrl=await new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>reject(Error('Chromium did not start')),15000);
-    chrome.stderr.on('data',chunk=>{
-      const match=String(chunk).match(/DevTools listening on (ws:\/\/[^\s]+)/);
-      if(match){clearTimeout(timer);resolve(match[1])}
-    });
-    chrome.once('error',error=>{clearTimeout(timer);reject(error)});
-    chrome.once('exit',(code,signal)=>{clearTimeout(timer);reject(Error(`Chromium exited before startup (${code??signal})`))});
-  });
-  const origin=new URL(debuggerUrl).host;
+  const portServer=net.createServer();
+  await new Promise((resolve,reject)=>portServer.once('error',reject).listen(0,'127.0.0.1',resolve));
+  const debugPort=portServer.address().port;
+  await new Promise(resolve=>portServer.close(resolve));
+  let startupLog='';
+  chrome=spawn(chromePath,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
+    '--no-first-run','--disable-extensions','--remote-allow-origins=*',
+    `--remote-debugging-port=${debugPort}`,`--user-data-dir=${profile}`,url],{stdio:['ignore','ignore','pipe']});
+  chrome.stderr.on('data',chunk=>{if(startupLog.length<6000)startupLog+=String(chunk)});
   let target;
-  const targetDeadline=Date.now()+15000;
+  const targetDeadline=Date.now()+30000;
   while(!target&&Date.now()<targetDeadline){
+    if(chrome.exitCode!==null||chrome.signalCode!==null)throw Error(`Chromium exited before startup: ${startupLog}`);
     try{
-      const pages=await fetch(`http://${origin}/json/list`,{signal:AbortSignal.timeout(2000)}).then(r=>r.json());
+      const pages=await fetch(`http://127.0.0.1:${debugPort}/json/list`,{signal:AbortSignal.timeout(2500)}).then(r=>r.json());
       target=pages.find(page=>page.type==='page'&&page.url===url);
     }catch(error){
       if(error.name!=='TimeoutError'&&!(error instanceof TypeError))throw error;
     }
-    if(!target)await delay(100);
+    if(!target)await delay(150);
   }
-  assert.ok(target,'Browser fixture not found');
+  assert.ok(target,`Browser fixture not found: ${startupLog}`);
   ws=new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true})});
   let id=0;

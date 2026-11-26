@@ -14,7 +14,7 @@
 }
 .lektrus-remote-cursor .remote-cursor-pointer path {
   fill:#fff;
-  stroke:var(--lt-primary,#3056c8);
+  stroke:var(--participant-color,#3056c8);
   stroke-width:2.2;
   stroke-linejoin:round;
 }
@@ -27,10 +27,12 @@
   padding:3px 7px;
   border:1px solid var(--lt-on-primary,#fff);
   border-radius:7px;
-  background:var(--lt-primary,#3056c8);
-  color:var(--lt-on-primary,#fff);
+  background:var(--participant-color,#3056c8);
+  color:#fff;
   box-shadow:0 2px 6px rgba(16,32,61,.18);
   font-size:11px;
   font-weight:650;
   line-height:1.2;
 }
+
+.presence-person .presence-avatar[data-participant-color]{background:var(--participant-color);color:#fff;outline:2px solid var(--participant-color);outline-offset:2px;}

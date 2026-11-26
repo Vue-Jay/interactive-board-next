@@ -636,6 +636,8 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
         return {**document_view(row, board_id), **({"ink_point_deltas": True} if ink_point_deltas else {})}
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
+from board_presence_policy import participant_color, valid_idle_age, idle_deadline
+
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
 _presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
 _compact_ink_subscribers: set[WebSocket] = set()
@@ -852,7 +854,7 @@ async def relay_live_event(board_id: UUID, sender: WebSocket,
 # These frames need no additional asynchronous validation between checking
 # permissions and starting peer delivery. Target/pilot events still perform
 # their separate database checks and use a fresh recipient lookup afterwards.
-INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "work_state", "editor_mutation",
+INLINE_RELAY_TYPES = ("cursor", "live_ink", "live_erase", "ink_motion", "ink_motion_ack", "work_state", "editor_mutation",
                       "object_transform", "teacher_view", "guided_follow", "attachment_request")
 
 
@@ -1143,6 +1145,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         await websocket.close(code=4403)
         return
     await websocket.accept()
+    ink_worker = None
     try:
         initial = await asyncio.wait_for(websocket.receive_json(), timeout=5)
         if not isinstance(initial, dict) or initial.get("type") != "auth":
@@ -1156,7 +1159,17 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         ink_point_deltas = initial.get("ink_point_deltas", False)
         durable_ink_commits = initial.get("durable_ink_commits", False)
         ink_commit_chain = initial.get("ink_commit_chain", False)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool:
+        ink_motion = initial.get("ink_motion", False)
+        idle_age = initial.get("idle_age_ms")
+        idle_enabled = idle_age is not None
+        if idle_enabled and (not presence_enabled or not valid_idle_age(idle_age)):
+            await websocket.close(code=4401)
+            return
+        activity_deadline = idle_deadline(idle_age) if idle_enabled else None
+        if activity_deadline is not None and activity_deadline <= time.monotonic():
+            await websocket.close(code=4410)
+            return
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool or type(ink_motion) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -1177,6 +1190,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             "role": current_role,
             "participant_role": user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student"),
             "online_at": str(int(time.time() * 1000)),
+            "color": participant_color(str(user["id"]), list(_subscriber_users.get(board_id, {}).values())),
         }
         already_present = any(
             meta.get("user_id") == user_meta["user_id"]
@@ -1196,22 +1210,107 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         await websocket.send_json({"type": "ready", "version": current_version,
                                    **({"compact_ink": True} if compact_ink else {}),
                                    **({"durable_ink_commits": True} if durable_ink_commits else {}),
-                                   **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {})})
+                                   **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {}),
+                                   **({"ink_motion": True} if ink_motion and durable_ink_commits else {}),
+                                   **({"idle_lease": True} if idle_enabled else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
                 await announce_presence(board_id, joins=[user_meta],
                                         pool=websocket.app.state.pool, exclude=websocket)
         limiter = EventRateLimit()
+        last_activity_auth = time.monotonic()
         last_ink_commit = None
+
+        async def commit_one(message, refreshed_user=None):
+            nonlocal last_ink_commit
+            # Persist through exactly the same version lock, access,
+            # history and student permission checks as HTTP PATCH.
+            # The motion relay does not write this durable document.
+            request_id = message.get("request_id")
+            try:
+                if refreshed_user is None:
+                    refreshed_user = await lookup_board_session(websocket.app.state.pool, board_id, token)
+                current_role = refreshed_user["role"]
+                if not refreshed_user["unlimited"] and not billing_seat_available(board_id,refreshed_user["owner_id"],refreshed_user["id"]):
+                    error(403, "Недостаточно прав для изменения доски.")
+                if not durable_ink_commits or refreshed_user["is_pilot"] or current_role not in ("owner", "editor"):
+                    error(403, "Недостаточно прав для изменения доски.")
+                if not isinstance(request_id, str) or not 1 <= len(request_id) <= 96:
+                    error(422, "Некорректный идентификатор запроса.")
+                if set(message) - {"type","request_id","expected_version","delta","ink_gesture","cursor","after_request_id"}:
+                    error(422, "Некорректный запрос.")
+                version, delta, gesture = message.get("expected_version"), message.get("delta"), message.get("ink_gesture")
+                if type(version) is not int or not 1 <= version <= 2**63-1 or not isinstance(delta,dict) or not isinstance(gesture,str) or not 1 <= len(gesture) <= 128:
+                    error(422, "Некорректные изменения.")
+                if "after_request_id" in message:
+                    predecessor = message["after_request_id"]
+                    # A peer can fill a missing predicted version after
+                    # a conflict. Never let a successor accidentally
+                    # apply to that unrelated version.
+                    if not ink_commit_chain or not isinstance(predecessor,str) or predecessor == request_id or last_ink_commit != (predecessor, version):
+                        error(409, "Предыдущая запись штриха не подтверждена.")
+                cursor = None
+                if "cursor" in message:
+                    raw_cursor = message["cursor"]
+                    if not isinstance(raw_cursor,dict):
+                        error(422, "Некорректный курсор.")
+                    try:
+                        cursor = validate_live_event({**raw_cursor,"type":"cursor"}, role=current_role,
+                            user_id=str(refreshed_user["id"]), name=str(refreshed_user["display_name"] or "Участник"))
+                    except InvalidLiveEvent:
+                        error(422, "Некорректный курсор.")
+                    # Respect invisible mode on the authenticated socket.
+                    if presence_enabled and not presence_visible:
+                        cursor = None
+                # lookup_board_session has already verified maintenance,
+                # guest scope, board membership and token revocation.
+                # Reuse its permission fields; no second session query.
+                saved = await persist_document(board_id, version, websocket, refreshed_user, True,
+                    delta=delta, ink_gesture=gesture, ink_cursor=cursor)
+                last_ink_commit = (request_id, saved["version"])
+                await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,"version":saved["version"]})
+            except HTTPException as exc:
+                last_ink_commit = None
+                detail = exc.detail
+                await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,
+                    "status":exc.status_code,"detail":detail})
+
+        # A negotiated client has one ordered, bounded checkpoint worker.
+        # Receiving/relaying geometry never waits for the database write.
+        ink_queue = asyncio.Queue(maxsize=4)
+
+        async def write_ink_queue():
+            try:
+                while True:
+                    message = await ink_queue.get()
+                    try:
+                        await commit_one(message)
+                    finally:
+                        ink_queue.task_done()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logging.getLogger("lektrus.realtime").exception("Ink checkpoint worker failed")
+                try:
+                    await websocket.close(code=1011)
+                except Exception:
+                    pass
+
+        if ink_motion and durable_ink_commits:
+            ink_worker=asyncio.create_task(write_ink_queue())
         while True:
             remaining = float(claims["exp"]) - time.time()
+            idle_remaining = activity_deadline - time.monotonic() if activity_deadline is not None else float("inf")
+            if idle_remaining <= 0:
+                await websocket.close(code=4410)
+                return
             if remaining <= 0:
                 await websocket.close(code=4401)
                 return
             try:
                 raw = await asyncio.wait_for(
-                    websocket.receive_text(), timeout=min(30, remaining)
+                    websocket.receive_text(), timeout=min(30, remaining, idle_remaining)
                 )
                 if len(raw.encode("utf-8")) > MAX_EVENT_BYTES:
                     await websocket.close(code=1009)
@@ -1223,6 +1322,22 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     continue
                 if not isinstance(message, dict):
                     await websocket.send_json({"type": "event_error", "reason": "invalid_frame"})
+                    continue
+                if message.get("type") == "activity":
+                    if not idle_enabled or set(message) != {"type","idle_age_ms"} or not valid_idle_age(message["idle_age_ms"]):
+                        await websocket.send_json({"type":"event_error","reason":"invalid_activity"})
+                        continue
+                    # Authenticated socket-local lease, no DB traffic or peer fan-out.
+                    if time.monotonic() - last_activity_auth >= 30:
+                        await lookup_board_session(websocket.app.state.pool, board_id, token)
+                        last_activity_auth = time.monotonic()
+                    activity_deadline = idle_deadline(message["idle_age_ms"])
+                    continue
+                if message.get("type") == "ink_commit" and ink_worker is not None:
+                    if ink_worker.done() or ink_queue.full() or not limiter.check("ink_commit"):
+                        await websocket.send_json({"type":"ink_commit_ack","request_id":message.get("request_id"),"status":429,"detail":"Очередь сохранения занята."})
+                    else:
+                        ink_queue.put_nowait(message)
                     continue
                 refreshed_user, checked_peers, checked_rows = await authorize_live_frame(
                     websocket.app.state.pool, board_id, websocket, token, message.get("type")
@@ -1244,57 +1359,16 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     await websocket.send_json({"type": "pong", "version": refreshed_user["version"]})
                     continue
                 if message.get("type") == "ink_commit":
-                    # Persist through exactly the same version lock, access,
-                    # history and student permission checks as HTTP PATCH.
-                    # Never relay uncommitted geometry or replay a lost ACK.
-                    request_id = message.get("request_id")
-                    try:
-                        if not durable_ink_commits or refreshed_user["is_pilot"] or current_role not in ("owner", "editor"):
-                            error(403, "Недостаточно прав для изменения доски.")
-                        if not limiter.check("ink_commit"):
-                            error(429, "Слишком много изменений.")
-                        if not isinstance(request_id, str) or not 1 <= len(request_id) <= 96:
-                            error(422, "Некорректный идентификатор запроса.")
-                        if set(message) - {"type","request_id","expected_version","delta","ink_gesture","cursor","after_request_id"}:
-                            error(422, "Некорректный запрос.")
-                        version, delta, gesture = message.get("expected_version"), message.get("delta"), message.get("ink_gesture")
-                        if type(version) is not int or not 1 <= version <= 2**63-1 or not isinstance(delta,dict) or not isinstance(gesture,str) or not 1 <= len(gesture) <= 128:
-                            error(422, "Некорректные изменения.")
-                        if "after_request_id" in message:
-                            predecessor = message["after_request_id"]
-                            # A peer can fill a missing predicted version after
-                            # a conflict. Never let a successor accidentally
-                            # apply to that unrelated version.
-                            if not ink_commit_chain or not isinstance(predecessor,str) or predecessor == request_id or last_ink_commit != (predecessor, version):
-                                error(409, "Предыдущая запись штриха не подтверждена.")
-                        cursor = None
-                        if "cursor" in message:
-                            raw_cursor = message["cursor"]
-                            if not isinstance(raw_cursor,dict):
-                                error(422, "Некорректный курсор.")
-                            try:
-                                cursor = validate_live_event({**raw_cursor,"type":"cursor"}, role=current_role,
-                                    user_id=str(refreshed_user["id"]), name=str(refreshed_user["display_name"] or "Участник"))
-                            except InvalidLiveEvent:
-                                error(422, "Некорректный курсор.")
-                            # Respect invisible mode on the authenticated socket.
-                            if presence_enabled and not presence_visible:
-                                cursor = None
-                        # lookup_board_session has already verified maintenance,
-                        # guest scope, board membership and token revocation.
-                        # Reuse its permission fields; no second session query.
-                        saved = await persist_document(board_id, version, websocket, refreshed_user, True,
-                            delta=delta, ink_gesture=gesture, ink_cursor=cursor)
-                        last_ink_commit = (request_id, saved["version"])
-                        await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,"version":saved["version"]})
-                    except HTTPException as exc:
-                        last_ink_commit = None
-                        detail = exc.detail
-                        await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,
-                            "status":exc.status_code,"detail":detail})
+                    if limiter.check("ink_commit"):
+                        await commit_one(message,refreshed_user)
+                    else:
+                        await websocket.send_json({"type":"ink_commit_ack","request_id":message.get("request_id"),"status":429,"detail":"Слишком много изменений."})
                     continue
                 if refreshed_user["participant_role"] == "student" and message.get("type") in ("focus_view", "teacher_view", "guided_follow", "attachment_result"):
                     await websocket.send_json({"type": "event_error", "reason": "teacher_participant_required"})
+                    continue
+                if message.get("type") in ("ink_motion", "ink_motion_ack") and not (ink_motion and durable_ink_commits):
+                    await websocket.send_json({"type":"event_error","reason":"ink_motion_not_negotiated"})
                     continue
                 try:
                     event = validate_live_event(
@@ -1373,6 +1447,9 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         "offset": event["offset"], "finished": event["finished"],
                     })
             except asyncio.TimeoutError:
+                if activity_deadline is not None and activity_deadline <= time.monotonic():
+                    await websocket.close(code=4410)
+                    return
                 # Avoid stale sockets after logout/revocation, even without pings.
                 await lookup_board_session(websocket.app.state.pool, board_id, token)
     except (WebSocketDisconnect, HTTPException, ValueError, TypeError, asyncio.TimeoutError):
@@ -1381,6 +1458,9 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         except Exception:
             pass
     finally:
+        if ink_worker is not None:
+            ink_worker.cancel()
+            await asyncio.gather(ink_worker,return_exceptions=True)
         leaves = _detach_subscribers(board_id, [websocket])
         if leaves:
             await announce_presence(board_id, leaves=leaves, pool=websocket.app.state.pool)

@@ -64,6 +64,45 @@ def _view_numbers(frame: dict[str, Any]) -> tuple[float, float, float]:
     return x, y, zoom
 
 
+def _motion_points(points: Any, *, allow_empty: bool = False) -> bool:
+    return isinstance(points, list) and (0 if allow_empty else 1) <= len(points) <= 5000 and all(
+        isinstance(p, dict) and set(p) == {"x","y"} and finite_position(p["x"]) and finite_position(p["y"]) for p in points)
+
+
+def _motion_style(value: dict, *, sticker: bool = False) -> bool:
+    weight = value.get("weight")
+    return (value.get("kind") in ("pen","marker") and _identifier(value.get("id"), MAX_STROKE_ID)
+            and isinstance(value.get("color"),str) and COLOR_RE.fullmatch(value["color"]) is not None
+            and type(weight) in (int,float) and math.isfinite(weight) and 0 < weight <= (1000 if sticker else 60)
+            and _motion_points(value.get("points")))
+
+
+def _motion_shape(value: Any, key: str, user_id: str) -> bool:
+    if value is None:
+        return True
+    if not isinstance(value,dict) or value.get("id") != key:
+        return False
+    kind = value.get("kind")
+    if kind == "sticky":
+        strokes = value.get("stickerInk")
+        return (set(value)=={"kind","id","stickerInk"} and isinstance(strokes,list) and len(strokes)<=256
+                and all(isinstance(s,dict) and set(s)=={"id","kind","color","weight","points"} and _motion_style(s,sticker=True) for s in strokes)
+                and len({s["id"] for s in strokes})==len(strokes))
+    geometry = all(finite_position(value.get(k)) for k in ("x","y","width","height"))
+    if not geometry or value["width"]<=0 or value["height"]<=0:
+        return False
+    if kind == "tail":
+        return (set(value)=={"kind","id","count","keep","from_x","from_y","x","y","width","height","points"}
+                and type(value["count"]) is int and type(value["keep"]) is int
+                and 1<=value["keep"]<=value["count"]<=5000 and finite_position(value["from_x"]) and finite_position(value["from_y"])
+                and _motion_points(value["points"],allow_empty=True) and value["keep"]+len(value["points"])<=5000)
+    return (set(value)<={"kind","id","x","y","width","height","color","weight","points","rotation","hidden","locked","createdBy","groupId"}
+            and _motion_style(value) and ("rotation" not in value or finite_position(value["rotation"]))
+            and all(k not in value or type(value[k]) is bool for k in ("hidden","locked"))
+            and ("createdBy" not in value or _identifier(value["createdBy"]))
+            and ("groupId" not in value or _identifier(value["groupId"])))
+
+
 def validate_live_event(frame: Any, *, role: str, user_id: str,
                         name: str) -> dict[str, Any]:
     """Validate one client event and attach trusted identity fields."""
@@ -82,6 +121,38 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
             raise InvalidLiveEvent("invalid_client")
         return {"type": "cursor", **identity, "client_id": client_id,
                 "x": x, "y": y, "sent_at": int(time.time() * 1000)}
+
+    if kind in ("ink_motion","ink_motion_ack"):
+        if role not in ("owner","editor"):
+            raise InvalidLiveEvent("read_only")
+        if not _identifier(frame.get("client_id"),MAX_CLIENT_ID) or type(frame.get("seq")) is not int or not 1<=frame["seq"]<=2**31-1:
+            raise InvalidLiveEvent("invalid_ink_motion_identity")
+        if kind == "ink_motion_ack":
+            if set(frame)!={"type","client_id","seq","version"} or type(frame.get("version")) is not int or not 1<=frame["version"]<=2**53-1:
+                raise InvalidLiveEvent("invalid_ink_motion_ack")
+        else:
+            required={"type","client_id","seq","gesture","base_version","x","y","changes"}
+            gesture=frame.get("gesture")
+            if (set(frame)!=required or not isinstance(gesture,str) or not MUTATION_ID_RE.fullmatch(gesture)
+                or type(frame.get("base_version")) is not int or not 0<=frame["base_version"]<=2**53-1
+                or not finite_position(frame["x"]) or not finite_position(frame["y"])):
+                raise InvalidLiveEvent("invalid_ink_motion")
+            changes=frame["changes"]
+            if not isinstance(changes,list) or not 1<=len(changes)<=256:
+                raise InvalidLiveEvent("invalid_ink_motion_changes")
+            ids=set()
+            for change in changes:
+                if (not isinstance(change,dict) or set(change)!={"id","index","seq","value"}
+                    or not _identifier(change["id"],MAX_STROKE_ID) or change["id"] in ids
+                    or type(change["index"]) is not int or not 0<=change["index"]<=10000
+                    or type(change["seq"]) is not int or not 1<=change["seq"]<=frame["seq"]
+                    or not _motion_shape(change["value"],change["id"],user_id)):
+                    raise InvalidLiveEvent("invalid_ink_motion_change")
+                ids.add(change["id"])
+            # Actual durable writes still undergo the complete version, item,
+            # author, student-policy, quota and session checks. This packet is
+            # a strictly bounded render update and cannot write the database.
+        return {**frame,**identity,"sent_at":int(time.time()*1000)}
 
     if kind == "object_preview":
         if role not in ("owner", "editor"):
@@ -337,6 +408,8 @@ class EventRateLimit:
         self.cursors: deque[float] = deque()
         self.ink: deque[float] = deque()
         self.ink_commits: deque[float] = deque()
+        self.ink_motion: deque[float] = deque()
+        self.ink_motion_acks: deque[float] = deque()
         self.objects: deque[float] = deque()
         self.work: deque[float] = deque()
         self.mutations: deque[float] = deque()
@@ -351,6 +424,10 @@ class EventRateLimit:
             window, limit = self.cursors, 20
         elif event_type == "ink_commit":
             window, limit = self.ink_commits, 45
+        elif event_type == "ink_motion":
+            window, limit = self.ink_motion, 40
+        elif event_type == "ink_motion_ack":
+            window, limit = self.ink_motion_acks, 25
         elif event_type == "object_preview":
             window, limit = self.objects, 24
         elif event_type in ("live_ink", "live_erase"):

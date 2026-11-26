@@ -80,8 +80,9 @@ assert.ok(selectionStart>=0&&layerStart>selectionStart&&layerEnd>layerStart);
 const layers=app.slice(selectionStart,layerEnd);
 assert.match(layers,/const selectedInkKey=useMemo\(\(\) => selectedIds\.size>24 \? "" :/);
 assert.match(layers,/const detailedInkIds=useMemo\(/);
-assert.match(app,/const displayInkItems=visibleItems;/,
- "Raster ink is the real document, never a separate remote eraser overlay");
+assert.match(app,/const displayInkItems=useMemo\(\(\)=>inkMotionLedger\.project\(visibleItems\)/,
+ "Raster ink uses one permanent item ID projection, not a separate overlay");
+assert.doesNotMatch(app,/<RemoteInkOverlay|remote-live-ink-layer/,"Never reintroduce the separate temporary ink layer");
 assert.match(source,/a\.strokes\.every\(\(item,i\)=>item===b\.strokes\[i\]\)/,
  "The unchanged permanent canvas is retained while a new stroke grows");
 assert.match(layers,/\}, \[displayInkItems, detailedInkIds\]\)/,

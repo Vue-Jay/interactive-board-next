@@ -280,7 +280,7 @@ async function loadSelfhost(enabled, platform="web") {
   }
   const listeners=new Map();
   const makeContext=(withLocks=true)=>vm.createContext({
-    exports:{},require:name=>{assert.equal(name,"@capacitor/core");return bridge;},fetch,URL,Headers,Response,AbortController,DOMException,FormData,TextEncoder,queueMicrotask,
+    exports:{},require:name=>{if(name==="./boardIdle"){const out={};new Function("exports",ts.transpileModule(readFileSync(new URL("../src/boardIdle.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(out);return out;}assert.equal(name,"@capacitor/core");return bridge;},fetch,URL,Headers,Response,AbortController,DOMException,FormData,TextEncoder,queueMicrotask,
     navigator:{onLine:true,locks:withLocks?locks:undefined},WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
@@ -955,4 +955,40 @@ assert.deepEqual(eraseAcks,[streamVersion+2,streamVersion+3]);
 streamChannel();await Promise.resolve();
 console.log("Durable ink pipeline: three unacknowledged frames, bounded coalescing, predecessor and conflict recovery passed.");
 
+}
+
+
+// Exercise the negotiated idle lease with an advanced wall clock, without a ten-minute real wait.
+{
+ const idleEnv=await loadSelfhost(true);
+ const idleApi=idleEnv.api;
+ await idleApi.selfhostLogin("teacher@example.test","test-password");
+ const notices=[];
+ const originalNow=Date.now;
+ let clock=originalNow();
+ Date.now=()=>clock;
+ let stop;
+ try {
+   stop=idleApi.selfhostSubscribeBoard("board-1",()=>{},()=>{},frame=>notices.push(frame.type),{visible:true,idle:true});
+   await new Promise(resolve=>setTimeout(resolve,0));
+   const first=idleEnv.sockets.at(-1);
+   first.open();
+   assert.equal(first.sent[0].idle_age_ms,0);
+   first.emit({type:"ready",version:1,idle_lease:true});
+   assert.equal(first.sent.at(-1).type,"activity");
+   clock+=600000;
+   first.onclose({code:4410});
+   assert.ok(notices.includes("idle_timeout"));
+   assert.equal(first.readyState,3);
+   await new Promise(resolve=>setTimeout(resolve,350));
+   assert.equal(idleEnv.sockets.length,1,"Idle closure must not reconnect in background");
+   idleApi.selfhostNoteBoardActivity("board-1");
+   await new Promise(resolve=>setTimeout(resolve,0));
+   assert.equal(idleEnv.sockets.length,2,"Real user activity must bypass backoff");
+   const second=idleEnv.sockets.at(-1);
+   second.open();
+   assert.equal(second.sent[0].idle_age_ms,0);
+   second.emit({type:"ready",version:2,idle_lease:true});
+ } finally {stop?.();Date.now=originalNow;await Promise.resolve();}
+ console.log("Negotiated inactivity: no background reconnect, immediate wake on real activity.");
 }
