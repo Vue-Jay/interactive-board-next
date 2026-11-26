@@ -3735,7 +3735,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const display = (next: Item[],immediate=false) => {
     const synced = syncBoundConnectors(next);
     const active=gesture.current;
-    if(active&&canEdit&&active.ids.length&&active.ids.length<=64&&
+    if(active&&canEdit&&active.ids.length&&
       (active.mode==="drag"&&active.dragging ||
        active.mode==="hand-smart"&&active.dragging&&active.handMoveSelection ||
        active.mode==="resize"||active.mode==="rotate"||
@@ -3747,7 +3747,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if(item&&origins.has(item.id))
           poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
-      if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses);
+      if(poses.length>0)workChannel.current?.publishTransform(poses);
     }
     // Keep model state synchronous for pointer math, but paint at most once per frame.
     // This prevents 100+ React renders/sec on fast mouse/touch drags.
@@ -4802,7 +4802,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // immediately, even if the throttle currently holds an older preview.
     // Cancellation sends the ORIGINAL geometry so a remote viewer rolls back
     // smoothly. The authoritative RPC save still decides the persisted result.
-    if(canEdit&&g.ids.length&&g.ids.length<=64&&
+    if(canEdit&&g.ids.length&&
       (g.mode==="drag"&&g.dragging||
        g.mode==="hand-smart"&&g.dragging&&g.handMoveSelection||
        g.mode==="resize"||g.mode==="rotate"||g.mode==="connector-end")){
@@ -4814,7 +4814,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if(item&&origins.has(item.id))
           poses.push(toBoardObjectPose(item,origins.get(item.id)!));
       }
-      if(poses.length>0&&poses.length<=64)workChannel.current?.publishTransform(poses,true);
+      if(poses.length>0)workChannel.current?.publishTransform(poses,true);
     }
     if(g.mode==="draw"&&g.ink){
       finishDurableInk(g,cancel);

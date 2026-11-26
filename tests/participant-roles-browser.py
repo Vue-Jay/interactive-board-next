@@ -382,6 +382,13 @@ def check_shared_eraser_sync(browser):
                 sender.mouse.up()
             sender.wait_for_timeout(350)
         live_drag(teacher,pupil,shape)
+        same=contexts[0].new_page()
+        try:
+            assert_board(same,ident,True,True)
+            expect(same.locator(shape)).to_be_visible(timeout=20000)
+            live_drag(teacher,same,shape)
+        finally:
+            same.close()
         live_drag(teacher,pupil,ruler)
         teacher.locator(words).dblclick()
         field=teacher.locator(words+" textarea")
@@ -389,9 +396,16 @@ def check_shared_eraser_sync(browser):
         field.fill("Peer sees typing before blur")
         expect(pupil.locator(words)).to_contain_text("Peer sees typing before blur",timeout=5000)
         assert field.evaluate("el=>document.activeElement===el"),"Text test must keep editing active"
-        field.press("Control+Enter")
-        teacher.wait_for_timeout(350)
-        print("Live object motion, measuring instrument and text before pointer-up/blur verified against real peer.")
+        field.press("Tab")
+        teacher.wait_for_timeout(750)
+        with httpx.Client(base_url=API,headers=headers("owner")) as api:
+            base=api.get(url).json()
+            doc=base["document"]
+            doc["items"]=[i for i in doc["items"] if not i["id"].startswith("live-qa-")]
+            api.put(url,json={"expected_version":base["version"],"document":doc}).raise_for_status()
+        for page in (teacher,pupil):
+            expect(page.locator(shape)).to_have_count(0,timeout=20000)
+        print("Live object motion across accounts and tabs, measuring instrument and text before pointer-up/blur verified against real peer.")
         with httpx.Client(base_url=API,headers=headers("owner")) as client:
             def read():
                 response=client.get(url)

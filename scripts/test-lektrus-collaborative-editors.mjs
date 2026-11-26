@@ -169,3 +169,14 @@ console.log("Lektrus collaborative editor merges, previews, and event wiring: ch
  assert.equal(applyEditorOps({text:"old",quizSelected:1},wire).text,"new");
  assert.equal(applyEditorOps({text:"old",quizSelected:1},wire).quizSelected,undefined);
 }
+
+// Verify ordinary content, labels, settings and subject data use the same delta path.
+{
+ const compiled=ts.transpileModule(read("src/boardLiveObjectEdits.ts"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ const live={};new Function("exports","require",compiled.outputText)(live,()=>exports);
+ const samples=[["text","text","hello"],["sticky","text","note"],["shape","color","#ff0000"],["frame","text","frame"],["connector","text","label"],["comment","text","comment"],["table","tableCells",["a","b"]],["formula","text","x+1"],["graph","graphPoints",[{id:"p",x:1,y:2,label:"A"}]],["fraction","fractionNumerator",2],["checklist","checklistItems",["task"]],["quiz","quizExplanation","answer"],["flashcard","flashcardBack","back"],["cover","coverOpacity",0.4],["linkmedia","mediaTitle","video"],["image","imageCrop",{x:0,y:0,width:1,height:1}],["pdf","pdfPage",2],["instrument","rotation",35]];
+ for(const [kind,key,value] of samples){const before={id:"item",kind,x:0,y:0,width:100,height:100,text:""};const after={...before,[key]:value};for(const fn of [live.boardObjectLiveOps,live.boardDraftLiveOps]){const ops=JSON.parse(JSON.stringify(fn(before,after)));assert.deepEqual(applyEditorOps(before,ops)[key],value,kind+" "+key);}}
+ assert.equal(live.boardObjectLiveOps({id:"p",kind:"pen",x:0},{id:"p",kind:"pen",x:1}).length,0);
+ assert.equal(live.isLiveBoardObjectField("ownerId"),false);
+ console.log("Live object field coverage: "+samples.length+" object families");
+}

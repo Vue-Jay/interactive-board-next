@@ -50,7 +50,7 @@ export function connectBoardWorkChannel(
     let editTimer:ReturnType<typeof setTimeout>|undefined;
     const queuedEdits=new Map<string,LiveEditorOp[]>();
     let lastEditSent=0;
-    let pendingTransform: BoardObjectPose[] | null = null;
+    const pendingTransforms = new Map<string,{pose:BoardObjectPose;finished:boolean}>();
     let lastTransformSent = 0, editSequence = 0, transformSeq = 0;
     const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
     const seenEdits = new Set<string>();
@@ -69,13 +69,20 @@ export function connectBoardWorkChannel(
     };
     const sendTransform = () => {
       clearTimeout(transformTimer); transformTimer = undefined;
-      const items = pendingTransform; pendingTransform = null;
-      if (!items || !ready) return;
+      if (!pendingTransforms.size || !ready) return;
+      const items:BoardObjectPose[]=[];
+      const finished=pendingTransforms.values().next().value!.finished;
+      for(const [id,entry] of pendingTransforms){
+        if(entry.finished!==finished)continue;
+        items.push(entry.pose);pendingTransforms.delete(id);
+        if(items.length===64)break;
+      }
       channel.sendEvent({
         type: "object_transform", client_id: clientId, seq: ++transformSeq,
-        finished: false, items,
+        finished, items,
       });
       lastTransformSent = Date.now();
+      if(pendingTransforms.size)transformTimer=setTimeout(sendTransform,42);
     };
     const flushEdits=()=>{
       clearTimeout(editTimer);editTimer=undefined;
@@ -96,7 +103,7 @@ export function connectBoardWorkChannel(
       ready = status === "online";
       lastFingerprint = "";
       if (ready) sendState();
-      else{clearTimeout(editTimer);editTimer=undefined;queuedEdits.clear();clearTimeout(transformTimer);transformTimer=undefined;pendingTransform=null;}
+      else{clearTimeout(editTimer);editTimer=undefined;queuedEdits.clear();clearTimeout(transformTimer);transformTimer=undefined;pendingTransforms.clear();}
     }, event => {
       if (event.type === "presence_diff") {
         for (const user of event.leaves) onLeave(user.user_id);
@@ -189,23 +196,17 @@ export function connectBoardWorkChannel(
         }
       },
       publishTransform: (items, finished = false) => {
-        if (stopped || !publishSelf || !items.length || items.length > 64 || !ready) return;
-        pendingTransform = items;
-        if (finished) {
-          clearTimeout(transformTimer); transformTimer = undefined; pendingTransform = null;
-          channel.sendEvent({
-            type: "object_transform", client_id: clientId, seq: ++transformSeq,
-            finished: true, items,
-          });
-          lastTransformSent = Date.now();
-          return;
-        }
+        if (stopped || !publishSelf || !items.length || !ready) return;
+        // Keep only the newest pose per object. The server's 64-object packet
+        // cap is not a selection cap; drain fairly without a network burst.
+        for(const pose of items)pendingTransforms.set(pose.id,{pose,finished});
+        if(finished&&pendingTransforms.size<=64){sendTransform();return;}
         if (Date.now() - lastTransformSent >= 42) sendTransform();
         else if (!transformTimer) transformTimer = setTimeout(sendTransform, Math.max(1, 42 - (Date.now() - lastTransformSent)));
       },
       close: () => {
         stopped = true;
-        clearTimeout(publishTimer); clearTimeout(transformTimer);clearTimeout(editTimer);queuedEdits.clear();
+        clearTimeout(publishTimer); clearTimeout(transformTimer);clearTimeout(editTimer);queuedEdits.clear();pendingTransforms.clear();
         channel(); onLeave(me.userId);
       },
     };
