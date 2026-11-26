@@ -23,6 +23,7 @@ assert MODE in ('production', 'ui'), 'Unknown Android login test mode'
 # The workflow serializes all production runs and their emulator matrix.
 # Keep consecutive submissions at least 80 seconds apart (8 attempts/600s).
 last_submit = None
+messenger_dialogs_closed = 0
 
 
 def adb(*args, timeout=25):
@@ -35,12 +36,51 @@ def snapshot():
     return list(ET.fromstring(raw.strip()).iter('node'))
 
 
+def isolate_old_emulator_messenger():
+    # API 24's stock Google APIs image can crash its preinstalled SMS app
+    # during boot. The observed system crash dialog covered a fully rendered
+    # Lektrus login in two consecutive runs. Only disable those unrelated
+    # packages on this disposable emulator, not on users' devices.
+    if adb('shell', 'getprop', 'ro.build.version.sdk').strip() != b'24':
+        return
+    installed = set(adb('shell', 'pm', 'list', 'packages').decode().splitlines())
+    for package in ('com.google.android.apps.messaging', 'com.android.mms'):
+        if 'package:' + package not in installed:
+            continue
+        adb('shell', 'am', 'force-stop', package)
+        result = adb('shell', 'pm', 'disable-user', '--user', '0', package).decode().strip()
+        print(f'Isolating unrelated emulator SMS app: {result}', flush=True)
+
+
+def close_known_messenger_dialog(nodes):
+    # The boot-time dialog may already be visible when the package is
+    # disabled. Dismiss ONLY the exact third-party Android crash dialog.
+    # Never dismiss a Lektrus crash, ANR, permission prompt or generic error.
+    global messenger_dialogs_closed
+    if not any(n.get('package') == 'android' and label(n) == 'Messenger has stopped' for n in nodes):
+        return False
+    close = next((n for n in nodes if n.get('package') == 'android'
+                  and label(n) == 'Close app' and n.get('enabled') == 'true'), None)
+    if close is None:
+        return False
+    if messenger_dialogs_closed >= 3:
+        raise AssertionError('Unrelated Messenger crash repeatedly obscures the emulator')
+    messenger_dialogs_closed += 1
+    print('Dismissed the exact unrelated Messenger crash dialog; continuing real Lektrus assertions.', flush=True)
+    screenshot(f'00-messenger-dialog-{messenger_dialogs_closed}.png')
+    tap(close)
+    return True
+
+
 def wait_for(find, description, seconds=70):
     end = time.monotonic() + seconds
     last = None
     while time.monotonic() < end:
         try:
-            value = find(snapshot())
+            nodes = snapshot()
+            if close_known_messenger_dialog(nodes):
+                continue
+            value = find(nodes)
             # ElementTree nodes without children are falsy even if they are
             # the exact enabled Android button we are waiting for.
             if value is not None:
@@ -93,6 +133,10 @@ def collect_diagnostics():
         log=adb('logcat','-d','-t','8000',timeout=35).decode(errors='replace')
         terms=('SSLHandshakeException','SSLPeerUnverifiedException','CertPathValidatorException','Trust anchor','CertificateException','CertPath','CapacitorHttp')
         (OUT/'tls-device-diagnostics.txt').write_text('\n'.join(line for line in log.splitlines() if any(t in line for t in terms)))
+        # Include fatal/runtime and WebView diagnostics, not the unrestricted
+        # device log. No production credentials are used by this test.
+        runtime = ('FATAL EXCEPTION', 'AndroidRuntime', 'chromium', 'ANR in', 'am_crash')
+        (OUT/'runtime-device-diagnostics.txt').write_text('\n'.join(line for line in log.splitlines() if any(t in line for t in runtime)))
         (OUT/'device-version.txt').write_bytes(adb('shell','getprop','ro.build.version.release')+adb('shell','getprop','ro.build.version.sdk')+adb('shell','date','-u'))
     except (subprocess.SubprocessError, OSError) as exc:
         print(f'Diagnostic capture unavailable: {exc}',flush=True)
@@ -140,6 +184,7 @@ def install_after_skipped_releases():
 
 
 try:
+    isolate_old_emulator_messenger()
     install_after_skipped_releases()
     adb('shell', 'svc', 'power', 'stayon', 'true')
     # Three independent cold launches with the emulator held sideways.
