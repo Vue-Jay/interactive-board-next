@@ -1,5 +1,6 @@
 """Real-browser acceptance against disposable Lektrus API/Postgres, not DOM mocks."""
 import asyncio
+import json
 from functools import lru_cache
 import os
 import re
@@ -322,6 +323,22 @@ def check_shared_eraser_sync(browser):
     pattern=re.compile(re.escape(API+url)+r"(?:\?.*)?$")
     contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
     teacher,pupil=[ctx.new_page() for ctx in contexts]
+    # Intercept the actual durable websocket path as well as legacy HTTP.
+    # Never simulate loss by disabling the new protocol under test.
+    controls={page:{"hold":None,"held":[],"commits":[]} for page in (teacher,pupil)}
+    for page,control in controls.items():
+        def route_ws(route,control=control):
+            upstream=route.connect_to_server()
+            def outgoing(message):
+                frame=json.loads(message)
+                if frame.get("type")=="ink_commit":
+                    control["commits"].append(frame)
+                    changes=frame.get("delta",{}).get("items",{})
+                    if control["hold"] and any(i.get("id")==control["hold"] for i in changes.get("upsert",[])+changes.get("point_edits",[])):
+                        control["held"].append((upstream,message));return
+                upstream.send(message)
+            route.on_message(outgoing)
+        page.route_web_socket(re.compile(r"/api/v1/boards/[^/]+/events"),route_ws)
     try:
         login(teacher,"owner")
         login(pupil,"learner")
@@ -355,6 +372,8 @@ def check_shared_eraser_sync(browser):
                 eraser.locator(f'[data-eraser-mode="{mode}"]:visible').first.click()
                 original={i["id"] for i in inks(read())}
                 held=[]
+                control=controls[writer]
+                control["commits"].clear()
                 def delay_write(route):
                     if route.request.method in ("PUT","PATCH"):
                         body=route.request.post_data_json
@@ -377,15 +396,34 @@ def check_shared_eraser_sync(browser):
                     stroke_id=stroke["id"]
                     stored(eraser,stroke_id)
                     expect(eraser.locator(".viewer-ink-canvas").first).to_be_attached(timeout=20000)
+                    assert any(frame.get("cursor") for frame in control["commits"]), "Drawing must send a committed cursor and ink together"
+                    # Check visible pixels at the actual remote cursor, not merely a stored ID.
+                    eraser.wait_for_function("""()=>{
+                        const cursor=document.querySelector(".lektrus-remote-cursor");
+                        const board=document.querySelector("section.board");
+                        if(!cursor||!board)return false;
+                        const matrix=new DOMMatrix(getComputedStyle(cursor).transform);
+                        const r=board.getBoundingClientRect(),x=r.left+matrix.e,y=r.top+matrix.f;
+                        return Array.from(document.querySelectorAll(".viewer-ink-canvas")).some(canvas=>{
+                            const b=canvas.getBoundingClientRect();
+                            if(x<b.left||x>b.right||y<b.top||y>b.bottom||!canvas.width||!canvas.height)return false;
+                            const px=Math.max(0,Math.min(canvas.width-1,Math.round((x-b.left)*canvas.width/b.width)));
+                            const py=Math.max(0,Math.min(canvas.height-1,Math.round((y-b.top)*canvas.height/b.height)));
+                            const sx=Math.max(0,px-4),sy=Math.max(0,py-4);
+                            const rgba=canvas.getContext("2d").getImageData(sx,sy,Math.min(9,canvas.width-sx),Math.min(9,canvas.height-sy)).data;
+                            return rgba.some((value,index)=>index%4===3&&value>30);
+                        });
+                    }""",timeout=5000)
                     assert eraser.locator(".remote-live-ink-layer").count()==0
                     # Hold an extension using the old version while the other
                     # participant erases the real already-committed stroke.
                     writer.route(pattern,delay_write)
+                    control["hold"]=stroke_id
                     writer.mouse.move(x+240,y,steps=8)
                     for _ in range(80):
-                        if held: break
+                        if held or control["held"]: break
                         writer.wait_for_timeout(100)
-                    assert held,"A growing stroke did not send a durable checkpoint"
+                    assert held or control["held"],"A growing stroke did not send a durable checkpoint"
                     midpoint=eraser.evaluate("""(stroke)=>{
                         const world=document.querySelector('.world');
                         const r=world.getBoundingClientRect();
@@ -397,6 +435,9 @@ def check_shared_eraser_sync(browser):
                     erased=wait_row(eraser,lambda r:all(i["id"]!=stroke_id for i in inks(r)) and len(inks(r))==len(original)+(0 if mode=="stroke" else 2),
                                     f"Peer {mode} eraser failed to persist before pointer release")
                     eraser.mouse.up()
+                    control["hold"]=None
+                    for upstream,message in control["held"]: upstream.send(message)
+                    control["held"].clear()
                     for route in held: route.continue_()
                     held.clear()
                     writer.unroute(pattern,delay_write)
@@ -415,6 +456,11 @@ def check_shared_eraser_sync(browser):
                         stored(page,stroke_id,False)
                     assert len(inks(read()))==len(original)+(0 if mode=="stroke" else 2)
                 finally:
+                    control["hold"]=None
+                    for upstream,message in control["held"]:
+                        try: upstream.send(message)
+                        except Exception: pass
+                    control["held"].clear()
                     for route in held:
                         try: route.abort()
                         except Exception: pass
