@@ -127,7 +127,7 @@ import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
 import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
-import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, stroke, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
+import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, inkTouchesEraser, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
@@ -2891,6 +2891,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const inkPaintFrame=useRef<number|null>(null);
   const inkCheckpointTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const inkLastBackup=useRef(0);
+  const lastInkGesture=useRef<string|null>(null);
   const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
@@ -3266,6 +3267,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current) return;
     remoteSaveInFlight.current = true;
+    const inkGesture=lastInkGesture.current;
     try {
       // Verify/upload ONLY newly introduced attachments. Existing references
       // are already part of the previously persisted board, and checking them
@@ -3290,7 +3292,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(selfhostMode){
         try{
           const saved=await selfhostSaveDocument(
-            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>
+            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture??undefined
           );
           result={conflict:false,version:saved.version};
         }catch(error){
@@ -4029,6 +4031,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[]}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
+    if(!options?.previousItems)lastInkGesture.current=null;
     const current=options?.previousItems??itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
@@ -4127,6 +4130,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const identity={id:g.ink.id,stickerId:g.sticker?.id};
     const before=removeDurableInk(itemsRef.current,identity);
     if(cancel){
+      lastInkGesture.current=null;
       display(before,true);
       if(!saveBlocked)snapshot.current=currentDocument();
       return;
@@ -5409,6 +5413,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     if (mode === "draw") {
       const active=gesture.current;
+      lastInkGesture.current=active.ink!.id;
       setActiveDrawingId(active.sticker?null:active.ink!.id);
       inkLastBackup.current=Date.now();
       paintDurableInk(active);
@@ -8092,7 +8097,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {id:drawing.ink.id,stickerId:drawing.sticker?.id})){
         // A peer erased the already-visible real stroke. Never write that ID
         // again, including delayed pointer samples and the final pointer-up.
-        drawing.inkInterrupted=true;cancelInkCheckpoint();setActiveDrawingId(null);
+        drawing.inkInterrupted=true;lastInkGesture.current=null;cancelInkCheckpoint();setActiveDrawingId(null);
       }
       if (isOwnRemoteRevision(row, authUser.id, lastAttempt.current)) {
         remoteVersion.current = row.version;
