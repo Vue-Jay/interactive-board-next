@@ -90,8 +90,9 @@ async def ink_history_group(conn, board_id, user, base, document, delta, gesture
             for item in upserts:
                 previous = await prior(item["id"])
                 if item.get("kind") in ("pen","marker"):
-                    # Fragments inherit author, color and width of removed ink.
-                    if previous is not None or not any(all(item.get(k)==source.get(k) for k in ("kind","createdBy","color","weight")) for source in sources):
+                    # New fragment IDs belong to the erasing actor; visual
+                    # properties must agree with the removed shared ink.
+                    if previous is not None or item.get("createdBy")!=str(user["id"]) or not any(all(item.get(k)==source.get(k) for k in ("kind","color","weight")) for source in sources):
                         return None
                 elif item.get("kind")=="sticky" and previous is not None:
                     if {k:v for k,v in previous.items() if k!="stickerInk"} != {k:v for k,v in item.items() if k!="stickerInk"}:

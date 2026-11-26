@@ -31,7 +31,7 @@ assert.ok(touchStart.indexOf('consumedTouchIds.current.add(id)')<
 assert.match(touchStart,/if\(eraserSession\.current\)cancelEraser\(\)/,
  "Pinch must cancel the uncommitted eraser session");
 const eraseCancellation=slice("  const cancelEraser=","  const recordEraserPoint=");
-assert.match(eraseCancellation,/display\(g\.before,true\)/,
+assert.match(eraseCancellation,/display\(restored,true\)/,
  "Cancelled eraser gestures must roll back the permanent model");
 assert.match(eraseCancellation,/flushSave\(\)/,"Cancelled durable changes must also be saved");
 assert.match(touchStart,/pinchState\.current=\{distance:/);

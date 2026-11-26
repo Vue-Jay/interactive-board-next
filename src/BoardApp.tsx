@@ -3780,8 +3780,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(next!==item)stickerChanged=true;
       return next;
     });
-    const next=stickerChanged?withStickers:erased;
-    if(next===before)return;
+    const changed=stickerChanged?withStickers:erased;
+    if(changed===before)return;
+    // A cut creates new IDs. Authorize those fragments exactly as commit()
+    // does, before any intermediate checkpoint reaches the server.
+    const existing=new Set(before.map(item=>item.id));
+    const next=changed.map(item=>existing.has(item.id)?item:{...item,createdBy:authUser.id});
     g.changed=true;
     display(next,true);
     updateInkSnapshot();
@@ -3802,7 +3806,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(g.changed){
       // An interrupted touch must undo only its own eraser gesture.
       lastInkGesture.current=null;
-      display(g.before,true);
+      // Restoring deleted IDs is an insertion under the server's author policy.
+      const present=new Set(itemsRef.current.map(item=>item.id));
+      const restored=g.before.map(item=>isStudent&&!isBoardOwner&&isInkItem(item)&&!present.has(item.id)?{...item,createdBy:authUser.id}:item);
+      display(restored,true);
       updateInkSnapshot();
       flushSave();
     }
