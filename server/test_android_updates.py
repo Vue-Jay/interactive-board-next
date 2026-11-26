@@ -76,7 +76,7 @@ def test_cold_start_fallback_then_live_recovery(monkeypatch):
     def loader():
         if now[0] < 160 or now[0] >= 460:
             raise OSError("upstream unavailable")
-        return [release("1.0.4712")]
+        return [release("1.0.4853")]
 
     async def scenario():
         monkeypatch.setenv("LEKTRUS_ANDROID_MINIMUM_VERSION", "1.0.0")
@@ -85,9 +85,9 @@ def test_cold_start_fallback_then_live_recovery(monkeypatch):
         assert cold["version"] == LAST_VERIFIED_RELEASE["version"] and cold["catalog_stale"] is True
         now[0] = 160
         live = await catalog.get()
-        assert live["version"] == "1.0.4712" and "catalog_stale" not in live
+        assert live["version"] == "1.0.4853" and "catalog_stale" not in live
         now[0] = 460
-        assert (await catalog.get())["version"] == "1.0.4712"
+        assert (await catalog.get())["version"] == "1.0.4853"
     asyncio.run(scenario())
 
 
@@ -331,3 +331,67 @@ def test_initial_sync_populates_previous_published_version(tmp_path):
     assert sorted(p.parent.name for p in tmp_path.glob("*/Lektrus-Android.apk")) == ["1.0.5007", "1.0.5010"]
     assert len(requests) == 4
     assert all("5001" not in url and "5009" not in url for url in requests)
+
+
+def test_older_latest_recovers_newer_published_release(monkeypatch):
+    calls = []
+    def load(url):
+        calls.append(url)
+        return release("1.0.4849") if url == android_updates.LATEST_RELEASE else [release("1.0.4852"), release("1.0.4849")]
+    monkeypatch.setattr(android_updates, "fetch_api_json", load)
+    assert select_android_release(android_updates.fetch_releases("1.0.4852"))["version"] == "1.0.4852"
+    assert calls == [android_updates.LATEST_RELEASE, android_updates.RELEASES]
+
+
+def test_older_rest_catalog_checks_independent_public_release(monkeypatch):
+    monkeypatch.setattr(android_updates, "fetch_api_json", lambda url: release("1.0.4849")
+                        if url == android_updates.LATEST_RELEASE else [release("1.0.4849")])
+    monkeypatch.setattr(android_updates, "fetch_public_release", lambda: [release("1.0.4852")])
+    assert select_android_release(android_updates.fetch_releases("1.0.4852"))["version"] == "1.0.4852"
+
+
+def test_fresh_catalog_discovers_release_within_two_minutes():
+    now = [100.0]
+    version = ["1.0.4849"]
+    calls = []
+    def loader():
+        calls.append(now[0])
+        return [release(version[0])]
+    async def scenario():
+        c = AndroidUpdateCatalog(loader=loader, clock=lambda: now[0])
+        assert (await c.get())["version"] == "1.0.4849"
+        version[0] = "1.0.4852"
+        now[0] += android_updates.CATALOG_TTL - 1
+        assert (await c.get())["version"] == "1.0.4849"
+        now[0] += 1
+        assert (await c.get())["version"] == "1.0.4852"
+        assert len(calls) == 2
+    asyncio.run(scenario())
+
+
+def test_previous_verified_apk_survives_catalog_change(tmp_path, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    import hashlib
+    from io import BytesIO
+    old = select_android_release([release("1.0.4849")])
+    raw = b"previous APK"
+    old["size_bytes"] = len(raw)
+    checksum = hashlib.sha256(raw).hexdigest()
+    def opener(url):
+        return BytesIO((checksum + "  Lektrus-Android.apk\\n").encode() if url.endswith(".sha256") else raw)
+    android_updates.mirror_release(old, root=tmp_path, opener=opener)
+    monkeypatch.setattr(android_updates, "release_directory", lambda: tmp_path)
+    async def current():
+        return {"version": "1.0.4852"}
+    monkeypatch.setattr(android_updates, "site_release", current)
+    def forbidden(_):
+        pytest.fail("Previously verified APK must not be downloaded again")
+    monkeypatch.setattr(android_updates, "mirror_release", forbidden)
+    app = FastAPI()
+    app.include_router(android_updates.router)
+    client = TestClient(app)
+    prefix = "/api/v1/mobile/android-apk/"
+    assert client.get(prefix + "1.0.4849/Lektrus-Android.apk").content == raw
+    assert client.get(prefix + "1.0.4849/Lektrus-Android.apk.sha256").text.startswith(checksum)
+    assert client.get(prefix + "1.0.4848/Lektrus-Android.apk").status_code == 409
