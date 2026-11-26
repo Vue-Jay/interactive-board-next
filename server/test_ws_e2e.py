@@ -101,8 +101,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
             async with websockets.connect(native_uri,origin="https://lektrus.ru") as first:
                 async with websockets.connect(native_uri,origin="https://lectrus.ru") as second:
                     for ws,session in ((first,owner_session),(second,student_session)):
-                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second,"durable_ink_commits":True,"ink_commit_chain":True}))
-                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0,"durable_ink_commits":True,"ink_commit_chain":True}
+                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second,"durable_ink_commits":True,"ink_commit_chain":True,"ink_motion":True}))
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0,"durable_ink_commits":True,"ink_commit_chain":True,"ink_motion":True}
                     for sender,receiver in ((first,second),(second,first)):
                         packet={"type":"live_ink","client_id":"native_1","stroke_id":"native_stroke","kind":"pen",
                                 "color":"#112233","weight":3,"offset":0,"points":[{"x":10,"y":20}],"finished":False}
@@ -245,6 +245,31 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     assert json.loads(await asyncio.wait_for(first.recv(),3))["status"]==409
                     current=(await http.get(url,headers=owner)).json()
                     assert current["version"]==version and current["document"]["items"]==[]
+                    # Hold the actual PostgreSQL board row lock. A durable
+                    # checkpoint must not block the socket's geometry relay.
+                    live_item={**ink,"id":"fast-ink","points":[{"x":1,"y":1},{"x":19,"y":1}]}
+                    motion_item={k:v for k,v in live_item.items() if k!="text"}
+                    motion={"type":"ink_motion","client_id":"motion_1","gesture":"fast-ink","base_version":version,
+                            "seq":1,"x":29,"y":21,"changes":[{"id":"fast-ink","index":0,"seq":1,"value":motion_item}]}
+                    async with app.state.pool.acquire() as blocker:
+                        async with blocker.transaction():
+                            await blocker.fetchval("SELECT id FROM boards WHERE id=$1 FOR UPDATE",UUID(native))
+                            await first.send(json.dumps({"type":"ink_commit","request_id":"motion-write","expected_version":version,
+                                "ink_gesture":"fast-ink","delta":{"items":{"upsert":[live_item]}}}))
+                            await first.send(json.dumps(motion))
+                            relayed=json.loads(await asyncio.wait_for(second.recv(),3))
+                            assert relayed["type"]=="ink_motion" and relayed["changes"]==motion["changes"]
+                            assert relayed["user_id"]==str(TEACHER)
+                            assert (await http.get(url+"?version_only=true",headers=owner)).json()["version"]==version
+                    version+=1
+                    for ws in (first,second):
+                        committed=json.loads(await asyncio.wait_for(ws.recv(),3))
+                        assert committed["type"]=="document_changed" and committed["version"]==version
+                    assert json.loads(await asyncio.wait_for(first.recv(),3))=={"type":"ink_commit_ack","request_id":"motion-write","version":version}
+                    await first.send(json.dumps({"type":"ink_motion_ack","client_id":"motion_1","seq":1,"version":version}))
+                    settled=json.loads(await asyncio.wait_for(second.recv(),3))
+                    assert settled["type"]=="ink_motion_ack" and settled["version"]==version
+                    assert (await http.get(url,headers=owner)).json()["document"]["items"]==[live_item]
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass
