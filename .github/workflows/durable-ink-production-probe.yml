@@ -1,89 +1,127 @@
-name: Durable ink publication verification and Android release request
+name: Verify published durable ink web and signed APK
 on:
   push:
     branches: [qa/durable-ink-production-434]
 permissions:
   contents: read
 jobs:
-  public-probe:
+  retire-redundant-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
-    steps:
-      - name: Verify current durable ink bundle and healthy API
-        run: |
-          python3 - <<'PY'
-          import json, re, time, urllib.request, urllib.error
-          root = "https://lektrus.ru"
-          def get(path):
-              request = urllib.request.Request(root + path, headers={"User-Agent":"Lektrus-release-verification", "Cache-Control":"no-cache"})
-              with urllib.request.urlopen(request, timeout=8) as response:
-                  return response.read(12_000_000).decode("utf-8")
-          def probe():
-              html = get("/app")
-              assert json.loads(get("/api/v1/health")).get("ok") is True
-              queue = re.findall(r'/assets/([\w.-]+\.js)', html)
-              seen = set()
-              found_api = found_board = False
-              while queue and len(seen)<100:
-                  queue.sort(key=lambda name: 0 if "BoardApp" in name or "selfhostApi" in name else 1 if "appEntry" in name or name.startswith("index-") else 2)
-                  name = queue.pop(0)
-                  if name in seen: continue
-                  seen.add(name)
-                  js = get("/assets/"+name)
-                  if "ink_gesture=" in js:
-                      found_api = True
-                      print("Published durable ink API client:", name, flush=True)
-                  if "BoardApp" in name and "Сохранено на сервере" in js and "remote-live-ink-layer" not in js:
-                      found_board = True
-                      print("Published permanent-only board renderer:", name, flush=True)
-                  if found_api and found_board:
-                      print("Published durable ink and healthy production API", flush=True)
-                      return
-                  queue.extend(n for n in re.findall(r'(?:/assets/|\./|assets/)([\w.-]+\.js)',js) if n not in seen and n not in queue)
-              raise RuntimeError("Current HTML dependency graph has no confirmed durable ink renderer/client")
-          for attempt in range(15):
-              try:
-                  probe()
-                  break
-              except Exception as exc:
-                  print("Attempt",attempt+1,str(exc),flush=True)
-                  if attempt==14: raise
-                  time.sleep(20)
-          PY
-  request-android:
-    needs: public-probe
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
     permissions:
-      contents: read
       actions: write
     env:
       GH_TOKEN: ${{ github.token }}
-      EXPECTED_SHA: 3a25cd832735696ab502ecea9e2f870f2360f6b6
     steps:
-      - name: Require exact main and successful production-branch checks
-        shell: bash
+      - name: Retire only the old QA dispatch helper; preserve official main release
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 60); do
-            actual=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-            test "$actual" = "$EXPECTED_SHA"
-            result=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&head_sha=$EXPECTED_SHA&event=push&per_page=100" --jq '.workflow_runs | if length==0 then "pending" elif any(.[]; .status=="completed" and .conclusion!="success") then "failed" elif all(.[]; .status=="completed" and .conclusion=="success") then "success" else "pending" end')
-            if [ "$result" = success ]; then exit 0; fi
-            if [ "$result" = failed ]; then exit 1; fi
+          old=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/45771802757" --jq '.head_branch+" "+.head_sha+" "+.status')
+          if [[ "$old" == "qa/durable-ink-production-434 2113f18bf8b570baba2252db22d0033af2dec12a "* && "$old" != *" completed" ]]; then
+            gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/45771802757/cancel" || true
+          fi
+  verify-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify reachable production application chunks
+        run: |
+          python3 -u - <<'PY'
+          import concurrent.futures, json, re, time, urllib.request
+          root="https://lektrus.ru"
+          expected="BoardApp-CL-kEUh2.js"
+          def get(path):
+              req=urllib.request.Request(root+path,headers={"User-Agent":"Lektrus-production-verification","Cache-Control":"no-cache"})
+              with urllib.request.urlopen(req,timeout=10) as r:
+                  return r.read(12_000_000).decode()
+          def names(s):
+              return set(re.findall(r'([\w][\w.-]*-[\w-]{6,}\.js)',s))
+          def inspect(name):
+              try: return name,get("/assets/"+name)
+              except Exception: return name,""
+          def check():
+              assert json.loads(get("/api/v1/health"))["ok"] is True
+              queue=names(get("/app")); seen=set(); board=api=False
+              for _ in range(10):
+                  if not queue: break
+                  batch=sorted(queue,key=lambda n: (0 if n.startswith(("BoardApp-","appEntry-","index-","selfhostApi-")) else 1,n))[:12]
+                  queue.difference_update(batch); seen.update(batch)
+                  with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+                      for name,js in pool.map(inspect,batch):
+                          if not js: continue
+                          if name.startswith("BoardApp-") and "Сохранено на сервере" in js and "remote-live-ink-layer" not in js:
+                              board=True
+                              print("Permanent board renderer reachable:",name,flush=True)
+                          if "ink_gesture=" in js:
+                              api=True
+                              print("Durable checkpoint API reachable:",name,flush=True)
+                          queue.update(names(js)-seen)
+                  if board and api:
+                      print("Published durable ink web and healthy production API",flush=True)
+                      return True
+              print("Probe scanned",len(seen),"chunks; board=",board,"api=",api,flush=True)
+              return False
+          for n in range(10):
+              try:
+                  if check(): break
+              except Exception as e:
+                  print("Probe",n+1,repr(e),flush=True)
+              if n==9: raise SystemExit("Published web bundle not confirmed")
+              time.sleep(10)
+          PY
+  verify-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Wait for existing main release; do not trigger any new build
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 100); do
+            status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/45771757815" --jq '.status+" "+(.conclusion//"pending")')
+            if [ "$status" = "completed success" ]; then
+              gh release view android-v1.0.4837 --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,targetCommitish --jq 'select(.isDraft==false and .targetCommitish=="3a25cd832735696ab502ecea9e2f870f2360f6b6") | .tagName' | grep -qx android-v1.0.4837
+              exit 0
+            fi
+            if [[ "$status" == completed* ]]; then echo "$status"; exit 1; fi
             sleep 15
           done
           exit 1
-      - name: Request existing official signed Android release workflow on main
-        shell: bash
+      - name: Check real APK mirror, checksum, and durable ink inside package
         run: |
-          set -euo pipefail
-          actual=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-          test "$actual" = "$EXPECTED_SHA"
-          existing=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/native-build.yml/runs?branch=main&head_sha=$EXPECTED_SHA&event=workflow_dispatch&per_page=100" --jq '.total_count')
-          if [ "$existing" = 0 ]; then
-            gh workflow run native-build.yml --repo "$GITHUB_REPOSITORY" --ref main -f publish_android=true
-            echo "Requested official Android publication for $EXPECTED_SHA"
-          else
-            echo "Android workflow already requested for $EXPECTED_SHA; no duplicate release."
-          fi
+          python3 -u - <<'PY'
+          import hashlib,io,json,re,time,urllib.request,zipfile
+          origin="https://lektrus.ru"
+          version="1.0.4837"
+          path="/api/v1/mobile/android-apk/"+version+"/Lektrus-Android.apk"
+          def get(p,limit,timeout=20):
+              q=urllib.request.Request(origin+p,headers={"Cache-Control":"no-cache","User-Agent":"Lektrus-release-verification"})
+              with urllib.request.urlopen(q,timeout=timeout) as r:
+                  assert r.status==200 and r.geturl()==origin+p
+                  data=r.read(limit+1); assert len(data)<=limit
+                  return data
+          for i in range(30):
+              try:
+                  catalog=json.loads(get("/api/v1/mobile/android-update",16384))
+                  assert catalog["version"]==version,str(catalog.get("version"))
+                  checksum=get(path+".sha256",1024,60).decode().strip()
+                  match=re.fullmatch(r"([0-9a-fA-F]{64})[ \t]+\*?Lektrus-Android\.apk",checksum)
+                  assert match
+                  break
+              except Exception as e:
+                  print("Mirror",i+1,repr(e),flush=True)
+                  if i==29: raise
+                  time.sleep(15)
+          apk=get(path,100*1024*1024,120)
+          assert len(apk)==catalog["size_bytes"]
+          assert hashlib.sha256(apk).hexdigest()==match.group(1).lower()
+          with zipfile.ZipFile(io.BytesIO(apk)) as z:
+              chunks=[n for n in z.namelist() if n.endswith(".js") and "/assets/" in n]
+              board=api=False
+              for n in chunks:
+                  js=z.read(n).decode("utf8")
+                  if "/BoardApp-" in n and "Сохранено на сервере" in js and "remote-live-ink-layer" not in js: board=True
+                  if "ink_gesture=" in js: api=True
+              assert board and api,(board,api)
+          print("Verified first-party APK",version,len(apk),"bytes",match.group(1),"durable ink included",flush=True)
+          PY
