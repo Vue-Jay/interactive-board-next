@@ -42,7 +42,64 @@ def counts(base, document, delta):
     return len(new.keys()-old.keys()), len(changed_ids & old.keys() & new.keys()), len(old.keys()-new.keys())
 
 
-async def record_revision(conn, board_id, revision, user, base, document, delta):
+async def ink_history_group(conn, board_id, user, base, document, delta, gesture):
+    """Only a single authored stroke or sticker-ink edit can share a history group."""
+    if not gesture or base is None or not 1 <= len(gesture) <= 128:
+        return None
+    try:
+        old = item_map(base["items"])
+        new = item_map(document["items"])
+        if delta is not None:
+            if set(delta.get("set", {})) - {"view", "preview"} or delta.get("remove"):
+                return None
+            changes = delta.get("items", {})
+            upserts = changes.get("upsert", [])
+            if changes.get("remove") or len(upserts) != 1:
+                return None
+            item = upserts[0]
+        else:
+            if {k:v for k,v in base.items() if k not in ("items","view","preview")} != {k:v for k,v in document.items() if k not in ("items","view","preview")}:
+                return None
+            changed = [v for k,v in new.items() if old.get(k)!=v]
+            if len(changed)!=1 or old.keys()-new.keys():
+                return None
+            item = changed[0]
+        key = item["id"]
+        if list(new) != list(old) + ([key] if key not in old else []):
+            return None
+        previous = old.get(key)
+        if previous == {"id":key}:
+            previous = decode(await conn.fetchval("SELECT item FROM board_document_items WHERE board_id=$1 AND item_id=$2",board_id,key))
+        if item.get("kind") in ("pen","marker") and key==gesture and item.get("createdBy")==str(user["id"]):
+            if previous is not None:
+                geometry={"x","y","width","height","points"}
+                if {k:v for k,v in previous.items() if k not in geometry}!={k:v for k,v in item.items() if k not in geometry}:
+                    return None
+        elif item.get("kind")=="sticky" and previous is not None:
+            if {k:v for k,v in previous.items() if k!="stickerInk"}!={k:v for k,v in item.items() if k!="stickerInk"}:
+                return None
+            a=item_map(previous.get("stickerInk",[]))
+            b=item_map(item.get("stickerInk",[]))
+            if list(b)!=list(a)+([gesture] if gesture not in a else []) or gesture not in b:
+                return None
+            if any(a[k]!=v for k,v in b.items() if k!=gesture):
+                return None
+        else:
+            return None
+        return str(user["id"])+":"+gesture
+    except (KeyError,TypeError,ValueError,AttributeError):
+        return None
+
+
+async def retained_history_versions(conn,board_id,limit):
+    return await conn.fetchval("""SELECT min(version) FROM (
+        SELECT max(version) AS version FROM board_history WHERE board_id=$1
+        GROUP BY COALESCE(ink_gesture,'revision:'||version::text)
+        ORDER BY max(version) DESC LIMIT $2
+    ) recent""",board_id,limit)
+
+
+async def record_revision(conn, board_id, revision, user, base, document, delta, ink_gesture=None):
     version = revision["version"]
     added, changed, removed = counts(base, document, delta)
     checkpoint = delta is None or version % CHECKPOINT_INTERVAL == 0
@@ -50,17 +107,29 @@ async def record_revision(conn, board_id, revision, user, base, document, delta)
     # history, rather than rereading every unchanged live item from PostgreSQL.
     value = (document if delta is None else apply_delta(await load_history_document(conn,board_id,version-1),delta)) if checkpoint else None
     await conn.execute("""INSERT INTO board_history(board_id,version,checkpoint,delta,saved_at,saved_by,
-        saved_by_name,title,item_count,ink_count,added_count,changed_count,removed_count)
-        VALUES($1,$2,$3::jsonb,$4::jsonb,$5,$6,$7,$8,$9,$10,$11,$12,$13)""",
+        saved_by_name,title,item_count,ink_count,added_count,changed_count,removed_count,ink_gesture)
+        VALUES($1,$2,$3::jsonb,$4::jsonb,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)""",
         board_id, version, encode(value) if value is not None else None,
         None if checkpoint else encode(delta), revision["updated_at"], user["id"], user["display_name"],
         str(document.get("title") or "Доска")[:160], len(document["items"]), len(document.get("ink", [])),
-        added, changed, removed)
+        added, changed, removed, ink_gesture)
     limit = await conn.fetchval("SELECT CASE WHEN billing_unlimited(owner_id) THEN $2::int ELSE $3::int END FROM boards WHERE id=$1",board_id,HISTORY_LIMIT,FREE_HISTORY_LIMIT)
-    if version > limit:
-        await conn.execute("""DELETE FROM board_history WHERE board_id=$1 AND version < (
-            SELECT max(version) FROM board_history WHERE board_id=$1 AND checkpoint IS NOT NULL AND version<=$2
-        )""", board_id, version-limit+1)
+    # Keep the restore chain for each displayed version; intermediate ink
+    # checkpoints are not independent user actions and must not consume quota.
+    # Compact at every full checkpoint, and after an ordinary operation.
+    if version > limit and (ink_gesture is None or version % CHECKPOINT_INTERVAL == 0):
+        await conn.execute("""WITH retained AS (
+            SELECT max(version) AS target FROM board_history WHERE board_id=$1
+            GROUP BY COALESCE(ink_gesture,'revision:'||version::text)
+            ORDER BY max(version) DESC LIMIT $2
+        ), spans AS (
+            SELECT target,(SELECT max(version) FROM board_history
+                WHERE board_id=$1 AND checkpoint IS NOT NULL AND version<=target) AS start
+            FROM retained
+        )
+        DELETE FROM board_history h WHERE h.board_id=$1
+          AND NOT EXISTS(SELECT 1 FROM spans WHERE h.version BETWEEN start AND target)
+        """,board_id,limit)
 
 
 async def load_history_document(conn, board_id, version):
@@ -92,17 +161,20 @@ def make_history_router(current_user, board_access):
                 FROM board_documents d WHERE board_id=$1
             ), revisions AS (
                 SELECT version,saved_at,saved_by,saved_by_name,title,item_count,ink_count,
-                       added_count,changed_count,removed_count FROM board_history WHERE board_id=$1
+                       added_count,changed_count,removed_count,ink_gesture FROM board_history WHERE board_id=$1
                 UNION ALL
                 SELECT d.version,d.updated_at,d.updated_by,COALESCE(u.display_name,'Участник'),
                     COALESCE(d.document_metadata->>'title',d.document->>'title','Доска'),
                     COALESCE(cardinality(d.item_order),jsonb_array_length(d.document->'items'),0),
-                    COALESCE(jsonb_array_length(COALESCE(d.document_metadata,d.document)->'ink'),0),0,0,0
+                    COALESCE(jsonb_array_length(COALESCE(d.document_metadata,d.document)->'ink'),0),0,0,0,NULL
                 FROM current d LEFT JOIN account_users u ON u.id=d.updated_by
                 WHERE NOT EXISTS(SELECT 1 FROM board_history h WHERE h.board_id=$1 AND h.version=d.version)
-            ) SELECT * FROM revisions WHERE version >= COALESCE((SELECT version FROM current),0) -
-              CASE WHEN billing_unlimited((SELECT owner_id FROM boards WHERE id=$1)) THEN 99 ELSE 24 END
-              ORDER BY version DESC LIMIT $2""", board_id, limit)
+            ), grouped AS (
+              SELECT *,row_number() OVER(PARTITION BY COALESCE(ink_gesture,'revision:'||version::text) ORDER BY version DESC) AS position
+              FROM revisions
+            ) SELECT version,saved_at,saved_by,saved_by_name,title,item_count,ink_count,
+                     added_count,changed_count,removed_count FROM grouped WHERE position=1
+              ORDER BY version DESC LIMIT LEAST($2,CASE WHEN billing_unlimited((SELECT owner_id FROM boards WHERE id=$1)) THEN 100 ELSE 25 END)""", board_id, limit)
         return [{**dict(row), "id": row["version"]} for row in rows]
 
     @router.get("/boards/{board_id}/history/{version}")
@@ -115,14 +187,17 @@ def make_history_router(current_user, board_access):
             ):
                 raise HTTPException(403, "Восстановление версии доступно преподавателю.")
             current = await conn.fetchval("SELECT version FROM board_documents WHERE board_id=$1", board_id)
-            if current is None or not max(1,current-99) <= version <= current:
+            if current is None or not 1 <= version <= current:
                 raise HTTPException(404, "Версия не найдена.")
             if version == current:
                 return decode(await conn.fetchval("SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id))
             unlimited = await conn.fetchval("SELECT billing_unlimited(owner_id) FROM boards WHERE id=$1",board_id)
-            if not unlimited and version < current-FREE_HISTORY_LIMIT+1:
-                from billing import limit_detail
-                raise HTTPException(409, limit_detail("history"))
+            first = await retained_history_versions(conn,board_id,HISTORY_LIMIT if unlimited else FREE_HISTORY_LIMIT)
+            if first is None or version < first:
+                if not unlimited and version >= max(1,current-HISTORY_LIMIT+1):
+                    from billing import limit_detail
+                    raise HTTPException(409, limit_detail("history"))
+                raise HTTPException(404, "Версия не найдена.")
             return await load_history_document(conn,board_id,version)
 
     return router
