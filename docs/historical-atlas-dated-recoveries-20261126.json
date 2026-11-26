@@ -45,7 +45,7 @@
     "open": 859,
     "distinctRegionYears": 780,
     "unchanged": true,
-    "partialCoreYearsExpected": 38
+    "partialCoreYearsExpected": 43
   },
   "sourceUrls": [
     "https://dutchportcities.globalasiaprogram.org/home/recife/",
@@ -61,9 +61,19 @@
   "fortMicrogeometry": {
     "status": "candidate-awaiting-annual-validation",
     "region": "Ceylon VOC war 1640–1658",
-    "recordSegments": 5,
-    "partialGeometryYears": 23,
+    "recordSegments": 8,
+    "partialGeometryYears": 28,
     "sites": [
+      {
+        "name": "Batticaloa",
+        "from": 1638,
+        "to": 1641
+      },
+      {
+        "name": "Trincomalee",
+        "from": 1639,
+        "to": 1639
+      },
       {
         "name": "Galle",
         "from": 1640,

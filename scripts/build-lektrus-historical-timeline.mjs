@@ -1128,6 +1128,41 @@ export const malaccaCore={
 // historic conquest dates come from the Rijksmuseum and archaeological studies.
 export const ceylonFortCores=[
  {
+  id:'ceylon-batticaloa-fort',
+  mask:[[[81.70215,7.71175],[81.70255,7.71175],[81.70255,7.71205],[81.70215,7.71205],[81.70215,7.71175]]],
+  sources:[
+   'https://www.airport.lk/Bati/things_to_do/batticaloa_dutch_fort.html',
+   'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002',
+   'https://lakdiva.org.lk/codrington/chap08.html',
+   'https://www.geonames.org/search.html?q=Batticaloa%20Fort'
+  ],
+  review:{
+   reason:'The VOC and Kandyan allies captured the Portuguese Batticaloa fort in May 1638. This is a tiny core at the known fortress site, not the exact Portuguese 1628 plan, the later Dutch bastions, or a surveyed coastal boundary. Transfer to Kandyan control occurred afterwards; sources give different dates, so the core stops in 1641 and the rest of the territory remains unresolved.',
+   reasonRu:'VOC и союзники из Канди захватили португальский форт Баттикалоа в мае 1638 г. Показан лишь небольшой внутренний фрагмент места крепости, а не точный план португальской постройки 1628 г., позднейшие голландские бастионы или береговая граница. Даты передачи Канди в источниках расходятся; участок ограничен 1641 годом, остальная территория неуточнённая.'
+  },
+  periods:[
+   {source:8785,part:56,from:1638,to:1639,entity:'voc-batticaloa-core',name:'Batticaloa (VOC captured fortress, documented interior)',nameRu:'Баттикалоа — укрепление VOC (подтверждённый внутренний участок)'},
+   {source:8866,part:12,from:1640,to:1641,entity:'voc-batticaloa-core',name:'Batticaloa (VOC captured fortress, documented interior)',nameRu:'Баттикалоа — укрепление VOC (подтверждённый внутренний участок)'}
+  ],
+ },
+ {
+  id:'ceylon-trincomalee-fort',
+  mask:[[[81.24190,8.57675],[81.24230,8.57675],[81.24230,8.57705],[81.24190,8.57705],[81.24190,8.57675]]],
+  sources:[
+   'https://ccf.gov.lk/heritage-sites/trincomalee-fort/',
+   'https://hpip.org/en/Heritage/Details/1925',
+   'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002',
+   'https://www.geonames.org/advanced-search.html?q=Fort%20Frederick'
+  ],
+  review:{
+   reason:'The Dutch captured the Portuguese Trincomalee fortress in May 1639 before handing the site to Kandy. Only a tiny conservative inner fortress fragment is attributed to the VOC for 1639. The original coastal polygon and Kandy-VOC frontier are not reconstructed.',
+   reasonRu:'Нидерландцы захватили португальскую крепость Тринкомали в мае 1639 г., а позднее передали её Канди. Лишь небольшой внутренний участок крепости относится к VOC за 1639 год. Исходный прибрежный контур и граница VOC с Канди остаются неуточнёнными.'
+  },
+  periods:[
+   {source:8785,part:58,from:1639,to:1639,entity:'voc-trincomalee-core',name:'Trincomalee (VOC captured fortress, documented interior)',nameRu:'Тринкомали — крепость VOC (подтверждённый внутренний участок)'}
+  ],
+ },
+ {
   id:'ceylon-galle-fort',
   mask:[[[80.21615,6.02785],[80.21655,6.02785],[80.21655,6.02815],[80.21615,6.02815],[80.21615,6.02785]]],
   sources:[
