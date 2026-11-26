@@ -92,9 +92,10 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
  </svg>;
 }
 
-function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,onUpdate,onRemove}:{
+function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,onUpdate,onPreview,onRemove}:{
  item:Item;view:View;boardRef:RefObject<HTMLElement|null>;portalContainer?:HTMLElement|null;editable:boolean;selected:boolean;
  onUpdate:(id:string,patch:Partial<Item>)=>void;
+ onPreview?:(id:string,patch:Partial<Item>,finished?:boolean)=>void;
  onRemove:(id:string)=>void;
 }){
  const type=item.instrumentType??"ruler";
@@ -138,13 +139,18 @@ function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,
   }:rotateInstrumentAboutPivot({x:g.x,y:g.y,rotation:g.angle},type,scale,
     g.angle+angleTo(event.clientX,event.clientY,screenPosition)-g.startAngle);
   g.latest=next;setLive(next);
+  onPreview?.(item.id,next);
  };
  const finish=(event:PointerEvent<HTMLElement>)=>{
   const g=gesture.current;
   if(!g||event.pointerId!==g.pointer)return;
   gesture.current=null;event.stopPropagation();
   const next=g.latest;setLive(null);
-  if(event.type==="pointercancel")return;
+  if(event.type==="pointercancel"){
+   onPreview?.(item.id,{x:g.x,y:g.y,rotation:g.angle},true);
+   return;
+  }
+  onPreview?.(item.id,next,true);
   if(next.x!==item.x||next.y!==item.y||next.rotation!==(item.rotation??0))
    onUpdate(item.id,{x:next.x,y:next.y,rotation:next.rotation});
  };
@@ -194,7 +200,7 @@ function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,
 }
 
 export default function GeometryInstruments({
- mobile=false,view,boardRef,portalContainer,instruments,onAdd,onUpdate,onRemove,
+ mobile=false,view,boardRef,portalContainer,instruments,onAdd,onUpdate,onPreview,onRemove,
  editable=true,renderOverlays=true
 }:{
  mobile?:boolean;view:View;boardRef:RefObject<HTMLElement|null>;
@@ -202,6 +208,7 @@ export default function GeometryInstruments({
  instruments:readonly Item[];
  onAdd:(type:InstrumentType,point:Point,scale:number)=>void;
  onUpdate:(id:string,patch:Partial<Item>)=>void;
+ onPreview?:(id:string,patch:Partial<Item>,finished?:boolean)=>void;
  onRemove:(id:string)=>void;
  editable?:boolean;renderOverlays?:boolean;
 }){
@@ -276,6 +283,6 @@ export default function GeometryInstruments({
     <SharedInstrument key={item.id} item={item} view={view} boardRef={boardRef}
       portalContainer={portalContainer}
       editable={editable&&!item.locked} selected={selectedInstrumentId===item.id}
-      onUpdate={onUpdate} onRemove={onRemove}/>)}
+      onUpdate={onUpdate} onPreview={onPreview} onRemove={onRemove}/>)}
  </>;
 }

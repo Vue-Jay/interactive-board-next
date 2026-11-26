@@ -135,7 +135,7 @@ assert.ok(code.includes("if (queued && !needsRebase)"),"Stale snapshot not sent 
 assert.ok(code.includes("deferred.version>(remoteVersion.current??-1)"));
 assert.ok(code.includes("items: editing\n        ? itemsRef.current"),"Autosave uses synchronous model during RAF");
 assert.ok(code.includes("const canTransformBoardObject="));
-assert.ok(code.includes("const live=remoteLiveItems[entry.item.id]"),"Realtime preview must not teleport object");
+assert.ok(code.includes("boardLiveContent(entry.item,locallyHeld?undefined:live)"),"Realtime content must preserve durable geometry independently of sequenced poses");
 assert.ok(code.includes("openGraphEditor(item);"),"Student can open subject editors");
 const appAST=ts.createSourceFile("App.tsx",code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(appAST.parseDiagnostics.length,0);

@@ -344,6 +344,68 @@ def check_shared_eraser_sync(browser):
         login(pupil,"learner")
         assert_board(teacher,ident,True,True)
         assert_board(pupil,ident,False,False)
+        # Real peer geometry is checked while the pointer is still down.
+        # Use the existing sessions rather than a mock WebSocket or source regex.
+        with httpx.Client(base_url=API,headers=headers("owner")) as api:
+            base=api.get(url).json()
+            doc=base["document"]
+            doc["items"]=[
+                {"id":"live-qa-shape","kind":"shape","shapeType":"rectangle","x":220,"y":180,"width":140,"height":100,"text":"","color":"#5355c9"},
+                {"id":"live-qa-text","kind":"text","x":460,"y":180,"width":240,"height":90,"text":"Before live typing","color":"#202124"},
+                {"id":"live-qa-ruler","kind":"instrument","instrumentType":"ruler","instrumentScale":0.55,"x":440,"y":420,"width":410,"height":88,"text":"","rotation":0},
+            ]
+            api.put(url,json={"expected_version":base["version"],"document":doc}).raise_for_status()
+        shape='.board-object[data-object="live-qa-shape"]'
+        words='.board-object[data-object="live-qa-text"]'
+        ruler='[data-shared-instrument="live-qa-ruler"] .geometry-instrument-body'
+        for page in (teacher,pupil):
+            expect(page.locator(shape)).to_be_visible(timeout=20000)
+            expect(page.locator(words)).to_be_visible(timeout=20000)
+            expect(page.locator(ruler)).to_be_visible(timeout=20000)
+        teacher.locator('[data-interface-control="select"]:visible').first.click()
+        pupil.locator('[data-interface-control="select"]:visible').first.click()
+        def live_drag(sender,receiver,selector):
+            target=sender.locator(selector).bounding_box()
+            before=receiver.locator(selector).bounding_box()
+            x=target["x"]+target["width"]*.5
+            y=target["y"]+target["height"]*.5
+            sender.mouse.move(x,y)
+            sender.mouse.down()
+            try:
+                sender.mouse.move(x+90,y+36,steps=10)
+                receiver.wait_for_function("""({selector,x,y})=>{
+                    const el=document.querySelector(selector);if(!el)return false;
+                    const r=el.getBoundingClientRect();
+                    return Math.hypot(r.x-x,r.y-y)>25;
+                }""",arg={"selector":selector,"x":before["x"],"y":before["y"]},timeout=5000)
+            finally:
+                sender.mouse.up()
+            sender.wait_for_timeout(350)
+        live_drag(teacher,pupil,shape)
+        same=contexts[0].new_page()
+        try:
+            assert_board(same,ident,True,True)
+            expect(same.locator(shape)).to_be_visible(timeout=20000)
+            live_drag(teacher,same,shape)
+        finally:
+            same.close()
+        live_drag(teacher,pupil,ruler)
+        teacher.locator(words).dblclick()
+        field=teacher.locator(words+" textarea")
+        expect(field).to_be_visible()
+        field.fill("Peer sees typing before blur")
+        expect(pupil.locator(words)).to_contain_text("Peer sees typing before blur",timeout=5000)
+        assert field.evaluate("el=>document.activeElement===el"),"Text test must keep editing active"
+        field.press("Tab")
+        teacher.wait_for_timeout(750)
+        with httpx.Client(base_url=API,headers=headers("owner")) as api:
+            base=api.get(url).json()
+            doc=base["document"]
+            doc["items"]=[i for i in doc["items"] if not i["id"].startswith("live-qa-")]
+            api.put(url,json={"expected_version":base["version"],"document":doc}).raise_for_status()
+        for page in (teacher,pupil):
+            expect(page.locator(shape)).to_have_count(0,timeout=20000)
+        print("Live object motion across accounts and tabs, measuring instrument and text before pointer-up/blur verified against real peer.")
         with httpx.Client(base_url=API,headers=headers("owner")) as client:
             def read():
                 response=client.get(url)

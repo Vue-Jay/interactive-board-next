@@ -79,7 +79,19 @@ assert.match(code,/workChannel\.current\?\.publishEdit\(latest\.id,editorDiff\(l
 assert.ok(code.includes("scienceOptics")&&code.includes("scienceCircuit")&&code.includes("scienceMechanics"));
 assert.ok(code.includes("onLiveChange={(before,next)=>livePhysicalEditorUpdate"),"Fullscreen editors must publish their edits");
 assert.ok(code.includes("onLiveChange={(before,next)=>liveMotionGraphUpdate"),"Motion graphs must publish independent edits");
-assert.ok(code.includes("isMotionGraph(stored.graphFigureId)"),"Peers must accept safe live motion graph data");
+// The receiver now validates all board object families through the durable
+// parser, instead of accepting only the old hardcoded set of science editors.
+const {boardObjectLiveOps,isLiveBoardObjectField}=await load("src/lektrusLiveEditorMerge.ts","src/boardLiveObjectEdits.ts");
+const parseBoard=new Function(boardJS+"\nreturn parseDocument;")();
+const motion={id:"motion",kind:"graph",graphFigureId:"physics-motion",graphPurpose:"coordinates",x:0,y:0,width:600,height:400,text:"График",graphPoints:[{id:"p1",x:1,y:2,label:"A"}]};
+const nextMotion={...motion,graphPoints:[{id:"p1",x:3,y:4,label:"B"}]};
+const packet=JSON.parse(JSON.stringify(boardObjectLiveOps(motion,nextMotion)));
+assert.ok(packet.length&&packet.every(op=>isLiveBoardObjectField(op.path[0])));
+const parsePreview=item=>parseBoard(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[item]})).items[0];
+assert.deepEqual(parsePreview(applyEditorOps(motion,packet)).graphPoints,nextMotion.graphPoints);
+assert.throws(()=>parsePreview({...motion,graphPoints:[{x:"invalid",y:2,label:"A"}]}));
+assert.ok(code.includes("validated=parseDocument(JSON.stringify("),"Peer previews must pass durable validation");
+assert.ok(code.includes("preview.graphFigureId!==stored.graphFigureId"),"Live mutations cannot change graph identity");
 for(const source of ["src/LektrusMechanicsEditor.tsx","src/LektrusOpticsEditor.tsx",
  "src/LektrusCircuitEditor.tsx","src/LektrusPhysicsGraphEditor.tsx"]){
  const text=read(source);
