@@ -636,6 +636,8 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
         return {**document_view(row, board_id), **({"ink_point_deltas": True} if ink_point_deltas else {})}
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
+from board_presence_policy import participant_color, valid_idle_age, idle_deadline
+
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
 _presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
 _compact_ink_subscribers: set[WebSocket] = set()
@@ -1158,6 +1160,15 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         durable_ink_commits = initial.get("durable_ink_commits", False)
         ink_commit_chain = initial.get("ink_commit_chain", False)
         ink_motion = initial.get("ink_motion", False)
+        idle_age = initial.get("idle_age_ms")
+        idle_enabled = idle_age is not None
+        if idle_enabled and (not presence_enabled or not valid_idle_age(idle_age)):
+            await websocket.close(code=4401)
+            return
+        activity_deadline = idle_deadline(idle_age) if idle_enabled else None
+        if activity_deadline is not None and activity_deadline <= time.monotonic():
+            await websocket.close(code=4410)
+            return
         if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool or type(durable_ink_commits) is not bool or type(ink_commit_chain) is not bool or type(ink_motion) is not bool:
             await websocket.close(code=4401)
             return
@@ -1179,6 +1190,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             "role": current_role,
             "participant_role": user["participant_role"] or ("owner" if current_role == "owner" else "observer" if current_role == "viewer" else "student"),
             "online_at": str(int(time.time() * 1000)),
+            "color": participant_color(str(user["id"]), list(_subscriber_users.get(board_id, {}).values())),
         }
         already_present = any(
             meta.get("user_id") == user_meta["user_id"]
@@ -1199,7 +1211,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                                    **({"compact_ink": True} if compact_ink else {}),
                                    **({"durable_ink_commits": True} if durable_ink_commits else {}),
                                    **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {}),
-                                   **({"ink_motion": True} if ink_motion and durable_ink_commits else {})})
+                                   **({"ink_motion": True} if ink_motion and durable_ink_commits else {}),
+                                   **({"idle_lease": True} if idle_enabled else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
@@ -1287,12 +1300,16 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             ink_worker=asyncio.create_task(write_ink_queue())
         while True:
             remaining = float(claims["exp"]) - time.time()
+            idle_remaining = activity_deadline - time.monotonic() if activity_deadline is not None else float("inf")
+            if idle_remaining <= 0:
+                await websocket.close(code=4410)
+                return
             if remaining <= 0:
                 await websocket.close(code=4401)
                 return
             try:
                 raw = await asyncio.wait_for(
-                    websocket.receive_text(), timeout=min(30, remaining)
+                    websocket.receive_text(), timeout=min(30, remaining, idle_remaining)
                 )
                 if len(raw.encode("utf-8")) > MAX_EVENT_BYTES:
                     await websocket.close(code=1009)
@@ -1304,6 +1321,13 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     continue
                 if not isinstance(message, dict):
                     await websocket.send_json({"type": "event_error", "reason": "invalid_frame"})
+                    continue
+                if message.get("type") == "activity":
+                    if not idle_enabled or set(message) != {"type","idle_age_ms"} or not valid_idle_age(message["idle_age_ms"]):
+                        await websocket.send_json({"type":"event_error","reason":"invalid_activity"})
+                        continue
+                    # Authenticated socket-local lease, no DB traffic or peer fan-out.
+                    activity_deadline = idle_deadline(message["idle_age_ms"])
                     continue
                 if message.get("type") == "ink_commit" and ink_worker is not None:
                     if ink_worker.done() or ink_queue.full() or not limiter.check("ink_commit"):
@@ -1419,6 +1443,9 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                         "offset": event["offset"], "finished": event["finished"],
                     })
             except asyncio.TimeoutError:
+                if activity_deadline is not None and activity_deadline <= time.monotonic():
+                    await websocket.close(code=4410)
+                    return
                 # Avoid stale sockets after logout/revocation, even without pings.
                 await lookup_board_session(websocket.app.state.pool, board_id, token)
     except (WebSocketDisconnect, HTTPException, ValueError, TypeError, asyncio.TimeoutError):

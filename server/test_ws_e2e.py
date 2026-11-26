@@ -304,6 +304,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     assert [u["user_id"] for u in owner_join["joins"]]==[str(STUDENT)]
                     assert owner_presence["users"][0]["participant_role"]=="owner"
                     assert owner_join["joins"][0]["participant_role"]=="observer"
+                    assert owner_presence["users"][0]["color"] != owner_join["joins"][0]["color"]
+                    assert {u["user_id"]:u["color"] for u in student_presence["users"]} == {u["user_id"]:u["color"] for u in [owner_presence["users"][0],owner_join["joins"][0]]}
 
                     # View-only participants can show their cursor but cannot
                     # pretend to be the teacher or publish drawing strokes.
