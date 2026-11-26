@@ -401,6 +401,28 @@ const deltaBytes=Buffer.byteLength(JSON.stringify(patchRequest.body));
 assert.ok(deltaBytes<fullBytes/100);
 console.log(`Board autosave: ${fullBytes} -> ${deltaBytes} bytes (${(100*(1-deltaBytes/fullBytes)).toFixed(2)}% less)`);
 const reordered={...nextDoc,title:"Сохранённая",items:[nextDoc.items.at(-1),...nextDoc.items.slice(1,-1)]};
+// Permanent ink: compact a translated prefix and revised tail losslessly.
+const inkPoints=Array.from({length:200},(_,i)=>({x:i/10,y:i%5}));
+const inkItem={id:"ink",kind:"pen",x:10,y:20,width:25,height:10,points:inkPoints,createdBy:"owner"};
+const inkBase={version:1,items:[inkItem,{id:"other"}]};
+const extended={...inkItem,x:9,y:18,width:27,height:12,points:[
+  ...inkPoints.slice(0,199).map(p=>({x:Math.round((p.x+1)*100)/100,y:p.y+2})),{x:0,y:0},{x:1,y:1}]};
+const inkNext={...inkBase,items:[extended,{id:"other"}]};
+const fullInkDelta=api.diffSelfhostDocument(inkBase,inkNext);
+const compactInkDelta=api.compactInkPointDelta(inkBase,fullInkDelta,"ink");
+assert.equal(compactInkDelta.items.point_edits[0].keep,199);
+assert.deepEqual(api.applySelfhostDocumentDelta(inkBase,compactInkDelta),inkNext);
+assert.ok(JSON.stringify(compactInkDelta).length<JSON.stringify(fullInkDelta).length/10);
+assert.throws(()=>api.applySelfhostDocumentDelta({...inkBase,items:[]},compactInkDelta));
+assert.throws(()=>api.applySelfhostDocumentDelta(inkBase,{items:{point_edits:[{...compactInkDelta.items.point_edits[0],count:201}]}}));
+assert.deepEqual(api.compactInkPointDelta(inkBase,fullInkDelta,"erase:ink"),fullInkDelta);
+const stickerStroke={id:"attached",kind:"marker",points:inkPoints,weight:.1};
+const note={id:"note",kind:"sticky",stickerInk:[stickerStroke,{id:"other-stroke",kind:"pen",points:[{x:0,y:0}]}]};
+const noteBase={version:1,items:[note]};
+const noteNext={version:1,items:[{...note,stickerInk:[{...stickerStroke,points:[...inkPoints,{x:.123456,y:-.987654}]},note.stickerInk[1]]}]};
+const noteDelta=api.compactInkPointDelta(noteBase,api.diffSelfhostDocument(noteBase,noteNext),"attached");
+assert.equal(noteDelta.items.point_edits[0].stroke_id,"attached");
+assert.deepEqual(api.applySelfhostDocumentDelta(noteBase,noteDelta),noteNext);
 const remoteDelta=JSON.parse(JSON.stringify(api.diffSelfhostDocument(nextDoc,reordered)));
 assert.deepEqual(JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nextDoc,remoteDelta))),reordered);
 env.remoteNativeEdit(remoteDelta);
