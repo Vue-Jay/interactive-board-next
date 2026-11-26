@@ -549,7 +549,7 @@ function normalizedField(key:string,value:unknown):unknown{
 // size guarantees that the PATCH is smaller without building the full body.
 export function prepareSmallDocumentDelta(base:JsonObject,raw:JsonObject,expectedVersion:number,inkGesture?:string):{next:JsonObject;body:string}|null{
   if(raw.version!==1||base.version!==1||raw.pilot_schema!=null||base.pilot_schema!=null||
-     "toJSON" in raw||!Array.isArray(raw.items)||"toJSON" in raw.items||raw.items.length<100||
+     "toJSON" in raw||!Array.isArray(raw.items)||"toJSON" in raw.items||(!inkGesture&&raw.items.length<100)||
      !plainWireObject(raw))return null;
   const previous=itemMap(base.items);
   if(!previous)return null;
@@ -584,7 +584,7 @@ export function prepareSmallDocumentDelta(base:JsonObject,raw:JsonObject,expecte
     const bytes=new TextEncoder().encode(body).byteLength;
     // A JSON item with a nonempty id is at least 10 ASCII bytes; the actual
     // full request is larger still (metadata, commas, wrapper, etc.).
-    return bytes<MAX_DELTA_BYTES&&bytes<items.length*10?{next,body}:null;
+    return bytes<MAX_DELTA_BYTES&&(delta.items?.point_edits||bytes<items.length*10)?{next,body}:null;
   }catch{return null}
 }
 const reservedField=(key:string)=>["items","version","pilot_schema","__proto__","constructor","prototype"].includes(key);
@@ -618,7 +618,12 @@ const cents=(n:unknown):number=>{
 function translatedPoints(points:JsonObject[],old:JsonObject,geometry:JsonObject):JsonObject[]{
   const dx=cents(old.x)-cents(geometry.x),dy=cents(old.y)-cents(geometry.y);
   if(!dx&&!dy)return points;
-  return points.map(p=>({x:(cents(p.x)+dx)/100,y:(cents(p.y)+dy)/100}));
+  return points.map(p=>shiftInkPoint(p,dx,dy));
+}
+function shiftInkPoint(p:JsonObject,dx:number,dy:number):JsonObject{
+  const x=cents(p.x)+dx,y=cents(p.y)+dy;
+  if(!Number.isSafeInteger(x)||!Number.isSafeInteger(y))throw new Error("Invalid ink shift");
+  return {x:x/100,y:y/100};
 }
 const without=(item:JsonObject,keys:string[])=>Object.fromEntries(Object.entries(item).filter(([k])=>!keys.includes(k)));
 function applyPointEdit(old:JsonObject,edit:PointEdit):JsonObject{
@@ -668,15 +673,23 @@ export function compactInkPointDelta(base:JsonObject,delta:DocumentDelta,gesture
     }
     if(!inkKind(a)||!inkKind(b)||!Array.isArray(a.points)||!Array.isArray(b.points)||
       !a.points.every(validPoint)||!b.points.every(validPoint))return delta;
-    const previous=geometry?translatedPoints(a.points,a,geometry):a.points;
+    const dx=geometry?cents(a.x)-cents(geometry.x):0,dy=geometry?cents(a.y)-cents(geometry.y):0;
     let keep=0;
-    while(keep<previous.length&&keep<b.points.length&&equalJson(previous[keep],b.points[keep]))keep++;
+    while(keep<a.points.length&&keep<b.points.length){
+      const prior=dx||dy?shiftInkPoint(a.points[keep],dx,dy):a.points[keep];
+      if(prior.x!==b.points[keep].x||prior.y!==b.points[keep].y)break;
+      keep++;
+    }
     if(!keep)return delta;
     const edit:PointEdit={id:String(next.id),...(strokeId?{stroke_id:strokeId}:{}),count:a.points.length,keep,
       points:b.points.slice(keep),...(geometry?{geometry}:{})};
-    if(!equalJson(applyPointEdit(old,edit),next))return delta;
+    if(geometry&&(!geometryKeys.every(k=>typeof geometry![k]==="number"&&Number.isFinite(geometry![k]))||
+      Number(geometry.width)<=0||Number(geometry.height)<=0))return delta;
     const compact:DocumentDelta={...delta,items:{point_edits:[edit]}};
-    return JSON.stringify(compact).length<JSON.stringify(delta).length?compact:delta;
+    // Each retained point costs at least 13 characters in a complete upsert.
+    // Long strokes therefore do not need a second full JSON serialization.
+    const overhead=JSON.stringify({point_edits:[{...edit,points:[]}]}).length;
+    return keep*13>overhead||JSON.stringify(compact.items).length<JSON.stringify(delta.items).length?compact:delta;
   }catch{return delta}
 }
 export function applySelfhostDocumentDelta(base:JsonObject,delta:DocumentDelta):JsonObject{
