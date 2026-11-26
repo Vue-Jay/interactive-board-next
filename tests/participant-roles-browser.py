@@ -358,7 +358,8 @@ def check_shared_eraser_sync(browser):
                 def delay_write(route):
                     if route.request.method in ("PUT","PATCH"):
                         body=route.request.post_data_json
-                        candidates=body.get("document",{}).get("items",[])+body.get("delta",{}).get("items",{}).get("upsert",[])
+                        changes=body.get("delta",{}).get("items",{})
+                        candidates=body.get("document",{}).get("items",[])+changes.get("upsert",[])+changes.get("point_edits",[])
                         if any(i.get("id")==stroke_id for i in candidates):
                             held.append(route)
                             return

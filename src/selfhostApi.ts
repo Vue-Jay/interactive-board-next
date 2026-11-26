@@ -484,14 +484,16 @@ export async function selfhostDownloadAsset(boardId:string,assetId:string):Promi
   return response.blob();
 }
 type JsonObject=Record<string,unknown>;
-type DocumentDelta={set?:JsonObject;remove?:string[];items?:{upsert?:JsonObject[];remove?:string[];order?:string[]}};
-type DeltaResponse=SelfhostDocument&{base_version?:number;patches?:DocumentDelta[]};
+type PointEdit={id:string;stroke_id?:string;count:number;keep:number;points:JsonObject[];geometry?:JsonObject};
+type DocumentDelta={set?:JsonObject;remove?:string[];items?:{upsert?:JsonObject[];remove?:string[];order?:string[];point_edits?:PointEdit[]}};
+type DeltaResponse=SelfhostDocument&{base_version?:number;patches?:DocumentDelta[];ink_point_deltas?:boolean};
 type RevisionPatch={base_version:number;delta:DocumentDelta;updated_at:string;updated_by:string};
 const MAX_DELTA_BYTES=1024*1024;
 // The raw acknowledged document, not the normalized editor snapshot. Keep only
 // the currently used board to avoid retaining every board opened in a session.
 let documentBase:{userId:string;boardId:string;version:number;document:JsonObject}|null=null;
 let deltaSupported=true;
+let pointDeltasSupported=false;
 const documentPath=(boardId:string)=>"/api/v1/boards/"+encodeURIComponent(boardId)+"/document";
 const jsonObject=(value:unknown):value is JsonObject=>!!value&&typeof value==="object"&&!Array.isArray(value);
 function equalJson(a:unknown,b:unknown):boolean{
@@ -545,9 +547,9 @@ function normalizedField(key:string,value:unknown):unknown{
 // For small edits on large native boards, reuse detached ACKed objects and
 // serialize only changed values. The conservative lower bound on full JSON
 // size guarantees that the PATCH is smaller without building the full body.
-export function prepareSmallDocumentDelta(base:JsonObject,raw:JsonObject,expectedVersion:number):{next:JsonObject;body:string}|null{
+export function prepareSmallDocumentDelta(base:JsonObject,raw:JsonObject,expectedVersion:number,inkGesture?:string):{next:JsonObject;body:string}|null{
   if(raw.version!==1||base.version!==1||raw.pilot_schema!=null||base.pilot_schema!=null||
-     "toJSON" in raw||!Array.isArray(raw.items)||"toJSON" in raw.items||raw.items.length<100||
+     "toJSON" in raw||!Array.isArray(raw.items)||"toJSON" in raw.items||(!inkGesture&&raw.items.length<100)||
      !plainWireObject(raw))return null;
   const previous=itemMap(base.items);
   if(!previous)return null;
@@ -575,13 +577,14 @@ export function prepareSmallDocumentDelta(base:JsonObject,raw:JsonObject,expecte
       items.push(normalized);
     }
     const next=Object.fromEntries([...entries,["items",items]]);
-    const delta=diffSelfhostDocument(base,next);
-    if(!delta)return null;
+    const fullDelta=diffSelfhostDocument(base,next);
+    if(!fullDelta)return null;
+    const delta=inkGesture?compactInkPointDelta(base,fullDelta,inkGesture):fullDelta;
     const body=JSON.stringify({expected_version:expectedVersion,delta});
     const bytes=new TextEncoder().encode(body).byteLength;
     // A JSON item with a nonempty id is at least 10 ASCII bytes; the actual
     // full request is larger still (metadata, commas, wrapper, etc.).
-    return bytes<MAX_DELTA_BYTES&&bytes<items.length*10?{next,body}:null;
+    return bytes<MAX_DELTA_BYTES&&(delta.items?.point_edits||bytes<items.length*10)?{next,body}:null;
   }catch{return null}
 }
 const reservedField=(key:string)=>["items","version","pilot_schema","__proto__","constructor","prototype"].includes(key);
@@ -603,6 +606,92 @@ export function diffSelfhostDocument(base:JsonObject,next:JsonObject):DocumentDe
     ...(upsert.length||remove.length||reorder?{items:{...(upsert.length?{upsert}:{}),...(remove.length?{remove}:{}),...(reorder?{order}:{})}}:{}),
   };
 }
+const geometryKeys=["x","y","width","height"] as const;
+const inkKind=(item:JsonObject)=>item.kind==="pen"||item.kind==="marker";
+const validPoint=(p:unknown):p is JsonObject=>jsonObject(p)&&Object.keys(p).length===2&&
+  typeof p.x==="number"&&Number.isFinite(p.x)&&typeof p.y==="number"&&Number.isFinite(p.y);
+const cents=(n:unknown):number=>{
+  if(typeof n!=="number"||!Number.isFinite(n)||!Number.isSafeInteger(Math.round(n*100))||Math.abs(n*100-Math.round(n*100))>0.00001)
+    throw new Error("Invalid ink coordinate");
+  return Math.round(n*100);
+};
+function translatedPoints(points:JsonObject[],old:JsonObject,geometry:JsonObject):JsonObject[]{
+  const dx=cents(old.x)-cents(geometry.x),dy=cents(old.y)-cents(geometry.y);
+  if(!dx&&!dy)return points;
+  return points.map(p=>shiftInkPoint(p,dx,dy));
+}
+function shiftInkPoint(p:JsonObject,dx:number,dy:number):JsonObject{
+  const x=cents(p.x)+dx,y=cents(p.y)+dy;
+  if(!Number.isSafeInteger(x)||!Number.isSafeInteger(y))throw new Error("Invalid ink shift");
+  return {x:x/100,y:y/100};
+}
+const without=(item:JsonObject,keys:string[])=>Object.fromEntries(Object.entries(item).filter(([k])=>!keys.includes(k)));
+function applyPointEdit(old:JsonObject,edit:PointEdit):JsonObject{
+  if(!jsonObject(edit)||Object.keys(edit).some(k=>!["id","stroke_id","count","keep","points","geometry"].includes(k))||
+     old.id!==edit.id||!Number.isSafeInteger(edit.count)||!Number.isSafeInteger(edit.keep)||edit.keep<1||
+     edit.keep>edit.count||!Array.isArray(edit.points)||!edit.points.every(validPoint))throw new Error("Invalid point edit");
+  let stroke=old,attached:Map<string,JsonObject>|null=null;
+  if(edit.stroke_id!==undefined){
+    if(typeof edit.stroke_id!=="string"||old.kind!=="sticky"||edit.geometry!==undefined)throw new Error("Invalid sticker edit");
+    attached=itemMap(old.stickerInk);
+    const found=attached?.get(edit.stroke_id);
+    if(!found)throw new Error("Missing sticker ink");
+    stroke=found;
+  }else{
+    const g=edit.geometry;
+    if(!jsonObject(g)||Object.keys(g).length!==4||geometryKeys.some(k=>typeof g[k]!=="number"||!Number.isFinite(g[k]))||
+      Number(g.width)<=0||Number(g.height)<=0)throw new Error("Invalid ink geometry");
+  }
+  if(!inkKind(stroke)||!Array.isArray(stroke.points)||stroke.points.length!==edit.count||!stroke.points.every(validPoint))
+    throw new Error("Missing or changed ink base");
+  const prefix=stroke.points.slice(0,edit.keep);
+  const points=[...(edit.geometry?translatedPoints(prefix,stroke,edit.geometry):prefix),...edit.points];
+  const updated={...stroke,...edit.geometry,points};
+  if(attached){attached.set(edit.stroke_id!,updated);return {...old,stickerInk:[...attached.values()]}}
+  return updated;
+}
+/** Lossless suffix encoding of an acknowledged permanent stroke. The existing
+ * simplifier may revise its tail and the local bounding box may move left/up. */
+export function compactInkPointDelta(base:JsonObject,delta:DocumentDelta,gesture:string):DocumentDelta{
+  const changes=delta.items;
+  if(!changes||changes.upsert?.length!==1||changes.remove?.length||changes.order||gesture.startsWith("erase:"))return delta;
+  const next=changes.upsert[0],old=itemMap(base.items)?.get(String(next.id));
+  if(!old)return delta;
+  let a=old,b=next,geometry:JsonObject|undefined,strokeId:string|undefined;
+  try{
+    if(next.kind==="sticky"){
+      if(!equalJson(without(old,["stickerInk"]),without(next,["stickerInk"])))return delta;
+      const before=itemMap(old.stickerInk),after=itemMap(next.stickerInk);
+      if(!before||!after||!equalJson([...before.keys()],[...after.keys()])||
+        [...before].some(([id,value])=>id!==gesture&&!equalJson(value,after.get(id))))return delta;
+      const prev=before.get(gesture),updated=after.get(gesture);
+      if(!prev||!updated||!equalJson(without(prev,["points"]),without(updated,["points"])))return delta;
+      a=prev;b=updated;strokeId=gesture;
+    }else{
+      if(next.id!==gesture||!equalJson(without(old,[...geometryKeys,"points"]),without(next,[...geometryKeys,"points"])))return delta;
+      geometry=Object.fromEntries(geometryKeys.map(k=>[k,next[k]]));
+    }
+    if(!inkKind(a)||!inkKind(b)||!Array.isArray(a.points)||!Array.isArray(b.points)||
+      !a.points.every(validPoint)||!b.points.every(validPoint))return delta;
+    const dx=geometry?cents(a.x)-cents(geometry.x):0,dy=geometry?cents(a.y)-cents(geometry.y):0;
+    let keep=0;
+    while(keep<a.points.length&&keep<b.points.length){
+      const prior=dx||dy?shiftInkPoint(a.points[keep],dx,dy):a.points[keep];
+      if(prior.x!==b.points[keep].x||prior.y!==b.points[keep].y)break;
+      keep++;
+    }
+    if(!keep)return delta;
+    const edit:PointEdit={id:String(next.id),...(strokeId?{stroke_id:strokeId}:{}),count:a.points.length,keep,
+      points:b.points.slice(keep),...(geometry?{geometry}:{})};
+    if(geometry&&(!geometryKeys.every(k=>typeof geometry![k]==="number"&&Number.isFinite(geometry![k]))||
+      Number(geometry.width)<=0||Number(geometry.height)<=0))return delta;
+    const compact:DocumentDelta={...delta,items:{point_edits:[edit]}};
+    // Each retained point costs at least 13 characters in a complete upsert.
+    // Long strokes therefore do not need a second full JSON serialization.
+    const overhead=JSON.stringify({point_edits:[{...edit,points:[]}]}).length;
+    return keep*13>overhead||JSON.stringify(compact.items).length<JSON.stringify(delta.items).length?compact:delta;
+  }catch{return delta}
+}
 export function applySelfhostDocumentDelta(base:JsonObject,delta:DocumentDelta):JsonObject{
   if(!jsonObject(delta)||Object.keys(delta).some(key=>!["set","remove","items"].includes(key)))throw new Error("Invalid delta");
   const fields=delta.set??{},removed=delta.remove??[];
@@ -611,10 +700,17 @@ export function applySelfhostDocumentDelta(base:JsonObject,delta:DocumentDelta):
   for(const key of removed)delete result[key];
   if(delta.items!==undefined){
     const changes=delta.items;
-    if(!jsonObject(changes)||Object.keys(changes).some(key=>!["upsert","remove","order"].includes(key)))throw new Error("Invalid item delta");
+    if(!jsonObject(changes)||Object.keys(changes).some(key=>!["upsert","remove","order","point_edits"].includes(key)))throw new Error("Invalid item delta");
     const map=itemMap(base.items),upserts=itemMap(changes.upsert??[]),deletes=changes.remove??[];
     if(!map||!upserts||!Array.isArray(deletes))throw new Error("Invalid items");
     for(const id of deletes){if(typeof id!=="string"||upserts.has(id)||!map.delete(id))throw new Error("Invalid item removal")}
+    if(changes.point_edits!==undefined){
+      if(!Array.isArray(changes.point_edits)||changes.point_edits.length!==1||upserts.size||deletes.length||changes.order)
+        throw new Error("Ambiguous point edit");
+      const edit=changes.point_edits[0],old=map.get(edit?.id);
+      if(!old)throw new Error("Missing ink item");
+      map.set(edit.id,applyPointEdit(old,edit));
+    }
     for(const [id,item] of upserts)map.set(id,item);
     const order=changes.order??[...map.keys()];
     if(!Array.isArray(order)||order.length!==map.size||new Set(order).size!==map.size||order.some(id=>!map.has(id)))throw new Error("Invalid item order");
@@ -631,16 +727,17 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
   const userId=loadSession()?.user.id;
   const base=incremental&&documentBase?.boardId===boardId&&documentBase.userId===userId?documentBase:null;
   const path=documentPath(boardId);
-  let row=await selfhostRequest<DeltaResponse>(path+(base?"?since_version="+base.version:""),{signal});
+  let row=await selfhostRequest<DeltaResponse>(path+"?ink_point_deltas=true"+(base?"&since_version="+base.version:""),{signal});
   if(row.patches!==undefined){
     try{
       if(!base||row.board_id!==boardId||row.base_version!==base.version||!Number.isSafeInteger(row.version)||!Array.isArray(row.patches)||row.patches.length!==row.version-base.version||row.patches.length>8)throw new Error("Invalid delta chain");
       row={...row,document:row.patches.reduce(applySelfhostDocumentDelta,base.document)};
     }catch{
       // A missing/malformed chain must never replace an acknowledged snapshot.
-      row=await selfhostRequest<SelfhostDocument>(path,{signal});
+      row=await selfhostRequest<DeltaResponse>(path+"?ink_point_deltas=true",{signal});
     }
   }
+  pointDeltasSupported=row.ink_point_deltas===true;
   rememberDocument(boardId,userId,row.version,row.document);
   return row;
 }
@@ -650,7 +747,7 @@ export const selfhostReadDocumentVersion=(boardId:string,signal?:AbortSignal)=>s
 export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string){
   const userId=loadSession()?.user.id;
   const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
-  const prepared=base&&deltaSupported&&expectedVersion>0?prepareSmallDocumentDelta(base.document,document,expectedVersion):null;
+  const prepared=base&&deltaSupported&&expectedVersion>0?prepareSmallDocumentDelta(base.document,document,expectedVersion,pointDeltasSupported?inkGesture:undefined):null;
   const fullBody=prepared?null:JSON.stringify({expected_version:expectedVersion,document});
   // The fast path owns a detached snapshot, too. Changed fields are normalized
   // before any network await; unchanged values come from the ACKed snapshot.
@@ -658,7 +755,8 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
   const path=documentPath(boardId)+"?version_only=true"+(inkGesture?"&ink_gesture="+encodeURIComponent(inkGesture):"");
   let result:{version:number}|undefined;
   if(base&&deltaSupported&&expectedVersion>0){
-    const delta=prepared?null:diffSelfhostDocument(base.document,next);
+    const fullDelta=prepared?null:diffSelfhostDocument(base.document,next);
+    const delta=fullDelta&&inkGesture&&pointDeltasSupported?compactInkPointDelta(base.document,fullDelta,inkGesture):fullDelta;
     if(prepared||delta){
       const body=prepared?.body??JSON.stringify({expected_version:expectedVersion,delta});
       const bytes=new TextEncoder().encode(body).byteLength;
@@ -989,7 +1087,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,
+            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}

@@ -101,7 +101,7 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
             async with websockets.connect(native_uri,origin="https://lektrus.ru") as first:
                 async with websockets.connect(native_uri,origin="https://lectrus.ru") as second:
                     for ws,session in ((first,owner_session),(second,student_session)):
-                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second}))
+                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second}))
                         assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0}
                     for sender,receiver in ((first,second),(second,first)):
                         packet={"type":"live_ink","client_id":"native_1","stroke_id":"native_stroke","kind":"pen",
@@ -159,6 +159,54 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                             peer=apply_delta(peer,patch)
                         assert pushed==peer==(await http.get(url,headers=owner)).json()["document"]
                     assert peer["items"]==[]
+                    # A modern peer receives only the committed suffix; an
+                    # old peer gets a version notice and the existing GET path.
+                    version = (await http.get(url+"?version_only=true",headers=owner)).json()["version"]
+                    capability = (await http.get(url+"?ink_point_deltas=true",headers=owner)).json()
+                    assert capability["ink_point_deltas"] is True
+                    points = [{"x": i/10, "y": i%5} for i in range(200)]
+                    ink = {"id":"durable-ink","kind":"pen","createdBy":str(TEACHER),
+                           "x":10,"y":20,"width":25,"height":10,"weight":2,"color":"#112233","text":"","points":points}
+                    stroke_url = url+"?version_only=true&ink_gesture=durable-ink"
+                    created_ink = await http.patch(stroke_url,headers=owner,json={"expected_version":version,
+                        "delta":{"items":{"upsert":[ink]}}})
+                    assert created_ink.status_code==200,created_ink.text
+                    version += 1
+                    for ws in (first,second):
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))["version"]==version
+                    base = (await http.get(url,headers=student)).json()["document"]
+                    edit={"id":"durable-ink","count":200,"keep":199,"points":[{"x":0,"y":0},{"x":1,"y":1}],
+                          "geometry":{"x":9,"y":18,"width":27,"height":12}}
+                    delta={"items":{"point_edits":[edit]}}
+                    saved=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
+                    assert saved.status_code==200,saved.text
+                    assert json.loads(await asyncio.wait_for(first.recv(),3))=={"type":"document_changed","version":version+1}
+                    push=json.loads(await asyncio.wait_for(second.recv(),3))
+                    assert push["base_version"]==version and push["delta"]==delta
+                    expected=apply_delta(base,delta)
+                    legacy_update=(await http.get(url+f"?since_version={version}",headers=student)).json()
+                    assert "upsert" in legacy_update["patches"][0]["items"]
+                    assert apply_delta(base,legacy_update["patches"][0])==expected
+                    compact_update=(await http.get(url+f"?since_version={version}&ink_point_deltas=true",headers=student)).json()
+                    assert compact_update["patches"]==[delta]
+                    assert apply_delta(base,compact_update["patches"][0])==expected
+                    assert (await http.get(url,headers=owner)).json()["document"]==expected
+                    # Old version, wrong point count, and deleted stroke are
+                    # never accepted as a new checkpoint.
+                    stale=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
+                    assert stale.status_code==409,stale.text
+                    version += 1
+                    bad=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
+                    assert bad.status_code==422,bad.text
+                    erased=await http.patch(url+"?version_only=true",headers=owner,json={"expected_version":version,
+                        "delta":{"items":{"remove":["durable-ink"]}}})
+                    assert erased.status_code==200,erased.text
+                    version += 1
+                    for ws in (first,second):
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))["version"]==version
+                    erased_edit=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
+                    assert erased_edit.status_code==422,erased_edit.text
+                    assert (await http.get(url,headers=owner)).json()["document"]["items"]==[]
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass

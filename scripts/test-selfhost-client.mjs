@@ -39,7 +39,7 @@ async function loadSelfhost(enabled, platform="web") {
     const result=lockTail.then(callback);lockTail=result.catch(()=>{});return result;
   }};
   const nativeBoardId="00000000-0000-4000-8000-000000000004";
-  let nativeDoc=null,nativeVersion=0,nativeDelta=null,brokenChain=false;
+  let nativeDoc=null,nativeVersion=0,nativeDelta=null,brokenChain=false;let pointCapability=false;
   const nativeComment={id:"comment-root",board_id:nativeBoardId,
     author_id:"00000000-0000-4000-8000-000000000001",author_name:"Учитель",
     parent_id:null,body:"Проверьте решение",resolved:false,
@@ -127,7 +127,7 @@ async function loadSelfhost(enabled, platform="web") {
         patches:brokenChain?[{items:{order:[]}}]:[nativeDelta],updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     if(u.pathname===`/api/v1/boards/${nativeBoardId}/document`)
       return ok({board_id:nativeBoardId,version:nativeVersion,document:nativeDoc,
-        updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
+        ...(pointCapability?{ink_point_deltas:true}:{}),updated_by:user.id,updated_at:"2026-11-14T10:00:00Z"});
     const assetBase=`/api/v1/boards/${nativeBoardId}/assets/`;
     if(u.pathname===assetBase+"asset_1"&&options.method==="HEAD")
       return new Response(null,{status:200});
@@ -296,7 +296,7 @@ async function loadSelfhost(enabled, platform="web") {
   return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
     setRefreshStatus:v=>{refreshStatus=v},setTransientRefresh401:()=>{transientRefresh401=true},rejectOldAccess:()=>{rejectOldAccess=true},
-    remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
+    enablePointCapability:()=>{pointCapability=true},remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
 }
 
 const disabled=await loadSelfhost(false);
@@ -401,15 +401,50 @@ const deltaBytes=Buffer.byteLength(JSON.stringify(patchRequest.body));
 assert.ok(deltaBytes<fullBytes/100);
 console.log(`Board autosave: ${fullBytes} -> ${deltaBytes} bytes (${(100*(1-deltaBytes/fullBytes)).toFixed(2)}% less)`);
 const reordered={...nextDoc,title:"Сохранённая",items:[nextDoc.items.at(-1),...nextDoc.items.slice(1,-1)]};
+// Permanent ink: compact a translated prefix and revised tail losslessly.
+const inkPoints=Array.from({length:200},(_,i)=>({x:i/10,y:i%5}));
+const inkItem={id:"ink",kind:"pen",x:10,y:20,width:25,height:10,points:inkPoints,createdBy:"owner"};
+const inkBase={version:1,items:[inkItem,{id:"other"}]};
+const extended={...inkItem,x:9,y:18,width:27,height:12,points:[
+  ...inkPoints.slice(0,199).map(p=>({x:Math.round((p.x+1)*100)/100,y:p.y+2})),{x:0,y:0},{x:1,y:1}]};
+const inkNext={...inkBase,items:[extended,{id:"other"}]};
+const fullInkDelta=api.diffSelfhostDocument(inkBase,inkNext);
+const compactInkDelta=api.compactInkPointDelta(inkBase,fullInkDelta,"ink");
+assert.equal(compactInkDelta.items.point_edits[0].keep,199);
+assert.deepEqual(JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(inkBase,compactInkDelta))),inkNext);
+assert.ok(JSON.stringify(compactInkDelta).length<JSON.stringify(fullInkDelta).length/10);
+assert.throws(()=>api.applySelfhostDocumentDelta({...inkBase,items:[]},compactInkDelta));
+assert.throws(()=>api.applySelfhostDocumentDelta(inkBase,{items:{point_edits:[{...compactInkDelta.items.point_edits[0],count:201}]}}));
+assert.deepEqual(api.compactInkPointDelta(inkBase,fullInkDelta,"erase:ink"),fullInkDelta);
+const stickerStroke={id:"attached",kind:"marker",points:inkPoints,weight:.1};
+const note={id:"note",kind:"sticky",stickerInk:[stickerStroke,{id:"other-stroke",kind:"pen",points:[{x:0,y:0}]}]};
+const noteBase={version:1,items:[note]};
+const noteNext={version:1,items:[{...note,stickerInk:[{...stickerStroke,points:[...inkPoints,{x:.123456,y:-.987654}]},note.stickerInk[1]]}]};
+const noteDelta=api.compactInkPointDelta(noteBase,api.diffSelfhostDocument(noteBase,noteNext),"attached");
+assert.equal(noteDelta.items.point_edits[0].stroke_id,"attached");
+assert.deepEqual(JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(noteBase,noteDelta))),noteNext);
 const remoteDelta=JSON.parse(JSON.stringify(api.diffSelfhostDocument(nextDoc,reordered)));
 assert.deepEqual(JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nextDoc,remoteDelta))),reordered);
 env.remoteNativeEdit(remoteDelta);
 assert.deepEqual(JSON.parse(JSON.stringify((await api.selfhostReadDocument(nativeBoard.id,undefined,true)).document)),reordered);
-assert.equal(records.at(-1).query,"?since_version=2");
+assert.equal(records.at(-1).query,"?ink_point_deltas=true&since_version=2");
 env.remoteNativeEdit({set:{subject:"chemistry"}},true);
 assert.equal((await api.selfhostReadDocument(nativeBoard.id,undefined,true)).document.subject,"chemistry");
-assert.equal(records.at(-2).query,"?since_version=3");
-assert.equal(records.at(-1).query,"");
+assert.equal(records.at(-2).query,"?ink_point_deltas=true&since_version=3");
+assert.equal(records.at(-1).query,"?ink_point_deltas=true");
+// The real save queue negotiates support; a legacy server receives only
+// the established complete upsert format.
+const wireBase={...reordered,subject:"chemistry",items:[...reordered.items,inkItem]};
+let wireVersion=(await api.selfhostSaveDocument(nativeBoard.id,4,wireBase,"ink")).version;
+const wireNext={...wireBase,items:[...wireBase.items.slice(0,-1),extended]};
+wireVersion=(await api.selfhostSaveDocument(nativeBoard.id,wireVersion,wireNext,"ink")).version;
+assert.ok(records.at(-1).body.delta.items.upsert);
+env.enablePointCapability();
+await api.selfhostReadDocument(nativeBoard.id,undefined,false);
+const wireFinal={...wireNext,items:[...wireNext.items.slice(0,-1),{...extended,points:[...extended.points,{x:2,y:3}]}]};
+wireVersion=(await api.selfhostSaveDocument(nativeBoard.id,wireVersion,wireFinal,"ink")).version;
+assert.equal(records.at(-1).body.delta.items.point_edits[0].points.length,1);
+assert.deepEqual(JSON.parse(JSON.stringify((await api.selfhostReadDocument(nativeBoard.id,undefined,false)).document)),wireFinal);
 assert.equal(await api.selfhostAssetExists(nativeBoard.id,"asset_1"),true);
 assert.equal(await api.selfhostAssetExists(nativeBoard.id,"missing"),false);
 await api.selfhostUploadAsset(
