@@ -139,3 +139,25 @@ def test_live_erase_is_editor_only_and_validates_cancellation():
         with pytest.raises(InvalidLiveEvent):
             accept(bad)
 
+
+def test_fast_permanent_ink_frames_are_bounded_and_ink_only():
+    line={"id":"pen_1","kind":"pen","points":[{"x":1,"y":2}]}
+    frame={"type":"ink_frame","client_id":"client_1","gesture":"pen_1","seq":1,"base_version":4,
+           "delta":{"items":{"upsert":[line]}},"cursor":{"client_id":"cursor_1","x":1,"y":2}}
+    result=accept(frame)
+    assert result["user_id"]=="trusted-user"
+    assert result["cursor"]["user_id"]=="trusted-user"
+    assert result["delta"]==frame["delta"]
+    with pytest.raises(InvalidLiveEvent,match="read_only"):
+        accept(frame,role="viewer")
+    for bad in ({**frame,"seq":True}, {**frame,"base_version":-1},
+                {**frame,"delta":{"set":{"title":"bad"}}},
+                {**frame,"delta":{"items":{"upsert":[{"id":"shape_1","kind":"shape"}]}}},
+                {**frame,"delta":{"items":{"remove":["bad/id"]}}},
+                {**frame,"delta":{"items":{"upsert":[line]*65}}}):
+        with pytest.raises(InvalidLiveEvent):
+            accept(bad)
+    limiter=EventRateLimit()
+    assert all(limiter.check("ink_frame") for _ in range(40))
+    assert not limiter.check("ink_frame")
+    assert limiter.check("ink_commit")

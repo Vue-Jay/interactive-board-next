@@ -4,7 +4,7 @@ import type { RemoteBoardDocument } from "./backend";
 // Stable compact hash for JSON-compatible board content. Supabase JSONB may reorder
 // object keys, so key order cannot participate in equality. Hashing while walking the
 // value avoids allocating a second multi-megabyte canonical JSON string for big boards.
-const stableJsonHash = (value: unknown): string => {
+export const stableJsonHash = (value: unknown): string => {
   let h1 = 0x811c9dc5;
   let h2 = 0x9e3779b9;
   const feed = (text: string) => {

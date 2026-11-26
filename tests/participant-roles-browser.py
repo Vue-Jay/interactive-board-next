@@ -331,8 +331,9 @@ def check_shared_eraser_sync(browser):
             upstream=route.connect_to_server()
             def outgoing(message):
                 frame=json.loads(message)
-                if frame.get("type")=="ink_commit":
+                if frame.get("type") in ("ink_commit","ink_frame"):
                     control["commits"].append(frame)
+                if frame.get("type")=="ink_commit":
                     changes=frame.get("delta",{}).get("items",{})
                     if control["hold"] and any(i.get("id")==control["hold"] for i in changes.get("upsert",[])+changes.get("point_edits",[])):
                         control["held"].append((upstream,message));return
@@ -458,7 +459,7 @@ def check_shared_eraser_sync(browser):
                     stroke_id=stroke["id"]
                     stored(eraser,stroke_id)
                     expect(eraser.locator(".viewer-ink-canvas").first).to_be_attached(timeout=20000)
-                    assert any(frame.get("cursor") for frame in control["commits"]), "Drawing must send a committed cursor and ink together"
+                    assert any(frame.get("type")=="ink_frame" and frame.get("cursor") for frame in control["commits"]), "Fast geometry and cursor must be sent together"
                     # Check visible pixels at the actual remote cursor, not merely a stored ID.
                     eraser.wait_for_function("""()=>{
                         const cursor=document.querySelector(".lektrus-remote-cursor");

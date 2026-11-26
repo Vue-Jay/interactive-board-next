@@ -50,6 +50,7 @@ export type SelfhostLiveEvent=
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
   | (SelfhostLiveInkPacket&{user_id:string;name:string;role:SelfhostBoardRole;sent_at:number})
   | SelfhostRemoteObjectPreview
+  | SelfhostInkFrame
   | {type:"presence_state";users:SelfhostPresenceUser[]}
   | {type:"presence_diff";joins:SelfhostPresenceUser[];leaves:SelfhostPresenceUser[]}
   | {type:"work_state";user_id:string;name:string;role:SelfhostBoardRole;selected_ids:string[];editing_id:string|null;sent_at:number}
@@ -63,14 +64,21 @@ export type SelfhostLiveEvent=
   | {type:"ink_ack";client_id:string;stroke_id:string;offset:number;finished:boolean}
   | {type:"comments_changed"}
   | {type:"event_error";reason:string};
-export type SelfhostCommittedCursor=Extract<SelfhostLiveEvent,{type:"cursor"}>;
+export type SelfhostCommittedCursor={type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number};
 export type InkCommitCursor={x:number;y:number;client_id:string};
+export type InkFrameTag={client_id:string;gesture:string;seq:number};
+type InkFrameCommit=InkFrameTag&{user_id:string};
+export type SelfhostInkFrame=InkFrameCommit&{type:"ink_frame";base_version:number;delta:DocumentDelta;name:string;role:SelfhostBoardRole;sent_at:number;cursor?:SelfhostCommittedCursor};
+export type FastInkChange={id:string;before:JsonObject|null;after:JsonObject|null;nextId?:string};
+const inkFrameClientId="ink_"+Math.random().toString(36).slice(2)+Date.now().toString(36);
+let inkFrameSequence=0;
 type InkCommitRequest={expected_version:number;delta:DocumentDelta;ink_gesture:string;cursor?:InkCommitCursor;after_request_id?:string};
 type InkCommitPromise=Promise<{version:number}>&{requestId:string};
 const MAX_INK_IN_FLIGHT=3;
 export type SelfhostBoardChannel=(()=>void)&{
   canCommitInk:()=>boolean;
   canPipelineInk:()=>boolean;
+  canFastInk:()=>boolean;
   commitInk:(request:InkCommitRequest)=>InkCommitPromise|null;
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
   sendInk:(ink:SelfhostLiveInkPacket)=>boolean;
@@ -496,7 +504,7 @@ type JsonObject=Record<string,unknown>;
 type PointEdit={id:string;stroke_id?:string;count:number;keep:number;points:JsonObject[];geometry?:JsonObject};
 type DocumentDelta={set?:JsonObject;remove?:string[];items?:{upsert?:JsonObject[];remove?:string[];order?:string[];point_edits?:PointEdit[]}};
 type DeltaResponse=SelfhostDocument&{base_version?:number;patches?:DocumentDelta[];ink_point_deltas?:boolean};
-type RevisionPatch={base_version:number;delta:DocumentDelta;updated_at:string;updated_by:string;ink_cursor?:SelfhostCommittedCursor};
+type RevisionPatch={base_version:number;delta:DocumentDelta;updated_at:string;updated_by:string;ink_cursor?:SelfhostCommittedCursor;ink_frame?:InkFrameCommit};
 const MAX_DELTA_BYTES=1024*1024;
 // The raw acknowledged document, not the normalized editor snapshot. Keep only
 // the currently used board to avoid retaining every board opened in a session.
@@ -800,7 +808,7 @@ export function selfhostStartInkPipeline(boardId:string,expectedVersion:number,d
   const base=documentBase;
   const socket=selfhostBoardSockets.get(boardId);
   if(!userId||!base||base.userId!==userId||base.boardId!==boardId||base.version!==expectedVersion||
-      expectedVersion<1||!deltaSupported||!pointDeltasSupported||!socket?.canPipelineInk())return null;
+      expectedVersion<1||!deltaSupported||!pointDeltasSupported||!socket?.canPipelineInk()||socket.canFastInk())return null;
   let planned=base.document,version=expectedVersion,committed=expectedVersion;
   let pending=0,previousId:string|undefined,failed:Error|undefined,closed=false;
   let resolveDone!:(value:{version:number})=>void,rejectDone!:(error:Error)=>void;
@@ -841,7 +849,158 @@ export function selfhostStartInkPipeline(boardId:string,expectedVersion:number,d
   return {offer,done};
 }
 
-export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string,inkCursor?:InkCommitCursor){
+
+/** Fast frames update the same ordinary stroke IDs rendered by the board.
+ * The raw committed document remains the only save/recovery base.
+ * A frame is a bounded ink-only delta against an exact committed revision. */
+function fastInkDelta(base:JsonObject,raw:JsonObject,version:number,gesture:string):DocumentDelta|null{
+  const old=itemMap(base.items),local=itemMap(raw.items);
+  if(!old||!local||base.ink!=null||raw.ink!=null)return null;
+  let items:JsonObject[];
+  if(gesture.startsWith("erase:")){
+    // Retain the exact saved non-ink properties. A local selection/editor or
+    // metadata normalization must never hitchhike on an ink frame.
+    items=[];
+    for(const item of local.values()){
+      const prior=old.get(String(item.id));
+      if(inkKind(item))items.push(item);
+      else if(prior){
+        items.push(prior.kind==="sticky"&&item.kind==="sticky"?
+          {...prior,stickerInk:item.stickerInk??[]}:prior);
+      }
+    }
+    if([...old.values()].some(item=>!inkKind(item)&&!local.has(String(item.id))))return null;
+  }else{
+    const pen=local.get(gesture);
+    if(pen&&inkKind(pen)){
+      items=[...old.values()].map(item=>item.id===gesture?pen:item);
+      if(!old.has(gesture))items.push(pen);
+    }else{
+      const sticker=[...local.values()].find(item=>item.kind==="sticky"&&itemMap(item.stickerInk)?.has(gesture));
+      const prior=sticker&&old.get(String(sticker.id));
+      if(!sticker||!prior||prior.kind!=="sticky")return null;
+      const strokes=itemMap(prior.stickerInk??[]);
+      const nextStroke=itemMap(sticker.stickerInk)?.get(gesture);
+      if(!strokes||!nextStroke)return null;
+      strokes.set(gesture,nextStroke);
+      items=[...old.values()].map(item=>item===prior?{...prior,stickerInk:[...strokes.values()]}:item);
+    }
+  }
+  const prepared=prepareSmallDocumentDelta(base,{...base,items},version,gesture);
+  if(!prepared)return null;
+  const delta=(JSON.parse(prepared.body) as {delta:DocumentDelta}).delta;
+  if(delta.set||delta.remove||!inkPipelineDelta(base,prepared.next,delta,gesture))return null;
+  return delta;
+}
+
+export function selfhostFastInkEnabled(boardId:string):boolean{
+  return !!selfhostBoardSockets.get(boardId)?.canFastInk();
+}
+export function selfhostPublishInkFrame(boardId:string,expectedVersion:number,document:JsonObject,gesture:string,cursor?:InkCommitCursor):InkFrameTag|null{
+  const base=documentBase,userId=loadSession()?.user.id,socket=selfhostBoardSockets.get(boardId);
+  if(!base||base.boardId!==boardId||base.userId!==userId||base.version!==expectedVersion||!socket?.canFastInk())return null;
+  const delta=fastInkDelta(base.document,document,base.version,gesture);
+  if(!delta)return null;
+  const tag:InkFrameTag={client_id:inkFrameClientId,gesture,seq:++inkFrameSequence};
+  return socket.sendFastInk({type:"ink_frame",...tag,base_version:base.version,delta,...(cursor?{cursor}:{})})?tag:null;
+}
+
+const inkFrameKey=(tag:InkFrameCommit)=>tag.user_id+":"+tag.client_id+":"+tag.gesture;
+function changedInkIds(before:JsonObject,after:JsonObject):Set<string>{
+  const a=itemMap(before.items),b=itemMap(after.items);
+  const ids=new Set<string>();
+  if(!a||!b)return ids;
+  for(const [id,item] of a)if(!equalJson(item,b.get(id)))ids.add(id);
+  for(const id of b.keys())if(!a.has(id))ids.add(id);
+  return ids;
+}
+/** Rebase presentation-only ink edits over actual committed revisions.
+ * Same-gesture checkpoints never shorten the newer displayed stroke; a
+ * different gesture touching the same ID wins and blocks delayed frames.
+ * No frame can be used as a save base or restore an erased object. */
+export function createFastInkReplica(){
+  type Revision={version:number;document:JsonObject;commit?:InkFrameCommit};
+  let history:Revision[]=[];
+  const pending=new Map<string,{frame:SelfhostInkFrame;expires:number}>();
+  const seen=new Map<string,number>();
+  const resolve=(frame:SelfhostInkFrame)=>{
+    const index=history.findIndex(row=>row.version===frame.base_version);
+    if(index<0)return null;
+    const base=history[index].document;
+    try{
+      const next=applySelfhostDocumentDelta(base,frame.delta);
+      if(frame.delta.set||frame.delta.remove||!inkPipelineDelta(base,next,frame.delta,frame.gesture))return null;
+      const touched=changedInkIds(base,next);
+      if(!touched.size)return null;
+      for(let i=index+1;i<history.length;i++){
+        const prev=history[i-1],row=history[i],affected=changedInkIds(prev.document,row.document);
+        if(row.commit&&inkFrameKey(row.commit)===inkFrameKey(frame)){
+          if(row.commit.seq>=frame.seq)return null;
+          const a=itemMap(prev.document.items)!,b=itemMap(row.document.items)!;
+          for(const id of affected){
+            const old=a.get(id),item=b.get(id);
+            if((old&&inkKind(old))||(item&&inkKind(item))||
+               (old?.kind==="sticky"&&item?.kind==="sticky"&&equalJson(without(old,["stickerInk"]),without(item,["stickerInk"])))){
+              touched.add(id);
+            }else if(touched.has(id))return null;
+          }
+        }else if([...affected].some(id=>touched.has(id)))return null;
+      }
+      return {next,touched};
+    }catch{return null}
+  };
+  const prune=(now:number)=>{
+    for(const [key,entry] of pending)if(entry.expires<=now||!resolve(entry.frame))pending.delete(key);
+  };
+  return {
+    sync(version:number,document:JsonObject,commit?:InkFrameCommit){
+      const latest=history[history.length-1];
+      if(latest&&version<=latest.version)return;
+      if(latest&&version!==latest.version+1){history=[];pending.clear()}
+      history.push({version,document,commit});
+      if(history.length>16)history.shift();
+      prune(Date.now());
+    },
+    accept(frame:SelfhostInkFrame,now=Date.now()){
+      const key=inkFrameKey(frame);
+      if(!Number.isSafeInteger(frame.seq)||frame.seq<1||!Number.isSafeInteger(frame.base_version)||
+         frame.seq<=(seen.get(key)??0)||!resolve(frame))return false;
+      seen.delete(key);seen.set(key,frame.seq);
+      if(seen.size>512)seen.delete(seen.keys().next().value!);
+      pending.delete(key);pending.set(key,{frame,expires:now+3000});
+      if(pending.size>24)pending.delete(pending.keys().next().value!);
+      return true;
+    },
+    changes(now=Date.now()):FastInkChange[]{
+      prune(now);
+      const latest=history[history.length-1],current=latest&&itemMap(latest.document.items);
+      if(!current||!pending.size)return [];
+      const result=new Map<string,FastInkChange>();
+      for(const {frame} of pending.values()){
+        const resolved=resolve(frame);
+        if(!resolved)continue;
+        const desired=itemMap(resolved.next.items)!;
+        for(const id of resolved.touched){
+          const before=current.get(id)??null,after=desired.get(id)??null;
+          if(!after&&!before)continue;
+          if(!after)result.set(id,{id,before,after});
+        }
+        const ordered=[...desired.values()];
+        for(let i=0;i<ordered.length;i++){
+          const after=ordered[i],id=String(after.id);
+          if(!resolved.touched.has(id))continue;
+          const before=current.get(id)??null;
+          if(!equalJson(before,after))result.set(id,{id,before,after,nextId:ordered[i+1]?.id as string|undefined});
+        }
+      }
+      return [...result.values()];
+    },
+    hasPending:()=>pending.size>0,
+    reset(){history=[];pending.clear();seen.clear()},
+  };
+}
+
+export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string,inkCursor?:InkCommitCursor,inkFrame?:InkFrameTag){
   const userId=loadSession()?.user.id;
   const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
   const prepared=base&&deltaSupported&&expectedVersion>0?prepareSmallDocumentDelta(base.document,document,expectedVersion,pointDeltasSupported?inkGesture:undefined):null;
@@ -849,7 +1008,10 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
   // The fast path owns a detached snapshot, too. Changed fields are normalized
   // before any network await; unchanged values come from the ACKed snapshot.
   const next=prepared?.next??JSON.parse(fullBody!).document as JsonObject;
-  const path=documentPath(boardId)+"?version_only=true"+(inkGesture?"&ink_gesture="+encodeURIComponent(inkGesture):"");
+  const fast=!!inkGesture&&selfhostFastInkEnabled(boardId);
+  const checkpoint=fast&&inkFrame?.gesture===inkGesture?inkFrame:undefined;
+  const path=documentPath(boardId)+"?version_only=true"+(inkGesture?"&ink_gesture="+encodeURIComponent(inkGesture):"")+
+    (checkpoint?"&ink_frame_client="+encodeURIComponent(checkpoint.client_id)+"&ink_frame_seq="+checkpoint.seq:"");
   let result:{version:number}|undefined;
   let sentOverSocket=false;
   if(base&&deltaSupported&&expectedVersion>0){
@@ -862,7 +1024,9 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
         try{
           // Never replay an ambiguous websocket write as HTTP. A lost ACK
           // takes the normal version-conflict recovery path.
-          const ws=inkGesture?selfhostBoardSockets.get(boardId)?.commitInk({
+          // Fast visual frames and durable HTTP writes must not share a serial
+          // WebSocket receive queue. Old servers retain the chained WS path.
+          const ws=inkGesture&&!fast?selfhostBoardSockets.get(boardId)?.commitInk({
             ...JSON.parse(body),ink_gesture:inkGesture,...(inkCursor?{cursor:inkCursor}:{})
           }):null;
           sentOverSocket=!!ws;
@@ -879,7 +1043,7 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
   }
   result??=await selfhostRequest<{version:number}>(path,{method:"PUT",body:fullBody??JSON.stringify({expected_version:expectedVersion,document:next})});
   rememberDocument(boardId,userId,result.version,next);
-  if(inkCursor&&!sentOverSocket)selfhostBoardSockets.get(boardId)?.sendCursor(inkCursor);
+  if(inkCursor&&!sentOverSocket&&!checkpoint)selfhostBoardSockets.get(boardId)?.sendCursor(inkCursor);
   return result;
 }
 export type SelfhostObjectPreview={
@@ -1063,7 +1227,7 @@ function connectSelfhostBoard(
   let lastVersion=-1;
   let ready=false;
   let compactInk=false;
-  let durableInkCommits=false,inkCommitChain=false,commitSequence=0;
+  let durableInkCommits=false,inkCommitChain=false,inkFastFrames=false,commitSequence=0;
   let lastInkRequestId:string|undefined;
   const pendingCommits=new Map<string,{resolve:(value:{version:number})=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
   let lastCursorSent=0;
@@ -1086,6 +1250,7 @@ function connectSelfhostBoard(
   };
   const canCommitInk=()=>ready&&durableInkCommits&&socket?.readyState===WebSocket.OPEN;
   const canPipelineInk=()=>canCommitInk()&&inkCommitChain;
+  const canFastInk=()=>canCommitInk()&&inkFastFrames;
   const commitInk=(request:InkCommitRequest):InkCommitPromise|null=>{
     if(!canCommitInk())return null;
     if(request.after_request_id!==undefined){
@@ -1157,6 +1322,7 @@ function connectSelfhostBoard(
     let serialized="";
     try{serialized=JSON.stringify(event)}catch{return false}
     if(serialized.length>120_000)return false;
+    if(event.type==="ink_frame"&&(!canFastInk()||(socket?.bufferedAmount??0)>128*1024||new TextEncoder().encode(serialized).byteLength>56*1024))return false;
     if(!ready||!socket||socket.readyState!==WebSocket.OPEN)return false;
     try{socket.send(serialized);return true}catch{reconnect();return false}
   };
@@ -1187,7 +1353,7 @@ function connectSelfhostBoard(
   };
   const closeSocket=()=>{
     ready=false;
-    compactInk=false;durableInkCommits=false;inkCommitChain=false;lastInkRequestId=undefined;
+    compactInk=false;durableInkCommits=false;inkCommitChain=false;inkFastFrames=false;lastInkRequestId=undefined;
     for(const entry of pendingCommits.values()){
       clearTimeout(entry.timer);entry.reject(new SelfhostHttpError(409,"Соединение прервано. Сверяем версию доски."));
     }
@@ -1226,7 +1392,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,
+            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,ink_fast_frames:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}
@@ -1251,6 +1417,7 @@ function connectSelfhostBoard(
             compactInk=message.compact_ink===true;
             durableInkCommits=message.durable_ink_commits===true;
             inkCommitChain=message.ink_commit_chain===true;
+            inkFastFrames=message.ink_fast_frames===true;
             attempt=0;ready=true;onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
@@ -1322,7 +1489,7 @@ function connectSelfhostBoard(
               leaves:message.leaves.filter(valid),
             } as SelfhostLiveEvent);
           }
-          const relayedTypes=["work_state","editor_mutation","object_transform","focus_view",
+          const relayedTypes=["work_state","editor_mutation","object_transform","ink_frame","focus_view",
             "teacher_view","guided_follow","attachment_request","attachment_result"];
           if(relayedTypes.includes(String(message?.type))&&typeof message.user_id==="string"&&
              typeof message.name==="string"&&
@@ -1356,6 +1523,7 @@ function connectSelfhostBoard(
                 jsonObject(message.delta)&&typeof message.updated_at==="string"&&typeof message.updated_by==="string"
                 ?{base_version:message.base_version,delta:message.delta as DocumentDelta,
                   updated_at:message.updated_at,updated_by:message.updated_by,
+                  ...(jsonObject(message.ink_frame)&&typeof message.ink_frame.client_id==="string"&&typeof message.ink_frame.gesture==="string"&&Number.isSafeInteger(message.ink_frame.seq)&&message.ink_frame.user_id===message.updated_by?{ink_frame:message.ink_frame as InkFrameCommit}:{}),
                   ...(jsonObject(message.ink_cursor)&&message.ink_cursor.type==="cursor"&&typeof message.ink_cursor.user_id==="string"&&
                     Number.isFinite(message.ink_cursor.x)&&Number.isFinite(message.ink_cursor.y)?{ink_cursor:message.ink_cursor as SelfhostCommittedCursor}:{})}:undefined;
               onRevision(version,patch);
@@ -1376,7 +1544,7 @@ function connectSelfhostBoard(
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
-  return Object.assign(stop,{canCommitInk,canPipelineInk,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
+  return Object.assign(stop,{canCommitInk,canPipelineInk,canFastInk,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
 }
 
 
@@ -1433,6 +1601,8 @@ class SharedSelfhostBoard {
 
   canCommitInk(){return !!this.socket?.canCommitInk()}
   canPipelineInk(){return !!this.socket?.canPipelineInk()}
+  canFastInk(){return !!this.socket?.canFastInk()}
+  sendFastInk(frame:Record<string,unknown>){return this.canFastInk()&&!!this.socket?.sendEvent(frame)}
   commitInk(request:InkCommitRequest){return this.socket?.commitInk(request)??null}
   sendCursor(cursor:InkCommitCursor){return this.socket?.sendCursor(cursor.client_id,cursor.x,cursor.y)??false}
   subscribe(listener:BoardListener):SelfhostBoardChannel{
@@ -1450,6 +1620,7 @@ class SharedSelfhostBoard {
     return Object.assign(stop,{
       canCommitInk:()=>this.listeners.has(listener)&&this.canCommitInk(),
       canPipelineInk:()=>this.listeners.has(listener)&&this.canPipelineInk(),
+      canFastInk:()=>this.listeners.has(listener)&&this.canFastInk(),
       commitInk:(request:InkCommitRequest)=>this.listeners.has(listener)?this.commitInk(request):null,
       sendCursor:(id:string,x:number,y:number)=>this.listeners.has(listener)&&!!this.socket?.sendCursor(id,x,y),
       sendInk:(ink:SelfhostLiveInkPacket)=>this.listeners.has(listener)&&!!this.socket?.sendInk(ink),
@@ -1477,8 +1648,23 @@ export function selfhostSubscribeBoard(
 export function selfhostWatchDocument(
   boardId:string,currentVersion:()=>number,onDocument:(row:SelfhostDocument)=>void,
   onStatus:(status:SelfhostRealtimeStatus)=>void,
+  onFastInk?:(changes:FastInkChange[],cursor?:SelfhostCommittedCursor)=>void,
 ):()=>void{
   const controller=new AbortController();
+  const replica=createFastInkReplica();
+  let fastExpiry:ReturnType<typeof setTimeout>|undefined;
+  let hadFastInk=false;
+  const publishFast=(cursor?:SelfhostCommittedCursor)=>{
+    if(!onFastInk||controller.signal.aborted)return;
+    const changes=replica.changes();
+    if(changes.length||hadFastInk||cursor)onFastInk(changes,cursor);
+    hadFastInk=changes.length>0;
+    if(replica.hasPending()&&fastExpiry===undefined)fastExpiry=setTimeout(()=>{fastExpiry=undefined;publishFast()},1000);
+  };
+  const syncFast=(version:number,document:JsonObject,commit?:InkFrameCommit)=>{
+    if(!onFastInk)return;
+    replica.sync(version,document,commit);publishFast();
+  };
   let target=-1;
   let delivered=-1;
   let timer:ReturnType<typeof setTimeout>|undefined;
@@ -1504,7 +1690,10 @@ export function selfhostWatchDocument(
     try{
       const row=await selfhostReadDocument(boardId,controller.signal,true);
       if(controller.signal.aborted)return;
-      if(row.document&&row.version>Math.max(currentVersion(),delivered))onDocument(attachCursors(row));
+      if(row.document){
+        syncFast(row.version,row.document);
+        if(row.version>Math.max(currentVersion(),delivered))onDocument(attachCursors(row));
+      }
       delivered=Math.max(delivered,row.version);
       failures=row.version<target?Math.min(failures+1,5):0;
       if(!failures)onStatus(status);
@@ -1555,6 +1744,8 @@ export function selfhostWatchDocument(
           const next=applySelfhostDocumentDelta(base.document,patch.delta);
           const row:SelfhostDocument={board_id:boardId,version,document:next,
             updated_at:patch.updated_at,updated_by:patch.updated_by};
+          if(onFastInk)replica.sync(base.version,base.document);
+          syncFast(version,next,patch.ink_frame);
           rememberDocument(boardId,userId,version,next);
           onDocument(attachCursors(row));
           delivered=version;
@@ -1574,12 +1765,22 @@ export function selfhostWatchDocument(
     }
     onStatus(next);
     if(next==="online"){clearTimeout(pollTimer);pollTimer=undefined}
-    else if(pollTimer===undefined)schedulePoll();
+    else{
+      replica.reset();publishFast();
+      if(pollTimer===undefined)schedulePoll();
+    }
+  },event=>{
+    if(!onFastInk||controller.signal.aborted||event.type!=="ink_frame"||event.client_id===inkFrameClientId)return;
+    const base=documentBase,userId=loadSession()?.user.id;
+    if(!base||base.boardId!==boardId||base.userId!==userId)return;
+    replica.sync(base.version,base.document);
+    if(replica.accept(event))publishFast(event.user_id===userId?undefined:event.cursor);
   });
   schedulePoll();
   return ()=>{
     controller.abort();
-    clearTimeout(timer);clearTimeout(pollTimer);
+    clearTimeout(timer);clearTimeout(pollTimer);clearTimeout(fastExpiry);
+    replica.reset();
     socket();
   };
 }
