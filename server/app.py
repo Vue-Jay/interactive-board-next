@@ -639,6 +639,7 @@ _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
 _presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
 _compact_ink_subscribers: set[WebSocket] = set()
+_document_patch_subscribers: set[WebSocket] = set()
 
 
 async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
@@ -731,6 +732,11 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
                                   ensure_ascii=False, separators=(",", ":"))
                        if compact_peers else payload)
 
+    patch_peers = ({peer for peer in peers if peer in _document_patch_subscribers}
+                   if event["type"] == "document_changed" and "delta" in event else set())
+    legacy_payload = (json.dumps({"type":"document_changed","version":event["version"]}, separators=(",", ":"))
+                      if event["type"] == "document_changed" and "delta" in event else payload)
+
     async def send(client, token):
         row = authorized.get(token)
         if row is None or row["role"] not in ("owner", "editor", "viewer"):
@@ -740,7 +746,7 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
         if _subscribers.get(board_id, {}).get(client) != token:
             return None
         try:
-            await asyncio.wait_for(client.send_text(compact_payload if client in compact_peers else payload), timeout=1)
+            await asyncio.wait_for(client.send_text(compact_payload if client in compact_peers else payload if client in patch_peers else legacy_payload), timeout=1)
             return None
         except Exception:
             return client, 1011
@@ -798,6 +804,7 @@ def _detach_subscribers(board_id: UUID, clients) -> list[dict[str, str]]:
     for client in clients:
         _subscribers.get(board_id, {}).pop(client, None)
         _compact_ink_subscribers.discard(client)
+        _document_patch_subscribers.discard(client)
         _presence_watchers.get(board_id, set()).discard(client)
         meta = _subscriber_users.get(board_id, {}).pop(client, None)
         if meta:
@@ -1114,7 +1121,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         presence_enabled = initial.get("presence", False)
         presence_visible = initial.get("visible", True)
         compact_ink = initial.get("compact_ink", False)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool:
+        document_patches = initial.get("document_patches", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -1143,6 +1151,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         _subscribers[board_id][websocket] = token
         if compact_ink:
             _compact_ink_subscribers.add(websocket)
+        if document_patches:
+            _document_patch_subscribers.add(websocket)
         if presence_enabled:
             _presence_watchers[board_id].add(websocket)
             if presence_visible:
