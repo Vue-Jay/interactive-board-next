@@ -28,6 +28,8 @@ PUBLIC_RELEASES = f"https://github.com/{REPOSITORY}/releases/"
 ASSET_NAMES = ("Lektrus-Android.apk", "Lektrus-Android.apk.sha256")
 ASSET_HOSTS = {"release-assets.githubusercontent.com", "objects.githubusercontent.com"}
 RESPONSE_DEADLINE = 5.0  # Older native clients time out at 6.5 seconds.
+CATALOG_TTL = 120  # Bound publication latency without exhausting the REST quota.
+MIRROR_POLL = 60
 VERSION = re.compile(r"(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})")
 DEFAULT_MINIMUM = "1.0.0"
 logger = logging.getLogger(__name__)
@@ -35,9 +37,9 @@ logger = logging.getLogger(__name__)
 # Cold starts can still offer this known release during GitHub outages. It is
 # not a substitute for the live catalog, which discovers every newer release.
 LAST_VERIFIED_RELEASE = {
-    "version": "1.0.4710",
-    "download_url": f"https://github.com/{REPOSITORY}/releases/download/android-v1.0.4710/Lektrus-Android.apk",
-    "size_bytes": 14_728_878,
+    "version": "1.0.4852",
+    "download_url": f"https://github.com/{REPOSITORY}/releases/download/android-v1.0.4852/Lektrus-Android.apk",
+    "size_bytes": 15_116_332,
 }
 
 
@@ -167,7 +169,7 @@ def fetch_public_release():
              "assets": [apk[1], checksum[1]]}]
 
 
-def fetch_releases():
+def fetch_releases(known_version=None):
     try:
         # One small release record is sufficient for routine checks. If another
         # platform is marked latest, search the full list for Android releases.
@@ -179,11 +181,23 @@ def fetch_releases():
             # A missing latest release is not evidence of an outage: distinguish
             # an actually empty catalog before offering a previously known APK.
             latest = None
-        if select_android_release([latest]):
+        candidate = select_android_release([latest])
+        floor = version_key(known_version)
+        if candidate and (floor is None or version_key(candidate["version"]) >= floor):
             return [latest]
+        # GitHub's "latest" can lag a newly published release or point at an
+        # older tag. Compare the full catalog before accepting a downgrade.
         releases = fetch_api_json(RELEASES)
         if not isinstance(releases, list):
             raise ValueError("Invalid release catalog")
+        selected = select_android_release(releases)
+        if selected and floor and version_key(selected["version"]) < floor:
+            public = fetch_public_release()
+            public_selected = select_android_release(public)
+            if not public_selected:
+                raise ValueError("Cannot independently confirm older Android catalog")
+            # Both sources may legitimately agree after a release withdrawal.
+            return releases + public
         return releases
     except (OSError, ValueError, TypeError, HTTPProtocolError) as error:
         logger.warning("Android REST catalog unavailable: %s%s", type(error).__name__,
@@ -192,7 +206,7 @@ def fetch_releases():
 
 
 class AndroidUpdateCatalog:
-    def __init__(self, loader=fetch_releases, clock=time.monotonic, fallback=None):
+    def __init__(self, loader=None, clock=time.monotonic, fallback=None):
         self.loader = loader
         self.clock = clock
         self.cached = None
@@ -205,13 +219,17 @@ class AndroidUpdateCatalog:
 
     async def refresh(self):
         try:
-            releases = await asyncio.to_thread(self.loader)
+            known = self.cached or self.fallback
+            if self.loader is None:
+                releases = await asyncio.to_thread(fetch_releases, known["version"] if known else None)
+            else:
+                releases = await asyncio.to_thread(self.loader)
             if not isinstance(releases, list):
                 raise ValueError("Invalid release catalog")
             self.cached = select_android_release(releases)
             self.known_empty = self.cached is None
             self.stale = False
-            self.refresh_after = self.clock() + (300 if self.cached else 60)
+            self.refresh_after = self.clock() + (CATALOG_TTL if self.cached else 60)
         except (OSError, ValueError, TypeError, HTTPProtocolError) as error:
             logger.warning("Android release catalog refresh failed: %s", type(error).__name__)
             self.stale = True
@@ -433,7 +451,7 @@ async def run_android_release_mirror():
                 await asyncio.to_thread(mirror_release, release)
         except (HTTPException, OSError, ValueError, UnicodeError, HTTPProtocolError) as error:
             logger.warning("Android APK mirror sync deferred: %s", type(error).__name__)
-        await asyncio.sleep(300)
+        await asyncio.sleep(MIRROR_POLL)
 
 
 async def site_release():
@@ -451,10 +469,17 @@ async def android_apk(version: str, filename: str):
     if filename not in ASSET_NAMES or (version != "latest" and version_key(version) is None):
         raise HTTPException(404, "Файл не найден")
     release = await site_release()
-    if version != "latest" and version != release["version"]:
-        raise HTTPException(409, "Версия изменилась. Проверьте обновления ещё раз.")
     try:
-        apk, checksum, _ = await asyncio.to_thread(mirror_release, release)
+        if version != "latest" and version != release["version"]:
+            # A client can fetch the checksum just before a newer publication.
+            # Allow the retained, already verified previous APK, never fetch an
+            # arbitrary requested version or evict the current mirror.
+            previous = await asyncio.to_thread(cached_release, release_directory(), version)
+            if not previous or version_key(version) >= version_key(release["version"]):
+                raise HTTPException(409, "Версия изменилась. Проверьте обновления ещё раз.")
+            apk, checksum, _ = previous
+        else:
+            apk, checksum, _ = await asyncio.to_thread(mirror_release, release)
     except (OSError, ValueError, UnicodeError, HTTPProtocolError) as error:
         logger.warning("Android APK mirror unavailable: %s", type(error).__name__)
         raise HTTPException(503, "APK временно недоступен. Повторите попытку.") from None

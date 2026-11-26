@@ -72,5 +72,26 @@ with sync_playwright() as p:
         expect(page.get_by_label("Email", exact=True)).not_to_be_visible()
     else:
         expect(page.get_by_label("Email", exact=True)).to_be_visible(timeout=45000)
+    # Report real production release delivery separately: this read-only PR
+    # probe runs before deployment, so a mismatch is evidence, not a reason
+    # to block the very fix that would resolve it.
+    update=page.evaluate("""async () => {
+      try {
+        const r=await fetch('/api/v1/mobile/android-update',{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
+        let data=null;try{data=await r.json()}catch{}
+        return {status:r.status,version:data?.version,stale:data?.catalog_stale===true,size:data?.size_bytes,source:data?.download_url};
+      } catch(e){return {error:String(e)}}
+    }""")
+    print("PRODUCTION_ANDROID_CATALOG "+json.dumps(update,ensure_ascii=False),flush=True)
+    if update.get("status")==200 and update.get("version"):
+        import re
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+",update["version"]):
+            try:
+                prefix=ORIGIN+"/api/v1/mobile/android-apk/"+update["version"]+"/"
+                head=page.request.head(prefix+"Lektrus-Android.apk",timeout=90000,max_redirects=0)
+                checksum=page.request.get(prefix+"Lektrus-Android.apk.sha256",timeout=30000,max_redirects=0)
+                print("PRODUCTION_ANDROID_DOWNLOAD "+json.dumps({"version":update["version"],"apk_status":head.status,"length":head.headers.get("content-length"),"sha_status":checksum.status,"sha":checksum.text()[:120] if checksum.ok else None}),flush=True)
+            except Exception as exc:
+                print("PRODUCTION_ANDROID_DOWNLOAD "+json.dumps({"error":str(exc)[:500]}),flush=True)
     print("Live Chrome: application shell, API health, protected boards endpoint (including verified maintenance) and the expected direct-link screen are reachable")
     browser.close()
