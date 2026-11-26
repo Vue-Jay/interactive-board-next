@@ -31,6 +31,6 @@ export function writeDurableInk(items:Item[],ink:InkStyle,path:Point[],zoom:numb
  return items.some(i=>i.id===ink.id)?items.map(i=>i.id===ink.id?next:i):[...items,next];
 }
 export function peerRemovedDurableInk(base:readonly Item[],remote:readonly Item[],identity:InkIdentity):boolean{
- return (identity.stickerId!==undefined&&!remote.some(i=>i.id===identity.stickerId))||
+ return (identity.stickerId!==undefined&&base.some(i=>i.id===identity.stickerId)&&!remote.some(i=>i.id===identity.stickerId))||
   (hasDurableInk(base,identity)&&!hasDurableInk(remote,identity));
 }
