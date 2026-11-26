@@ -486,6 +486,7 @@ export async function selfhostDownloadAsset(boardId:string,assetId:string):Promi
 type JsonObject=Record<string,unknown>;
 type DocumentDelta={set?:JsonObject;remove?:string[];items?:{upsert?:JsonObject[];remove?:string[];order?:string[]}};
 type DeltaResponse=SelfhostDocument&{base_version?:number;patches?:DocumentDelta[]};
+type RevisionPatch={base_version:number;delta:DocumentDelta;updated_at:string;updated_by:string};
 const MAX_DELTA_BYTES=1024*1024;
 // The raw acknowledged document, not the normalized editor snapshot. Keep only
 // the currently used board to avoid retaining every board opened in a session.
@@ -843,7 +844,7 @@ export const selfhostResolveBoardComment=(commentId:string,resolved:boolean)=>
 
 
 function connectSelfhostBoard(
-  boardId:string,onRevision:(version:number)=>void,
+  boardId:string,onRevision:(version:number,patch?:RevisionPatch)=>void,
   onStatus:(status:SelfhostRealtimeStatus)=>void,
   onLive?:(event:SelfhostLiveEvent)=>void,
   presence?:{visible:boolean},
@@ -1097,7 +1098,12 @@ function connectSelfhostBoard(
           if(message?.type==="ready"||message?.type==="document_changed"||message?.type==="pong"){
             const version=message.version;
             if(Number.isSafeInteger(version)&&version>=0&&version>lastVersion){
-              lastVersion=version;onRevision(version);
+              lastVersion=version;
+              const patch=message.type==="document_changed"&&message.base_version===version-1&&
+                jsonObject(message.delta)&&typeof message.updated_at==="string"&&typeof message.updated_by==="string"
+                ?{base_version:message.base_version,delta:message.delta as DocumentDelta,
+                  updated_at:message.updated_at,updated_by:message.updated_by}:undefined;
+              onRevision(version,patch);
             }
           }
         }catch{/* Ignore malformed frames. */}
@@ -1120,7 +1126,7 @@ function connectSelfhostBoard(
 
 
 type BoardListener={
-  onRevision:(version:number)=>void;
+  onRevision:(version:number,patch?:RevisionPatch)=>void;
   onStatus:(status:SelfhostRealtimeStatus)=>void;
   onLive?:(event:SelfhostLiveEvent)=>void;
   presence?:{visible:boolean};
@@ -1157,10 +1163,10 @@ class SharedSelfhostBoard {
       if(this.socket&&this.presence===presence?.visible)return;
       this.socket?.();
       this.presence=presence?.visible;
-      this.socket=connectSelfhostBoard(this.boardId,version=>{
+      this.socket=connectSelfhostBoard(this.boardId,(version,patch)=>{
         if(version<=this.version)return;
         this.version=version;
-        for(const listener of this.listeners)listener.onRevision(version);
+        for(const listener of this.listeners)listener.onRevision(version,patch);
       },status=>{
         this.status=status;
         for(const listener of this.listeners)listener.onStatus(status);
@@ -1222,7 +1228,7 @@ export function selfhostWatchDocument(
   const schedule=()=>{
     if(controller.signal.aborted||accessDenied||reading||timer!==undefined||
        target<=Math.max(currentVersion(),delivered))return;
-    timer=setTimeout(()=>{timer=undefined;void read()},failures?Math.min(8000,500*2**failures):40);
+    timer=setTimeout(()=>{timer=undefined;void read()},failures?Math.min(8000,500*2**failures):0);
   };
   const read=async()=>{
     if(controller.signal.aborted||accessDenied||target<=Math.max(currentVersion(),delivered))return;
@@ -1270,8 +1276,23 @@ export function selfhostWatchDocument(
       }finally{schedulePoll()}
     },typeof document!=="undefined"&&document.hidden?10000:2500);
   };
-  const socket=selfhostSubscribeBoard(boardId,version=>{
+  const socket=selfhostSubscribeBoard(boardId,(version,patch)=>{
     target=Math.max(target,version);
+    if(!controller.signal.aborted&&!accessDenied&&patch&&version>Math.max(currentVersion(),delivered)){
+      const userId=loadSession()?.user.id;
+      const base=documentBase;
+      if(base&&base.boardId===boardId&&base.userId===userId&&base.version===patch.base_version){
+        try{
+          const next=applySelfhostDocumentDelta(base.document,patch.delta);
+          const row:SelfhostDocument={board_id:boardId,version,document:next,
+            updated_at:patch.updated_at,updated_by:patch.updated_by};
+          rememberDocument(boardId,userId,version,next);
+          onDocument(row);
+          delivered=version;
+          failures=0;
+        }catch{/* A missed or invalid patch falls back to the versioned read. */}
+      }
+    }
     schedule();
   },next=>{
     const wasOnline=status==="online";
