@@ -35,7 +35,7 @@ const receivedStart=app.indexOf("  receiveRemote.current = row => {");
 const receivedEnd=app.indexOf("  useEffect(() => demoMode||layoutEditing||!boardRealtimeAwake?",receivedStart);
 assert.ok(receivedStart>=0 && receivedEnd>receivedStart);
 const receiver=app.slice(receivedStart,receivedEnd);
-assert.ok(receiver.indexOf('if (preliminary === "ignore") return;')>=0);
+assert.ok(receiver.indexOf('if (preliminary === "ignore"){publishCommittedCursors();return;}')>=0);
 assert.ok(receiver.indexOf('if (preliminary === "defer")')>=0);
 assert.ok(receiver.indexOf('if (preliminary === "ignore")')<
           receiver.indexOf("sharedBoardFingerprint(currentDocument())"),
