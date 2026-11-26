@@ -133,6 +133,10 @@ jobs:
           name: Auth-layout-screenshots
           path: artifacts/auth-layout
           if-no-files-found: ignore
+      - name: Record source and web asset inventory for the signed APK
+        run: |
+          python3 scripts/test-signed-android-bundle.py self-test
+          python3 scripts/test-signed-android-bundle.py manifest dist "$(git rev-parse HEAD)"
       - name: Sync Android native files
         run: npx cap sync android
       - name: Require persistent Android signing credentials
@@ -186,6 +190,7 @@ jobs:
           done
           echo "Package ru.lektrus.board, versionCode $LEKTRUS_ANDROID_VERSION_CODE"
           test -s Lektrus-Android.apk
+          python3 scripts/test-signed-android-bundle.py verify Lektrus-Android.apk "$(git rev-parse HEAD)" --dist dist
       - uses: actions/upload-artifact@v4
         with:
           name: Lektrus-Android-Update-APK
@@ -301,6 +306,7 @@ jobs:
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
           "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk | tee signing-report.txt
           grep -Fiq 'certificate SHA-256 digest: ff311eb58be2e59932c28933f1d47f4b14220c64a0764dcefaaff96490fb7c88' signing-report.txt
+          python3 scripts/test-signed-android-bundle.py verify Lektrus-Android.apk "$expected"
           sha256sum Lektrus-Android.apk > Lektrus-Android.apk.sha256
           version="1.0.${GITHUB_RUN_NUMBER}"
           tag="android-v${version}"
