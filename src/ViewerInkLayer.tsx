@@ -8,6 +8,7 @@ type InkBounds = { x: number; y: number; width: number; height: number };
 type RasterCache = {
   left: number; top: number; right: number; bottom: number;
   zoom: number; width: number; height: number; strokes: Item[];
+  pixelWidth:number;pixelHeight:number;
 };
 
 /**
@@ -54,10 +55,12 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
     // Rasterize only the intersection of the nearby viewport and this group's
     // actual world bounds, rather than allocating a full viewport canvas for
     // every layer separated by a photo or PDF.
-    const left = Math.max(worldLeft - tileBuffer, boundLeft);
-    const top = Math.max(worldTop - tileBuffer, boundTop);
-    const right = Math.min(worldRight + tileBuffer, boundRight);
-    const bottom = Math.min(worldBottom + tileBuffer, boundBottom);
+    const keepTile=!!cached&&cached.zoom===zoom&&cached.width===viewport.width&&cached.height===viewport.height&&
+      cached.left<=requiredLeft&&cached.top<=requiredTop&&cached.right>=requiredRight&&cached.bottom>=requiredBottom;
+    const left = keepTile?cached!.left:Math.max(worldLeft - tileBuffer, boundLeft-64/zoom);
+    const top = keepTile?cached!.top:Math.max(worldTop - tileBuffer, boundTop-64/zoom);
+    const right = keepTile?cached!.right:Math.min(worldRight + tileBuffer, boundRight+64/zoom);
+    const bottom = keepTile?cached!.bottom:Math.min(worldBottom + tileBuffer, boundBottom+64/zoom);
     if (right <= left || bottom <= top) {
       // Release GPU/backing memory for layers far outside the viewport.
       // Returning with the old canvas size held stale backing stores alive.
@@ -75,15 +78,41 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
     canvas.style.height = `${cssHeight}px`;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
-    if(reusedBacking){
-      // An unchanged backing is not automatically cleared by assigning
-      // canvas dimensions. Erase the previous tile in device pixels first.
-      ctx.setTransform(1,0,0,1,0,0);
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+    let dirtyLeft=left,dirtyTop=top,dirtyRight=right,dirtyBottom=bottom;
+    if(keepTile&&reusedBacking&&cached!.pixelWidth===pixels.width&&cached!.pixelHeight===pixels.height){
+      // A cut or append changes only a small region. Repaint all intersecting
+      // strokes in z-order, including translucent marker overlaps, but never
+      // clear and rebuild the full screen on every eraser sample.
+      const before=new Map(cached!.strokes.map(item=>[item.id,item]));
+      const after=new Map(strokes.map(item=>[item.id,item]));
+      const commonBefore=cached!.strokes.filter(item=>after.has(item.id)).map(item=>item.id);
+      const commonAfter=strokes.filter(item=>before.has(item.id)).map(item=>item.id);
+      const reordered=commonBefore.some((id,i)=>id!==commonAfter[i]);
+      if(!reordered&&!cached!.strokes.some(item=>item.rotation)&&!strokes.some(item=>item.rotation)){
+        let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;
+        const include=(item:Item)=>{
+          const pad=(item.weight??3)/2+3/zoom;
+          x1=Math.min(x1,item.x-pad);y1=Math.min(y1,item.y-pad);
+          x2=Math.max(x2,item.x+item.width+pad);y2=Math.max(y2,item.y+item.height+pad);
+        };
+        for(const item of cached!.strokes)if(after.get(item.id)!==item)include(item);
+        for(const item of strokes)if(before.get(item.id)!==item)include(item);
+        dirtyLeft=Math.max(left,left+Math.floor((x1-left)*pixels.scaleX)/pixels.scaleX);
+        dirtyTop=Math.max(top,top+Math.floor((y1-top)*pixels.scaleY)/pixels.scaleY);
+        dirtyRight=Math.min(right,left+Math.ceil((x2-left)*pixels.scaleX)/pixels.scaleX);
+        dirtyBottom=Math.min(bottom,top+Math.ceil((y2-top)*pixels.scaleY)/pixels.scaleY);
+      }
     }
-    ctx.setTransform(pixels.scaleX, 0, 0, pixels.scaleY,
-      -left * pixels.scaleX, -top * pixels.scaleY);
-    for (const item of queryInkStrokes(spatialIndex,left,top,right,bottom)) {
+    cacheRef.current={left,top,right,bottom,zoom,width:viewport.width,height:viewport.height,
+      strokes,pixelWidth:pixels.width,pixelHeight:pixels.height};
+    if(dirtyRight<=dirtyLeft||dirtyBottom<=dirtyTop)return;
+    ctx.setTransform(pixels.scaleX,0,0,pixels.scaleY,-left*pixels.scaleX,-top*pixels.scaleY);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(dirtyLeft,dirtyTop,dirtyRight-dirtyLeft,dirtyBottom-dirtyTop);
+    ctx.clip();
+    ctx.clearRect(dirtyLeft,dirtyTop,dirtyRight-dirtyLeft,dirtyBottom-dirtyTop);
+    for (const item of queryInkStrokes(spatialIndex,dirtyLeft,dirtyTop,dirtyRight,dirtyBottom)) {
       if (item.hidden || !item.points?.length) continue;
       const weight = item.weight ?? 3, pad = weight / 2;
       if (item.x + item.width + pad < left || item.x - pad > right ||
@@ -113,10 +142,7 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
       }
       ctx.restore();
     }
-    cacheRef.current = {
-      left, top, right, bottom, zoom,
-      width: viewport.width, height: viewport.height, strokes,
-    };
+    ctx.restore();
   }, [strokes, spatialIndex, bounds, view.x, view.y, view.zoom, viewport.width, viewport.height]);
 
   return <canvas ref={canvasRef} className="viewer-ink-canvas" aria-hidden="true"
