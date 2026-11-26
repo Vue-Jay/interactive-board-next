@@ -150,3 +150,34 @@ const late=[actualPeer];
 assert.equal(previewExports.applyPendingPeerErases(late,expired,101),late);
 assert.equal(expired.size,0);
 console.log("Eraser regression tests passed: partial, crossed, long, full, repeated, non-lockable, rotated, and pending peer strokes.");
+
+
+// The production renderer and persistence use the very same item identity.
+const durableExports={};
+const durableSource=readFileSync(new URL("../src/boardDurableInk.ts",import.meta.url),"utf8");
+runInNewContext(ts.transpileModule(durableSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{
+ exports:durableExports,require:name=>name==="./boardModel"?modelExports:stickerExports
+});
+const {writeDurableInk,hasDurableInk,removeDurableInk,peerRemovedDurableInk}=durableExports;
+for(const kind of ["pen","marker"]){
+ const style={id:"stable-"+kind,kind,color:"#123456",weight:4};
+ const a=writeDurableInk([],style,[{x:0,y:0}],1,"pupil");
+ const b=writeDurableInk(a,style,[{x:0,y:0},{x:100,y:0}],1,"pupil");
+ assert.equal(b.length,1);
+ assert.equal(b[0].id,a[0].id);
+ assert.equal(b[0].createdBy,"pupil");
+ assert.equal(b[0].points.length,2);
+ assert.equal(a[0].points.length,1,"Previously sent snapshot must be immutable");
+ const erased=eraseInkAlongPath(b,[{x:50,y:0}],7,()=>true,"stroke");
+ assert.ok(peerRemovedDurableInk(b,erased,style),"Confirmed deletion retires the active stroke");
+ assert.ok(!peerRemovedDurableInk([],[],style),"An unacknowledged new stroke is not falsely deleted");
+ assert.ok(!hasDurableInk(removeDurableInk(b,style),style));
+ const identity={id:style.id,stickerId:card.id};
+ const first=writeDurableInk([card],style,[{x:150,y:150}],1,"pupil",card.id);
+ const second=writeDurableInk(first,style,[{x:150,y:150},{x:350,y:150}],1,"pupil",card.id);
+ assert.equal(second[0].stickerInk.length,1);
+ assert.ok(second[0].stickerInk[0].points.some(p=>p.x>1));
+ assert.ok(peerRemovedDurableInk(second,removeDurableInk(second,identity),identity));
+ assert.ok(peerRemovedDurableInk(second,[],identity));
+}
+console.log("Permanent ink keeps one identity through drawing, attached ink, and peer deletion.");
