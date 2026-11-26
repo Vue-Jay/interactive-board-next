@@ -622,7 +622,7 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
                 "SELECT version,updated_at,updated_by FROM board_documents WHERE board_id=$1", board_id,
             )
             if revision:
-                patches = request.app.state.document_deltas.chain(board_id, since_version, revision["version"])
+                patches = request.app.state.document_deltas.chain(board_id, since_version, revision["version"], ink_point_deltas)
                 if patches is not None:
                     return {"board_id": str(board_id), "document": None,
                             "version": revision["version"], "base_version": since_version,
@@ -1103,7 +1103,7 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             await record_revision(conn,board_id,revision,user,base,document,delta,history_group)
     version = revision["version"]
     if delta is not None:
-        request.app.state.document_deltas.remember(board_id, version, delta)
+        request.app.state.document_deltas.remember(board_id, version, delta, wire_delta)
     # A bounded, already committed patch can travel with the revision notice.
     # Older clients and clients missing its base still use the normal GET.
     event = {"type": "document_changed", "version": version}
