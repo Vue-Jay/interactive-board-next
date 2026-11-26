@@ -414,6 +414,7 @@ export const remoteAssetExists = async (path: string): Promise<boolean> => {
 };
 
 export type RemoteBoardDocument = {
+  ink_cursors?:import("./selfhostApi").SelfhostCommittedCursor[];
   board_id: string;
   document: unknown;
   version: number;
