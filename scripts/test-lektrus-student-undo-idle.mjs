@@ -71,6 +71,8 @@ assert.match(board,/await selfhostReadDocument\(boardSummary\.id\)/,"Reconnect m
 assert.match(board,/await getRemoteBoardDocument\(boardSummary\.id\)/);
 assert.match(board,/remoteRetryTimer\.current/);
 assert.match(board,/className="lektrus-board-idle-indicator"/);
+assert.match(board,/await selfhostReadDocumentVersion\(boardSummary\.id,controller\.signal\)/,"Wake uses version-only probe");
+assert.match(board,/realtimeStatus==="online"\?visiblePresenceUsers\.length:"…"/,"Connecting is not displayed as zero participants");
 assert.match(board,/if\(boardResumePendingRef\.current\)\{setNotice/);
 
 assert.doesNotMatch(board,/document\.addEventListener\("pointermove",userAction/);

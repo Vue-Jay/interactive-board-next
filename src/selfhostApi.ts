@@ -1069,6 +1069,7 @@ function connectSelfhostBoard(
   let responseDeadline:ReturnType<typeof setTimeout>|undefined;
   let lastVersion=-1;
   let idleLease=false,idlePaused=false,lastActivitySent=-Infinity,lastReportedActivity=-Infinity;
+  let rejectedAccessToken:string|undefined;
   let activityTimer:ReturnType<typeof setTimeout>|undefined;
   let ready=false;
   let compactInk=false;
@@ -1235,20 +1236,25 @@ function connectSelfhostBoard(
     if(stopped)return;
     if(activity&&boardIdleExpired(activity())){pauseForIdle();return;}
     idlePaused=false;generation++;closeSocket();clearTimers();
-    onStatus(navigator.onLine?"reconnecting":"offline");
-    if(immediate&&navigator.onLine){attempt=0;void connect();return;}
-    retry=setTimeout(()=>{retry=undefined;void connect()},Math.min(30000,250*2**Math.min(attempt++,7)));
+    // VPN/PWA/WebView network hints are not proof that our origin is unreachable.
+    onStatus("reconnecting");
+    if(immediate){attempt=0;void connect();return;}
+    const maxDelay=typeof document!=="undefined"&&document.hidden?30000:8000;
+    retry=setTimeout(()=>{retry=undefined;void connect()},Math.min(maxDelay,300*2**Math.min(attempt++,6)));
   };
   const connect=async()=>{
-    if(stopped||!navigator.onLine)return;
+    if(stopped)return;
     if(activity&&boardIdleExpired(activity())){pauseForIdle();return;}
     idlePaused=false;
     const current=++generation;
     onStatus("reconnecting");
+    // Bound both token refresh and socket handshake, not merely the WS upgrade.
+    responseDeadline=setTimeout(()=>{if(!stopped&&current===generation)reconnect()},12000);
     try{
       const session=await selfhostSession();
       if(stopped||current!==generation)return;
       if(!session){
+        clearTimeout(responseDeadline);responseDeadline=undefined;
         if(loadSession())reconnect();
         else onStatus("offline");
         return;
@@ -1259,7 +1265,13 @@ function connectSelfhostBoard(
       const ws=new WebSocket(socketUrl.toString());
       socket=ws;
       const active=()=>!stopped&&generation===current&&socket===ws;
-      responseDeadline=setTimeout(reconnect,15000);
+      // "ready" without the roster is not a completed presence handshake.
+      let presenceReady=!presence;
+      const confirmReady=()=>{
+        if(!ready||!presenceReady)return;
+        clearTimeout(responseDeadline);responseDeadline=undefined;
+        onStatus("online");
+      };
       ws.onopen=()=>{
         if(!active())return;
         try{
@@ -1285,11 +1297,10 @@ function connectSelfhostBoard(
         try{
           const message=JSON.parse(String(event.data));
           if(message?.type==="plan_limit"){notifyPlanLimit(message);closeSocket();clearTimers();onStatus("offline");return;}
-          if(message?.type==="pong"){
+          if(message?.type==="pong"&&ready&&presenceReady){
             clearTimeout(responseDeadline);responseDeadline=undefined;
           }
           if(message?.type==="ready"&&!ready){
-            clearTimeout(responseDeadline);responseDeadline=undefined;
             compactInk=message.compact_ink===true;
             durableInkCommits=message.durable_ink_commits===true;
             inkCommitChain=message.ink_commit_chain===true;
@@ -1297,7 +1308,7 @@ function connectSelfhostBoard(
             idleLease=message.idle_lease===true;
             attempt=0;ready=true;
             if(idleLease)flushActivity();
-            onStatus("online");
+            confirmReady();
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
             for(const item of pendingFinals.values()){
@@ -1357,6 +1368,8 @@ function connectSelfhostBoard(
               typeof (user as Record<string,unknown>).name==="string"&&
               ["owner","editor","viewer"].includes(String((user as Record<string,unknown>).role)));
             onLive?.({type:"presence_state",users} as SelfhostLiveEvent);
+            presenceReady=true;
+            confirmReady();
           }
           if(message?.type==="presence_diff"&&Array.isArray(message.joins)&&Array.isArray(message.leaves)){
             const valid=(user:unknown)=>!!user&&typeof user==="object"&&
@@ -1409,23 +1422,59 @@ function connectSelfhostBoard(
           }
         }catch{/* Ignore malformed frames. */}
       };
-      ws.onerror=()=>{if(active())reconnect()};
+      ws.onerror=()=>{
+        if(!active())return;
+        // onclose carries the server close code, including stale auth (4401).
+        if(ws.readyState!==WebSocket.CLOSING&&ws.readyState!==WebSocket.CLOSED){
+          try{ws.close()}catch{reconnect()}
+        }
+      };
       ws.onclose=event=>{
         if(!active())return;
-        if(event?.code===4410&&activity&&boardIdleExpired(activity()))pauseForIdle();
-        else reconnect(event?.code===4410);
+        if(event?.code===4410&&activity&&boardIdleExpired(activity())){pauseForIdle();return;}
+        if(event?.code===4401&&rejectedAccessToken!==session.access_token){
+          rejectedAccessToken=session.access_token;
+          generation++;closeSocket();clearTimers();
+          onStatus("reconnecting");
+          const refreshGeneration=generation;
+          // Rotate a rejected bearer once, respecting cross-tab refresh locks.
+          void refreshAfterUnauthorized(session).then(next=>{
+            if(stopped||generation!==refreshGeneration)return;
+            if(next&&next.access_token!==session.access_token){
+              attempt=0;void connect();
+            }else if(!next)onStatus("offline");
+            else reconnect();
+          }).catch(()=>{if(!stopped&&generation===refreshGeneration)reconnect()});
+          return;
+        }
+        reconnect(event?.code===4410);
       };
     }catch{if(!stopped&&current===generation)reconnect()}
   };
-  const networkChanged=()=>reconnect(navigator.onLine);
-  window.addEventListener("online",networkChanged);
-  window.addEventListener("offline",networkChanged);
+  const networkOnline=()=>{if(!stopped&&!idlePaused&&!ready)reconnect(true)};
+  const networkOffline=()=>{
+    // Do not break a working socket because the OS misreported connectivity.
+    if(!stopped&&!ready&&retry===undefined&&socket===null)reconnect();
+  };
+  const resumeHint=()=>{
+    if(stopped||idlePaused||ready||retry===undefined)return;
+    clearTimeout(retry);retry=undefined;attempt=0;void connect();
+  };
+  const visibleHint=()=>{if(document.visibilityState==="visible")resumeHint()};
+  window.addEventListener("online",networkOnline);
+  window.addEventListener("offline",networkOffline);
+  window.addEventListener("focus",resumeHint);
+  window.addEventListener("pageshow",resumeHint);
+  document.addEventListener("visibilitychange",visibleHint);
   void connect();
   const stop=()=>{
     stopped=true;generation++;clearTimers();closeSocket();
     pendingFinals.clear();queuedInk.length=0;pendingCursor=null;
-    window.removeEventListener("online",networkChanged);
-    window.removeEventListener("offline",networkChanged);
+    window.removeEventListener("online",networkOnline);
+    window.removeEventListener("offline",networkOffline);
+    window.removeEventListener("focus",resumeHint);
+    window.removeEventListener("pageshow",resumeHint);
+    document.removeEventListener("visibilitychange",visibleHint);
   };
   return Object.assign(stop,{canCommitInk,canPipelineInk,canSendInkMotion,noteActivity,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
 }

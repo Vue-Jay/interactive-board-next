@@ -104,7 +104,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostNoteBoardActivity, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostNoteBoardActivity, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -8326,15 +8326,30 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       try{
         // Force an authenticated revision check even when the realtime socket
         // reconnects before a change notification reaches this device.
-        const row=selfhostMode
-          ? await selfhostReadDocument(boardSummary.id,controller.signal)
-          : await getRemoteBoardDocument(boardSummary.id);
-        if(cancelled)return;
-        if(!row)throw new Error("Серверный документ недоступен");
-        if(row.document)receiveRemote.current({
-          board_id:row.board_id,version:row.version,document:row.document,
-          updated_at:row.updated_at??"",updated_by:row.updated_by
-        });
+        // A short authenticated version probe avoids re-downloading unchanged
+        // boards after ten minutes; a changed board still needs full rebase.
+        let unchanged=false;
+        if(selfhostMode&&acknowledgedBoardData.current&&remoteVersion.current!==null){
+          try{
+            const head=await selfhostReadDocumentVersion(boardSummary.id,controller.signal);
+            if(Number.isSafeInteger(head.version)&&head.version===remoteVersion.current)
+              unchanged=true;
+          }catch{
+            if(cancelled||controller.signal.aborted)return;
+            // If the probe is unavailable, fall back to a safe full read.
+          }
+        }
+        if(!unchanged){
+          const row=selfhostMode
+            ? await selfhostReadDocument(boardSummary.id,controller.signal)
+            : await getRemoteBoardDocument(boardSummary.id);
+          if(cancelled)return;
+          if(!row)throw new Error("Серверный документ недоступен");
+          if(row.document)receiveRemote.current({
+            board_id:row.board_id,version:row.version,document:row.document,
+            updated_at:row.updated_at??"",updated_by:row.updated_by
+          });
+        }
         boardResumePendingRef.current=false;
         setBoardResumePending(false);
         // A local unsent change was deliberately kept off the wire in sleep.
@@ -8841,7 +8856,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           {documentSyncEnabled && <details className="presence-menu" ref={visitPresenceMenuRef}>
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
-              <span className="presence-count">{visiblePresenceUsers.length}</span>
+              <span className="presence-count">{realtimeStatus==="online"?visiblePresenceUsers.length:"…"}</span>
             </summary>
             <div className="presence-popover">
               <div className="presence-popover-head">
