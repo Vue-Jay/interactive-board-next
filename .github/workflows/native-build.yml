@@ -136,6 +136,7 @@ jobs:
       - name: Record source and web asset inventory for the signed APK
         run: |
           python3 scripts/test-signed-android-bundle.py self-test
+          python3 scripts/test-signed-android-delivery.py --self-test
           # Apache-only rewrite config is intentionally excluded by Android aapt.
           rm -f dist/.htaccess
           python3 scripts/test-signed-android-bundle.py manifest dist "$(git rev-parse HEAD)"
@@ -285,7 +286,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_android == true))
     needs: [android-network, ios]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write
     concurrency:
@@ -299,6 +300,7 @@ jobs:
         with:
           name: Lektrus-Android-Update-APK
       - name: Publish the exact signed, smoke-tested artifact
+        id: publish
         shell: bash
         run: |
           set -euo pipefail
@@ -318,6 +320,7 @@ jobs:
             mkdir -p "$RUNNER_TEMP/existing-release"
             gh release download "$tag" --pattern 'Lektrus-Android.apk.sha256' --dir "$RUNNER_TEMP/existing-release"
             cmp Lektrus-Android.apk.sha256 "$RUNNER_TEMP/existing-release/Lektrus-Android.apk.sha256"
+            echo "published=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           gh release create "$tag" --target "$expected" --title "Lektrus Android $version" --draft \
@@ -325,3 +328,7 @@ jobs:
             Lektrus-Android.apk Lektrus-Android.apk.sha256
           [[ "$(git ls-remote origin refs/heads/main | cut -f1)" = "$expected" ]] || { echo 'Superseded release; leaving draft unpublished'; exit 0; }
           gh release edit "$tag" --draft=false --latest
+          echo "published=true" >> "$GITHUB_OUTPUT"
+      - name: Verify the deployed web marker and exact APK bytes served by Lektrus
+        if: steps.publish.outputs.published == 'true'
+        run: python3 scripts/test-signed-android-delivery.py --version "1.0.${GITHUB_RUN_NUMBER}" --apk Lektrus-Android.apk --marker public/deployment-check.json
