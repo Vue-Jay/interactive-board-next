@@ -64,14 +64,6 @@ export function atlasCountryIso(feature:GeoFeature):string|null{
 }
 // Design-application dates are deliberately conservative; when uncertain,
 // the user sees an abstract symbol rather than a present-day national flag.
-const datedFlagStart:Readonly<Record<string,number>>={
- US:1960,GB:1801,RU:1993,FR:1946,DE:1990,IT:1946,CA:1965,
- JP:1870,CN:1950,IN:1947,KR:1948,KP:1948,
- AU:1908,NZ:1902,BR:1992,MX:1984,ZA:1995,
- ES:1982,PT:1911,CH:1889,SE:1906,NO:1899,
- PL:1980,FI:1918,TR:1936,IL:1948,
- AR:1985,BD:1972
-};
 const validHistoricalNames:Readonly<Record<string,string[]>>={
  US:["United States","United States of America","USA"],
  GB:["United Kingdom","Great Britain","United Kingdom of Great Britain and Northern Ireland"],
@@ -104,7 +96,7 @@ export function atlasCountryFlagUrl(code:string):string{
 }
 export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,historical:boolean):AtlasCountrySymbol{
  const raw=String(feature.properties?.NAME??feature.properties?.name??"").trim();
- if(historical&&feature.properties?.ATLAS_HISTORICAL_LABEL)return {kind:"symbol",code:null,monogram:initials(title||raw),label:"Условный картографический знак",note:"Контур источника уточнён; не официальный исторический флаг",key:raw+"|"+year+"|corrected"};
+ if(historical&&feature.properties?.ATLAS_HISTORICAL_LABEL)return {kind:"symbol",code:null,monogram:"?",label:"Символика не установлена",note:"Условный фирменный знак Lektrus. Исторический флаг или герб территории не подтверждён.",key:raw+"|"+year+"|corrected"};
  const code=atlasCountryIso(feature);
  if(historical){
   // Bound to the *same* historical polity and year, not merely a shared modern ISO.
@@ -116,30 +108,22 @@ export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,h
   // states which merely inherit their territory's ISO never enter this branch.
   const archive=emblem??(sourceMatchesNation&&code?findHistoricalCountryFlag(code,year):undefined);
   if(archive){
-   const isIllustrative=archive.title.toLocaleLowerCase("ru").includes("гипотетичес")||
-    archive.title.toLocaleLowerCase("ru").includes("фантазийн");
-   const kind=archive.kind==="artifact"?
-    (archive.reconstruction?"Историческое изображение, современная реконструкция":"Подлинный исторический памятник"):
-    isIllustrative?"Предположительная иллюстрация":
-    archive.kind==="flag"?"Исторический флаг":
-    archive.kind==="emblem"?"Историческая эмблема":"Историческое знамя";
+   const kind="Документированный исторический флаг";
    const period=archive.from+"–"+archive.to+" гг.";
-   const qualifier=archive.reconstruction?" Современная реконструкция, не подлинный сохранившийся предмет.":"";
+   const qualifier="";
    return {kind:"historic",code:null,monogram:initials(title||raw),
-    label:kind,period,reconstruction:archive.reconstruction,
+    label:kind,period,reconstruction:false,
     imageUrl:historicalInsigniaUrl(archive.file),
     sourceUrl:historicalInsigniaSourceUrl(archive.file),
     note:archive.title+". Период: "+period+"."+qualifier+" Источник: Wikimedia Commons.",
     key:raw+"|"+year+"|"+archive.file};
   }
  }
- const dated=code&&datedFlagStart[code]!==undefined&&year>=datedFlagStart[code]&&
-  validHistoricalNames[code]?.some(name=>name.toLocaleLowerCase("en")===raw.toLocaleLowerCase("en"));
- const flag=!!code&&(!historical||dated);
- const label=flag?"Флаг государства":"Условный картографический знак";
- return {kind:flag?"flag":"symbol",code:flag?code:null,monogram:initials(title||raw),
-  label,note:flag?(historical?"Флаг соответствует известному периоду использования":"Современный государственный флаг"):
-   historical?"Исторический флаг или герб не подтверждён: показан условный знак, не официальный символ":
-   "Флаг для этой территории не определён: показан условный знак",
+ const flag=!!code&&!historical;
+ return {kind:flag?"flag":"symbol",code:flag?code:null,monogram:flag?initials(title||raw):"?",
+  label:flag?"Флаг государства":"Символика не установлена",
+  note:flag?"Современный государственный флаг":historical?
+   "Историческая государственная символика не подтверждена. Фирменный условный знак Lektrus.":
+   "Флаг территории не определён. Показан условный знак Lektrus.",
   key:raw+"|"+year+"|"+(code??"")};
 }

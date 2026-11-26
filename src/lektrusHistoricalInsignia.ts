@@ -243,11 +243,28 @@ export function historicalInsigniaUrl(file:string,width=220):string{
 export function historicalInsigniaSourceUrl(file:string):string{
  return "https://commons.wikimedia.org/wiki/File:"+encodeURIComponent(file.replace(/ /g,"_"));
 }
+// Only dated government flags with well established provenance belong in
+// political reference cards. Other images remain in the archival research
+// catalogue, but must not be displayed as state symbols.
+const attestedStateFlagIds=new Set([
+ "ussr","russian-empire","ottoman","german-empire","prussia",
+ "qing","gdr","frg-west","kingdom-italy","papal-states","france-kingdom"
+]);
+export function historicallyAttestedStateFlag(row:HistoricalInsignia):boolean{
+ return row.kind==="flag"&&!row.reconstruction&&row.from>=1800&&
+ !!row.id&&attestedStateFlagIds.has(row.id)&&
+ !(row.id==="russian-empire"&&row.from<1896);
+}
+export function historicallyAttestedNationalFlag(row:HistoricalInsignia):boolean{
+ return row.kind==="flag"&&!row.reconstruction&&!!row.code&&
+ !(row.code==="FR"&&row.from<1790)&&
+ !(row.code==="ES"&&row.from<1843);
+}
 /** Enumerate every reviewed graphic for a given reference.
  * A kingdom may have several different banners or dynastic symbols over time.
  * Catalogue icons use an attested year, NOT the last year of the kingdom. */
 export function listHistoricalStateInsignia(id:string):HistoricalInsignia[]{
- return historicalStateInsignia.filter(row=>row.id===id)
+ return historicalStateInsignia.filter(row=>row.id===id&&historicallyAttestedStateFlag(row))
   .sort((a,b)=>a.from-b.from||a.to-b.to);
 }
 export function historicalReferenceSymbolYear(entry:{id:string;from:number;to:number}):number{
@@ -257,8 +274,8 @@ export function historicalReferenceSymbolYear(entry:{id:string;from:number;to:nu
  return latest?Math.min(entry.to,latest.to):entry.to;
 }
 export function findHistoricalStateInsignia(id:string,year:number):HistoricalInsignia|undefined{
- return historicalStateInsignia.find(row=>row.id===id&&year>=row.from&&year<=row.to);
+ return historicalStateInsignia.find(row=>row.id===id&&year>=row.from&&year<=row.to&&historicallyAttestedStateFlag(row));
 }
 export function findHistoricalCountryFlag(code:string,year:number):HistoricalInsignia|undefined{
- return historicalDatedNationalFlags.find(row=>row.code===code&&year>=row.from&&year<=row.to);
+ return historicalDatedNationalFlags.find(row=>row.code===code&&year>=row.from&&year<=row.to&&historicallyAttestedNationalFlag(row));
 }

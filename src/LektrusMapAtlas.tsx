@@ -2471,9 +2471,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         <p><strong>Изменение:</strong> {entry.change}</p>
         {(()=>{const images=listHistoricalStateInsignia(entry.id).filter(image=>
          image.from<=entry.to&&image.to>=entry.from);
-         if(!images.length)return <small>Проверенного изображения флага, печати или исторического памятника пока нет. Показан условный знак.</small>;
+         if(!images.length)return <small>Подтверждённой государственной символики этого периода нет. Показан фирменный условный знак Lektrus.</small>;
          return <div className="lektrus-history-symbol-gallery">
-          <strong>Флаги, знамёна и исторические свидетельства ({images.length})</strong>
+          <strong>Документированные государственные флаги ({images.length})</strong>
           <div className="lektrus-history-symbol-gallery-items">
            {images.map(image=>{
             const year=Math.max(entry.from,Math.min(entry.to,image.to));
