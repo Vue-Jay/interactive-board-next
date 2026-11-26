@@ -130,6 +130,7 @@ export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
  const changes:LiveEditorOp[]=[];
  const walk=(a:unknown,b:unknown,path:(string|number)[],depth:number)=>{
   if(same(a,b)||depth>MAX_DEPTH)return;
+  if(b===undefined&&path.length){changes.push({path,kind:"remove"});return;}
   if(Array.isArray(a)&&Array.isArray(b)){
    const key=String(path[path.length-1]??"");
    if(isIdCollection(a,key)&&isIdCollection(b,key)){

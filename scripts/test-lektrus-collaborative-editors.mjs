@@ -159,3 +159,13 @@ assert.match(app,/if\(pendingEditorBases\.current\.has\(item\.id\)\)pendingEdito
  "server conflict refreshes pending editor bases from the latest remote item");
 assert.match(app,/remoteEditor&&!\(\(item.kind==="graph"/,"common editors do not acquire exclusive UI locks");
 console.log("Lektrus collaborative editor merges, previews, and event wiring: checks passed.");
+
+// Undefined values must serialize as valid remove operations; otherwise the
+// server rejects the entire batch, including unrelated changed labels.
+{
+ const changes=editorDiff({text:"old",quizSelected:1},{text:"new",quizSelected:undefined});
+ const wire=JSON.parse(JSON.stringify(changes));
+ assert.ok(wire.some(op=>op.kind==="remove"&&op.path[0]==="quizSelected"));
+ assert.equal(applyEditorOps({text:"old",quizSelected:1},wire).text,"new");
+ assert.equal(applyEditorOps({text:"old",quizSelected:1},wire).quizSelected,undefined);
+}

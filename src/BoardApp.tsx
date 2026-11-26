@@ -122,6 +122,7 @@ import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./b
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from "./lektrusLiveEditorMerge";
+import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField} from "./boardLiveObjectEdits";
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
@@ -3975,7 +3976,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[]}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];publishLiveEdits?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     if(!options?.previousItems){lastInkGesture.current=null;lastInkCursor.current=null;}
@@ -4021,6 +4022,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const historyLimit = normalized.length > 1200 || inkPoints > 120_000 ? 30 : normalized.length > 500 || inkPoints > 50_000 ? 50 : 80;
       while (history.current.length > historyLimit) history.current.shift();
       index.current = history.current.length - 1;
+    }
+    // Every committed non-ink object edit takes the same low-latency path,
+    // not just the few subject editors that already emit specialized deltas.
+    // Durable document saves remain authoritative and retain permissions/undo.
+    if(options?.publishLiveEdits!==false&&!options?.previousItems&&workChannel.current){
+      const beforeById=getCurrentItemIndex(current);
+      for(const item of normalized){
+        const before=beforeById.get(item.id);
+        if(!before||before===item)continue;
+        const ops=boardObjectLiveOps(before,item);
+        if(ops.length)workChannel.current.publishEdit(item.id,ops);
+      }
     }
     display(normalized,options?.immediatePaint===true);
     // React paints the committed items on the next frame. Keep the persistence
@@ -6733,7 +6746,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if((updated.graphPoints?.length??0)>graphPointLimit(updated.graphFigureId))return;
     if(JSON.stringify(updated)===JSON.stringify(latest))return;
     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-    commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
+    commit(itemsRef.current.map(item=>item.id===latest.id?updated:item) ,{publishLiveEdits:false});
     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
   };
   const liveOrganicEditorUpdate=(before:Item,next:Item)=>{
@@ -6747,7 +6760,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      const updated={...latest,...merged};
      if(JSON.stringify(updated)===JSON.stringify(latest))return;
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
+     commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry) ,{publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
    const liveChemistryBenchUpdate=(before:Item,next:Item,simulationOnly=false)=>{
@@ -6764,7 +6777,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      if(JSON.stringify(updated.scienceLabBench)===JSON.stringify(latest.scienceLabBench))return;
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
      commit(itemsRef.current.map(v=>v.id===latest.id?updated:v),
-       {labSimulation:simulationOnly});
+       {labSimulation:simulationOnly,publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,labLiveEditorDiff(latest,updated));
    };
    const liveChemicalEquationUpdate=(before:Item,next:Item)=>{
@@ -6782,7 +6795,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      if(JSON.stringify(fields(updated))===JSON.stringify(fields(latest)))return;
      if(!pendingEditorBases.current.has(latest.id))
        pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
+     commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry) ,{publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
    const patchSubjectBoardEntry=(boardId:string,entryId:string,changes:Partial<import("./boardModel").SubjectBoardEntry>,teacherOnly=false)=>{
@@ -6805,7 +6818,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      // entry before the next input event. Frame-batched painting is for
      // gestures; deferring these edits can overwrite a just-entered question
      // when the teacher immediately adds another row or marks punctuation.
-     commit(itemsRef.current.map(value=>value.id===latest.id?next:value),{immediatePaint:true});
+     commit(itemsRef.current.map(value=>value.id===latest.id?next:value),{immediatePaint:true,publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
    const growSubjectBoard=(boardId:string,neededHeight:number)=>{
@@ -6815,7 +6828,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      if(newHeight<=latest.height)return;
      const updated={...latest,height:newHeight};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(value=>value.id===latest.id?updated:value));
+     commit(itemsRef.current.map(value=>value.id===latest.id?updated:value) ,{publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
    const removeSubjectBoardEntry=(boardId:string,entryId:string)=>{
@@ -6832,7 +6845,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      }
      const next={...latest,subjectBoardEntries:remaining};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
+     commit(itemsRef.current.map(value=>value.id===latest.id?next:value) ,{publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
    const moveSubjectBoardEntry=(boardId:string,entryId:string,direction:-1|1)=>{
@@ -6846,7 +6859,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      [ordered[from],ordered[to]]=[ordered[to],ordered[from]];
      const next={...latest,subjectBoardEntries:ordered};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(value=>value.id===boardId?next:value));
+     commit(itemsRef.current.map(value=>value.id===boardId?next:value) ,{publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
    const openSubjectBoardSolution=(boardId:string,entryId:string)=>{
@@ -6901,7 +6914,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      }
      const updated={...target,subjectBoardEntries:[...(target.subjectBoardEntries??[]),...entries]};
      if(existing&&!pendingEditorBases.current.has(existing.id))pendingEditorBases.current.set(existing.id,existing);
-     commit([...itemsRef.current.filter(item=>item.id!==sourceId&&item.id!==target.id),updated]);
+     commit([...itemsRef.current.filter(item=>item.id!==sourceId&&item.id!==target.id),updated] ,{publishLiveEdits:false});
      if(existing)workChannel.current?.publishEdit(existing.id,editorDiff(existing,updated));
      setSelected([updated.id]);setTool("select");
      setNotice("Материал перенесён на химическую доску");
@@ -6926,7 +6939,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      const next={...current,subjectBoardEntries:[...(current.subjectBoardEntries??[]),entry]};
      const already=itemsRef.current.some(value=>value.id===current.id);
      if(already&&!pendingEditorBases.current.has(current.id))pendingEditorBases.current.set(current.id,current);
-     commit(already?itemsRef.current.map(value=>value.id===current.id?next:value):[...itemsRef.current,next]);
+     commit(already?itemsRef.current.map(value=>value.id===current.id?next:value):[...itemsRef.current,next] ,{publishLiveEdits:false});
      if(already)workChannel.current?.publishEdit(current.id,editorDiff(current,next));
      setSelected([current.id]);setTool("select");
      setSubjectBoardEditor({boardId:current.id,entryId:entry.id,mode});
@@ -6958,7 +6971,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(!valid||JSON.stringify(merged)===JSON.stringify(latest[field]))return;
     const updated={...latest,[field]:merged};
     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-    commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
+    commit(itemsRef.current.map(item=>item.id===latest.id?updated:item) ,{publishLiveEdits:false});
     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
   };
   const graphDraftFromItem=(item:Item):GraphDraft=>({boardWidth:item.width,boardHeight:item.height,constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:graphPointSnapEnabled(item),axisLabels:item.graphAxisLabels!==false,axisLabelScale:item.graphAxisLabelScale,axisLabelStep:item.graphAxisLabelStep,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
@@ -7019,7 +7032,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(!graphLiveBaseRef.current)graphLiveBaseRef.current=latest;
       const changedItem=graphItemFromDraft(latest,merged);
       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-      commit(itemsRef.current.map(item=>item.id===latest.id?changedItem:item));
+      commit(itemsRef.current.map(item=>item.id===latest.id?changedItem:item) ,{publishLiveEdits:false});
       workChannel.current?.publishEdit(latest.id,editorDiff(latest,changedItem));
     }
   };
@@ -7402,6 +7415,38 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setFlashcardEditorId(null); setFlashcardDraft(null); setNotice("Карточка сохранена");
   };
 
+  const lastModalLiveDraft=useRef<Item|null>(null);
+  useEffect(()=>{
+    if(!canEdit)return;
+    let id:string|null=null,patch:Partial<Item>|null=null;
+    if(formulaEditorId&&formulaDraft){
+      id=formulaEditorId;patch={text:formulaDraft.text.slice(0,10000),fontSize:Math.max(12,Math.min(96,Math.round(formulaDraft.fontSize))),color:formulaDraft.color};
+    }else if(tableEditorId&&tableDraft&&canCreateAssignments){
+      id=tableEditorId;patch={tableRows:tableDraft.rows,tableCols:tableDraft.cols,tableCells:tableDraft.cells.map(cell=>cell.slice(0,2000)),tableHeader:tableDraft.header,fontSize:Math.max(9,Math.min(32,Math.round(tableDraft.fontSize))),tableAlign:tableDraft.align,tableStripe:tableDraft.stripe,tableCompact:tableDraft.compact};
+    }else if(checklistEditorId&&checklistDraft&&canCreateAssignments){
+      id=checklistEditorId;patch={text:checklistDraft.title.slice(0,200),checklistItems:checklistDraft.items.slice(0,40).map(value=>value.slice(0,2000)),checklistDone:checklistDraft.items.slice(0,40).map((_,i)=>checklistDraft.done[i]===true),fontSize:Math.max(10,Math.min(32,Math.round(checklistDraft.fontSize))),color:checklistDraft.color};
+    }else if(quizEditorId&&quizDraft&&canCreateAssignments){
+      id=quizEditorId;patch={text:quizDraft.question.slice(0,2000),quizOptions:quizDraft.options.slice(0,8).map(value=>value.slice(0,2000)),quizCorrect:quizDraft.correct,quizExplanation:quizDraft.explanation.slice(0,5000),fontSize:Math.max(10,Math.min(32,Math.round(quizDraft.fontSize))),color:quizDraft.color};
+    }else if(flashcardEditorId&&flashcardDraft&&canCreateAssignments){
+      id=flashcardEditorId;patch={text:flashcardDraft.front.slice(0,5000),flashcardBack:flashcardDraft.back.slice(0,5000),fontSize:Math.max(10,Math.min(48,Math.round(flashcardDraft.fontSize))),color:flashcardDraft.color};
+    }
+    const previous=lastModalLiveDraft.current;
+    const latest=id?getCurrentItemIndex(itemsRef.current).get(id):undefined;
+    if(previous&&(!latest||previous.id!==latest.id)){
+      const stored=getCurrentItemIndex(itemsRef.current).get(previous.id);
+      if(stored){
+        const rollback=boardDraftLiveOps(previous,stored);
+        if(rollback.length)workChannel.current?.publishEdit(stored.id,rollback);
+      }
+      lastModalLiveDraft.current=null;
+    }
+    if(!latest||!patch||latest.locked)return;
+    const next=mergeModalPatch(latest,patch);
+    const ops=boardDraftLiveOps(previous?.id===latest.id?previous:latest,next);
+    if(ops.length)workChannel.current?.publishEdit(latest.id,ops);
+    lastModalLiveDraft.current=next;
+  },[canEdit,canCreateAssignments,formulaEditorId,formulaDraft,tableEditorId,tableDraft,checklistEditorId,checklistDraft,quizEditorId,quizDraft,flashcardEditorId,flashcardDraft]);
+
   // An educational task is a draft until Save, not a half-built board object.
   const cancelStudyEditor=(kind:"checklist"|"quiz"|"flashcard")=>{
     if(kind==="checklist"){setChecklistEditorId(null);setChecklistDraft(null)}
@@ -7689,7 +7734,16 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   // Measuring instruments are shared board objects, but rendered in a single
   // screen-space portal so their handles remain readable at any board zoom.
-  const sharedInstruments = useMemo(() => items.filter(item => item.kind === "instrument"), [items]);
+  const sharedInstruments = useMemo(() => items.filter(item => item.kind === "instrument").map(item=>{
+    const live=remoteLiveItems[item.id]??item;
+    const pose=remoteObjectPoses[item.id];
+    return pose?{...live,x:pose.x,y:pose.y,rotation:pose.rotation}:live;
+  }), [items,remoteLiveItems,remoteObjectPoses]);
+  const previewSharedInstrument=(id:string,patch:Partial<Item>,finished=false)=>{
+    const base=getCurrentItemIndex(itemsRef.current).get(id);
+    if(!base||base.kind!=="instrument"||base.locked||!canEdit)return;
+    workChannel.current?.publishTransform([toBoardObjectPose({...base,...patch},objectPoseOrigin(base))],finished);
+  };
   const addSharedInstrument=(type:InstrumentType,point:Point,scale:number)=>{
     const dimensions:Record<InstrumentType,[number,number]>={
       ruler:[410,88],triangle:[340,260],protractor:[360,205]
@@ -8307,47 +8361,31 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       (mutation)=>{
         const stored=getCurrentItemIndex(itemsRef.current).get(mutation.itemId);
         const liveLab=stored?.graphFigureId==="chem-experiment-free"&&!!stored.scienceLabBench;
-        if(!stored||stored.kind!=="graph"||
-          !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"||
-            isMotionGraph(stored.graphFigureId)||stored.graphFigureId?.startsWith("chem-organic-")||stored.graphFigureId?.startsWith("chem-formula-")||stored.scienceMechanics||stored.scienceOptics||
-            stored.scienceCircuit||liveLab))return;
+        if(!stored||stored.locked||isInkItem(stored))return;
         if(!mutation.ops.length||JSON.stringify(mutation.ops).length>120000)return;
-        const allowed=liveLab?
-          (path:string|number)=>path==="scienceLabBench":
-          stored.graphFigureId==="contour-atlas"?
-          (path:string|number)=>path==="schoolDiagram"||path==="text":
-          (path:string|number)=>typeof path==="string"&&
-            (path.startsWith("graph")||path==="text"||
-              path.startsWith("scienceOrganic")&&!!stored.graphFigureId?.startsWith("chem-organic-")||
-              path.startsWith("scienceReaction")&&!!stored.graphFigureId?.startsWith("chem-formula-")||
-              path==="scienceMechanics"&&!!stored.scienceMechanics||
-              path==="scienceOptics"&&!!stored.scienceOptics||
-              path==="scienceCircuit"&&!!stored.scienceCircuit);
+        const allowed=(path:string|number)=>liveLab&&path==="scienceLabBench"||isLiveBoardObjectField(path);
         if(mutation.ops.some(op=>!op.path.length||!allowed(op.path[0])||
           !["set","remove","append","upsert-id","remove-id"].includes(op.kind)))return;
         if(!remoteLiveBases.current.has(mutation.itemId))
           remoteLiveBases.current.set(mutation.itemId,JSON.stringify(stored));
         setRemoteLiveItems(current=>{
           const base=current[mutation.itemId]??stored;
-          const preview=liveLab?
+          const labMutation=liveLab&&mutation.ops.every(op=>op.path[0]==="scienceLabBench");
+          const preview=labMutation?
             applyLabLivePreview(stored,base,mutation.ops):
             applyEditorOps(base,mutation.ops);
           // Treat realtime as an untrusted visual hint, never as an
           // authoritative edit. Reject malformed objects before rendering.
-          if(!preview||preview.kind!=="graph"||preview.id!==stored.id||
-             preview.graphFigureId!==stored.graphFigureId)return current;
-          if(liveLab)return {...current,[mutation.itemId]:preview};
-          if(preview.graphFigureId==="contour-atlas"){
-            if(!isSchoolDiagram(preview.schoolDiagram))return current;
-          }else if(
-            (preview.scienceMechanics&&!mechanicsValid(preview.scienceMechanics))||
-            (preview.scienceOptics&&!validOptics(preview.scienceOptics))||
-            (preview.scienceCircuit&&!circuitIsDocument(preview.scienceCircuit))||
-            (preview.graphPoints?.length??0)>graphPointLimit(preview.graphFigureId)||
-            (preview.graphSegments?.length??0)>graphSegmentLimit(preview.graphFigureId)||
-            (preview.graphPolygons?.length??0)>30||
-            preview.graphPoints?.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return current;
-          return {...current,[mutation.itemId]:preview};
+          if(!preview||preview.kind!==stored.kind||preview.id!==stored.id)return current;
+          if(labMutation)return {...current,[mutation.itemId]:preview};
+          // The same item parser used by saved boards rejects invalid shapes,
+          // editor values and malformed subject payloads before they render.
+          try{
+            const validated=parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[preview]})).items[0];
+            if(!validated)return current;
+            return {...current,[mutation.itemId]:validated};
+          }catch{return current;}
+
         });
         const oldTimer=remoteLiveCleanup.current.get(mutation.itemId);
         if(oldTimer)clearTimeout(oldTimer);
@@ -9205,7 +9243,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             const merged=mergeEditedValue(before,submitted,latest.schoolDiagram);
             const updated={...latest,schoolDiagram:merged,text:merged.title};
             if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-            commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
+            commit(itemsRef.current.map(item=>item.id===latest.id?updated:item) ,{publishLiveEdits:false});
             workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
           }}
           onSave={next=>{
@@ -9675,7 +9713,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div className="mobile-tool-cluster mobile-tool-cluster-create" aria-label="Создание">
             {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" data-interface-control={id} aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board}
               instruments={sharedInstruments} onAdd={addSharedInstrument}
-              onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument}
+              onUpdate={updateSharedInstrument} onPreview={previewSharedInstrument} onRemove={removeSharedInstrument}
               editable={canEdit} renderOverlays={false} />}</div>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
@@ -9701,7 +9739,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             <GeometryInstruments view={view} boardRef={board}
               portalContainer={instrumentViewportHost}
               instruments={sharedInstruments} onAdd={addSharedInstrument}
-              onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument}
+              onUpdate={updateSharedInstrument} onPreview={previewSharedInstrument} onRemove={removeSharedInstrument}
               editable={canEdit} renderOverlays />
           </div>
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
@@ -9717,7 +9755,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             <Icon name="settings" size={17}/><span className="tool-tooltip">Настроить</span>
           </button>
         </aside>}
-        {!canEdit&&<div className="viewer-shared-instruments"><GeometryInstruments view={view} boardRef={board} portalContainer={instrumentViewportHost} instruments={sharedInstruments} onAdd={addSharedInstrument} onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument} editable={false} renderOverlays /></div>}
+        {!canEdit&&<div className="viewer-shared-instruments"><GeometryInstruments view={view} boardRef={board} portalContainer={instrumentViewportHost} instruments={sharedInstruments} onAdd={addSharedInstrument} onUpdate={updateSharedInstrument} onPreview={previewSharedInstrument} onRemove={removeSharedInstrument} editable={false} renderOverlays /></div>}
         {canEdit&&desktopToolsExpanded&&<LektrusToolOverflow anchor={adaptiveToolbarRef.current} onClose={()=>setDesktopToolsExpanded(false)}>
           <header className="lektrus-tool-overflow-head">
             <div><strong>Инструменты</strong><small>Выберите нужный инструмент</small></div>
@@ -10389,12 +10427,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               );
               // Collaborative editor previews may contain OLD geometry. Never let a
               // delayed preview put a dragged/resized object back on screen.
-              const live=remoteLiveItems[entry.item.id];
-              const pose=gesture.current?.ids.includes(entry.item.id)?
-                undefined:remoteObjectPoses[entry.item.id];
-              const base=live?{...live,x:entry.item.x,y:entry.item.y,
-                width:entry.item.width,height:entry.item.height,
-                rotation:entry.item.rotation}:entry.item;
+              const locallyHeld=gesture.current?.ids.includes(entry.item.id);
+              const live=locallyHeld?undefined:remoteLiveItems[entry.item.id];
+              const pose=locallyHeld?undefined:remoteObjectPoses[entry.item.id];
+              const base=live??entry.item;
               const posed=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
                 height:pose.height,rotation:pose.rotation,
                 ...(base.kind==="connector"?{
@@ -10568,7 +10604,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                       const updated={...latest,scienceLabBench:merged};
                       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
                       commit(itemsRef.current.map(v=>v.id===latest.id?updated:v),
-                        {labSimulation:simulationOnly});
+                        {labSimulation:simulationOnly,publishLiveEdits:false});
                       workChannel.current?.publishEdit(latest.id,labLiveEditorDiff(latest,updated));
                     }:undefined}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
@@ -10580,7 +10616,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                      const changed=movePhysicalPart(latest,target,position.x,position.y);
                      if(changed===latest)return;
                      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-                     commit(itemsRef.current.map(candidate=>candidate.id===latest.id?changed:candidate));
+                     commit(itemsRef.current.map(candidate=>candidate.id===latest.id?changed:candidate) ,{publishLiveEdits:false});
                      workChannel.current?.publishEdit(latest.id,editorDiff(latest,changed));
                    }:undefined}
                   onPhysicalPartPreview={!presentation&&!item.locked&&!space&&canEdit&&
@@ -10630,7 +10666,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                       const changed={...latest,graphPoints:latest.graphPoints.map((p,i)=>
                         i===index?{...p,x,y}:p)};
                       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-                      commit(itemsRef.current.map(candidate=>candidate.id===latest.id?changed:candidate));
+                      commit(itemsRef.current.map(candidate=>candidate.id===latest.id?changed:candidate) ,{publishLiveEdits:false});
                       workChannel.current?.publishEdit(latest.id,editorDiff(latest,changed));
                     }:undefined}
                   onSchoolDiagramChange={canEdit&&!item.locked&&isSchoolDiagramId(item.graphFigureId)?(diagram)=>{
@@ -10720,6 +10756,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                       onChange={(e) => {
                         draftRef.current = e.target.value;
                         setDraft(e.target.value);
+                        workChannel.current?.publishEdit(item.id,[{path:["text"],kind:"set",value:e.target.value}]);
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onPointerUp={(e) => e.stopPropagation()}

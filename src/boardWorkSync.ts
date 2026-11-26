@@ -114,7 +114,7 @@ export function connectBoardWorkChannel(
         return;
       }
       if (event.type === "editor_mutation") {
-        if (event.user_id === me.userId || !event.client_id || !event.item_id ||
+        if (event.client_id === clientId || !event.client_id || !event.item_id ||
             !event.id || !Array.isArray(event.ops) || event.ops.length > 300) return;
         if (seenEdits.has(event.id)) return;
         seenEdits.add(event.id);
@@ -127,7 +127,7 @@ export function connectBoardWorkChannel(
         return;
       }
       if (event.type === "object_transform") {
-        if (event.user_id === me.userId || !event.client_id ||
+        if (event.client_id === clientId || !event.client_id ||
             !Number.isSafeInteger(event.seq) || !Array.isArray(event.items) ||
             !event.items.length || event.items.length > 64) return;
         const previous = receivedTransformSeq.get(event.client_id) ?? 0;
