@@ -7984,7 +7984,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // object or cancelling the current tool/undo history.
     const incomingItems=expandDocumentInk(data);
     display(incomingItems);
-    history.current=[incomingItems];
+    history.current=[eraserSession.current?.before??incomingItems];
     index.current=0;
     snapshot.current=data;
     setTitle(data.title);
@@ -7998,9 +7998,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   receiveRemote.current = row => {
     if (!boardMounted.current || row.board_id !== boardSummary.id) return;
-    // Real ink may reconcile while drawing; other gesture geometry still
-    // depends on its initial snapshot and must wait until release.
-    if ((gesture.current&&gesture.current.mode!=="draw") || eraserSession.current) {
+    // Real ink may reconcile while drawing or erasing; other gesture geometry
+    // still depends on its initial snapshot and must wait until release.
+    if (gesture.current&&gesture.current.mode!=="draw") {
       if (!deferredRemote.current || row.version > deferredRemote.current.version)
         deferredRemote.current = row;
       return;
@@ -8035,6 +8035,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedBoardData.current = data;
         return;
       }
+      // Rebase the pre-erase undo snapshot as well as the visible model.
+      // A competing edit must not block live eraser checkpoints until release.
+      const erasing=eraserSession.current;
+      if(erasing)erasing.before=mergeBoardItems(
+        acknowledgedBoardData.current?expandDocumentInk(acknowledgedBoardData.current):[],
+        erasing.before,expandDocumentInk(data));
       // A different viewport is not new shared board content. Accept the
       // version without resetting selected objects, active tool or ink layers.
       // Compute the validated remote fingerprint once for the clean/merge paths.
@@ -8076,7 +8082,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           if(!edited)setEditing(null);
           else{draftRef.current=edited.text;setDraft(edited.text);}
         }
-        history.current=[mergedItems];
+        history.current=[eraserSession.current?.before??mergedItems];
         index.current=0;
         snapshot.current=merged;
         setTitle(merged.title);
