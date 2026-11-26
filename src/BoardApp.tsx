@@ -3430,8 +3430,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // save. Sending a previously queued, unrebased document overwrites ink.
       // An own/stale notification can be deferred during a save too. It is
       // ignored by receiveRemote, so it must not swallow the next queued edit.
-      if (queued && !needsRebase && !retryAfterFailure)
-        void pushRemoteSnapshot(snapshot.current??queued);
+      if (queued && !needsRebase) {
+        if(!retryAfterFailure)void pushRemoteSnapshot(snapshot.current??queued);
+      }
     }
   }, [boardSummary.id, authUser.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
 
