@@ -899,6 +899,7 @@ assert.match(registrationForm,/auth-connection-notice/);
 assert.match(registrationForm,/onClick=\{connectionIssue\.onRetry\}/);
 console.log("Native authentication: connection warning, preserved form, automatic recovery without reload; browser outage recovery unchanged.");
 
+{
 const streamEnv=await loadSelfhost(true);
 const streamApi=streamEnv.api;
 await streamApi.selfhostLogin("teacher@example.test","test-password");
@@ -953,3 +954,5 @@ assert.equal((await eraseStream.done).version,streamVersion+3);
 assert.deepEqual(eraseAcks,[streamVersion+2,streamVersion+3]);
 streamChannel();await Promise.resolve();
 console.log("Durable ink pipeline: three unacknowledged frames, bounded coalescing, predecessor and conflict recovery passed.");
+
+}
