@@ -9,6 +9,9 @@ const app=read("BoardApp.tsx"),preview=read("boardPreview.ts"),sync=read("boardS
 const inkOverlay=read("RemoteInkOverlay.tsx");
 
 assert.doesNotMatch(app,/<RemoteInkOverlay|remoteInkStore|pendingPeerErasures/,"No transient stroke data in production board");
+assert.match(app,/parseRealtimeDocument\(row\.document,validatedRemoteItems\.current\)/);
+assert.match(app,/scheduleRemoteBackup\(data\)/);
+assert.match(app,/let runKey="ink-root"/,"Erasing first stroke must not remount the entire canvas run");
 assert.match(app,/writeDurableInk\(itemsRef\.current/);
 assert.match(app,/requestAnimationFrame\(\(\)=>\{\s*inkPaintFrame\.current=null/);
 assert.match(app,/<RemoteCursorOverlay store=\{remoteCursorStore\}/);

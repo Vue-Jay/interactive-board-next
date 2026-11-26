@@ -120,7 +120,7 @@ import { connectBoardViewControl, type BoardViewControlChannel } from "./boardVi
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./boardObjectMotion";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
-import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
+import { documentFingerprint as fingerprintDocument, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from "./lektrusLiveEditorMerge";
 import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
@@ -128,7 +128,7 @@ import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
 import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
-import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
+import { parseDocument, parseRealtimeDocument, type RealtimeItemCache, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
@@ -2893,7 +2893,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const lastInkGesture=useRef<string|null>(null);
   const lastInkCursor=useRef<{gesture:string;cursor:InkCommitCursor}|null>(null);
   const pendingCommittedCursors=useRef(new Map<string,{version:number;cursor:SelfhostCommittedCursor}>());
-  const validatedRemoteItems=useRef(new WeakMap<object,Item>());
+  const validatedRemoteItems=useRef<RealtimeItemCache>(new WeakMap());
   const setLiveEraserCursor=(x:number,y:number,pointerType:string,pressed=false)=>{
     const el=eraserCursorElement.current;
     if(!el)return;
@@ -3084,7 +3084,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const personalUndoAvailable=()=>personalHistory.current.cursor>0;
   const personalRedoAvailable=()=>personalHistory.current.cursor<personalHistory.current.entries.length;
 
+  const [fingerprintCache]=useState(()=>new WeakMap<object,string>());
+  const documentFingerprint=(data:DocumentData)=>fingerprintDocument(data,fingerprintCache);
+  const sharedBoardFingerprint=documentFingerprint;
   const snapshot = useRef<DocumentData | null>(null);
+  const cleanRemoteSnapshot=useRef<DocumentData|null>(null);
+  const remoteBackupTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const pendingRemoteBackup=useRef<DocumentData|null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Automatic thermodynamic ticks should not each create a megabyte-scale
   // board version or displace actual teacher actions from undo history.
@@ -3156,6 +3162,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if (gesturePaintFrame.current != null) cancelAnimationFrame(gesturePaintFrame.current);
       if (inkPaintFrame.current != null) cancelAnimationFrame(inkPaintFrame.current);
       if(inkCheckpointTimer.current!==null)clearTimeout(inkCheckpointTimer.current);
+      if(remoteBackupTimer.current!==null)clearTimeout(remoteBackupTimer.current);
       displayFrame.current = null;
       gesturePaintFrame.current = null;
       pendingDisplayItems.current = null;
@@ -3336,7 +3343,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
         try{localStorage.removeItem(storageKey+".pending-sync");localStorage.removeItem(storageKey+".pending-base")}catch{}
         pendingEditorBases.current.clear();
-      }else{
+      }else if(gesture.current?.mode!=="draw"&&!eraserSession.current){
+        // Active ink checkpoints are already durable on the server. The
+        // once-per-second backup records its matching base; do not
+        // synchronously serialize the whole board on every network ACK.
         try{
           localStorage.setItem(storageKey+".pending-base",JSON.stringify(data));
         }catch{try{localStorage.removeItem(storageKey+".pending-base")}catch{}}
@@ -3478,6 +3488,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         : itemsRef.current,
     });
     snapshot.current = data;
+    const remoteOnly=cleanRemoteSnapshot.current;
+    cleanRemoteSnapshot.current=null;
+    if(remoteOnly&&!editing&&data.items===remoteOnly.items&&
+      documentFingerprint(data)===acknowledgedSharedContent.current)return;
     if (!canEdit||demoMode) return;
     // Do not hash/stringify the entire board on every keystroke or React update.
     // The debounced flush performs both operations once after editing settles.
@@ -7801,10 +7815,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       | { kind: "item"; key: string; item: Item };
     const layers: Layer[] = [];
     let run: Item[] = [];
+    let runKey="ink-root";
     const flush = () => {
       if (!run.length) return;
       const bounds = boundsOf(run);
-      if (bounds) layers.push({ kind: "ink", key: "ink-" + run[0].id, strokes: run, bounds });
+      if (bounds) layers.push({ kind: "ink", key: runKey, strokes: run, bounds });
       run = [];
     };
     // A few selected strokes may show their editing handles individually.
@@ -7812,7 +7827,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     for (const item of displayInkItems) {
       if (isInkItem(item) && item.points?.length &&
           !detailedInkIds.has(item.id)) run.push(item);
-      else { flush(); layers.push({ kind: "item", key: item.id, item }); }
+      else { flush(); layers.push({ kind: "item", key: item.id, item }); runKey="ink-after:"+item.id; }
     }
     flush();
     return layers;
@@ -8040,6 +8055,27 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice("Интерактивные задания текущего слайда сброшены");
   };
 
+  // Peer ink can arrive every 24ms. Keep the acknowledged model current
+  // immediately, but coalesce synchronous localStorage work outside paint.
+  const scheduleRemoteBackup=(data:DocumentData)=>{
+    pendingRemoteBackup.current=data;
+    if(remoteBackupTimer.current!==null)return;
+    remoteBackupTimer.current=setTimeout(()=>{
+      remoteBackupTimer.current=null;
+      const latest=pendingRemoteBackup.current;
+      pendingRemoteBackup.current=null;
+      if(!latest||!boardMounted.current||remoteSaveInFlight.current||pendingRemote.current||
+        gesture.current||eraserSession.current||!snapshot.current||
+        documentFingerprint(snapshot.current)!==documentFingerprint(latest))return;
+      try{
+        const serialized=JSON.stringify(latest);
+        if(serialized!==lastLocalSerialized.current){
+          localStorage.setItem(storageKey,serialized);lastLocalSerialized.current=serialized;
+          localBackupValid.current=true;
+        }
+      }catch{/* server remains authoritative */}
+    },500);
+  };
   const applyServerDocument = (row: RemoteBoardDocument, data: DocumentData, remoteFingerprint: string) => {
     // The receiver already validated and hashed this revision. Recompute only
     // if resolving bound connectors actually changes the incoming geometry.
@@ -8067,7 +8103,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setBoardBackground(normalizeBoardBackground(data.background));
       setLectrisBoardOrganization(current=>({...current,subject:typeof data.subject==="string"?normalizeLektrusSubject(data.subject):""}));
       snapshot.current=data;
-      try {localStorage.setItem(storageKey,JSON.stringify(data))}catch{}
+      cleanRemoteSnapshot.current=data;scheduleRemoteBackup(data);
       setSaveStatus("Общий фон обновлён");
       return;
     }
@@ -8086,7 +8122,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setLectrisBoardOrganization(current=>({...current,
       subject:typeof data.subject==="string"?normalizeLektrusSubject(data.subject):""}));
     setSelected(current=>current.filter(id=>incomingItems.some(item=>item.id===id)));
-    try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch { /* still usable in memory */ }
+    cleanRemoteSnapshot.current=data;scheduleRemoteBackup(data);
     setSaveStatus("Получена серверная версия");
   };
   receiveRemote.current = row => {
@@ -8126,20 +8162,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       sharedBoardFingerprint(currentDocument()) !== acknowledgedSharedContent.current);
     const decision = dirty || !!pendingRemote.current ? "conflict" : "apply";
     try {
-      const data = parseDocument(JSON.stringify(row.document));
-      // A versioned patch keeps unchanged wire item identities. Retain their
-      // validated model identities too, so Canvas and heavy subject widgets
-      // do not repaint thousands of unchanged objects on every peer sample.
-      const rawItems=(row.document as {items?:unknown[];ink?:unknown[]}).items;
-      if(Array.isArray(rawItems)&&!(row.document as {ink?:unknown[]}).ink?.length&&rawItems.length===data.items.length){
-        data.items=data.items.map((item,index)=>{
-          const raw=rawItems[index];
-          if(!raw||typeof raw!=="object")return item;
-          const cached=validatedRemoteItems.current.get(raw);
-          if(cached?.id===item.id)return cached;
-          validatedRemoteItems.current.set(raw,item);return item;
-        });
-      }
+      const data=parseRealtimeDocument(row.document,validatedRemoteItems.current);
       const drawing=gesture.current;
       if(drawing?.mode==="draw"&&drawing.ink&&!drawing.inkInterrupted&&peerRemovedDurableInk(
         acknowledgedBoardData.current?expandDocumentInk(acknowledgedBoardData.current):[],expandDocumentInk(data),

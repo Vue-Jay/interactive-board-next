@@ -47,7 +47,15 @@ const stableJsonHash = (value: unknown): string => {
   return `${(h1 >>> 0).toString(16).padStart(8, "0")}${(h2 >>> 0).toString(16).padStart(8, "0")}`;
 };
 
-export function documentFingerprint(document: DocumentData): string {
+export function documentFingerprint(document: DocumentData,cache?:WeakMap<object,string>): string {
+  // Immutable realtime item snapshots keep the same identity until changed.
+  // Uncached callers retain normal validation semantics.
+  const itemHash=(item:unknown):string=>{
+    if(!cache||!item||typeof item!=="object")return stableJsonHash(item);
+    let hash=cache.get(item);
+    if(hash===undefined){hash=stableJsonHash(item);cache.set(item,hash);}
+    return hash;
+  };
   // Viewport is personal UI state. Panning/zooming must never create a collaborative
   // revision or a false conflict between participants.
   // These fields are shared board state too. Omitting them made a subject-only
@@ -58,7 +66,7 @@ export function documentFingerprint(document: DocumentData): string {
     subject: document.subject ?? "",
     background: document.background,
     backgroundShared: document.backgroundShared !== false,
-    items: document.items, ink: document.ink ?? [],
+    items: document.items.map(itemHash), ink: (document.ink ?? []).map(itemHash),
   });
 }
 
