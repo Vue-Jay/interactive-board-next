@@ -914,3 +914,9 @@
 }
 .lektrus-atlas-no-dated-source strong{font-size:13px;line-height:1.35}
 .lektrus-atlas-no-dated-source p{font-size:12px;line-height:1.5;margin:0}
+
+.lektrus-atlas-realm-context{margin:8px 0;padding:9px 10px;border:1px solid #ccdae7;border-radius:9px;background:#f7fafc;font-size:11px;line-height:1.5}
+.lektrus-atlas-realm-context strong{display:block;color:#315678;font-size:12px}
+.lektrus-atlas-realm-context p{margin:5px 0 6px}
+.lektrus-atlas-realm-context>div{display:flex;flex-wrap:wrap;gap:6px 12px}
+.lektrus-atlas-realm-context a{color:#286197;text-decoration:underline}

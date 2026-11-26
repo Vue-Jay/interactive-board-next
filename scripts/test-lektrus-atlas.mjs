@@ -273,6 +273,33 @@ const noGeometry={type:"Feature",properties:{NAME:"Hawke's Bay - Waikato"},geome
 new Function("exports","require","fetch",ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(sourceLoader,atlasDataRequire,async()=>({ok:true,json:async()=>({type:"FeatureCollection",features:[sourceBoundaryLine,noGeometry]})}));
 assert.deepEqual((await sourceLoader.loadAtlasLayer("admin-world-lines")).features,[sourceBoundaryLine],"A published geometry-less record must not suppress the entire detailed map");
 
+// A nation/realm is not synonymous with the metropolitan country polygon.
+const realmModule={};
+new Function("exports",ts.transpileModule(fs.readFileSync(
+ new URL("../src/lektrusHistoricalRealmContext.ts",import.meta.url),"utf8"),
+ {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}
+).outputText)(realmModule);
+assert.equal(realmModule.historicalRealmContext("Denmark",1947),null);
+for(const year of [1948,1950,1979,1994,2000,2009,2010,2024]){
+ const entry=realmModule.historicalRealmContext("Denmark",year);
+ assert.ok(entry&&entry.sources.length===2);
+ assert.match(entry.description,/Фарерские острова/);
+ if(year<1979)assert.match(entry.description,/позднее, в 1979/);
+ else if(year<2009)assert.match(entry.description,/в 1979 году/);
+ else assert.match(entry.description,/в 2009 году/);
+}
+assert.equal(realmModule.historicalRealmContext("Norway",2010),null);
+assert.match(map,/data-atlas-realm-context/);
+const spatialReview=JSON.parse(fs.readFileSync(new URL("../docs/historical-atlas-spatial-adjudications-20261126.json",import.meta.url),"utf8"));
+const originalSpatial=JSON.parse(fs.readFileSync(new URL("../docs/historical-atlas-spatial-findings-20261124.json",import.meta.url),"utf8"));
+assert.equal(spatialReview.cases.length,3);
+assert.equal(spatialReview.counts.remainingUnverifiedGeometries,476);
+for(const c of spatialReview.cases){
+ const original=originalSpatial.findings.find(x=>x.id===c.id);
+ assert.equal(original?.archiveName,"Denmark");
+ assert.equal(original.candidates[0].geometryId,c.sourceCandidateGeometryId);
+ assert.equal(original.candidates[0].iou,c.iou);
+}
 const historicalInsigniaSource=fs.readFileSync(new URL("../src/lektrusHistoricalInsignia.ts",import.meta.url),"utf8");
 const historicalReferenceSource=fs.readFileSync(new URL("../src/lektrusHistoricalReferences.ts",import.meta.url),"utf8");
 const insigniaSource=fs.readFileSync(new URL("../src/lektrusAtlasCountrySymbols.ts",import.meta.url),"utf8");
