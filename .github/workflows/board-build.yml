@@ -3,31 +3,6 @@ concurrency:
   group: board-regression-${{ github.ref }}
   cancel-in-progress: true
 on:
-  pull_request:
-    branches:
-      - 'main'
-    paths:
-      - 'src/BoardApp.tsx'
-      - 'src/boardModel.ts'
-      - 'src/board*'
-      - 'src/ink*'
-      - 'src/*Ink*'
-      - 'src/*Eraser*'
-      - 'src/*eraser*'
-      - 'src/*Cursor*'
-      - 'src/*cursor*'
-      - 'src/*Compositor*'
-      - 'src/*compositor*'
-      - 'src/lectrisBoard.css'
-      - 'src/lektrusBoard*.css'
-      - 'src/lektrusCanvas*.css'
-      - 'scripts/test-board-*'
-      - 'scripts/test-eraser.mjs'
-      - 'scripts/test-ink-*'
-      - 'scripts/test-lektrus-board-*'
-      - 'tests/assetStore.test.mjs'
-      - 'package.json'
-      - 'package-lock.json'
   push:
     branches:
       - 'release/**'

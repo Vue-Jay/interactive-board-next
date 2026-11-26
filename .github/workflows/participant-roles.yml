@@ -6,7 +6,6 @@ on:
       - 'qa/mobile-native-base-20261117'
       - 'qa/mobile-roles-polish-20261119'
     paths:
-      - 'src/BoardApp.tsx'
       - 'src/boardModel.ts'
       - 'src/ShareDialog.tsx'
       - 'src/shareLinks.ts'
@@ -15,9 +14,6 @@ on:
       - 'src/guestNameCache.ts'
       - 'src/lektrusBoardObjectAuth.ts'
       - 'src/lektrusBoardRolePreview.ts'
-      - 'src/selfhostApi.ts'
-      - 'server/**'
-      - 'tests/participant-roles-browser.py'
       - 'tests/production-browser-connectivity.py'
       - 'package.json'
       - 'package-lock.json'

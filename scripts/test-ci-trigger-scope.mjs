@@ -32,8 +32,10 @@ function runs(event,branch,changed){return selected.filter(name=>matches(name,ev
 const coordinate=["src/coordinatePlane.ts","scripts/test-lektrus-math-gesture.mjs","scripts/test-lektrus-release-browser-smoke.mjs"];
 assert.deepEqual(runs("pull_request","main",coordinate),["verify"],"Routine math PR must use one verification workflow");
 assert.deepEqual(runs("push","main",coordinate),["selfhost-frontend"],"Routine math merge must use one production-branch workflow");
-assert.ok(runs("pull_request","main",["src/BoardApp.tsx"]).includes("board-build"));
+assert.ok(runs("pull_request","main",["src/BoardApp.tsx"]).includes("verify"));
 assert.ok(runs("pull_request","main",["server/app.py"]).includes("selfhost-api"));
+const boardRelease=["src/BoardApp.tsx","src/boardIdle.ts","src/boardParticipantColors.ts","src/selfhostApi.ts","server/app.py","server/realtime_events.py","server/board_presence_policy.py","tests/participant-roles-browser.py"];
+assert.deepEqual(runs("pull_request","main",boardRelease),["selfhost-api","verify"],"Board plus API PR must run exactly two combined workflows");
 assert.ok(runs("pull_request","main",["src/lektrusLabCatalog.ts"]).includes("lab-reaction-audit"));
 assert.ok(runs("pull_request","main",["android/app/build.gradle"]).includes("native-build"));
 assert.ok(runs("push","main",["android/app/build.gradle"]).includes("native-build"),"Native changes retain the official Android release gate");

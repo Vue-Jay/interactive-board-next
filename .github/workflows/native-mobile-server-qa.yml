@@ -14,7 +14,6 @@ on:
       - 'src/lektrusAndroidUpdate.css'
       - 'src/AuthScreen.tsx'
       - 'src/auth*.ts'
-      - 'src/selfhostApi.ts'
       - 'src/appEntry*'
       - 'src/main.tsx'
       - 'package.json'
@@ -22,7 +21,6 @@ on:
       - 'scripts/test-native*'
       - 'scripts/test-signed-android*'
       - 'scripts/run-android*'
-      - 'server/**'
       - 'scripts/test-native-mobile-runtime.py'
   workflow_dispatch:
 

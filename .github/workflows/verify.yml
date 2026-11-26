@@ -27,6 +27,12 @@ jobs:
           node scripts/test-lektrus-independent-ink-tools.mjs
           node scripts/test-lektrus-ink-raster-budget.mjs
           node scripts/test-selfhost-client.mjs
+      - name: Focused board collaboration, erasing, idle and real Chromium rendering
+        run: |
+          npm run test:eraser
+          npm run test:realtime
+          node scripts/test-lektrus-student-undo-idle.mjs
+          node scripts/test-lektrus-peer-ink-browser.mjs
       - name: Typecheck and build
         run: npm run build
       - name: Check curated subject catalogue, saved objects and sentence dragging
