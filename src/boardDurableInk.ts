@@ -1,9 +1,9 @@
 import {simplifyStrokePath,stroke,type Item,type Point} from "./boardModel";
 import {makeStickerInk} from "./stickerInk";
 
-// At most 42 saves/second, below the server's 45/s ink limit. An
-// outstanding ACK still coalesces newer samples through the version queue.
-export const DURABLE_INK_SYNC_MS=24;
+// At most 40 checkpoint ticks/second. Leave room for the bounded
+// in-flight window and final pointer-up under the server's 45/s limit.
+export const DURABLE_INK_SYNC_MS=25;
 const CHUNK=48;
 type PathState={zoom:number;sealed:Point[];offset:number;length:number;last?:Point};
 const paths=new WeakMap<readonly Point[],PathState>();

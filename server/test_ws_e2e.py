@@ -101,8 +101,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
             async with websockets.connect(native_uri,origin="https://lektrus.ru") as first:
                 async with websockets.connect(native_uri,origin="https://lectrus.ru") as second:
                     for ws,session in ((first,owner_session),(second,student_session)):
-                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second,"durable_ink_commits":True}))
-                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0,"durable_ink_commits":True}
+                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second,"durable_ink_commits":True,"ink_commit_chain":True}))
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0,"durable_ink_commits":True,"ink_commit_chain":True}
                     for sender,receiver in ((first,second),(second,first)):
                         packet={"type":"live_ink","client_id":"native_1","stroke_id":"native_stroke","kind":"pen",
                                 "color":"#112233","weight":3,"offset":0,"points":[{"x":10,"y":20}],"finished":False}
@@ -215,6 +215,36 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     erased_edit=await http.patch(stroke_url,headers=owner,json={"expected_version":version,"delta":delta})
                     assert erased_edit.status_code==422,erased_edit.text
                     assert (await http.get(url,headers=owner)).json()["document"]["items"]==[]
+                    # No ACK wait between successive permanent frames.
+                    chained_ink={**ink,"id":"chain-ink","points":[{"x":0,"y":0}]}
+                    chain1={"type":"ink_commit","request_id":"chain1","expected_version":version,
+                            "ink_gesture":"chain-ink","delta":{"items":{"upsert":[chained_ink]}}}
+                    chain2={**chain1,"request_id":"chain2","after_request_id":"chain1","expected_version":version+1,
+                            "delta":{"items":{"upsert":[{**chained_ink,"points":[{"x":0,"y":0},{"x":1,"y":1}]}]}}}
+                    await first.send(json.dumps(chain1))
+                    await first.send(json.dumps(chain2))
+                    for index,request_id in enumerate(("chain1","chain2"),1):
+                        assert json.loads(await asyncio.wait_for(first.recv(),3))["version"]==version+index
+                        assert json.loads(await asyncio.wait_for(second.recv(),3))["version"]==version+index
+                        assert json.loads(await asyncio.wait_for(first.recv(),3))=={"type":"ink_commit_ack","request_id":request_id,"version":version+index}
+                    version+=2
+                    await first.send(json.dumps({**chain1,"request_id":"bad-chain","expected_version":version-1}))
+                    await first.send(json.dumps({**chain2,"request_id":"blocked-chain","after_request_id":"bad-chain","expected_version":version}))
+                    for request_id in ("bad-chain","blocked-chain"):
+                        rejected=json.loads(await asyncio.wait_for(first.recv(),3))
+                        assert rejected["status"]==409 and rejected["request_id"]==request_id
+                    current=(await http.get(url,headers=owner)).json()
+                    assert current["version"]==version and len(current["document"]["items"][0]["points"])==2
+                    await second.send(json.dumps({"type":"ink_commit","request_id":"peer-erase-chain","expected_version":version,
+                        "ink_gesture":"erase:peer","delta":{"items":{"remove":["chain-ink"]}}}))
+                    version+=1
+                    for ws in (first,second):
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))["version"]==version
+                    assert json.loads(await asyncio.wait_for(second.recv(),3))["version"]==version
+                    await first.send(json.dumps({**chain2,"request_id":"late-after-erase","after_request_id":"chain2","expected_version":version}))
+                    assert json.loads(await asyncio.wait_for(first.recv(),3))["status"]==409
+                    current=(await http.get(url,headers=owner)).json()
+                    assert current["version"]==version and current["document"]["items"]==[]
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass

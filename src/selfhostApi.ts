@@ -65,10 +65,13 @@ export type SelfhostLiveEvent=
   | {type:"event_error";reason:string};
 export type SelfhostCommittedCursor=Extract<SelfhostLiveEvent,{type:"cursor"}>;
 export type InkCommitCursor={x:number;y:number;client_id:string};
-type InkCommitRequest={expected_version:number;delta:DocumentDelta;ink_gesture:string;cursor?:InkCommitCursor};
+type InkCommitRequest={expected_version:number;delta:DocumentDelta;ink_gesture:string;cursor?:InkCommitCursor;after_request_id?:string};
+type InkCommitPromise=Promise<{version:number}>&{requestId:string};
+const MAX_INK_IN_FLIGHT=3;
 export type SelfhostBoardChannel=(()=>void)&{
   canCommitInk:()=>boolean;
-  commitInk:(request:InkCommitRequest)=>Promise<{version:number}>|null;
+  canPipelineInk:()=>boolean;
+  commitInk:(request:InkCommitRequest)=>InkCommitPromise|null;
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
   sendInk:(ink:SelfhostLiveInkPacket)=>boolean;
   sendObjectPreview:(preview:SelfhostObjectPreview)=>boolean;
@@ -750,6 +753,94 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
 export const selfhostReadDocumentVersion=(boardId:string,signal?:AbortSignal)=>selfhostRequest<{version:number}>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/document?version_only=true",{signal}
 );
+/** A bounded window of version-chained permanent writes. Each successor is
+ * accepted only after its exact predecessor committed on this same socket.
+ * No speculative geometry is published to peers and a failed chain is never
+ * replayed. ACK callbacks advance the editor's merge base one version at a time.
+ */
+export type SelfhostInkPipeline={
+  offer:(document:JsonObject,cursor:InkCommitCursor|undefined,onAck:(version:number)=>void)=>boolean;
+  done:Promise<{version:number}>;
+};
+function inkPipelineDelta(base:JsonObject,next:JsonObject,delta:DocumentDelta,gesture:string):boolean{
+  if(Object.keys(delta.set??{}).some(key=>key!=="view"&&key!=="preview")||delta.remove?.length||!delta.items)return false;
+  const before=itemMap(base.items),after=itemMap(next.items);
+  if(!before||!after)return false;
+  const erase=gesture.startsWith("erase:");
+  const changes=delta.items;
+  if(changes.point_edits?.length){
+    const edit=changes.point_edits[0];
+    return !erase&&changes.point_edits.length===1&&(edit.stroke_id??edit.id)===gesture;
+  }
+  if(!changes.upsert?.length&&!changes.remove?.length)return false;
+  for(const id of changes.remove??[]){
+    const old=before.get(id);
+    if(!erase||!old||!inkKind(old))return false;
+  }
+  for(const item of changes.upsert??[]){
+    if(inkKind(item)){
+      if(!erase&&item.id!==gesture)return false;
+      continue;
+    }
+    const old=before.get(String(item.id));
+    if(item.kind!=="sticky"||!old||old.kind!=="sticky"||
+      !equalJson(without(old,["stickerInk"]),without(item,["stickerInk"])))return false;
+    if(!erase){
+      const a=itemMap(old.stickerInk??[]),b=itemMap(item.stickerInk??[]);
+      if(!a||!b||!b.has(gesture)||!equalJson([...a].filter(([id])=>id!==gesture),[...b].filter(([id])=>id!==gesture)))return false;
+    }
+  }
+  if(changes.order&&!equalJson([...before.values()].filter(item=>!inkKind(item)).map(item=>item.id),
+      [...after.values()].filter(item=>!inkKind(item)).map(item=>item.id)))return false;
+  return true;
+}
+export function selfhostStartInkPipeline(boardId:string,expectedVersion:number,document:JsonObject,inkGesture:string,
+  cursor:InkCommitCursor|undefined,onAck:(version:number)=>void):SelfhostInkPipeline|null{
+  const userId=loadSession()?.user.id;
+  const base=documentBase;
+  const socket=selfhostBoardSockets.get(boardId);
+  if(!userId||!base||base.userId!==userId||base.boardId!==boardId||base.version!==expectedVersion||
+      expectedVersion<1||!deltaSupported||!pointDeltasSupported||!socket?.canPipelineInk())return null;
+  let planned=base.document,version=expectedVersion,committed=expectedVersion;
+  let pending=0,previousId:string|undefined,failed:Error|undefined,closed=false;
+  let resolveDone!:(value:{version:number})=>void,rejectDone!:(error:Error)=>void;
+  const done=new Promise<{version:number}>((resolve,reject)=>{resolveDone=resolve;rejectDone=reject});
+  const settle=()=>{
+    if(pending||closed)return;
+    closed=true;
+    if(failed)rejectDone(failed);else resolveDone({version:committed});
+  };
+  const offer:SelfhostInkPipeline["offer"]=(raw,position,ack)=>{
+    if(closed||failed||pending>=MAX_INK_IN_FLIGHT)return false;
+    const prepared=prepareSmallDocumentDelta(planned,raw,version,inkGesture);
+    if(!prepared)return false;
+    const request=JSON.parse(prepared.body) as {expected_version:number;delta:DocumentDelta};
+    if(!inkPipelineDelta(planned,prepared.next,request.delta,inkGesture))return false;
+    const target=version+1;
+    const sent=socket.commitInk({...request,ink_gesture:inkGesture,
+      ...(previousId?{after_request_id:previousId}:{}),...(position?{cursor:position}:{})});
+    if(!sent)return false;
+    previousId=sent.requestId;planned=prepared.next;version=target;pending++;
+    void sent.then(result=>{
+      if(result.version!==target||failed)throw failed??new SelfhostHttpError(409,"Нарушена последовательность версий штриха.");
+      committed=result.version;
+      rememberDocument(boardId,userId,committed,prepared.next);
+      pending--;
+      try{ack(committed)}catch(error){failed=error instanceof Error?error:new Error(String(error))}
+      settle();
+    },error=>{
+      failed??=error instanceof Error?error:new Error(String(error));
+      pending--;settle();
+    }).catch(error=>{
+      failed??=error instanceof Error?error:new Error(String(error));
+      pending--;settle();
+    });
+    return true;
+  };
+  if(!offer(document,cursor,onAck))return null;
+  return {offer,done};
+}
+
 export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string,inkCursor?:InkCommitCursor){
   const userId=loadSession()?.user.id;
   const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
@@ -972,7 +1063,8 @@ function connectSelfhostBoard(
   let lastVersion=-1;
   let ready=false;
   let compactInk=false;
-  let durableInkCommits=false,commitSequence=0;
+  let durableInkCommits=false,inkCommitChain=false,commitSequence=0;
+  let lastInkRequestId:string|undefined;
   const pendingCommits=new Map<string,{resolve:(value:{version:number})=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
   let lastCursorSent=0;
   let pendingCursor:{clientId:string;x:number;y:number}|null=null;
@@ -993,14 +1085,20 @@ function connectSelfhostBoard(
     catch{reconnect();return false}
   };
   const canCommitInk=()=>ready&&durableInkCommits&&socket?.readyState===WebSocket.OPEN;
-  const commitInk=(request:InkCommitRequest):Promise<{version:number}>|null=>{
-    if(!canCommitInk()||pendingCommits.size)return null;
+  const canPipelineInk=()=>canCommitInk()&&inkCommitChain;
+  const commitInk=(request:InkCommitRequest):InkCommitPromise|null=>{
+    if(!canCommitInk())return null;
+    if(request.after_request_id!==undefined){
+      if(!canPipelineInk()||request.after_request_id!==lastInkRequestId||pendingCommits.size>=MAX_INK_IN_FLIGHT)return null;
+    }else if(pendingCommits.size)return null;
+    if((socket?.bufferedAmount??0)>128*1024)return null;
     const request_id="ink_"+(++commitSequence);
     const wire=JSON.stringify({type:"ink_commit",request_id,...request});
     if(new TextEncoder().encode(wire).byteLength>56*1024)return null;
     // A previously queued hover must not overtake the committed ink cursor.
     clearTimeout(cursorTimer);cursorTimer=undefined;pendingCursor=null;
-    return new Promise((resolve,reject)=>{
+    lastInkRequestId=request_id;
+    const promise=new Promise<{version:number}>((resolve,reject)=>{
       const timer=setTimeout(()=>{
         pendingCommits.delete(request_id);
         reject(new SelfhostHttpError(409,"Не получено подтверждение записи. Сверяем версию."));
@@ -1009,6 +1107,7 @@ function connectSelfhostBoard(
       pendingCommits.set(request_id,{resolve,reject,timer});
       try{socket!.send(wire)}catch{reconnect()}
     });
+    return Object.assign(promise,{requestId:request_id});
   };
   const flushCursor=()=>{
     clearTimeout(cursorTimer);cursorTimer=undefined;
@@ -1088,7 +1187,7 @@ function connectSelfhostBoard(
   };
   const closeSocket=()=>{
     ready=false;
-    compactInk=false;durableInkCommits=false;
+    compactInk=false;durableInkCommits=false;inkCommitChain=false;lastInkRequestId=undefined;
     for(const entry of pendingCommits.values()){
       clearTimeout(entry.timer);entry.reject(new SelfhostHttpError(409,"Соединение прервано. Сверяем версию доски."));
     }
@@ -1127,7 +1226,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,
+            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
           }));
         }catch{reconnect();return}
@@ -1151,6 +1250,7 @@ function connectSelfhostBoard(
             clearTimeout(responseDeadline);responseDeadline=undefined;
             compactInk=message.compact_ink===true;
             durableInkCommits=message.durable_ink_commits===true;
+            inkCommitChain=message.ink_commit_chain===true;
             attempt=0;ready=true;onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
@@ -1276,7 +1376,7 @@ function connectSelfhostBoard(
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
-  return Object.assign(stop,{canCommitInk,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
+  return Object.assign(stop,{canCommitInk,canPipelineInk,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
 }
 
 
@@ -1332,6 +1432,7 @@ class SharedSelfhostBoard {
   }
 
   canCommitInk(){return !!this.socket?.canCommitInk()}
+  canPipelineInk(){return !!this.socket?.canPipelineInk()}
   commitInk(request:InkCommitRequest){return this.socket?.commitInk(request)??null}
   sendCursor(cursor:InkCommitCursor){return this.socket?.sendCursor(cursor.client_id,cursor.x,cursor.y)??false}
   subscribe(listener:BoardListener):SelfhostBoardChannel{
@@ -1348,6 +1449,7 @@ class SharedSelfhostBoard {
     };
     return Object.assign(stop,{
       canCommitInk:()=>this.listeners.has(listener)&&this.canCommitInk(),
+      canPipelineInk:()=>this.listeners.has(listener)&&this.canPipelineInk(),
       commitInk:(request:InkCommitRequest)=>this.listeners.has(listener)?this.commitInk(request):null,
       sendCursor:(id:string,x:number,y:number)=>this.listeners.has(listener)&&!!this.socket?.sendCursor(id,x,y),
       sendInk:(ink:SelfhostLiveInkPacket)=>this.listeners.has(listener)&&!!this.socket?.sendInk(ink),

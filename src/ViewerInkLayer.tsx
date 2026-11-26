@@ -2,6 +2,7 @@ import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import type { Item, View } from "./boardModel";
 import {inkCanvasBudget,reuseInkCanvasBacking} from "./inkCanvasBudget";
 import {indexInkStrokes,queryInkStrokes} from "./inkSpatialIndex";
+import {changedInkBounds} from "./inkDirtyBounds";
 
 type ViewportSize = { width: number; height: number };
 type InkBounds = { x: number; y: number; width: number; height: number };
@@ -90,13 +91,14 @@ const ViewerInkLayer = memo(function ViewerInkLayer({
       const reordered=commonBefore.some((id,i)=>id!==commonAfter[i]);
       if(!reordered&&!cached!.strokes.some(item=>item.rotation)&&!strokes.some(item=>item.rotation)){
         let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;
-        const include=(item:Item)=>{
-          const pad=(item.weight??3)/2+3/zoom;
-          x1=Math.min(x1,item.x-pad);y1=Math.min(y1,item.y-pad);
-          x2=Math.max(x2,item.x+item.width+pad);y2=Math.max(y2,item.y+item.height+pad);
+        const include=(previous:Item|undefined,next:Item|undefined)=>{
+          const dirty=changedInkBounds(previous,next,zoom);
+          if(!dirty)return;
+          x1=Math.min(x1,dirty.left);y1=Math.min(y1,dirty.top);
+          x2=Math.max(x2,dirty.right);y2=Math.max(y2,dirty.bottom);
         };
-        for(const item of cached!.strokes)if(after.get(item.id)!==item)include(item);
-        for(const item of strokes)if(before.get(item.id)!==item)include(item);
+        for(const item of cached!.strokes)include(item,after.get(item.id));
+        for(const item of strokes)if(!before.has(item.id))include(undefined,item);
         dirtyLeft=Math.max(left,left+Math.floor((x1-left)*pixels.scaleX)/pixels.scaleX);
         dirtyTop=Math.max(top,top+Math.floor((y1-top)*pixels.scaleY)/pixels.scaleY);
         dirtyRight=Math.min(right,left+Math.ceil((x2-left)*pixels.scaleX)/pixels.scaleX);
