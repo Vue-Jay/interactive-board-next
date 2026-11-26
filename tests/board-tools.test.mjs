@@ -70,20 +70,17 @@ test("eraser has dedicated capture listeners and keeps tool registry",()=>{
  assert.ok(app.includes('onPointerDownCapture='));
  assert.ok(app.includes('onPointerMoveCapture='));
  assert.ok(app.includes('onPointerUpCapture='));
- assert.ok(app.includes('beginEraserPreview();'));
- assert.ok(app.includes('previewEraserSegment(previous,screen)'));
+ assert.ok(app.includes('paintDurableEraser();'));
+ assert.ok(app.includes('recordEraserPoint(p)'));
 });
 
-test("eraser draws a lightweight canvas preview and commits once at gesture end",()=>{
+test("eraser edits the permanent document during pointer movement",()=>{
  const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
- assert.ok(app.includes("const beginEraserPreview=()=>"));
- assert.ok(app.includes("const previewEraserSegment=(from:Point,to:Point)=>"));
+ const paint=app.slice(app.indexOf("const paintDurableEraser="),app.indexOf("const settleEraserRemote="));
+ assert.match(paint,/eraseInkAlongPath\(before,path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\),g\.mode\)/);
+ assert.match(paint,/display\(next,true\)[\s\S]*?scheduleInkCheckpoint\(\)/);
  assert.ok(app.includes("const recordEraserPoint=(point:Point)=>"));
- assert.ok(app.includes("const finishEraser=(point:Point|null)=>"));
- const finish=app.slice(app.indexOf("const finishEraser="),app.indexOf("const currentDocument ="));
- assert.match(finish,/const next=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
- assert.equal([...finish.matchAll(/commit\(next,\{immediatePaint:true\}\)/g)].length,1);
- assert.ok(app.includes("stopEraserPreview();"));
+ assert.doesNotMatch(app,/eraserPreviewCanvas|previewEraserSegment/);
 });
 
 test("eraser hover and active strokes publish world-space cursors without rerender or interfering with pan",()=>{
@@ -136,13 +133,12 @@ test("eraser hover and active strokes publish world-space cursors without rerend
  assert.ok(app.includes('el.style.visibility="visible"'));
 });
 
-test("autosave waits until eraser stroke ends and only commits once",()=>{
+test("eraser checkpoints during gesture and makes one local undo step",()=>{
  const app=readFileSync(new URL("../src/BoardApp.tsx",import.meta.url),"utf8");
  assert.ok(app.includes("if (saveBlocked || gesture.current || eraserSession.current) return;"));
  const finish=app.slice(app.indexOf("const finishEraser="),app.indexOf("const currentDocument ="));
- assert.match(finish,/const next=eraseInkAlongPath\(before,g\.path,g\.weight\/2,\s*item=>canRemoveBoardItem\(item,authUser\.id,isStudent,isBoardOwner\)\)/);
- assert.equal([...finish.matchAll(/commit\(next,\{immediatePaint:true\}\)/g)].length,1);
- assert.match(finish,/commit\(next,\{immediatePaint:true\}\)[\s\S]*?flushSave\(\)/);
- assert.ok(app.includes("stopEraserPreview();"));
+ assert.equal([...finish.matchAll(/commit\(itemsRef\.current,\{immediatePaint:true,previousItems:g\.before\}\)/g)].length,1);
+ assert.match(finish,/commit\(itemsRef\.current,\{immediatePaint:true,previousItems:g\.before\}\)[\s\S]*?flushSave\(\)/);
  assert.ok(app.includes("eraserSession.current=null;"));
 });
+
