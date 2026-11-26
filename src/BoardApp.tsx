@@ -104,7 +104,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostNoteBoardActivity, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -116,6 +116,8 @@ import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
 import { connectBoardCursorChannel, type BoardCursorChannel } from "./boardBroadcast";
 import { createRemoteCursorStore } from "./boardRemoteCursors";
 import { RemoteCursorOverlay, RemoteCursorCount } from "./RemoteCursorOverlay";
+import {participantColors,fallbackParticipantColor} from "./boardParticipantColors";
+import {boardIdleExpired,boardIdleRemaining} from "./boardIdle";
 import { DURABLE_INK_SYNC_MS, hasDurableInk, peerRemovedDurableInk, removeDurableInk, writeDurableInk } from "./boardDurableInk";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
@@ -2269,6 +2271,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [discussionParticipants,setDiscussionParticipants]=useState<BoardCommentParticipant[]>([]);
   const [discussionFocusId,setDiscussionFocusId]=useState<string|null>(()=>new URLSearchParams(window.location.search).get("discussion"));
   const [presenceUsers, setPresenceUsers] = useState<BoardPresenceUser[]>([]);
+  const presenceColors=useMemo(()=>participantColors(presenceUsers),[presenceUsers]);
   const [visitHistoryOpen,setVisitHistoryOpen]=useState(false);
   const visitPresenceMenuRef=useRef<HTMLDetailsElement>(null);
   const [visitRows,setVisitRows]=useState<BoardVisit[]>([]);
@@ -3149,13 +3152,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const boardResumeRequestRunning=useRef(false);
   const [boardResumeAttempt,setBoardResumeAttempt]=useState(0);
   const boardLastAction=useRef(Date.now());
-  // Read live refs at timeout, not the last React render. A network save may
-  // finish without rerendering the board; stale busy=true would prevent sleep.
-  const boardIdleBusy=()=>Boolean(gesture.current||eraserSession.current||saveTimer.current||
-    remoteSaveInFlight.current||remoteSavePromise.current||remoteRetryTimer.current||
-    queuedRemoteSnapshot.current||deferredRemote.current||pendingRemote.current||
-    pendingAttachmentTimers.current.size||pendingAttachmentRequests.length||
-    objectEditorOpen||editing||boardAssistantBusy||boardAiGenerating);
 
   const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
   const boardMounted = useRef(true);
@@ -3575,26 +3571,29 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // is consumed until a fresh server document has been fetched and reconciled.
   useEffect(()=>{
     if(demoMode||layoutEditing)return;
-    const ACTIVE_IDLE_MS=10*60*1000,HIDDEN_IDLE_MS=90*1000;
+    // Exactly one inactivity window, visible or backgrounded.
+    const suspend=()=>{
+      boardResumePendingRef.current=false;
+      setBoardResumePending(false);
+      flushSave();
+      setRealtimeStatus("offline");
+      setBoardRealtimeAwake(false);
+    };
     let timeout:ReturnType<typeof setTimeout>|undefined;
     const arm=()=>{
       clearTimeout(timeout);
       if(!boardRealtimeAwake)return;
-      const limit=document.visibilityState==="hidden"?HIDDEN_IDLE_MS:ACTIVE_IDLE_MS;
-      const due=Math.max(50,boardLastAction.current+limit-Date.now());
+      const due=Math.max(0,boardIdleRemaining(boardLastAction.current));
       timeout=setTimeout(()=>{
-        if(boardIdleBusy()){timeout=setTimeout(arm,1500);return;}
-        if(Date.now()-boardLastAction.current>=limit){
-          boardResumePendingRef.current=false;
-          setBoardResumePending(false);
-          flushSave();
-          setBoardRealtimeAwake(false);
-        }else arm();
+        if(!boardIdleExpired(boardLastAction.current)){arm();return;}
+        suspend();
       },due);
     };
-    const userAction=(event:Event)=>{
+    const wake=()=>{
+      const expired=boardIdleExpired(boardLastAction.current);
       boardLastAction.current=Date.now();
-      if(!boardRealtimeAwake){
+      if(selfhostMode)selfhostNoteBoardActivity(boardSummary.id);
+      if(!boardRealtimeAwake||expired){
         boardResumePendingRef.current=true;
         setBoardResumePending(true);
         setBoardRealtimeAwake(true);
@@ -3602,6 +3601,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         // A failed reconnect is retried only after another actual user action.
         setBoardResumeAttempt(value=>value+1);
       }else arm();
+    };
+    const userAction=(event:Event)=>{
+      if(!event.isTrusted)return;
+      if(event.type==="pointermove"&&(!(event instanceof PointerEvent)||(!event.buttons&&event.pointerType!=="touch")))return;
+      wake();
       if(boardResumePendingRef.current){
         if(event.cancelable)event.preventDefault();
         event.stopImmediatePropagation();
@@ -3610,18 +3614,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // Mouse hover and passive network messages never keep the socket awake.
     // Capture before React board handlers; passive:false is necessary to
     // prevent a stale pointer or keystroke from changing the shared document.
-    const events=["pointerdown","pointerup","click","keydown","beforeinput","wheel","input"] as const;
+    const events=["pointerdown","pointerup","pointermove","click","keydown","beforeinput","wheel","input"] as const;
     for(const type of events)
       document.addEventListener(type,userAction,{capture:true,passive:false});
-    const visibility=()=>{if(boardRealtimeAwake)arm()};
+    const visibility=()=>{if(document.visibilityState==="visible")wake();else if(boardRealtimeAwake)arm()};
+    const focus=()=>{if(document.visibilityState==="visible"&&(!boardRealtimeAwake||boardIdleExpired(boardLastAction.current)))wake()};
     document.addEventListener("visibilitychange",visibility);
+    window.addEventListener("focus",focus);window.addEventListener("pageshow",focus);
     arm();
     return()=>{
       clearTimeout(timeout);
       for(const type of events)document.removeEventListener(type,userAction,true);
       document.removeEventListener("visibilitychange",visibility);
+      window.removeEventListener("focus",focus);window.removeEventListener("pageshow",focus);
     };
-  },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,objectEditorOpen,editing,boardAssistantBusy,boardAiGenerating,pendingAttachmentRequests.length]);
+  },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,selfhostMode]);
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
@@ -8360,6 +8367,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(inkMotionLedger.reset())setInkMotionRevision(n=>n+1);
     },event=>{
       if(!active)return;
+      if(event.type==="idle_timeout"){
+        if(boardIdleExpired(boardLastAction.current)){
+          boardResumePendingRef.current=false;setBoardResumePending(false);setBoardRealtimeAwake(false);
+        }else selfhostNoteBoardActivity(boardSummary.id);
+        return;
+      }
       if(event.type==="presence_diff"){
         for(const user of event.leaves)if(inkMotionLedger.leave(user.user_id))setInkMotionRevision(n=>n+1);
       }else if((event.type==="ink_motion"||event.type==="ink_motion_ack")&&event.user_id!==authUser.id){
@@ -8839,7 +8852,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
               {documentSyncEnabled&&canManageBoard&&<button type="button" className="presence-visit-link" onClick={()=>{visitPresenceMenuRef.current?.removeAttribute("open");setVisitHistoryOpen(true);void loadVisitHistory()}}>История посещений <span>↗</span></button>}
               {visiblePresenceUsers.length ? visiblePresenceUsers.map((user) => <div className="presence-person" key={user.userId}>
-                <span className="presence-avatar" aria-hidden="true"><UserAvatar/></span>
+                <span className="presence-avatar" data-participant-color aria-hidden="true" style={{"--participant-color":presenceColors.get(user.userId)??fallbackParticipantColor(user.userId)} as CSSProperties}><UserAvatar/></span>
                 <span className="presence-person-copy">
                   <b>{user.name}{user.userId === authUser.id ? " · Вы" : ""}</b>
                   <small>{user.participantRole?PARTICIPANT_ROLE_LABELS[user.participantRole]:BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
@@ -10504,7 +10517,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div ref={setInstrumentViewportHost}
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
-            <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom}/>
+            <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom} colors={presenceColors}/>
           </div>
           <div
             ref={fastPanWorld}
