@@ -113,19 +113,13 @@ def test_view_and_attachment_events_are_role_checked_and_attributed():
 
 def test_native_event_rate_budgets_are_separate():
     limiter=EventRateLimit()
-    assert all(limiter.check("work_state") for _ in range(30))
-    assert limiter.check("work_state") is False
-    assert all(limiter.check("editor_mutation") for _ in range(24))
-    assert limiter.check("editor_mutation") is False
-    assert limiter.check("object_transform") is False
-    # Transform and editor mutations share a bounded budget, but neither
-    # is starved by work-state traffic.
-    limiter=EventRateLimit()
-    assert all(limiter.check("object_transform") for _ in range(24))
-    assert limiter.check("editor_mutation") is False
-    assert all(limiter.check("work_state") for _ in range(30))
-    assert all(limiter.check("focus_view") for _ in range(10))
-    assert limiter.check("focus_view") is False
+    for event,limit in (("work_state",30),("editor_mutation",40),
+                        ("object_transform",40),("ink_commit",45),
+                        ("cursor",20),("focus_view",10)):
+        assert all(limiter.check(event) for _ in range(limit))
+        assert limiter.check(event) is False
+    # Saturating any one category must not starve the others.
+    assert limiter.violations == 6
 
 
 def test_live_erase_is_editor_only_and_validates_cancellation():
