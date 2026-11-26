@@ -2271,7 +2271,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [discussionParticipants,setDiscussionParticipants]=useState<BoardCommentParticipant[]>([]);
   const [discussionFocusId,setDiscussionFocusId]=useState<string|null>(()=>new URLSearchParams(window.location.search).get("discussion"));
   const [presenceUsers, setPresenceUsers] = useState<BoardPresenceUser[]>([]);
-  const presenceColors=useMemo(()=>participantColors(presenceUsers),[presenceUsers]);
+  const presenceColors=useMemo(()=>participantColors(presenceUsers,boardSummary.ownerId),[presenceUsers,boardSummary.ownerId]);
   const [visitHistoryOpen,setVisitHistoryOpen]=useState(false);
   const visitPresenceMenuRef=useRef<HTMLDetailsElement>(null);
   const [visitRows,setVisitRows]=useState<BoardVisit[]>([]);
@@ -10534,7 +10534,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           <div ref={setInstrumentViewportHost}
             className="geometry-instrument-viewport-layer" aria-label="Измерительные инструменты" />
           <div ref={fastPanOverlay} className="remote-cursors-layer" aria-hidden="true" style={{transformOrigin:"0 0"}}>
-            <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom} colors={presenceColors}/>
+            <RemoteCursorOverlay store={remoteCursorStore} x={view.x} y={view.y} zoom={view.zoom} colors={presenceColors} ownerId={boardSummary.ownerId}/>
           </div>
           <div
             ref={fastPanWorld}

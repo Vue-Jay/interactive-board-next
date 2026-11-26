@@ -2,6 +2,6 @@
   "application": "lektrus",
   "source": "github-actions",
   "branch": "main",
-  "marker": "lektrus-single-item-motion-2026-11-26",
-  "board_change": "ink-motion-v1"
+  "marker": "lektrus-session-participant-colors-2026-11-26",
+  "board_change": "session-presence-colors-v2"
 }

@@ -1,5 +1,5 @@
 import { memo, useSyncExternalStore, type CSSProperties } from "react";
-import {fallbackParticipantColor} from "./boardParticipantColors";
+import {TEACHER_COLOR,fallbackParticipantColor} from "./boardParticipantColors";
 import type { RemoteCursor } from "./boardBroadcast";
 import type { RemoteCursorStore } from "./boardRemoteCursors";
 import { BOARD_SELECTION_ARROW_PATH } from "./lektrusSelectionCursor";
@@ -12,9 +12,9 @@ const Cursor=memo(function Cursor({cursor,x,y,zoom,color}:{cursor:RemoteCursor;x
   </div>;
 });
 
-export const RemoteCursorOverlay=memo(function RemoteCursorOverlay({store,x,y,zoom,colors}:{store:RemoteCursorStore;x:number;y:number;zoom:number;colors?:ReadonlyMap<string,string>}){
+export const RemoteCursorOverlay=memo(function RemoteCursorOverlay({store,x,y,zoom,colors,ownerId}:{store:RemoteCursorStore;x:number;y:number;zoom:number;colors?:ReadonlyMap<string,string>;ownerId?:string}){
   const cursors=useSyncExternalStore(store.subscribe,store.getSnapshot,store.getSnapshot);
-  return <>{Array.from(cursors.values(),cursor=><Cursor key={cursor.userId} cursor={cursor} x={x} y={y} zoom={zoom} color={colors?.get(cursor.userId)??fallbackParticipantColor(cursor.userId)}/>)}</>;
+  return <>{Array.from(cursors.values(),cursor=><Cursor key={cursor.userId} cursor={cursor} x={x} y={y} zoom={zoom} color={cursor.role==="owner"||cursor.userId===ownerId?TEACHER_COLOR:colors?.get(cursor.userId)??fallbackParticipantColor(cursor.userId)}/>)}</>;
 });
 
 export const RemoteCursorCount=memo(function RemoteCursorCount({store}:{store:RemoteCursorStore}){

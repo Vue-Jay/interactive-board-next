@@ -100,7 +100,18 @@ const colors={};new Function("exports",ts.transpileModule(fs.readFileSync("src/b
 const roster=Array.from({length:100},(_,i)=>({userId:"user-"+i}));
 const assigned=colors.participantColors(roster);
 assert.equal(new Set(assigned.values()).size,100);
+assert.ok(![...assigned.values()].includes(colors.TEACHER_COLOR),"Learners cannot receive the owner's brand color");
 assert.deepEqual([...colors.participantColors([...roster].reverse())],[...assigned]);
 const authoritative=colors.participantColors([{userId:"a",color:"#123456"},{userId:"b",color:"#654321"}]);
 assert.equal(authoritative.get("a"),"#123456");assert.equal(authoritative.get("b"),"#654321");
+const ownerAndStudents=colors.participantColors([{userId:"student",color:colors.TEACHER_COLOR},{userId:"teacher",role:"owner",color:"#ff0000"},{userId:"guest"}],"teacher");
+assert.equal(ownerAndStudents.get("teacher"),colors.TEACHER_COLOR);
+assert.notEqual(ownerAndStudents.get("student"),colors.TEACHER_COLOR);
+assert.notEqual(ownerAndStudents.get("guest"),colors.TEACHER_COLOR);
+assert.notEqual(ownerAndStudents.get("student"),ownerAndStudents.get("guest"));
+assert.equal(colors.participantColors([{userId:"someone"}]).get("someone"),colors.participantColors([{userId:"other"}]).get("other"),"An empty board resets the palette independent of prior account IDs");
+const newVisit=colors.participantColors([{userId:"student",color:"#087f69"}]);
+const reconnected=colors.participantColors([{userId:"student",color:"#b23a56"}]);
+assert.notEqual(newVisit.get("student"),reconnected.get("student"),"Each session follows fresh server allocation");
+
 console.log("10-minute wall-clock idle, foreground wake, unique participant colors: OK");
