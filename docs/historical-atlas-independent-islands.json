@@ -85,15 +85,35 @@
     {
       "iso": "KIR",
       "wikidata": "Q710",
-      "from": 1983,
+      "from": 1979,
       "name": "Republic of Kiribati",
       "nameRu": "Республика Кирибати",
-      "reasonRu": "Независимость с 12 июля 1979 года. Полный островной контур показан с 1983 года, после вступления в силу договора с США, урегулировавшего притязания на острова Лайн и Феникс.",
+      "reasonRu": "Кирибати стало независимым государством 12 июля 1979 года. Доклад Комитета ООН по деколонизации, выпущенный к независимости (1979), прямо перечисляет острова Гилберта, Банаба, Феникс и Лайн как территорию страны. При этом США сохраняли оспариваемые притязания на 14 отдельных островов групп Феникс и Лайн: договор дружбы подписан 20 сентября 1979 года, но юридически вступил в силу только 23 сентября 1983 года (в сводных источниках встречается дата 20 сентября как дата ратификации). Для 1979–1982 гг. показана признанная Кирибати государственная принадлежность с обязательной оговоркой об американских притязаниях, а не бесспорная международная граница. Береговые очертания Natural Earth — современная генерализация, не картографическая съёмка 1979 года; точные морские границы не показаны.",
       "sources": [
         "https://history.state.gov/countries/kiribati",
         "https://1997-2001.state.gov/background_notes/kiribati_0596_bgn.html",
-        "https://2009-2017.state.gov/documents/organization/218912.pdf"
-      ]
+        "https://2009-2017.state.gov/documents/organization/218912.pdf",
+        "https://www.un.org/dppa/decolonization/sites/www.un.org.dppa.decolonization/files/decon_num_15-1.pdf",
+        "https://faolex.fao.org/docs/pdf/bi-67019.pdf",
+        "https://www.doi.gov/oia/islands/disputedislands",
+        "https://kiribati.gov.ki/know-kiribati/history"
+      ],
+      "historicalCartography": {
+        "from": 1979,
+        "to": 1982,
+        "kind": "sovereignty-with-disputed-islands",
+        "historicalTitle": "Republic of Kiribati",
+        "disputedTerritoryCount": 14,
+        "claimant": "United States",
+        "treatySigned": "1979-09-20",
+        "treatyEntryIntoForce": "1983-09-23",
+        "precision": "modern-generalized-island-outlines-not-1979-survey",
+        "sources": [
+          "https://www.un.org/dppa/decolonization/sites/www.un.org.dppa.decolonization/files/decon_num_15-1.pdf",
+          "https://faolex.fao.org/docs/pdf/bi-67019.pdf",
+          "https://www.doi.gov/oia/islands/disputedislands"
+        ]
+      }
     },
     {
       "iso": "NRU",

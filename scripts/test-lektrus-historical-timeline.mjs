@@ -156,6 +156,14 @@ assert.deepEqual(delhi.records.filter(r=>r.role==='composite').map(r=>[r.from,r.
 assert.equal(delhi.records.find(r=>r.from===1451&&r.role==='polity').name,'Lodi Dynasty');
 assert.deepEqual(delhi.records.find(r=>r.from===1451&&r.role==='composite').sourceComponents,['Tughlaq Dynasty']);
 const zhou=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Later Zhou',-750,-451,square(),'Q1154556'),feature('Later Zhou',960,960,square(),'Q1154556'),feature('(Spring and Autumn States)',-750,-481,square(),'','POLITY','Later Zhou')]});
+const kiribati=independentIslands.states.find(s=>s.iso==='KIR');
+assert.equal(kiribati.from,1979);
+assert.equal(kiribati.historicalCartography.disputedTerritoryCount,14);
+assert.equal(kiribati.historicalCartography.treatySigned,'1979-09-20');
+assert.equal(kiribati.historicalCartography.treatyEntryIntoForce,'1983-09-23');
+assert.ok(kiribati.sources.some(s=>s.includes('decon_num_15-1.pdf')));
+assert.ok(kiribati.sources.some(s=>s.includes('bi-67019.pdf')));
+assert.ok(kiribati.reasonRu.includes('1979–1982'));
 assert.equal(independentIslands.states.find(s=>s.iso==='MHL').recognitionFrom,1986);
 const marshall=independentIslands.states.find(s=>s.iso==='MHL');
 assert.equal(marshall.from,1986);
@@ -380,6 +388,12 @@ if(outDir&&sourceFile){
         const candidates=state.drawable.filter(({record})=>record.externalGeography?.iso===d.iso);
         assert.equal(candidates.length,year>=d.from?1:0,`${d.iso}/${year}`);
         if(candidates.length){const {record}=candidates[0];assert.equal(record.name,d.transition&&year>=d.transition.year?d.transition.name:d.name);assert.ok(record.review.sources.includes(independentIslands.source.url));
+          if(d.iso==='KIR'&&year>=1979&&year<=1982){
+            assert.ok(record.review.reasonRu.includes('оспариваемые притязания'));
+            assert.ok(record.review.reasonRu.includes('1983'));
+            assert.ok(record.review.sources.some(url=>url.includes('decon_num_15-1.pdf')));
+            assert.ok(record.review.sources.some(url=>url.includes('bi-67019.pdf')));
+          }
           if(d.iso==='MHL'&&year>=1986&&year<=1989){
             assert.equal(record.externalGeography.kind,'modern-island-outline');
             assert.ok(record.review.reasonRu.includes('1986'));
@@ -892,7 +906,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2196);assert.equal(externalRecordYears,473);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2196);assert.equal(externalRecordYears,477);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(tianjinClosed,269);assert.equal(tianjinOpen,98);
   assert.equal(unresolvedSourceYears,859);assert.equal(unresolvedRegionYears,780);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
