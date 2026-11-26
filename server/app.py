@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 from realtime_events import EventRateLimit, InvalidLiveEvent, MAX_EVENT_BYTES, validate_live_event
 from document_delta import (
     DeltaHistory, MAX_DELTA_BYTES, apply_delta, item_map, encode as encode_delta,
-    encoded_bytes, document_bytes_from_parts,
+    encoded_bytes, document_bytes_from_parts, expand_point_edits,
 )
 from schema import apply_schema
 from billing import MESSAGES, limit_detail, make_billing_router
@@ -609,7 +609,7 @@ def document_view(row, board_id: UUID):
 
 @app.get("/api/v1/boards/{board_id}/document")
 async def get_document(board_id: UUID, request: Request, version_only: bool = False,
-                       since_version: int | None = None,
+                       since_version: int | None = None, ink_point_deltas: bool = False,
                        user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         await board_access(conn, board_id, user["id"])
@@ -628,18 +628,19 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
                             "version": revision["version"], "base_version": since_version,
                             "updated_at": revision["updated_at"].isoformat(),
                             "updated_by": str(revision["updated_by"]) if revision["updated_by"] is not None else None,
-                            "patches": patches}
+                            "patches": patches, **({"ink_point_deltas": True} if ink_point_deltas else {})}
         row = await conn.fetchrow(
             "SELECT lektrus_board_document(d) AS document,version,updated_at,updated_by FROM board_documents d WHERE board_id=$1",
             board_id,
         )
-        return document_view(row, board_id)
+        return {**document_view(row, board_id), **({"ink_point_deltas": True} if ink_point_deltas else {})}
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
 _presence_watchers: dict[UUID, set[WebSocket]] = defaultdict(set)
 _compact_ink_subscribers: set[WebSocket] = set()
 _document_patch_subscribers: set[WebSocket] = set()
+_ink_point_delta_subscribers: set[WebSocket] = set()
 
 
 async def lookup_board_sessions(pool: asyncpg.Pool, board_id: UUID, tokens,
@@ -721,6 +722,9 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
         # have already committed; reconnect/version polling recovers the notice.
         logging.getLogger("lektrus.realtime").warning("Board fan-out authorization unavailable")
         return
+    point_only = event.get("_ink_point_delta", False)
+    if point_only:
+        event = {key: value for key, value in event.items() if key != "_ink_point_delta"}
     target = event.get("target_user_id") if event["type"] in ("focus_view", "attachment_result") else None
     # Modern ink-only classrooms need only the compact representation. Use a
     # fixed encoding choice for each socket throughout this fan-out.
@@ -732,7 +736,7 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
                                   ensure_ascii=False, separators=(",", ":"))
                        if compact_peers else payload)
 
-    patch_peers = ({peer for peer in peers if peer in _document_patch_subscribers}
+    patch_peers = ({peer for peer in peers if peer in _document_patch_subscribers and (not point_only or peer in _ink_point_delta_subscribers)}
                    if event["type"] == "document_changed" and "delta" in event else set())
     legacy_payload = (json.dumps({"type":"document_changed","version":event["version"]}, separators=(",", ":"))
                       if event["type"] == "document_changed" and "delta" in event else payload)
@@ -805,6 +809,7 @@ def _detach_subscribers(board_id: UUID, clients) -> list[dict[str, str]]:
         _subscribers.get(board_id, {}).pop(client, None)
         _compact_ink_subscribers.discard(client)
         _document_patch_subscribers.discard(client)
+        _ink_point_delta_subscribers.discard(client)
         _presence_watchers.get(board_id, set()).discard(client)
         meta = _subscriber_users.get(board_id, {}).pop(client, None)
         if meta:
@@ -964,6 +969,7 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                            delta: dict | None = None, ink_gesture: str | None = None):
     # Full saves remain supported for older clients and initial/recovery saves.
     serialized = serialize_document(document) if document is not None else None
+    wire_delta = None
     if delta is not None:
         try:
             if len(encode_delta(delta).encode("utf-8")) > MAX_DELTA_BYTES:
@@ -1007,6 +1013,27 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                             "items": [{"id": key} for key in previous["item_order"]]}
                 else:
                     base = decode_document(previous["document"])
+                if isinstance(delta.get("items"), dict) and "point_edits" in delta["items"]:
+                    # Load just the affected object on the normalized fast path.
+                    # The version lock has already rejected stale checkpoints.
+                    try:
+                        edits = delta["items"]["point_edits"]
+                        if not isinstance(edits, list) or len(edits) != 1 or not isinstance(edits[0], dict):
+                            raise ValueError("Invalid point edits")
+                        edit = edits[0]
+                        key = edit.get("id")
+                        if not isinstance(key, str) or not key or ink_gesture != edit.get("stroke_id", key):
+                            raise ValueError("Wrong ink gesture")
+                        if fast:
+                            raw_item = await conn.fetchval(
+                                "SELECT item FROM board_document_items WHERE board_id=$1 AND item_id=$2", board_id, key)
+                            if raw_item is None:
+                                raise ValueError("Missing ink item")
+                            base["items"] = [decode_document(raw_item) if item["id"] == key else item for item in base["items"]]
+                        wire_delta = delta
+                        delta = expand_point_edits(base, delta)
+                    except (ValueError, TypeError, OverflowError):
+                        error(422, "Некорректное изменение точек штриха.")
                 document = patched_document(base, delta)
             elif previous:
                 base = decode_document(await conn.fetchval(
@@ -1081,10 +1108,12 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
     # Older clients and clients missing its base still use the normal GET.
     event = {"type": "document_changed", "version": version}
     if delta is not None:
-        patch = {"base_version": version-1, "delta": delta,
+        patch = {"base_version": version-1, "delta": wire_delta if wire_delta is not None else delta,
                  "updated_at": revision["updated_at"].isoformat(), "updated_by": str(user["id"])}
         if len(json.dumps(patch, ensure_ascii=False).encode("utf-8")) <= 64 * 1024:
             event.update(patch)
+            if wire_delta is not None:
+                event["_ink_point_delta"] = True
     await announce_board_event(board_id, event, request.app.state.pool)
     if version_only:
         return {"version": version}
@@ -1122,7 +1151,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         presence_visible = initial.get("visible", True)
         compact_ink = initial.get("compact_ink", False)
         document_patches = initial.get("document_patches", False)
-        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool:
+        ink_point_deltas = initial.get("ink_point_deltas", False)
+        if type(presence_enabled) is not bool or type(presence_visible) is not bool or type(compact_ink) is not bool or type(document_patches) is not bool or type(ink_point_deltas) is not bool:
             await websocket.close(code=4401)
             return
         claims = jwt_claims(token)
@@ -1153,6 +1183,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
             _compact_ink_subscribers.add(websocket)
         if document_patches:
             _document_patch_subscribers.add(websocket)
+            if ink_point_deltas:
+                _ink_point_delta_subscribers.add(websocket)
         if presence_enabled:
             _presence_watchers[board_id].add(websocket)
             if presence_visible:
