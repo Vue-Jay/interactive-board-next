@@ -71,6 +71,10 @@ class DocumentDeltaTests(unittest.TestCase):
         self.assertIsNone(history.chain("board", 1, 4))
         history.remember("board", 3, delta)
         self.assertEqual(history.chain("board", 1, 4), [delta, delta, delta])
+        compact = {"items": {"point_edits": [{"id": "a"}]}}
+        history.remember("board", 3, delta, compact)
+        self.assertEqual(history.chain("board", 1, 4), [delta, delta, delta])
+        self.assertEqual(history.chain("board", 1, 4, True), [delta, compact, delta])
         self.assertIsNone(history.chain("other", 1, 4))
         for i in range(MAX_HISTORY_ENTRIES + 1):
             history.remember("board", i + 10, {"set": {"text": "x" * 50000}})
