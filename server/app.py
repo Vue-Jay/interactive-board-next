@@ -1070,7 +1070,15 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
     version = revision["version"]
     if delta is not None:
         request.app.state.document_deltas.remember(board_id, version, delta)
-    await announce(board_id, version, request.app.state.pool)
+    # A bounded, already committed patch can travel with the revision notice.
+    # Older clients and clients missing its base still use the normal GET.
+    event = {"type": "document_changed", "version": version}
+    if delta is not None:
+        patch = {"base_version": version-1, "delta": delta,
+                 "updated_at": revision["updated_at"].isoformat(), "updated_by": str(user["id"])}
+        if len(json.dumps(patch, ensure_ascii=False).encode("utf-8")) <= 64 * 1024:
+            event.update(patch)
+    await announce_board_event(board_id, event, request.app.state.pool)
     if version_only:
         return {"version": version}
     return {"board_id": str(board_id), "document": document, "version": version,
