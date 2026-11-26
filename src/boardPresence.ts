@@ -8,6 +8,7 @@ export type BoardPresenceUser = {
   role: BoardRole;
   participantRole?: BoardParticipantRole;
   onlineAt: string;
+  color?: string;
 };
 
 type PresenceMeta = {
@@ -91,6 +92,7 @@ export function subscribeBoardPresence(
       role: validRole(user.role) ? user.role : "viewer",
       participantRole: participantRoleFor(validRole(user.role) ? user.role : "viewer",user.participant_role),
       onlineAt: user.online_at || "",
+      color:user.color,
     });
     const emitSelfhost = () => {
       const result = [...users.values()].sort((a, b) => {
@@ -117,7 +119,7 @@ export function subscribeBoardPresence(
         }
         emitSelfhost();
       }
-    }, { visible: trackSelf });
+    }, { visible: trackSelf,idle:true });
     return () => {
       channel();
       users.clear();

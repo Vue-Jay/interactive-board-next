@@ -37,6 +37,7 @@ export type SelfhostAccess = {
   invites:Array<{id:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;created_at:string}>;
 };
 import type {RemoteInkMotion} from "./boardInkMotion";
+import {boardIdleAge,boardIdleExpired} from "./boardIdle";
 export type SelfhostRealtimeStatus = "online"|"reconnecting"|"offline";
 export type SelfhostPoint={x:number;y:number};
 export type SelfhostLiveInkPacket={
@@ -46,7 +47,7 @@ export type SelfhostLiveInkPacket={
   cut_ids?:string[];
   erase_mode?:"partial"|"stroke";
 };
-export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;online_at?:string};
+export type SelfhostPresenceUser={user_id:string;name:string;role:SelfhostBoardRole;participant_role?:SelfhostParticipantRole;online_at?:string;color?:string};
 export type SelfhostLiveEvent=
   | RemoteInkMotion
   | {type:"cursor";client_id:string;user_id:string;name:string;role:SelfhostBoardRole;x:number;y:number;sent_at:number}
@@ -63,6 +64,7 @@ export type SelfhostLiveEvent=
   | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
   | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number}
   | {type:"ink_ack";client_id:string;stroke_id:string;offset:number;finished:boolean}
+  | {type:"idle_timeout"}
   | {type:"comments_changed"}
   | {type:"event_error";reason:string};
 export type SelfhostCommittedCursor=Extract<SelfhostLiveEvent,{type:"cursor"}>;
@@ -74,6 +76,7 @@ export type SelfhostBoardChannel=(()=>void)&{
   canCommitInk:()=>boolean;
   canPipelineInk:()=>boolean;
   canSendInkMotion:()=>boolean;
+  noteActivity:(expired?:boolean)=>void;
   commitInk:(request:InkCommitRequest)=>InkCommitPromise|null;
   sendCursor:(clientId:string,x:number,y:number)=>boolean;
   sendInk:(ink:SelfhostLiveInkPacket)=>boolean;
@@ -1055,7 +1058,8 @@ function connectSelfhostBoard(
   boardId:string,onRevision:(version:number,patch?:RevisionPatch)=>void,
   onStatus:(status:SelfhostRealtimeStatus)=>void,
   onLive?:(event:SelfhostLiveEvent)=>void,
-  presence?:{visible:boolean},
+  presence?:{visible:boolean;idle?:boolean},
+  activity?:()=>number,
 ):SelfhostBoardChannel{
   let stopped=false,generation=0,attempt=0;
   let socket:WebSocket|null=null;
@@ -1064,6 +1068,8 @@ function connectSelfhostBoard(
   let expiry:ReturnType<typeof setTimeout>|undefined;
   let responseDeadline:ReturnType<typeof setTimeout>|undefined;
   let lastVersion=-1;
+  let idleLease=false,idlePaused=false,lastActivitySent=-Infinity,lastReportedActivity=-Infinity;
+  let activityTimer:ReturnType<typeof setTimeout>|undefined;
   let ready=false;
   let compactInk=false;
   let durableInkCommits=false,inkCommitChain=false,inkMotion=false,commitSequence=0;
@@ -1086,6 +1092,23 @@ function connectSelfhostBoard(
       socket.send(JSON.stringify(wire));return true
     }
     catch{reconnect();return false}
+  };
+  const flushActivity=()=>{
+    clearTimeout(activityTimer);activityTimer=undefined;
+    if(!idleLease||!activity)return;
+    const last=activity();
+    if(sendRaw({type:"activity",idle_age_ms:Math.floor(boardIdleAge(last))})){
+      lastActivitySent=Date.now();lastReportedActivity=last;
+    }
+  };
+  const noteActivity=(expired=false)=>{
+    if(stopped||!activity)return;
+    if(expired||idlePaused||retry!==undefined){reconnect(true);return;}
+    if(!ready||!idleLease)return;
+    if(activityTimer===undefined){
+      const delay=Math.max(0,300-(Date.now()-lastActivitySent));
+      if(delay===0)flushActivity();else activityTimer=setTimeout(flushActivity,delay);
+    }
   };
   const canCommitInk=()=>ready&&durableInkCommits&&socket?.readyState===WebSocket.OPEN;
   const canPipelineInk=()=>canCommitInk()&&inkCommitChain;
@@ -1189,9 +1212,10 @@ function connectSelfhostBoard(
     clearTimeout(cursorTimer);cursorTimer=undefined;
     clearTimeout(objectTimer);objectTimer=undefined;pendingObject=null;
     clearInterval(retryFinals);retryFinals=undefined;
+    clearTimeout(activityTimer);activityTimer=undefined;
   };
   const closeSocket=()=>{
-    ready=false;
+    ready=false;idleLease=false;lastActivitySent=-Infinity;lastReportedActivity=-Infinity;
     compactInk=false;durableInkCommits=false;inkCommitChain=false;inkMotion=false;lastInkRequestId=undefined;
     for(const entry of pendingCommits.values()){
       clearTimeout(entry.timer);entry.reject(new SelfhostHttpError(409,"Соединение прервано. Сверяем версию доски."));
@@ -1202,14 +1226,23 @@ function connectSelfhostBoard(
     old.onopen=old.onclose=old.onmessage=old.onerror=null;
     try{old.close()}catch{/* Already closed. */}
   };
-  const reconnect=()=>{
+  const pauseForIdle=()=>{
+    if(idlePaused)return;
+    idlePaused=true;generation++;closeSocket();clearTimers();
+    onStatus("offline");onLive?.({type:"idle_timeout"});
+  };
+  const reconnect=(immediate=false)=>{
     if(stopped)return;
-    generation++;closeSocket();clearTimers();
+    if(activity&&boardIdleExpired(activity())){pauseForIdle();return;}
+    idlePaused=false;generation++;closeSocket();clearTimers();
     onStatus(navigator.onLine?"reconnecting":"offline");
-    retry=setTimeout(()=>void connect(),Math.min(30000,1000*2**Math.min(attempt++,5)));
+    if(immediate&&navigator.onLine){attempt=0;void connect();return;}
+    retry=setTimeout(()=>{retry=undefined;void connect()},Math.min(30000,250*2**Math.min(attempt++,7)));
   };
   const connect=async()=>{
     if(stopped||!navigator.onLine)return;
+    if(activity&&boardIdleExpired(activity())){pauseForIdle();return;}
+    idlePaused=false;
     const current=++generation;
     onStatus("reconnecting");
     try{
@@ -1233,10 +1266,14 @@ function connectSelfhostBoard(
           ws.send(JSON.stringify({
             type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,ink_motion:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
+            ...(presence?.idle&&activity?{idle_age_ms:Math.floor(boardIdleAge(activity()))}:{}),
           }));
         }catch{reconnect();return}
         heartbeat=setInterval(()=>{
-          if(active()&&sendRaw({type:"ping"})){
+          if(!active())return;
+          if(activity&&boardIdleExpired(activity())){pauseForIdle();return;}
+          if(idleLease&&activity&&activity()>lastReportedActivity)flushActivity();
+          if(sendRaw({type:"ping"})){
             clearTimeout(responseDeadline);
             responseDeadline=setTimeout(reconnect,8000);
           }
@@ -1257,7 +1294,10 @@ function connectSelfhostBoard(
             durableInkCommits=message.durable_ink_commits===true;
             inkCommitChain=message.ink_commit_chain===true;
             inkMotion=message.ink_motion===true;
-            attempt=0;ready=true;onStatus("online");
+            idleLease=message.idle_lease===true;
+            attempt=0;ready=true;
+            if(idleLease)flushActivity();
+            onStatus("online");
             // Final packets contain the full <=200-point stroke window in the
             // selfhost. Replay them if the socket died before the ack arrived.
             for(const item of pendingFinals.values()){
@@ -1369,10 +1409,15 @@ function connectSelfhostBoard(
           }
         }catch{/* Ignore malformed frames. */}
       };
-      ws.onerror=ws.onclose=()=>{if(active())reconnect()};
+      ws.onerror=()=>{if(active())reconnect()};
+      ws.onclose=event=>{
+        if(!active())return;
+        if(event.code===4410&&activity&&boardIdleExpired(activity()))pauseForIdle();
+        else reconnect(event.code===4410);
+      };
     }catch{if(!stopped&&current===generation)reconnect()}
   };
-  const networkChanged=()=>reconnect();
+  const networkChanged=()=>reconnect(navigator.onLine);
   window.addEventListener("online",networkChanged);
   window.addEventListener("offline",networkChanged);
   void connect();
@@ -1382,7 +1427,7 @@ function connectSelfhostBoard(
     window.removeEventListener("online",networkChanged);
     window.removeEventListener("offline",networkChanged);
   };
-  return Object.assign(stop,{canCommitInk,canPipelineInk,canSendInkMotion,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
+  return Object.assign(stop,{canCommitInk,canPipelineInk,canSendInkMotion,noteActivity,commitInk,sendCursor,sendInk,sendObjectPreview,sendEvent});
 }
 
 
@@ -1390,13 +1435,15 @@ type BoardListener={
   onRevision:(version:number,patch?:RevisionPatch)=>void;
   onStatus:(status:SelfhostRealtimeStatus)=>void;
   onLive?:(event:SelfhostLiveEvent)=>void;
-  presence?:{visible:boolean};
+  presence?:{visible:boolean;idle?:boolean};
 };
 
 class SharedSelfhostBoard {
   private listeners=new Set<BoardListener>();
   private socket?:SelfhostBoardChannel;
   private presence?:boolean;
+  private idle=false;
+  private lastActivity=Date.now();
   private version=-1;
   private status:SelfhostRealtimeStatus="reconnecting";
   private reconcileQueued=false;
@@ -1421,9 +1468,9 @@ class SharedSelfhostBoard {
         return;
       }
       const presence=[...this.listeners].find(listener=>listener.presence)?.presence;
-      if(this.socket&&this.presence===presence?.visible)return;
+      if(this.socket&&this.presence===presence?.visible&&this.idle===!!presence?.idle)return;
       this.socket?.();
-      this.presence=presence?.visible;
+      this.presence=presence?.visible;this.idle=!!presence?.idle;
       this.socket=connectSelfhostBoard(this.boardId,(version,patch)=>{
         if(version<=this.version)return;
         this.version=version;
@@ -1433,10 +1480,11 @@ class SharedSelfhostBoard {
         for(const listener of this.listeners)listener.onStatus(status);
       },event=>{
         for(const listener of this.listeners)listener.onLive?.(event);
-      },presence);
+      },presence,this.idle?()=>this.lastActivity:undefined);
     });
   }
 
+  noteActivity(){const expired=boardIdleExpired(this.lastActivity);this.lastActivity=Date.now();this.socket?.noteActivity(expired);}
   canCommitInk(){return !!this.socket?.canCommitInk()}
   canPipelineInk(){return !!this.socket?.canPipelineInk()}
   canSendInkMotion(){return !!this.socket?.canSendInkMotion()}
@@ -1458,6 +1506,7 @@ class SharedSelfhostBoard {
       canCommitInk:()=>this.listeners.has(listener)&&this.canCommitInk(),
       canPipelineInk:()=>this.listeners.has(listener)&&this.canPipelineInk(),
       canSendInkMotion:()=>this.listeners.has(listener)&&this.canSendInkMotion(),
+      noteActivity:()=>{if(this.listeners.has(listener))this.noteActivity()},
       commitInk:(request:InkCommitRequest)=>this.listeners.has(listener)?this.commitInk(request):null,
       sendCursor:(id:string,x:number,y:number)=>this.listeners.has(listener)&&!!this.socket?.sendCursor(id,x,y),
       sendInk:(ink:SelfhostLiveInkPacket)=>this.listeners.has(listener)&&!!this.socket?.sendInk(ink),
@@ -1468,6 +1517,7 @@ class SharedSelfhostBoard {
 }
 
 const selfhostBoardSockets=new Map<string,SharedSelfhostBoard>();
+export function selfhostNoteBoardActivity(boardId:string){selfhostBoardSockets.get(boardId)?.noteActivity();}
 
 export function selfhostSubscribeBoard(
   boardId:string,onRevision:BoardListener["onRevision"],onStatus:BoardListener["onStatus"],

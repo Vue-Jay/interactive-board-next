@@ -280,7 +280,7 @@ async function loadSelfhost(enabled, platform="web") {
   }
   const listeners=new Map();
   const makeContext=(withLocks=true)=>vm.createContext({
-    exports:{},require:name=>{assert.equal(name,"@capacitor/core");return bridge;},fetch,URL,Headers,Response,AbortController,DOMException,FormData,TextEncoder,queueMicrotask,
+    exports:{},require:name=>{if(name==="./boardIdle"){const out={};new Function("exports",ts.transpileModule(readFileSync(new URL("../src/boardIdle.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(out);return out;}assert.equal(name,"@capacitor/core");return bridge;},fetch,URL,Headers,Response,AbortController,DOMException,FormData,TextEncoder,queueMicrotask,
     navigator:{onLine:true,locks:withLocks?locks:undefined},WebSocket:Socket,
     localStorage:sessionStorage,sessionStorage,setTimeout,clearTimeout,setInterval,clearInterval,Date,
     window:{location:{origin:"https://pilot.lektrus.example"},
