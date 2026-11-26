@@ -163,22 +163,27 @@ class DeltaHistory:
         self.entries = OrderedDict()
         self.size = 0
 
-    def remember(self, board_id, version: int, delta: dict):
+    def remember(self, board_id, version: int, delta: dict, wire_delta: dict | None = None):
         encoded = encode(delta).encode("utf-8")
-        size = len(encoded)
-        if size > MAX_DELTA_BYTES:
+        compact = encode(wire_delta).encode("utf-8") if wire_delta is not None else None
+        if len(encoded) > MAX_DELTA_BYTES:
+            encoded = None
+        if compact is not None and len(compact) > MAX_DELTA_BYTES:
+            compact = None
+        if encoded is None and compact is None:
             return
+        size = len(encoded or b"") + len(compact or b"")
         key = (board_id, version)
         old = self.entries.pop(key, None)
         if old:
-            self.size -= old[1]
-        self.entries[key] = (encoded, size)
+            self.size -= old[2]
+        self.entries[key] = (encoded, compact, size)
         self.size += size
         while self.size > MAX_HISTORY_BYTES or len(self.entries) > MAX_HISTORY_ENTRIES:
-            _, (_, size) = self.entries.popitem(last=False)
+            _, (_, _, size) = self.entries.popitem(last=False)
             self.size -= size
 
-    def chain(self, board_id, base: int, version: int):
+    def chain(self, board_id, base: int, version: int, point_deltas: bool = False):
         if base == version:
             return []
         if not 0 < version - base <= MAX_CHAIN:
@@ -188,8 +193,11 @@ class DeltaHistory:
             entry = self.entries.get((board_id, revision))
             if entry is None:
                 return None
-            encoded, length = entry
-            size += length
+            legacy, compact, _ = entry
+            encoded = compact if point_deltas and compact is not None else legacy
+            if encoded is None:
+                return None
+            size += len(encoded)
             if size > MAX_DELTA_BYTES:
                 return None
             result.append(json.loads(encoded))
