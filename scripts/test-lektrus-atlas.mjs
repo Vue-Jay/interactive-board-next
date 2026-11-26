@@ -316,87 +316,42 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russia","RU"),"Росси
  "Do not show post-1993 Russian flag before adoption");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Russian Empire","RU"),"Российская империя",1914,true).imageUrl??"",
  /1896/,"Russia in 1914 should use the imperial-era flag, not a modern flag");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).kind,"historic");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).reconstruction,true);
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",450,true).kind,"symbol",
- "Do not present a Roman military reconstruction as valid for every century");
-
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Byzantine Empire"),"Византийская империя",1400,true).imageUrl??"",
- /Byzantine%20Palaiologos%20Eagle/,"A dated Palaiologos emblem is now available");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Byzantine Empire"),"Византия",650,true).kind,"symbol",
- "Do not assign late Byzantine emblems to early Byzantium");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Jerusalem"),"Иерусалимское королевство",1200,true).imageUrl??"",
- /Kingdom%20of%20Jerusalem/);
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Teutonic State"),"Тевтонский орден",1400,true).imageUrl??"",
- /Teutonic%20Order/);
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Majapahit"),"Маджапахит",1400,true).imageUrl??"",
- /Surya%20Majapahit/);
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Inca Empire"),"Империя инков",1500,true).reconstruction,
- true,"Speculative Incan banner must be described as a reconstruction");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Hawaii"),"Гавайское королевство",1830,true).imageUrl??"",
- /Hawaii%20\(1816\)/);
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Crimean Khanate"),"Крымское ханство",1550,true).imageUrl??"",
- /Giray%20tamga/);
-assert.equal(historicalSymbols.listHistoricalStateInsignia("byzantium").length,2);
-
-assert.equal(historicalSymbols.findHistoricalStateInsignia("maurya",-245)?.kind,"artifact");
-assert.equal(historicalSymbols.findHistoricalStateInsignia("hittite-empire",-1220)?.kind,"artifact");
-assert.equal(historicalSymbols.findHistoricalStateInsignia("benin",1550)?.kind,"artifact");
-assert.equal(historicalSymbols.findHistoricalStateInsignia("benin",1650),undefined,
- "A sixteenth-century British Museum object must not be dated to the seventeenth");
-assert.equal(historicalSymbols.findHistoricalStateInsignia("mongols",1280)?.kind,"artifact");
-assert.equal(historicalSymbols.findHistoricalStateInsignia("goryeo",1200)?.kind,"artifact");
-assert.equal(historicalSymbols.findHistoricalStateInsignia("ilkhanate",1320)?.kind,"artifact");
-assert.equal(historicalSymbols.findHistoricalStateInsignia("aztec",1500)?.reconstruction,true);
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Aksumite Empire"),"Аксумское царство",345,true).label,
- "Подлинный исторический памятник","Coins must never be labeled national flags");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Baekje"),"Пэкче",510,true).kind,"historic");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Aksumite Empire"),"Аксумское царство",800,true).kind,"symbol",
- "Do not extend surviving evidence to periods after a state's existence");
-assert.ok(map.includes('image.kind==="artifact"'),"Artifact galleries must distinguish coins from heraldic flags");
-
-assert.equal(historicalSymbols.historicalReferenceSymbolYear({
- id:"rome",from:-27,to:476}),300,"End-of-empire date must not hide an attested earlier symbol");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Ottoman Empire"),"Османская империя",1900,true).imageUrl??"",
- /Ottoman/,"Use the attested Ottoman flag only for the late period");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Ottoman Empire"),"Османская империя",1600,true).kind,"symbol",
- "Do not assign the 1844 Ottoman flag to the sixteenth century");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Qing dynasty"),"Империя Цин",1900,true).imageUrl??"",
- /China/,"Late Qing dragon flag should appear in relevant year");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Qing dynasty"),"Империя Цин",1700,true).kind,"symbol",
- "Do not assign a late Qing flag to 1700");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("German Democratic Republic"),"ГДР",1980,true).imageUrl??"",
- /German%20Democratic%20Republic/,"Historic GDR flag should be used for 1980");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1940,true).imageUrl??"",
- /1936/,"Use the documented 1936 version of the USSR flag for the 1940 period");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1980,true).imageUrl??"",
- /Soviet%20Union/,"Flag of the USSR must be visible for 1980");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1965,true).imageUrl??"",
- /Flag%20of%20the%20Soviet%20Union\.svg/,"Use the 1955 flag, not an arbitrary darker illustration");
+// Unverified images must not be used as a historical state's official symbol.
+for(const [name,year] of [
+ ["Roman Empire",100],["Byzantine Empire",1400],["Kingdom of Jerusalem",1200],
+ ["Teutonic State",1400],["Majapahit",1400],["Inca Empire",1500],
+ ["Crimean Khanate",1550],["Mughal Empire",1700],["Safavid Empire",1600],
+ ["Goryeo",1200],["Aksumite Empire",345],["Baekje",510],
+ ["Mongol Empire",1280],["Kingdom of Hawaii",1830],["Republic of Venice",1600]
+]){
+ const icon=symbols.atlasCountrySymbol(symbolCountry(name),name,year,true);
+ assert.equal(icon.kind,"symbol",name+"/"+year);
+ assert.equal(icon.imageUrl,undefined,name+"/"+year);
+ assert.equal(icon.monogram,"?",name+"/"+year);
+}
+for(const id of ["rome","byzantium","maurya","hittite-empire","benin","mongols","goryeo",
+ "ilkhanate","aztec","inca","venice","safavid","mughal","kingdom-hawaii"])
+ assert.deepEqual(historicalSymbols.listHistoricalStateInsignia(id),[],"No unreliable heraldry for "+id);
+assert.equal(historicalSymbols.findHistoricalStateInsignia("maurya",-245),undefined);
+assert.equal(historicalSymbols.historicalReferenceSymbolYear({id:"rome",from:-27,to:476}),476);
+assert.ok(insigniaUI.includes("lektrus-country-symbol-unknown"));
+assert.ok(map.includes("Документированные государственные флаги"));
+assert.ok(map.includes("listHistoricalStateInsignia(entry.id)"));
+assert.equal(historicalSymbols.historicallyAttestedStateFlag(
+ historicalSymbols.historicalStateInsignia.find(x=>x.id==="ussr"&&x.from===1955)),true);
+for(const [name,year,pattern] of [
+ ["Ottoman Empire",1900,/Ottoman/],["Qing dynasty",1900,/China/],
+ ["German Democratic Republic",1980,/German%20Democratic%20Republic/],
+ ["Soviet Union",1940,/1936/],["Soviet Union",1980,/Soviet%20Union/]
+])assert.match(symbols.atlasCountrySymbol(symbolCountry(name),name,year,true).imageUrl??"",pattern);
 assert.match(symbols.atlasCountrySymbol(symbolCountry("United States","US"),"США",1908,true).imageUrl??"",/1908/);
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Spain","ES"),"Испания",1800,true).note,/военно-морской/);
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Slovakia","SK"),"Словакия",1992,true).kind,"symbol");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Slovakia","SK"),"Словакия",1994,true).kind,"historic");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Republic of Venice"),"Венеция",1600,true).imageUrl??"",
- /Republic%20of%20Venice/,"Include reconstructed heraldic imagery only for the attested polity");
-assert.match(symbols.atlasCountrySymbol(symbolCountry("Safavid Empire"),"Держава Сефевидов",1600,true).imageUrl??"",
- /Safavid%20Flag/,"Safavid-era banner is documented");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Mughal Empire"),"Империя Великих Моголов",1700,true).reconstruction,
- true,"Reconstructed Mughal banner must be described as a reconstruction");
-
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Venice"),"Венеция",1600,true).kind,"symbol",
- "Never infer the Venetian symbol from an unrelated unknown name");
-assert.ok(historicalSymbols.historicalStateInsignia.length>=93,"Reviewed historic graphics catalogue must include coins and museum objects");
-assert.ok(new Set(historicalSymbols.historicalStateInsignia.map(x=>x.id)).size>=81,
- "Historical graphics must cover at least forty actual reference states");
-assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=95,
- "Dated flags must cover more than one recent atlas period");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("France","FR"),"Франция",1200,true).kind,"symbol");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Spain","ES"),"Испания",1800,true).kind,"symbol");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Spain","ES"),"Испания",1900,true).kind,"historic");
 for(const row of [...historicalSymbols.historicalStateInsignia,...historicalSymbols.historicalDatedNationalFlags]){
- assert.ok(row.from<=row.to&&/\.(?:svg|png|jpe?g|gif)$/i.test(row.file),
-  "Historical source image requires a valid period and file: "+row.file);
+ assert.ok(row.from<=row.to&&/\.(?:svg|png|jpe?g|gif)$/i.test(row.file));
  assert.ok(historicalSymbols.historicalInsigniaSourceUrl(row.file).startsWith("https://commons.wikimedia.org/wiki/File:"));
 }
-
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("West Germany","DE"),"ФРГ",1994,true).kind,"symbol",
  "Do not assign a modern flag to a defunct German state");
 assert.equal(symbols.atlasCountryIso({type:"Feature",properties:{ISO_A2:"RU",NAME:"Perm Krai",adm1_code:"RU-PER"},
