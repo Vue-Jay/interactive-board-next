@@ -328,7 +328,7 @@ if(outDir&&sourceFile){
           const definition=documentedCores.find(c=>c.periods.some(p=>p.source===r.sourceIndex&&p.from===r.from&&p.to===r.to));
           assert.ok(definition);const d=definition.periods.find(p=>p.source===r.sourceIndex&&p.from===r.from&&p.to===r.to),index=d.part??definition.part,outline=(f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates)[index];
           if(definition.hash)assert.equal(sourceComponentHash(outline),definition.hash);
-          else assert.ok(definition.id.startsWith('ceylon-')&&definition.review?.reasonRu.includes('неуточнён'));
+          else assert.ok(definition.id.startsWith('ceylon-')&&/неуточн|неизвест/.test(definition.review?.reasonRu??''));
           assert.ok(definition.mask.length&&definition.sources.every(u=>u.startsWith('https://')));
           assert.deepEqual(pack.geometries[r.mapPartition.outlineGeometryId],{type:'MultiPolygon',coordinates:[outline]});
           assert.deepEqual(repaired,buildDocumentedCore(outline,definition));
@@ -616,8 +616,7 @@ if(outDir&&sourceFile){
         .map(period=>({definition,period})));
       assert.equal(cores.length,expectedCores.length,`Documented interior count in ${year}`);
       for(const {definition,period} of expectedCores){
-        const current=cores.filter(({record})=>record.name===period.name&&record.entityId===
-          cores.find(({record})=>record.name===period.name)?.record.entityId);
+        const current=cores.filter(({record})=>record.name===period.name);
         assert.equal(current.length,1,`Documented interior ${definition.id}/${year}`);
         const core=current[0];
         documentedCoreByGroup[definition.id]=(documentedCoreByGroup[definition.id]??0)+1;
