@@ -24,3 +24,11 @@ export function boardDraftLiveOps(before:Item,after:Item):LiveEditorOp[]{
  }
  return ops;
 }
+
+// Geometry has an independently sequenced, origin-checked stream. Even an
+// older live editor snapshot must never override the durable geometry.
+export function boardLiveContent(stored:Item,preview:Item|undefined):Item{
+ if(!preview||preview.id!==stored.id||preview.kind!==stored.kind)return stored;
+ return {...preview,x:stored.x,y:stored.y,width:stored.width,height:stored.height,rotation:stored.rotation,
+  connectorStart:stored.connectorStart,connectorEnd:stored.connectorEnd};
+}

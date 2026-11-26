@@ -122,13 +122,13 @@ import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./b
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from "./lektrusLiveEditorMerge";
-import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField} from "./boardLiveObjectEdits";
+import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
 import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
-import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, graphSegmentLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
+import { parseDocument, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, type EraserMode } from "./inkEraser";
 import { eraseStickerInk, resizeStickerInk, stickerAt, stickerInkPixels, stickerVisualBounds } from "./stickerInk";
@@ -4031,6 +4031,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       for(const item of normalized){
         const before=beforeById.get(item.id);
         if(!before||before===item)continue;
+        if(isInkItem(item))continue;
         const ops=boardObjectLiveOps(before,item);
         if(ops.length)workChannel.current.publishEdit(item.id,ops);
       }
@@ -7735,7 +7736,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // Measuring instruments are shared board objects, but rendered in a single
   // screen-space portal so their handles remain readable at any board zoom.
   const sharedInstruments = useMemo(() => items.filter(item => item.kind === "instrument").map(item=>{
-    const live=remoteLiveItems[item.id]??item;
+    const live=boardLiveContent(item,remoteLiveItems[item.id]);
     const pose=remoteObjectPoses[item.id];
     return pose?{...live,x:pose.x,y:pose.y,rotation:pose.rotation}:live;
   }), [items,remoteLiveItems,remoteObjectPoses]);
@@ -10428,9 +10429,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               // Collaborative editor previews may contain OLD geometry. Never let a
               // delayed preview put a dragged/resized object back on screen.
               const locallyHeld=gesture.current?.ids.includes(entry.item.id);
-              const live=locallyHeld?undefined:remoteLiveItems[entry.item.id];
+              const live=remoteLiveItems[entry.item.id];
               const pose=locallyHeld?undefined:remoteObjectPoses[entry.item.id];
-              const base=live??entry.item;
+              const base=boardLiveContent(entry.item,locallyHeld?undefined:live);
               const posed=pose?{...base,x:pose.x,y:pose.y,width:pose.width,
                 height:pose.height,rotation:pose.rotation,
                 ...(base.kind==="connector"?{

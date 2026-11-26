@@ -180,3 +180,11 @@ console.log("Lektrus collaborative editor merges, previews, and event wiring: ch
  assert.equal(live.isLiveBoardObjectField("ownerId"),false);
  console.log("Live object field coverage: "+samples.length+" object families");
 }
+
+{
+ const compiled=ts.transpileModule(read("src/boardLiveObjectEdits.ts"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ const live={};new Function("exports","require",compiled.outputText)(live,()=>exports);
+ const stored={id:"text",kind:"text",x:120,y:80,width:240,height:90,rotation:45,text:"original"};
+ const delayed={...stored,x:0,y:0,width:100,height:20,rotation:0,text:"new text"};
+ assert.deepEqual(live.boardLiveContent(stored,delayed),{...stored,text:"new text",connectorStart:undefined,connectorEnd:undefined});
+}
