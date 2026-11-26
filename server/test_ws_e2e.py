@@ -187,6 +187,9 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     legacy_update=(await http.get(url+f"?since_version={version}",headers=student)).json()
                     assert "upsert" in legacy_update["patches"][0]["items"]
                     assert apply_delta(base,legacy_update["patches"][0])==expected
+                    compact_update=(await http.get(url+f"?since_version={version}&ink_point_deltas=true",headers=student)).json()
+                    assert compact_update["patches"]==[delta]
+                    assert apply_delta(base,compact_update["patches"][0])==expected
                     assert (await http.get(url,headers=owner)).json()["document"]==expected
                     # Old version, wrong point count, and deleted stroke are
                     # never accepted as a new checkpoint.
