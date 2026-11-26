@@ -126,6 +126,36 @@ export function historicalTreatyPortCenters(year:number){
  return [{id:'historical-center-tianjin-treaty-port',group:'Тяньцзинь — концессия',from:1860,to:1947,year,lon:117.2,lat:39.13,title:'Тяньцзинь — иностранные концессии',description:`${context} ${perYear}Сводные годы начала и возвращения не являются точными датами изменения международного правового статуса. Точка отмечает исторический город, не границы концессий и не отдельную государственную территорию.`,url:'https://journals.open.tudelft.nl/iphs/article/download/2751/2962/',sources:status.transitions.map(t=>t.url)}];
 }
 
+// Dated municipal-control gaps restored from independent historical evidence.
+// These are city-level events, NOT cloned political geometry. In particular,
+// neither a 1632 Brazilian outline nor a 1663 Hudson colony outline is
+// backdated to the year of conquest. Years of transition are mixed-control.
+const datedGapTransitions=[
+  {id:'recife-dutch-capture-1630',from:1630,to:1630,lon:-34.881,lat:-8.054,
+   group:'Ресифи — нидерландский захват 1630 года',title:'Ресифи — захват нидерландцами (1630)',
+   description:'В 1630 году войска Нидерландской Вест-Индской компании овладели укреплённым портом Ресифи. На карте этого года раньше не было отдельной датированной записи о захвате. Точка отмечает исторический порт, но не даёт права закрашивать всё Пернамбуку: контроль внутренних районов оставался спорным.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/','https://www.loc.gov/item/2021668315/']},
+  {id:'olinda-dutch-capture-1630',from:1630,to:1630,lon:-34.855,lat:-8.008,
+   group:'Олинда — нидерландский захват 1630 года',title:'Олинда — захват нидерландцами (1630)',
+   description:'В феврале 1630 года нидерландский десант захватил Олинду. Точка соответствует историческому городу, а не границе фактического контроля на протяжении всего года.',sources:['https://militarymaps.rct.uk/other-17th-century-conflicts/olinda-1630-olinda-pernambuco-brazil-08deg0032s-34deg5119w-0','https://dutchportcities.globalasiaprogram.org/home/recife/']},
+  {id:'recife-fortification-1631',from:1631,to:1631,lon:-34.881,lat:-8.054,
+   group:'Ресифи — укрепления 1631 года',title:'Ресифи — оборона нидерландского порта (1631)',
+   description:'К июлю 1631 года инженер Андреас Древиш составил план укреплений Ресифи и острова Антониу-Ваш. Внутренние районы Пернамбуку не следует автоматически считать покорёнными. Это точка документированного укреплённого порта, не исторический контур колонии.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/','https://www.loc.gov/item/2021668315/']},
+  {id:'olinda-abandoned-1631',from:1631,to:1631,lon:-34.855,lat:-8.008,
+   group:'Олинда — оставление 1631 года',title:'Олинда — отход нидерландского гарнизона (1631)',
+   description:'В конце 1631 года нидерландские силы оставили и разрушили часть Олинды, сосредоточив оборону в Ресифи. Поэтому захват 1630 года не означает неизменного контроля над Олиндой во все последующие годы. Точка обозначает город и событие, не границу.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/']},
+  {id:'new-orange-dutch-return-1673',from:1673,to:1673,lon:-74.013,lat:40.705,
+   group:'Новые Нидерланды — возвращение 1673 года',title:'Новый Оранж — восстановление нидерландского управления (1673)',
+   description:'В 1673 году нидерландский флот вновь занял Нью-Йорк, город переименовали в Новый Оранж, а колониальную администрацию восстановили. Это подтверждённый переход власти, отсутствовавший в прежнем годовом представлении. Точка обозначает городской центр, а не старую максимальную территорию Новых Нидерландов.',sources:['https://history.nycourts.gov/legal-history-by-era/new-york-under-dutch-rule/','https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf']},
+  {id:'new-orange-english-return-1674',from:1674,to:1674,lon:-74.013,lat:40.705,
+   group:'Новые Нидерланды — возврат Англии 1674 года',title:'Новый Оранж / Нью-Йорк — возвращение английского управления (1674)',
+   description:'По Вестминстерскому мирному договору 1674 года колония вернулась под английское управление, город вновь получил название Нью-Йорк. Переход произошёл в течение года: 1674 нельзя целиком показывать ни исключительно нидерландским, ни исключительно английским. Точка обозначает город, не точную линию между колониями.',sources:['https://history.nycourts.gov/legal-history-by-era/colonial-new-york-under-british-rule/','https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf']}
+] as const;
+
+export function historicalDatedGapCenters(year:number){
+  return datedGapTransitions.filter(event=>event.from<=year&&year<=event.to)
+   .map(event=>({...event,id:`historical-center-${event.id}`,year,url:event.sources[0]}));
+}
+
 // Corsica was liberated on 4 October 1943. The island was already a French
 // liberated territory throughout 1944, before mainland France's liberation.
 // A point at Bastia documents a dated event, NEVER a political boundary.

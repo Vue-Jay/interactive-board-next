@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-26",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "mainUntouched": true,
+  "releaseReady": false,
+  "kind": "dated-city-administration-not-geopolitical-borders",
+  "verifiedYearEvents": [
+    {
+      "year": 1630,
+      "locations": [
+        "Recife",
+        "Olinda"
+      ],
+      "status": "dated-event-visible",
+      "polygon": "unresolved"
+    },
+    {
+      "year": 1631,
+      "locations": [
+        "Recife",
+        "Olinda"
+      ],
+      "status": "dated-event-visible",
+      "polygon": "unresolved"
+    },
+    {
+      "year": 1673,
+      "locations": [
+        "New Orange / New Netherland"
+      ],
+      "status": "dated-event-visible",
+      "polygon": "unresolved"
+    },
+    {
+      "year": 1674,
+      "locations": [
+        "New York / New Orange"
+      ],
+      "status": "dated-event-visible",
+      "polygon": "unresolved"
+    }
+  ],
+  "territorialCount": {
+    "open": 859,
+    "distinctRegionYears": 780,
+    "unchanged": true
+  },
+  "sourceUrls": [
+    "https://dutchportcities.globalasiaprogram.org/home/recife/",
+    "https://www.loc.gov/item/2021668315/",
+    "https://history.nycourts.gov/legal-history-by-era/new-york-under-dutch-rule/",
+    "https://history.nycourts.gov/legal-history-by-era/colonial-new-york-under-british-rule/",
+    "https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf"
+  ],
+  "nextGeometryWork": [
+    "georeference actual dated 1630-1631 Recife fortified sites",
+    "independently locate 1673 New Orange holdings rather than reuse 1663 colony"
+  ]
+}

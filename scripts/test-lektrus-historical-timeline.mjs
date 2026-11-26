@@ -5,7 +5,7 @@ import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
-import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,tianjinConcessionChronology,tianjinConcessionStatus,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalDatedGapCenters,tianjinConcessionChronology,tianjinConcessionStatus,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,historicalYearSourcesComparable,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
@@ -92,6 +92,27 @@ assert.deepEqual(tianjinConcessionStatus(1943).administrationChanges.map(c=>c.id
 assert.ok(historicalTreatyPortCenters(1943)[0].description.includes('20 мая'));
 assert.ok(historicalTreatyPortCenters(1947)[0].description.includes('15 сентября 1947'));
 assert.equal(historicalTreatyPortCenters(1948).length,0);
+// Confirm that the missing dated 1630–31 WIC city control and the 1673–74
+// Dutch reconquest appear as sourced year-specific atlas content, never as
+// fabricated polygons or imported 1632/1663 outlines.
+for(const [year,count] of [[1629,0],[1630,2],[1631,2],[1632,0],[1672,0],[1673,1],[1674,1],[1675,0]]){
+  const entries=historicalDatedGapCenters(year);
+  assert.equal(entries.length,count,`dated gap transition ${year}`);
+  for(const entry of entries){
+    assert.equal(entry.year,year);
+    assert.ok(entry.id.startsWith('historical-center-'));
+    assert.ok(entry.description.includes('Точка'));
+    assert.ok(entry.sources.length&&entry.sources.every(u=>u.startsWith('https://')));
+    assert.ok(Number.isFinite(entry.lon)&&Number.isFinite(entry.lat));
+  }
+}
+assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Ресифи')));
+assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Олинда')));
+assert.ok(historicalDatedGapCenters(1673)[0].title.includes('Новый Оранж'));
+assert.ok(historicalDatedGapCenters(1674)[0].description.includes('Вестминстерскому'));
+assert.ok(historicalCenterSources(historicalDatedGapCenters(1673)[0]).length>=2);
+assert.match(fs.readFileSync(new URL('../src/LektrusMapAtlas.tsx',import.meta.url),'utf8'),/historicalDatedGapCenters\(snapshot\.year\)/);
+
 assert.ok(historicalCenterSources(historicalTreatyPortCenters(1921)[0]).includes('https://history.state.gov/historicaldocuments/frus1920v01/d481'));
 assert.ok(historicalCenterSources(historicalTreatyPortCenters(1947)[0]).includes('https://treaties.un.org/doc/Publication/UNTS/Volume%2049/v49.pdf'));
 
