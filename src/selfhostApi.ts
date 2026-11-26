@@ -590,7 +590,7 @@ export function prepareSmallDocumentDelta(base:JsonObject,raw:JsonObject,expecte
     const bytes=new TextEncoder().encode(body).byteLength;
     // A JSON item with a nonempty id is at least 10 ASCII bytes; the actual
     // full request is larger still (metadata, commas, wrapper, etc.).
-    return bytes<MAX_DELTA_BYTES&&(delta.items?.point_edits||bytes<items.length*10)?{next,body}:null;
+    return bytes<MAX_DELTA_BYTES&&(inkGesture||bytes<items.length*10)?{next,body}:null;
   }catch{return null}
 }
 const reservedField=(key:string)=>["items","version","pilot_schema","__proto__","constructor","prototype"].includes(key);
@@ -767,7 +767,7 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
     if(prepared||delta){
       const body=prepared?.body??JSON.stringify({expected_version:expectedVersion,delta});
       const bytes=new TextEncoder().encode(body).byteLength;
-      if(prepared||(fullBody&&bytes<MAX_DELTA_BYTES&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength))){
+      if(prepared||(bytes<MAX_DELTA_BYTES&&(inkGesture||(fullBody&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength))))){
         try{
           // Never replay an ambiguous websocket write as HTTP. A lost ACK
           // takes the normal version-conflict recovery path.
@@ -997,7 +997,7 @@ function connectSelfhostBoard(
     if(!canCommitInk()||pendingCommits.size)return null;
     const request_id="ink_"+(++commitSequence);
     const wire=JSON.stringify({type:"ink_commit",request_id,...request});
-    if(new TextEncoder().encode(wire).byteLength>120000)return null;
+    if(new TextEncoder().encode(wire).byteLength>56*1024)return null;
     // A previously queued hover must not overtake the committed ink cursor.
     clearTimeout(cursorTimer);cursorTimer=undefined;pendingCursor=null;
     return new Promise((resolve,reject)=>{
@@ -1240,7 +1240,7 @@ function connectSelfhostBoard(
             if(Number.isSafeInteger(message.version)&&message.version>0)entry.resolve({version:message.version});
             else{
               const detail=message.detail;
-              if(jsonObject(detail)&&detail.code==="plan_limit")notifyPlanLimit(detail);
+              if(jsonObject(detail)&&detail.code==="plan_limit")notifyPlanLimit({resource:typeof detail.resource==="string"?detail.resource:undefined,message:typeof detail.message==="string"?detail.message:undefined});
               entry.reject(new SelfhostHttpError(Number.isInteger(message.status)?message.status:500,
                 typeof detail==="string"?detail:typeof detail?.message==="string"?detail.message:"Ошибка записи штриха",
                 jsonObject(detail)&&typeof detail.code==="string"?detail.code:undefined));
