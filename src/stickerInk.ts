@@ -20,9 +20,9 @@ export function stickerAt(items: readonly Item[], p: Point): Item | undefined {
   }
 }
 
-export function makeStickerInk(item: Item, ink: Omit<StickerInk,"points">, path: readonly Point[], zoom: number): StickerInk {
+export function makeStickerInk(item: Item, ink: Omit<StickerInk,"points">, path: readonly Point[], zoom: number, alreadySimplified=false): StickerInk {
   return {...ink,weight:ink.weight/Math.min(item.width,item.height),
-    points:simplifyStrokePath(path,zoom).map(p=>{
+    points:(alreadySimplified?path:simplifyStrokePath(path,zoom)).map(p=>{
       const local=stickerLocalPoint(item,p);
       return {x:local.x/item.width,y:local.y/item.height};
     })};
