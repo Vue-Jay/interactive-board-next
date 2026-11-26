@@ -44,7 +44,12 @@ def counts(base, document, delta):
 
 async def ink_history_group(conn, board_id, user, base, document, delta, gesture):
     """Only a single authored stroke or sticker-ink edit can share a history group."""
-    if not gesture or base is None or not 1 <= len(gesture) <= 128:
+    if not gesture or not 1 <= len(gesture) <= 128:
+        return None
+    if base is None:
+        items = document.get("items", [])
+        if len(items)==1 and items[0].get("id")==gesture and items[0].get("kind") in ("pen","marker") and items[0].get("createdBy")==str(user["id"]):
+            return str(user["id"])+":"+gesture
         return None
     try:
         old = item_map(base["items"])
