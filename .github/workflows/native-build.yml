@@ -26,23 +26,20 @@ on:
     branches:
       - 'main'
     paths:
+      # Capacitor embeds the web application, including board tools and assets.
+      - 'src/**'
+      - 'public/**'
       - 'android/**'
       - 'ios/**'
       - 'capacitor.config.ts'
-      - 'src/native*'
-      - 'src/AndroidUpdateGate.tsx'
-      - 'src/androidUpdatePolicy.ts'
-      - 'src/lektrusAndroidUpdate.css'
-      - 'src/AuthScreen.tsx'
-      - 'src/auth*.ts'
-      - 'src/selfhostApi.ts'
-      - 'src/appEntry*'
-      - 'src/main.tsx'
+      - 'vite.config.ts'
+      - 'index.html'
       - 'package.json'
       - 'package-lock.json'
       - 'scripts/test-native*'
       - 'scripts/test-signed-android*'
       - 'scripts/run-android*'
+      - '.github/workflows/native-build.yml'
   workflow_dispatch:
     inputs:
       publish_android:
