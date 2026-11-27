@@ -728,6 +728,28 @@ function editorialSegments(base,derived=[]){
    r={...r,name:'Kingdom of Kandy',nameRu:'Королевство Канди',nameStatus:'reviewed',entityId:identity('reviewed-polity','kingdom-of-kandy'),sourceMemberOf:base.memberOf,memberOf:[]};
    note(d.reason,d.sources,d.reasonRu);
   }
+  // An archaeological civilisation or a plural collection of independent
+  // poleis is not ONE sovereign state with a single historical boundary.
+  // Keep the imported footprint accessible through the optional thematic
+  // settlement layer, never as a merged country in the political atlas.
+  if(base.role==='polity'&&/^greek city.states$/i.test(base.sourceName)){
+   r={...r,role:'settlement',sourceRole:'polity',
+    name:'Greek poleis (non-unified aggregate; outline unverified)',
+    nameRu:'Греческие полисы (не единое государство; контур не подтверждён)',
+    nameStatus:'reviewed'};
+   note('Greek poleis were multiple distinct political units, with alliances and hegemony changing across centuries. This imported blanket region must not appear as one sovereign Greek state. Keep it only as an approximate thematic distribution, not a surveyed set of city boundaries.',
+    ['https://www.metmuseum.org/essays/greek-art-in-the-archaic-period','https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC'],
+    'Греческие полисы были отдельными политическими единицами, а союзы и гегемонии менялись. Импортированный сводный контур не должен отображаться как одна суверенная Греция. Он сохранён только в дополнительном тематическом слое, без претензии на точные границы городов-государств.');
+  }
+  if(base.role==='polity'&&/^indus valley civili[sz]ation$/i.test(base.sourceName)){
+   r={...r,role:'settlement',sourceRole:'polity',
+    name:'Indus / Harappan civilisation (archaeological distribution)',
+    nameRu:'Индская (хараппская) цивилизация (археологический ареал)',
+    nameStatus:'reviewed'};
+   note('The Indus civilisation comprises many urban and other sites; scholarship does not establish one unified sovereignty over the entire archaeological cultural distribution. Preserve the imported region in the optional thematic layer as an approximate distribution, not as an attested state border.',
+    ['https://openstax.org/books/world-history-volume-1/pages/3-4-the-indus-valley-civilization','https://link.springer.com/article/10.1007/s10814-020-09147-9','https://www.harappa.com/content/harappan-state-was-it-or-wasnt-it'],
+    'Индская цивилизация охватывала множество поселений. Единого доказанного суверенного государства на всём археологическом ареале исследователи не установили; существуют разные модели политической организации. Исходная геометрия сохранена только в дополнительном тематическом слое как приблизительная область, а не как граница государства.');
+  }
   if(base.role==='polity'&&base.sourceName==='Viking settlements'){
    r={...r,role:'settlement',sourceRole:'polity',nameRu:'Поселения скандинавов (викингов)',nameStatus:'reviewed'};
    note('The source aggregates settlements of different Norse communities, across different rulers and periods. Preserve the source footprint in a thematic layer, not as a single sovereign polity. Exact settlement extent and chronology still require independent review.',['https://www.metmuseum.org/pt/essays/the-vikings-780-1100','https://en.natmus.dk/historical-knowledge/denmark/prehistoric-period-until-1050-ad/the-viking-age/power-and-aristocracy/magnates-and-kings/'],'Исходник объединяет поселения разных скандинавских общин, правителей и эпох. Контур сохранён в тематическом слое расселения, а не как единое государство. Точные размеры и датировки поселений требуют отдельной сверки.');

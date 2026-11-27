@@ -3,22 +3,23 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "28 methodological mismatches explained, political geometry NOT approved; whole atlas rebuild still pending",
+  "status": "37 audit comparability cases explained; post-collapse Teotihuacan and two collective pseudo-states corrected; geometry unverified",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 28,
+    "explainedComparisonCases": 37,
     "previouslyExplained": 5,
-    "newlyExplained": 23,
-    "remainingWithoutExplanation": 448,
+    "newlyExplained": 32,
+    "remainingWithoutExplanation": 439,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
-    "territorialComponentYearsStillOpenExpected": 769
+    "territorialComponentYearsStillOpenExpected": 769,
+    "nonpoliticalCollectives": 9
   },
-  "warning": "The 28 entries are audit comparability explanations, not proven border fixes. They must not be subtracted from 769 open territorial component-years, and their geometry remains historically unverified.",
+  "warning": "37 explanations are comparison-method corrections, not proven independent border fixes. The 769 territorial component-year queue remains pending full annual rebuild.",
   "cases": [
     {
       "id": "2010:119",
@@ -463,6 +464,150 @@
       "sources": [
         "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
         "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-300:29",
+      "year": -300,
+      "archiveName": "Greek city-states",
+      "effectiveCandidateName": "Greek City-States",
+      "archiveSha256": "d181645f7963e893fc5502a496c14927316939a2a38cba7722a38b75f80cf633",
+      "candidateGeometryId": "2b0f105777409dbbbf7153b77c4f635df5a3a08ed8d52c0837ad5e6d02c5e6d4",
+      "iou": 0.196667,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Сравнение двух сводных географий греческих полисов не подтверждает их объединения в единое государство. Полисы имели разную автономию и меняющиеся союзы, а точные границы каждого не восстановлены.",
+      "sources": [
+        "https://www.metmuseum.org/essays/greek-art-in-the-archaic-period",
+        "https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-323:27",
+      "year": -323,
+      "archiveName": "Greek city-states",
+      "effectiveCandidateName": "Greek City-States",
+      "archiveSha256": "3e90c33ce668d9559b52b501a8a8d5607e4cc86c4131dac30ae9aa4d6e9a7616",
+      "candidateGeometryId": "16fbbd7268dc81ea123fa5ecdcec10c1736e2f4d97458dc873ff93fcf2b4d306",
+      "iou": 0.16944,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Сравнение двух сводных географий греческих полисов не подтверждает их объединения в единое государство. Полисы имели разную автономию и меняющиеся союзы, а точные границы каждого не восстановлены.",
+      "sources": [
+        "https://www.metmuseum.org/essays/greek-art-in-the-archaic-period",
+        "https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-400:98",
+      "year": -400,
+      "archiveName": "Greek city-states",
+      "effectiveCandidateName": "Greek City-States",
+      "archiveSha256": "7c657b265b2896744efa2c56dd66f0f4a8e647f9dd3c3fbe2c4575515e4b260b",
+      "candidateGeometryId": "7ff3d5848fa82da69120a03289c6fb3a8709fb11f3fe5f8a807d595d52e0d010",
+      "iou": 0.155223,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Сравнение двух сводных географий греческих полисов не подтверждает их объединения в единое государство. Полисы имели разную автономию и меняющиеся союзы, а точные границы каждого не восстановлены.",
+      "sources": [
+        "https://www.metmuseum.org/essays/greek-art-in-the-archaic-period",
+        "https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-500:11",
+      "year": -500,
+      "archiveName": "Greek city-states",
+      "effectiveCandidateName": "Greek City-States",
+      "archiveSha256": "f72bc06ca45a9f680f20ef6007aaccd13a929cd1b632bd0fb41f161cb51ba3f6",
+      "candidateGeometryId": "8318b02b99739c7982f321ac03d1a86f1ed37805d459c95f518eed77aaa67f77",
+      "iou": 0.167065,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Сравнение двух сводных географий греческих полисов не подтверждает их объединения в единое государство. Полисы имели разную автономию и меняющиеся союзы, а точные границы каждого не восстановлены.",
+      "sources": [
+        "https://www.metmuseum.org/essays/greek-art-in-the-archaic-period",
+        "https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-500:18",
+      "year": -500,
+      "archiveName": "Greek city-states",
+      "effectiveCandidateName": "Greek City-States",
+      "archiveSha256": "f72bc06ca45a9f680f20ef6007aaccd13a929cd1b632bd0fb41f161cb51ba3f6",
+      "candidateGeometryId": "8318b02b99739c7982f321ac03d1a86f1ed37805d459c95f518eed77aaa67f77",
+      "iou": 0.065222,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Сравнение двух сводных географий греческих полисов не подтверждает их объединения в единое государство. Полисы имели разную автономию и меняющиеся союзы, а точные границы каждого не восстановлены.",
+      "sources": [
+        "https://www.metmuseum.org/essays/greek-art-in-the-archaic-period",
+        "https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-500:98",
+      "year": -500,
+      "archiveName": "Greek city-states",
+      "effectiveCandidateName": "Greek City-States",
+      "archiveSha256": "f72bc06ca45a9f680f20ef6007aaccd13a929cd1b632bd0fb41f161cb51ba3f6",
+      "candidateGeometryId": "8318b02b99739c7982f321ac03d1a86f1ed37805d459c95f518eed77aaa67f77",
+      "iou": 0.159943,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Сравнение двух сводных географий греческих полисов не подтверждает их объединения в единое государство. Полисы имели разную автономию и меняющиеся союзы, а точные границы каждого не восстановлены.",
+      "sources": [
+        "https://www.metmuseum.org/essays/greek-art-in-the-archaic-period",
+        "https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-700:118",
+      "year": -700,
+      "archiveName": "Greek city-states",
+      "effectiveCandidateName": "Greek City-States",
+      "archiveSha256": "83515442984c57d4939c7fb236f16e8ab88411b76a26214cdf86b390ae36965c",
+      "candidateGeometryId": "38b751b121a876d9b0bcf4a05451b519d23bf42fe2c8cf7344e91ab9267c5b13",
+      "iou": 0.280178,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Сравнение двух сводных географий греческих полисов не подтверждает их объединения в единое государство. Полисы имели разную автономию и меняющиеся союзы, а точные границы каждого не восстановлены.",
+      "sources": [
+        "https://www.metmuseum.org/essays/greek-art-in-the-archaic-period",
+        "https://www.cambridge.org/core/books/abs/greek-city-states/beyond-the-single-city/1A7CA6B3A73D72C1B622B0A688B528FC"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-2000:19",
+      "year": -2000,
+      "archiveName": "Indus valley civilization",
+      "effectiveCandidateName": "Indus Valley Civilization",
+      "archiveSha256": "9d08a2390ca3d82f46eccfe97f44949922b69e4bb733f0fc2120e579de52a5d3",
+      "candidateGeometryId": "f1fe9f3ab70172673a7b202e0bc10c7f8cb119140cfb9e4e2fdf2aab38693f7c",
+      "iou": 0.632579,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Археологический ареал Индской цивилизации не является доказанной границей одного суверенного государства: гипотезы политической организации расходятся.",
+      "sources": [
+        "https://openstax.org/books/world-history-volume-1/pages/3-4-the-indus-valley-civilization",
+        "https://link.springer.com/article/10.1007/s10814-020-09147-9"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-3000:20",
+      "year": -3000,
+      "archiveName": "Indus valley civilization",
+      "effectiveCandidateName": "Indus Valley Civilization",
+      "archiveSha256": "2cf107e2f0d4f9b5427b293f19b11fffe7c1134f52320df4f94b4889b978f033",
+      "candidateGeometryId": "84dd363b7880299bd540f4d22c2fbbd9bf2db3461268eb91d4f509d42d2a6ad5",
+      "iou": 0.006532,
+      "classification": "noncomparable-archaeological-or-polycentric-aggregate",
+      "reasonRu": "Археологический ареал Индской цивилизации не является доказанной границей одного суверенного государства: гипотезы политической организации расходятся.",
+      "sources": [
+        "https://openstax.org/books/world-history-volume-1/pages/3-4-the-indus-valley-civilization",
+        "https://link.springer.com/article/10.1007/s10814-020-09147-9"
       ],
       "geometryHistoricallyConfirmed": false
     }

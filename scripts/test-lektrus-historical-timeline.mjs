@@ -58,6 +58,25 @@ assert.deepEqual(teotihuacanFixture.records.map(r=>[r.from,r.to,r.geometryStatus
 assert.ok(teotihuacanFixture.records[1].review?.reasonRu?.includes('неопределённой'));
 assert.ok(teotihuacanFixture.records[2].review?.reasonRu?.includes('После 650'));
 assert.ok(teotihuacanFixture.records[2].review.sources.length>=2);
+// Civilisations and many independently governed city-states are not a single
+// sovereign polity: retain their source outlines as optional thematic overlays.
+for(const [raw,from,to,expectedRu] of [
+ ['Greek City-States',-700,-300,'Греческие полисы'],
+ ['Indus Valley Civilization',-3000,-1500,'Индская (хараппская) цивилизация']
+]){
+ const reviewed=normalizeHistoricalSource({type:'FeatureCollection',features:[feature(raw,from,to)]});
+ assert.equal(reviewed.records.length,1);
+ const item=reviewed.records[0];
+ assert.equal(item.role,'settlement',raw);
+ assert.equal(item.sourceRole,'polity',raw);
+ assert.equal(item.geometryStatus,'candidate',raw);
+ assert.equal(item.sourceName,raw);
+ assert.ok(item.nameRu.startsWith(expectedRu),raw);
+ assert.ok(item.review?.reasonRu?.includes('тематическ'),raw);
+ assert.ok(item.review?.sources?.length>=2,raw);
+ assert.equal(reviewed.records.filter(r=>r.role==='polity').length,0,
+   'A civilisation or city-state grouping must never become one sovereign country: '+raw);
+}
 const settlementFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Viking settlements',1028,1325)]});
 assert.equal(settlementFixture.records[0].role,'settlement');
 assert.equal(settlementFixture.records[0].sourceRole,'polity');
