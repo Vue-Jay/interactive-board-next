@@ -605,7 +605,7 @@ function editorialSegments(base,derived=[]){
  // the Roman Republics or Napoleon's annexation; year-boundary transitions
  // have a separate warning and never imply a year-round uniform ruler.
  if(base.role==='polity'&&base.sourceName==='Papal States')
-  for(const year of [1798,1799,1800,1809,1810,1814,1815,1849,1850,1860,1861,1870,1871])cut(year);
+  for(const year of [1791,1797,1798,1799,1800,1808,1809,1810,1814,1815,1849,1850,1859,1860,1861,1870,1871])cut(year);
  // Distinguish the Mạc seizure in 1527, the restored Lê from 1533,
  // the Trịnh/Nguyễn division and the Tây Sơn–Nguyễn civil war.
  if(base.role==='polity'&&base.sourceName==='Đại Việt')
@@ -618,7 +618,7 @@ function editorialSegments(base,derived=[]){
  const british=base.sourceName==='Kingdom of Great Britain'&&base.sourceWikidata==='Q23666';
  const britishComponent=base.components.includes('Kingdom of Great Britain');
  if(british||britishComponent){cut(1801);cut(1927)}
- if(british){cut(2000);cut(2024)}
+ if(british){cut(1900);cut(2000);cut(2024)}
  for(const [name,qid,year] of reviewedNames)if(base.sourceName===name&&base.sourceWikidata===qid)cut(year);
  if(base.sourceName==='First Hellenic Republic'&&base.sourceWikidata==='Q528546'){cut(1832);cut(1924);cut(1935)}
  if(base.sourceName==='Denmark-Norway'&&base.sourceWikidata==='Q62651')cut(1814);
@@ -670,13 +670,23 @@ function editorialSegments(base,derived=[]){
   // invent successor borders from the old outline.
   if(base.role==='polity'&&base.sourceName==='Papal States'){
    const sources=['https://www.archontology.org/nations/italy/papal_states/01_polity.php',
-    'https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=10&TipoPag=contesto',
+    'https://www.treccani.it/enciclopedia/legazioni-e-delegazioni_%28Enciclopedia-Italiana%29/',
     'https://www.encyclopedia.com/religion/encyclopedias-almanacs-transcripts-and-maps/states-church'];
    const thematic=(en,ru,reason,reasonRu)=>{
     r={...r,role:'settlement',sourceRole:'polity',name:en,nameRu:ru,nameStatus:'reviewed'};
     note(reason,sources,reasonRu);
    };
-   if(from===1798||from===1799){
+   if(from>=1791&&to<=1796){
+    r={...r,name:'Papal States (Avignon and Venaissin detached; historical outline unverified)',
+     nameRu:'Папская область (после утраты Авиньона и Венессена; граница не проверена)',nameStatus:'reviewed'};
+    note('France annexed Avignon and the Comtat Venaissin in 1791. This imported historic outline must not silently retain those enclaves.',sources,
+     'В 1791 году Франция присоединила Авиньон и графство Венессен; исходный контур не подтверждает их дальнейшую папскую принадлежность.');
+   }else if(from===1797){
+    thematic('Papal States (1797 Treaty of Tolentino; territorial transition)',
+     'Папская область (Толентинский договор 1797 года; переход территории)',
+     'The Treaty of Tolentino forced the cession of Bologna, Ferrara and Romagna in 1797; this former source outline is not a proven before/after border.',
+     'По Толентинскому договору 1797 года уступлены Болонья, Феррара и Романья. Единый исходный контур не показывает переход внутри года.');
+   }else if(from===1798||from===1799){
     thematic('Papal lands / Roman Republic (1798–1799; historic source footprint)',
      'Папские земли / Римская республика (1798–1799; контур прежнего владения)',
      'The Roman Republic was proclaimed in February 1798 and ended in September 1799. A Papal sovereignty polygon for either entire year would be false; this source footprint is thematic.',
@@ -686,6 +696,11 @@ function editorialSegments(base,derived=[]){
      'Папская область (восстановление в 1800 году; контур не проверен)',
      'Restoration of papal administration in 1800 was not a uniform authority throughout that year.',
      'Восстановление папского управления в 1800 году не означает одинаковую власть на всей территории в течение полного года.');
+   }else if(from===1808){
+    thematic('Papal States (1808 French occupation and Marches annexation; transition)',
+     'Папская область (1808: оккупация Рима и аннексия Марке; переходный контур)',
+     'French troops occupied Rome and the Marches were annexed to the Napoleonic Kingdom of Italy in 1808; the old Papal polygon no longer establishes one uniform ruler.',
+     'В 1808 году французские войска заняли Рим, а Марке были присоединены к наполеоновскому Итальянскому королевству. Единый папский полигон неверен.');
    }else if(from===1809||from>=1810&&to<=1813){
     thematic('Former Papal States under Napoleonic annexation (source footprint)',
      'Бывшая Папская область при наполеоновской аннексии (исторический ареал)',
@@ -701,6 +716,11 @@ function editorialSegments(base,derived=[]){
      'Римская республика / восстановление папской власти (переходный 1849 год)',
      'A Roman Republic was proclaimed 9 February 1849 and suppressed in July. Do not paint the whole year as continuously ruled by the Pope.',
      '9 февраля 1849 года провозглашена Римская республика; в июле она была подавлена. Папская власть не была непрерывной в течение 1849 года.');
+   }else if(from===1859){
+    thematic('Papal States (Romagna secession in 1859; transition)',
+     'Папская область (выход Романьи в 1859 году; переходный контур)',
+     'Romagna broke from papal rule during the 1859 upheavals before formal annexation in 1860. A single Papal outline for 1859 masks changing control.',
+     'В 1859 году в Романье произошло отстранение папской администрации; формальное присоединение последовало в 1860 году. Карта 1859 года переходная.');
    }else if(from===1860){
     thematic('Papal States (1860 territorial cessions; unreconstructed outline)',
      'Папская область (территориальные уступки 1860 года; граница не восстановлена)',

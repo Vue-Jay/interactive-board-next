@@ -84,12 +84,16 @@ for(const [year,role,status] of [[1450,'polity','candidate'],[1466,'settlement',
 }
 const goldenHordeTimeline=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Golden Horde',1450,1510)]}).records;
 assert.deepEqual(goldenHordeTimeline.map(r=>[r.from,r.to,r.role,r.geometryStatus]),[[1450,1465,'polity','candidate'],[1466,1501,'settlement','candidate'],[1502,1510,'polity','rejected']]);
+const papalRevolutionary=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Papal States',1789,1797)]}).records;
+assert.deepEqual(papalRevolutionary.map(r=>[r.from,r.to,r.role]),[
+ [1789,1790,'polity'],[1791,1796,'polity'],[1797,1797,'settlement']]);
+assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
 // Papal sovereignty was interrupted several times. Never project a former
 // territorial outline as an uninterrupted state, nor synthesize successor borders.
 const papalNapoleonic=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Papal States',1797,1815)]}).records;
 assert.deepEqual(papalNapoleonic.map(r=>[r.from,r.to,r.role,r.geometryStatus]),[
- [1797,1797,'polity','candidate'],[1798,1798,'settlement','candidate'],[1799,1799,'settlement','candidate'],
- [1800,1808,'polity','candidate'],[1809,1809,'settlement','candidate'],
+ [1797,1797,'settlement','candidate'],[1798,1798,'settlement','candidate'],[1799,1799,'settlement','candidate'],
+ [1800,1807,'polity','candidate'],[1808,1808,'settlement','candidate'],[1809,1809,'settlement','candidate'],
  [1810,1813,'settlement','candidate'],[1814,1814,'settlement','candidate'],[1815,1815,'polity','candidate']]);
 for(const r of papalNapoleonic.filter(r=>r.role==='settlement')){
  assert.equal(r.sourceRole,'polity');assert.equal(r.geometryId,sha256(JSON.stringify(square())));
@@ -98,7 +102,7 @@ for(const r of papalNapoleonic.filter(r=>r.role==='settlement')){
 const papalRisorgimento=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Papal States',1848,1872)]}).records;
 assert.deepEqual(papalRisorgimento.map(r=>[r.from,r.to,r.role,r.geometryStatus]),[
  [1848,1848,'polity','candidate'],[1849,1849,'settlement','candidate'],
- [1850,1859,'polity','candidate'],[1860,1860,'settlement','candidate'],
+ [1850,1858,'polity','candidate'],[1859,1859,'settlement','candidate'],[1860,1860,'settlement','candidate'],
  [1861,1869,'polity','candidate'],[1870,1870,'settlement','candidate'],
  [1871,1872,'polity','rejected']]);
 assert.ok(papalRisorgimento.find(r=>r.from===1861).nameRu.includes('граница не проверена'));
@@ -106,6 +110,12 @@ assert.ok(papalRisorgimento.find(r=>r.from===1871).review?.reasonRu?.includes('1
 const ukScopeFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Kingdom of Great Britain',1900,1920,square(),'Q23666')]}).records;
 assert.ok(ukScopeFixture.every(r=>r.name.includes('United Kingdom')));
 assert.ok(ukScopeFixture.every(r=>r.review?.reasonRu?.includes('заморские компоненты')));
+const ukMultiEra=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Kingdom of Great Britain',1880,1930,square(),'Q23666')]}).records;
+assert.deepEqual(ukMultiEra.map(r=>[r.from,r.to]),[[1880,1899],[1900,1926],[1927,1930]]);
+assert.ok(!ukMultiEra[0].review?.reasonRu?.includes('заморские компоненты'));
+assert.ok(ukMultiEra[1].review?.reasonRu?.includes('заморские компоненты'));
+assert.ok(!ukMultiEra[2].review?.reasonRu?.includes('заморские компоненты'));
+
 // An ethnonym, dynastic union and nominally unified divided state cannot be
 // painted as single sovereign-polity boundaries.
 for(const [name,year,expectedName] of [
