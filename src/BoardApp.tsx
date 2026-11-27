@@ -8107,10 +8107,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit([...itemsRef.current,instrument]);
   };
   const updateSharedInstrument=(id:string,patch:Partial<Item>)=>{
-    commit(itemsRef.current.map(item=>item.id===id&&item.kind==="instrument"?{...item,...patch}:item));
+    const current=itemsRef.current;
+    const item=current.find(candidate=>candidate.id===id&&candidate.kind==="instrument");
+    // A peer can lock or remove an instrument while its pointer is captured.
+    // Re-check the current authoritative item, not the rendered gesture prop.
+    if(!canEdit||!item||item.locked)return;
+    commit(current.map(candidate=>candidate.id===id?{...candidate,...patch}:candidate));
   };
   const removeSharedInstrument=(id:string)=>{
-    commit(itemsRef.current.filter(item=>item.id!==id));
+    const current=itemsRef.current;
+    const item=current.find(candidate=>candidate.id===id&&candidate.kind==="instrument");
+    if(!canEdit||!item||item.locked)return;
+    commit(current.filter(candidate=>candidate.id!==id));
   };
   const visibleItems = useMemo(() => items.filter((item) => !item.hidden && item.kind !== "instrument"), [items]);
   // Same IDs, same z-order runs and same Canvas/DOM renderer. The network

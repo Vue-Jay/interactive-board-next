@@ -5,6 +5,7 @@ from functools import lru_cache
 import os
 import sys
 import struct
+import time
 import zlib
 import re
 from pathlib import Path
@@ -527,6 +528,7 @@ def check_shared_eraser_sync(browser):
                     }));
                 }""",points)
             held_http=[]
+            observed_pixel_ms=[]
             def hold_durable_http(route):
                 if route.request.method in ("PUT","PATCH"):held_http.append(route)
                 else:route.continue_()
@@ -550,20 +552,24 @@ def check_shared_eraser_sync(browser):
                 try:
                     writer.mouse.move(x,y);writer.mouse.down()
                     writer.mouse.move(x+140,y,steps=14)
+                    observed_start=time.monotonic()
                     for _ in range(60):
                         writer.wait_for_timeout(25)
                         if control["motion"] and (control["held"] or held_http):
                             frame=control["motion"][-1]
                             if ink_pixels(eraser,[{"x":frame["x"],"y":frame["y"]}])==[True]:break
                     else:raise AssertionError("Peer pixels absent while all durable writes are blocked")
+                    observed_pixel_ms.append((kind+" initial",round((time.monotonic()-observed_start)*1000,1)))
                     assert {i["id"] for i in inks(read())}==original
                     first=control["motion"][-1]
                     writer.mouse.move(x+220,y,steps=10)
+                    observed_start=time.monotonic()
                     for _ in range(60):
                         writer.wait_for_timeout(25)
                         frame=control["motion"][-1]
                         if frame["seq"]>first["seq"] and ink_pixels(eraser,[{"x":frame["x"],"y":frame["y"]}])==[True]:break
                     else:raise AssertionError("Growing stroke stopped while database ACK was blocked")
+                    observed_pixel_ms.append((kind+" extension",round((time.monotonic()-observed_start)*1000,1)))
                     assert eraser.locator(".remote-live-ink-layer").count()==0
                     writer.mouse.up()
                 finally:
@@ -585,10 +591,12 @@ def check_shared_eraser_sync(browser):
                 try:
                     assert ink_pixels(writer,[center])==[True]
                     eraser.mouse.move(target["x"],target["y"]);eraser.mouse.down()
+                    observed_start=time.monotonic()
                     for _ in range(60):
                         eraser.wait_for_timeout(25)
                         if control["motion"] and (control["held"] or held_http) and ink_pixels(writer,[center])==[False]:break
                     else:raise AssertionError(f"Peer {mode} eraser did not clear pixels before its database ACK")
+                    observed_pixel_ms.append((mode+" erase",round((time.monotonic()-observed_start)*1000,1)))
                     assert any(i["id"]==stroke["id"] for i in inks(read()))
                     eraser.mouse.up()
                 finally:
@@ -607,6 +615,7 @@ def check_shared_eraser_sync(browser):
                         if item["id"] not in original:
                             for page in (writer,eraser):stored(page,item["id"],False)
                 print(f"Fast {kind} and {mode} eraser rendered actual pixels while all durable writes were blocked.")
+            print("Post-input to observed peer pixels (ms; includes polling, excludes mouse dispatch):",json.dumps(observed_pixel_ms))
             for writer,eraser,mode,kind in ((pupil,teacher,"stroke","pen"),(teacher,pupil,"partial","marker")):
                 writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
                 eraser.locator('[data-interface-control="eraser"]:visible').first.click()
@@ -1422,10 +1431,13 @@ def check_undo_reconnect_sync(browser):
                     row=wait_api(actor,lambda d:any(i["kind"]=="instrument" and i.get("instrumentType")==kind for i in d["items"]),kind+" instrument missing")
                     obj=next(i for i in row["items"] if i["kind"]=="instrument")
                     selector=f'[data-shared-instrument="{obj["id"]}"]'
-                    for page in (actor,receiver):expect(page.locator(selector)).to_be_visible(timeout=15000)
-                    target=actor.locator(selector+" .geometry-instrument-body")
+                    body=selector+" .geometry-instrument-body"
+                    # The portal anchor intentionally has zero area. Its transformed
+                    # body is the actual visible and interactive instrument.
+                    for page in (actor,receiver):expect(page.locator(body)).to_be_visible(timeout=15000)
+                    target=actor.locator(body)
                     box=target.bounding_box()
-                    before=receiver.locator(selector).bounding_box()
+                    before=receiver.locator(body).bounding_box()
                     x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
                     actor.mouse.move(x,y);actor.mouse.down()
                     try:
@@ -1433,12 +1445,26 @@ def check_undo_reconnect_sync(browser):
                         receiver.wait_for_function("""({selector,x,y})=>{
                             const e=document.querySelector(selector);if(!e)return false;
                             const b=e.getBoundingClientRect();return Math.hypot(b.x-x,b.y-y)>20;
-                        }""",arg={"selector":selector,"x":before["x"],"y":before["y"]},timeout=5000)
+                        }""",arg={"selector":body,"x":before["x"],"y":before["y"]},timeout=5000)
                     finally:actor.mouse.up()
                     moved=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"])>20 for i in d["items"]),kind+" move not saved")
                     for page in (actor,receiver):geometry_synced(page,moved["items"])
+                    def rendered_scale(page):
+                        return page.locator(body).evaluate("e=>{const m=new DOMMatrix(getComputedStyle(e).transform);return Math.hypot(m.a,m.b)}")
+                    initial_scales=[rendered_scale(page) for page in (actor,receiver)]
                     actor.locator(selector+' button[aria-label="Уменьшить инструмент"]').click()
-                    wait_api(actor,lambda d:any(i["id"]==obj["id"] and i["instrumentScale"]<obj["instrumentScale"] for i in d["items"]),kind+" scale not saved")
+                    scaled=wait_api(actor,lambda d:any(i["id"]==obj["id"] and i["instrumentScale"]<obj["instrumentScale"] for i in d["items"]),kind+" scale not saved")
+                    expected_scale=next(i["instrumentScale"] for i in scaled["items"] if i["id"]==obj["id"])
+                    for page,initial_scale in zip((actor,receiver),initial_scales):
+                        page.wait_for_function("""({body,target})=>{
+                            const e=document.querySelector(body);if(!e)return false;
+                            const m=new DOMMatrix(getComputedStyle(e).transform);
+                            return Math.abs(Math.hypot(m.a,m.b)-target)<0.02;
+                        }""",arg={"body":body,"target":initial_scale*expected_scale/obj["instrumentScale"]},timeout=15000)
+                        page.wait_for_function("""({ident,id,scale})=>{
+                            const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                            return !!raw&&JSON.parse(raw).items.some(i=>i.id===id&&Math.abs(i.instrumentScale-scale)<0.001);
+                        }""",arg={"ident":ident,"id":obj["id"],"scale":expected_scale},timeout=15000)
                     actor.locator(selector+' button[aria-label="Убрать инструмент"]').click()
                     wait_api(actor,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" instrument deletion not saved")
                     expect(receiver.locator(selector)).to_have_count(0,timeout=15000)

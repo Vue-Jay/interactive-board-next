@@ -125,3 +125,10 @@ Progress is measured by 20 equally counted acceptance checkpoints, not percentag
 | 20 | Exact candidate head frontend and server workflows complete | open |
 
 Baseline: 13/20 evidenced (65%), 7/20 open (35%). Never merge on percentage alone; all checkpoints must pass. No publication.
+
+
+## Measurable gate update: 14/20 (70%)
+
+Exact candidate d4cfbfa frontend run 46021660456 passed all steps, including transient attachment ledger retry, offline cancellation and permanent endpoint handling. Server run 46021660433 verified the held drag revision race, real attachment upload/replay, four detached subject editor concurrent transforms, save-after-delete denial and ten additional UI object creation/peer display/response/deletion cases. It stopped on the measuring instrument portal anchor: the actual instrument body was rendered, but the zero-size anchor cannot satisfy a Playwright visible assertion. The release gate remains open. Corrected the test to use the rendered body, check peer scale and both saved copies; also guard instrument updates/deletion against peer lock/removal during a captured gesture. Added post-input to observed peer raster timings to the existing real two-session pen/marker/eraser tests; those polling measurements exclude input dispatch and are not a sustained pointer-to-pixel benchmark. Exact new-head results pending. No main merge or deployment.
+
+Checkpoint 11 is now evidenced; 6 checkpoints remain (15–20). Physical device evidence is still unavailable in this environment.
