@@ -248,8 +248,8 @@ assert.match(approvedView,/useSchoolPractice<Extract<SchoolPractice,\{kind:"lang
  "foreign vocabulary flashcards flip on the shared board without overwriting teacher data");
 assert.doesNotMatch(approvedView,/onChange\s*\(/,
  "foreign flashcard interactions must not save over a teacher's cards");
-assert.match(russianView,/const \[picked,setPicked\]=useState/,
- "spelling puzzle answers remain local to the learner");
+assert.match(russianView,/useSchoolPractice<Extract<SchoolPractice,\{kind:"orthography"\}>>/,
+ "spelling choices use shared practice separate from the teacher’s questions");
 assert.match(app,/restrictStudentDiagramChange\(before.schoolDiagram,diagram\)/,
  "students cannot rewrite a teacher's assignment");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,
