@@ -15,6 +15,7 @@ from shapely import get_coordinates, make_valid, transform
 from shapely.geometry import shape
 from shapely.strtree import STRtree
 from shapely.validation import explain_validity
+from historical_atlas_name_union import compare_named_unions
 
 
 def hash_bytes(data):
@@ -220,6 +221,7 @@ def audit(folder, archive, output, original_source):
         shapes = [geom[r['geometryId']] for r in active]
         tree = STRtree(shapes)
         rows = []
+        named_archive_rows = []
         for i, feature in enumerate(json.loads(data)['features']):
             raw = feature.get('geometry') or {}
             if raw.get('type') not in ('Polygon', 'MultiPolygon'):
@@ -227,6 +229,7 @@ def audit(folder, archive, output, original_source):
             name = str((feature.get('properties') or {}).get('NAME') or '')
             polygon, invalid, excluded = diagnostic_geometry(raw)
             row = {'archiveIndex': i, 'archiveName': name, 'archiveInvalid': invalid, 'comparisonExcluded': excluded}
+            named_archive_rows.append({'archiveIndex': i, 'archiveName': name, 'polygon': polygon, 'comparisonExcluded': excluded})
             candidates = []
             if polygon is not None:
                 archive_hash = hash_bytes(json.dumps(raw, separators=(',', ':')).encode())
@@ -251,14 +254,31 @@ def audit(folder, archive, output, original_source):
             row['exactNamedCandidates'] = exact
             row['status'] = 'excluded' if polygon is None else 'named-high-overlap' if exact and exact[0]['iou'] >= .85 else 'named-disagreement' if exact else 'spatial-only' if candidates else 'no-spatial-match'
             rows.append(row)
+        named_unions = compare_named_unions(named_archive_rows, active, geom, name_key)
+        grouped_by_index = {index: group for group in named_unions for index in group['archiveIndices']}
+        false_fragment_alerts = sum(
+            row['status'] == 'named-disagreement' and
+            grouped_by_index.get(row['archiveIndex'], {}).get('status') == 'named-union-high-overlap'
+            for row in rows)
         counts = {status: sum(r['status'] == status for r in rows) for status in sorted({r['status'] for r in rows})}
-        snapshots.append({'year': year, 'file': filename.name, 'sha256': hash_bytes(data), 'counts': counts, 'rows': rows})
+        snapshots.append({'year': year, 'file': filename.name, 'sha256': hash_bytes(data),
+                          'counts': counts, 'rows': rows,
+                          'namedUnionComparisons': named_unions,
+                          'fragmentAlertsClearedByNamedUnion': false_fragment_alerts})
     snapshots.sort(key=lambda s: s['year'], reverse=True)
-    report = {'source': manifest['source'], 'method': 'EPSG:6933; exact source-name equality plus spatial overlap; no automatic historical identity or boundary approval; invalid polygons made valid for diagnostic comparison only',
+    union_diagnostics = {
+        'comparedNameYears': sum(len(s['namedUnionComparisons']) for s in snapshots),
+        'highOverlapNameYears': sum(sum(x['status'] == 'named-union-high-overlap' for x in s['namedUnionComparisons']) for s in snapshots),
+        'disagreementNameYears': sum(sum(x['status'] == 'named-union-disagreement' for x in s['namedUnionComparisons']) for s in snapshots),
+        'incompleteArchiveNameYears': sum(sum(x['status'] == 'incomplete-archive-geometry' for x in s['namedUnionComparisons']) for s in snapshots),
+        'falseFragmentAlertsCleared': sum(s['fragmentAlertsClearedByNamedUnion'] for s in snapshots),
+        'ambiguousSameNameNameYears': sum(sum(x['ambiguousAtlasIdentities'] for x in s['namedUnionComparisons']) for s in snapshots),
+    }
+    report = {'source': manifest['source'], 'method': 'EPSG:6933; legacy per-feature IoU plus independent both-sided year-effective exact-name polygon unions; neither is historical proof of territorial borders; invalid source repairs are diagnostic only',
               'counts': {'uniqueGeometries': len(topology), 'invalidGeometries': sum(t['invalid'] is not None for t in topology.values()), 'excludedGeometries': sum(bool(t['comparisonExcluded']) for t in topology.values()), 'equivalentRepairs': len(repaired), 'reviewedComponentSelections': len(selections), 'reviewedMapPartitions': len(partitions), 'partitionSubsetChecks': subset_checks, 'datedCoastlinePartitions': dated_coastlines, 'completeThreeWayPartitions': len(partition_groups), 'affectedReviewUnits': sum(map(len, affected.values())), 'snapshots': len(snapshots), 'archivePolygons': sum(len(s['rows']) for s in snapshots), 'uniqueSpatialPairs': len(pairs)},
-              'topology': topology, 'affectedReviewUnits': affected, 'snapshots': snapshots}
+              'topology': topology, 'affectedReviewUnits': affected, 'namedUnionDiagnostics': union_diagnostics, 'snapshots': snapshots}
     output.write_text(json.dumps(report, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-    print(json.dumps(report['counts']), flush=True)
+    print(json.dumps({'counts': report['counts'], 'namedUnionDiagnostics': union_diagnostics}), flush=True)
     assert not report['counts']['invalidGeometries'], 'Candidate topology regression: inspect report'
     return report
 
