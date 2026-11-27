@@ -205,6 +205,29 @@ assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Олинда
 assert.ok(historicalDatedGapCenters(1673)[0].title.includes('Новый Оранж'));
 assert.ok(historicalDatedGapCenters(1674)[0].description.includes('Вестминстерскому'));
 assert.ok(historicalCenterSources(historicalDatedGapCenters(1673)[0]).length>=2);
+// 1954/1986/2010 Caribbean constitutional changes have real island locators,
+// never invented polygons. The old Netherlands Antilles outline is incomplete.
+for(const [year,expected] of [
+ [1953,[]],
+ [1954,['antilles-saba-1954-2009','antilles-statia-1954-2009','antilles-charter-1954']],
+ [1985,['antilles-saba-1954-2009','antilles-statia-1954-2009']],
+ [1986,['antilles-saba-1954-2009','antilles-statia-1954-2009','aruba-status-aparte-1986']],
+ [1994,['antilles-saba-1954-2009','antilles-statia-1954-2009','aruba-status-aparte-1986']],
+ [2000,['antilles-saba-1954-2009','antilles-statia-1954-2009','aruba-status-aparte-1986']],
+ [2009,['antilles-saba-1954-2009','antilles-statia-1954-2009','aruba-status-aparte-1986']],
+ [2010,['aruba-status-aparte-1986','curacao-2010-successor','sint-maarten-2010-successor','bonaire-2010-successor','saba-2010-successor','statia-2010-successor']],
+ [2024,['aruba-status-aparte-1986','curacao-2010-successor','sint-maarten-2010-successor','bonaire-2010-successor','saba-2010-successor','statia-2010-successor']],
+ [2025,[]]
+]){
+ const markers=historicalDatedGapCenters(year).filter(m=>/antilles|aruba|curacao|sint-maarten|bonaire|saba|statia/.test(m.id));
+ assert.deepEqual(markers.map(m=>m.id).sort(),expected.map(id=>'historical-center-'+id).sort(), 'Caribbean year '+year);
+ assert.ok(markers.every(m=>m.description.includes('Точка')&&m.sources.length>=1&&m.sources.every(x=>x.startsWith('https://'))));
+}
+assert.ok(historicalDatedGapCenters(2010).some(m=>m.title.includes('Кюрасао')));
+assert.ok(historicalDatedGapCenters(2010).some(m=>m.title.includes('Синт-Мартен')));
+assert.ok(historicalDatedGapCenters(2000).some(m=>m.title.includes('Саба')));
+assert.ok(historicalDatedGapCenters(1986).some(m=>m.description.includes('1 января 1986')));
+
 assert.match(fs.readFileSync(new URL('../src/LektrusMapAtlas.tsx',import.meta.url),'utf8'),/historicalDatedGapCenters\(snapshot\.year\)/);
 
 assert.ok(historicalCenterSources(historicalTreatyPortCenters(1921)[0]).includes('https://history.state.gov/historicaldocuments/frus1920v01/d481'));

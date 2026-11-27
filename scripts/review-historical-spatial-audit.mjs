@@ -25,6 +25,10 @@ for(const r of current.cases){
  if(r.classification==="nonlike-for-like-metropolitan-denmark-vs-danish-realm")assert.equal(r.archiveName,"Denmark");
  if(r.classification==="noncomparable-archaeological-or-polycentric-aggregate")
   assert.ok(["Greek city-states","Indus valley civilization"].includes(r.archiveName));
+ if(r.classification==="incomplete-archipelago-source-outline"){
+  assert.equal(r.archiveName,"Netherlands Antilles");
+  assert.ok([1994,2000].includes(r.year));
+ }
  classes.set(r.classification,(classes.get(r.classification)??0)+1);
 }
 for(const f of mismatches)assert.ok(seen.has(f.id));
@@ -32,11 +36,12 @@ assert.equal(classes.get("retrospective-source-name-not-exact-historical-label")
 assert.equal(classes.get("nonlike-for-like-metropolitan-denmark-vs-danish-realm"),13);
 assert.equal(classes.get("wartime-control-vs-recognized-sovereignty"),2);
 assert.equal(classes.get("noncomparable-archaeological-or-polycentric-aggregate"),9);
-assert.equal(seen.size,37);assert.equal(current.counts.newlyExplained,32);
-assert.equal(current.counts.remainingWithoutExplanation,439);
+assert.equal(classes.get("incomplete-archipelago-source-outline"),2);
+assert.equal(seen.size,39);assert.equal(current.counts.newlyExplained,34);
+assert.equal(current.counts.remainingWithoutExplanation,437);
 assert.equal(current.counts.historicallyVerifiedGeometries,0);
 assert.equal(current.counts.territorialComponentYearsStillOpenExpected,769);
 const source=fs.readFileSync(new URL("scripts/audit-historical-unique-geometries.py",base),"utf8");
 assert.ok(source.includes("name_key(name) == name_key(r['name'])"));
 assert.ok(!source.includes("name_key(r['name']), name_key(r['sourceName'])"));
-console.log("Atlas spatial comparison: 13 false historical name matches corrected, 37 mismatches explained, 439 awaiting review; geometry unverified.");
+console.log("Atlas spatial comparison: 13 false historical name matches corrected, 39 mismatches explained, 437 awaiting review; geometry unverified.");

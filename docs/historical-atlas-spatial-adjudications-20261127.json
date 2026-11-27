@@ -3,23 +3,24 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "37 audit comparability cases explained; post-collapse Teotihuacan and two collective pseudo-states corrected; geometry unverified",
+  "status": "39 audit comparison cases explained; 1994 and 2000 missing archipelago membership made visible as dated locators; geometry unverified",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 37,
+    "explainedComparisonCases": 39,
     "previouslyExplained": 5,
-    "newlyExplained": 32,
-    "remainingWithoutExplanation": 439,
+    "newlyExplained": 34,
+    "remainingWithoutExplanation": 437,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
-    "nonpoliticalCollectives": 9
+    "nonpoliticalCollectives": 9,
+    "incompleteArchipelagoOutlines": 2
   },
-  "warning": "37 explanations are comparison-method corrections, not proven independent border fixes. The 769 territorial component-year queue remains pending full annual rebuild.",
+  "warning": "The 39 explanations are source/comparability diagnostics and NOT verified borders. The 769 disputed territorial source component-years remain unresolved pending full build.",
   "cases": [
     {
       "id": "2010:119",
@@ -54,6 +55,22 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "2000:171",
+      "year": 2000,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Netherlands Antilles",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "candidateGeometryId": "4746623b5ee1ebd87b36a9a334a641600cf7eff1bdbf50608801d000323d52b1",
+      "iou": 0.364733,
+      "classification": "incomplete-archipelago-source-outline",
+      "reasonRu": "Для 1986–2009 гг. оригинальный фильтр источника сохраняет три островных полигона, хотя официально Нидерландские Антилы включали Кюрасао, Бонайре, Синт-Мартен, Синт-Эстатиус и Сабу. Показаны датированные точки-ориентиры, а не неподтверждённые границы; несогласованность геометрии остаётся открытой.",
+      "sources": [
+        "https://treatydatabase.overheid.nl/en/Treaty/Details/007234_p.html",
+        "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:51994DC0538"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "2000:86",
       "year": 2000,
       "archiveName": "Afghanistan",
@@ -82,6 +99,22 @@
       "sources": [
         "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
         "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:170",
+      "year": 1994,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Netherlands Antilles",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "candidateGeometryId": "4746623b5ee1ebd87b36a9a334a641600cf7eff1bdbf50608801d000323d52b1",
+      "iou": 0.364733,
+      "classification": "incomplete-archipelago-source-outline",
+      "reasonRu": "Для 1986–2009 гг. оригинальный фильтр источника сохраняет три островных полигона, хотя официально Нидерландские Антилы включали Кюрасао, Бонайре, Синт-Мартен, Синт-Эстатиус и Сабу. Показаны датированные точки-ориентиры, а не неподтверждённые границы; несогласованность геометрии остаётся открытой.",
+      "sources": [
+        "https://treatydatabase.overheid.nl/en/Treaty/Details/007234_p.html",
+        "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:51994DC0538"
       ],
       "geometryHistoricallyConfirmed": false
     },
