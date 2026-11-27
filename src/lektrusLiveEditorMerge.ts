@@ -72,7 +72,7 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
   return mergeArray(base,edit,latest,key) as T;
  // Two first responses to separate fields of the same worksheet must survive.
  if(base==null&&record(edit)&&record(latest)&&["activityResponse","workedSolution","russianWork"].includes(key))
-  return mergeEditedValue({},edit,latest,key) as T;
+  return mergeEditedValue<Record<string,unknown>>({},edit,latest,key) as T;
  // Practice is one deliberate action, not a positional array to concatenate.
  if(key==="schoolPractice")return edit;
  if(record(base)&&record(edit)&&record(latest)){
