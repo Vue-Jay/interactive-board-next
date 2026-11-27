@@ -9,7 +9,7 @@ const edit=new Function(compile("src/lektrusLiveEditorMerge.ts")+
  "\nreturn {mergeEditedValue};")();
 const sync=new Function("expandDocumentInk","packDocumentInk","mergeEditedValue","mergeLabBench",
  compile("src/lektrusBoardThreeWayMerge.ts")+
- "\nreturn {mergeBoardItems,mergeBoardDocumentEdits};")(
+ "\nreturn {mergeBoardItems,mergeBoardDocumentEdits,mergeDetachedBoardItem};")(
  data=>[...data.items,...(data.ink??[])],
  data=>({...data,items:data.items,ink:[]}),
  edit.mergeEditedValue,
@@ -140,3 +140,21 @@ assert.ok(code.includes("openGraphEditor(item);"),"Student can open subject edit
 const appAST=ts.createSourceFile("App.tsx",code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(appAST.parseDiagnostics.length,0);
 console.log("Board collaboration: pen/eraser, simultaneous ink, move/resize, student/guest transforms and open editors: OK");
+
+// Detached editor saves cannot recreate an existing deleted object, restore
+// stale geometry, or bypass a lock applied while the modal was open.
+for(const [field,oldValue,newValue] of [
+ ["scienceAtomModel",{protons:1},{protons:2}],["sciencePeriodicHighlights",[1],[1,8]],
+ ["scienceCircuit",{components:[]},{components:[{id:"c"}]}],["scienceMechanics",{bodies:[]},{bodies:[{id:"b"}]}],
+ ["scienceOptics",{rays:[]},{rays:[{id:"r"}]}],["scienceOrganicAnnotations",[],[{id:"a",text:"bond"}]],
+ ["scienceExperimentStage",0,1],["schoolDiagram",{kind:"geo-training",title:"Old"},{kind:"geo-training",title:"New"}],
+ ["chartEntries",[{label:"A",value:1}],[{label:"A",value:2}]],["fractionNumerator",1,2],
+]){
+ const base={...item("detached",10,20,"graph"),[field]:oldValue,createdBy:"teacher"};
+ const edit={...base,[field]:newValue};
+ const peer={...base,x:600,rotation:45,color:"#112233",groupId:"peer-group"};
+ assert.deepEqual(sync.mergeDetachedBoardItem(base,edit,peer,false,[field]),{...peer,[field]:newValue},field+" preserves peer geometry");
+ assert.equal(sync.mergeDetachedBoardItem(base,edit,undefined,false,[field]),null,field+" cannot resurrect");
+ assert.deepEqual(sync.mergeDetachedBoardItem(base,edit,undefined,true,[field]),edit,field+" explicit creation");
+ assert.equal(sync.mergeDetachedBoardItem(base,edit,{...peer,locked:true},false,[field]),null,field+" respects peer lock");
+}

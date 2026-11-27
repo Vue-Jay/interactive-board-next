@@ -128,7 +128,7 @@ import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from
 import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
-import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
+import { mergeBoardDocumentEdits, mergeBoardItems, mergeDetachedBoardItem } from "./lektrusBoardThreeWayMerge";
 import {personalBoardEdit,applyPersonalBoardEdit, reattributeRestoredSharedInk,beginTextEdit,updateTextEdit,rebaseTextEdit,type TextEditSession,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops, blockedStudentObjectEdits } from "./lektrusBoardObjectAuth";
 import { parseDocument, parseRealtimeDocument, type RealtimeItemCache, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
@@ -2920,6 +2920,29 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
   const itemsRef = useRef(items);
+  const detachedEditorOrigin=useRef<{base:Item;existing:boolean}|null>(null);
+  const markDetachedEditor=(item:Item)=>{
+    const stored=itemsRef.current.find(candidate=>candidate.id===item.id);
+    const base=stored??item;
+    detachedEditorOrigin.current={base,existing:!!stored};
+    return base;
+  };
+  const openFractionEditor=(item:Item)=>{markDetachedEditor(item);setFractionEditorId(item.id);};
+  const detachedEditorResult=(base:Item,next:Item,create:boolean,fields:readonly (keyof Item)[])=>{
+    const origin=detachedEditorOrigin.current;
+    const latest=itemsRef.current.find(candidate=>candidate.id===base.id);
+    return mergeDetachedBoardItem(origin?.base.id===base.id?origin.base:base,next,latest,
+      create&&origin?.base.id===base.id&&!origin.existing,fields);
+  };
+  const saveDetachedEditor=(base:Item,next:Item,create:boolean,fields:readonly (keyof Item)[])=>{
+    const result=detachedEditorResult(base,next,create,fields);
+    if(!result){setNotice("Объект удалён или заблокирован другим участником");return false;}
+    const current=itemsRef.current;
+    commit(current.some(item=>item.id===result.id)?current.map(item=>item.id===result.id?result:item):[...current,result]);
+    return true;
+  };
+  const scienceEditorFields=(base:Item,next:Item)=>
+    [...new Set([...Object.keys(base),...Object.keys(next)])].filter(key=>key==="text"||key.startsWith("graph")||key.startsWith("science")) as (keyof Item)[];
   const [inkMotionLedger]=useState(createInkMotionLedger);
   const [inkMotionRevision,setInkMotionRevision]=useState(0);
   const inkMotionSender=useRef<ReturnType<typeof createInkMotionSender>|null>(null);
@@ -6425,7 +6448,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       case "text": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
       case "graph": openGraphEditor(singleSelected); break;
-      case "fraction": setFractionEditorId(singleSelected.id); break;
+      case "fraction": openFractionEditor(singleSelected); break;
       case "table": openTableEditor(singleSelected); break;
       case "checklist": openChecklistEditor(singleSelected); break;
       case "quiz": openQuizEditor(singleSelected); break;
@@ -7010,17 +7033,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const finalizePhysicalEditor=(next:Item,create:boolean)=>{
-    const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
-    if(!latest){
-      if(create)commit([...itemsRef.current,next]);
-      return;
-    }
-    // Component changes have already been merged live. Never write the
-    // editor's potentially older full document over another user's edits.
-    if(latest.text!==next.text){
-      commit(itemsRef.current.map(candidate=>candidate.id===latest.id?
-        {...candidate,text:next.text}:candidate));
-    }
+    const origin=detachedEditorOrigin.current;
+    if(origin?.base.id!==next.id)return;
+    // Existing component changes are committed live. Finalize only the title,
+    // never restore old geometry or resurrect an existing deleted object.
+    saveDetachedEditor(origin.base,next,create,["text"]);
   };
   const isMotionGraph=(id:string|undefined)=>[
     "physics-motion","physics-speed","physics-accelerated-speed",
@@ -7283,6 +7300,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     setGraphPointEditId(null);setBoardGeometryMode(null);setBoardGeometryError("");
     if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
+    item=markDetachedEditor(item);
     if(item.graphFigureId==="lektrus-chart"){setChartEditorItem(item);return;}
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
@@ -7773,9 +7791,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const createDataChart=()=>{
     if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания диаграммы");return}
     const p=elementsCenter();
-    setChartEditorItem({id:createId(),kind:"graph",graphFigureId:"lektrus-chart",
+    setChartEditorItem(markDetachedEditor({id:createId(),kind:"graph",graphFigureId:"lektrus-chart",
       text:"",x:p.x-240,y:p.y-170,width:480,height:340,
-      chartStyle:"bar",chartEntries:[],color:"#4774d7"});
+      chartStyle:"bar",chartEntries:[],color:"#4774d7"}));
     setSelected([]);setTool("select");closeElementsMenu();
   };
   const createSolidElement=(id:import("./lektrusSolid3d").SolidFigureId)=>{
@@ -8512,12 +8530,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if(editing){
           const edited=mergedItems.find(item=>item.id===editing);
           const remoteEdited=expandDocumentInk(remote).find(item=>item.id===editing);
-          if(!edited||!remoteEdited||remoteEdited.locked){
+          const previousText=previousAcknowledgedItems.find(item=>item.id===editing)?.text;
+          if(!edited||remoteEdited?.locked||(!remoteEdited&&previousText!==undefined)){
             textEditSession.current=null;setEditing(null);
           }else{
             const session=textEditSession.current;
-            const previousText=previousAcknowledgedItems.find(item=>item.id===editing)?.text;
-            if(session?.id===editing)textEditSession.current=rebaseTextEdit(session,previousText,remoteEdited.text,edited.text);
+            if(session?.id===editing&&remoteEdited)textEditSession.current=rebaseTextEdit(session,previousText,remoteEdited.text,edited.text);
             draftRef.current=edited.text;setDraft(edited.text);
           }
         }
@@ -9573,14 +9591,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             onCancel={()=>{setFractionEditorId(null);setPendingMathItem(null)}}
             onClose={draft=>{
               if(pendingMathItem?.id===fractionEditorId){setFractionEditorId(null);setPendingMathItem(null);return;}
-              commit(itemsRef.current.map(item=>item.id===fractionEditorId?{...item,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator}:item));
+              const origin=detachedEditorOrigin.current;
+              if(origin?.base.id===fractionEditorId)saveDetachedEditor(origin.base,{...origin.base,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator},false,["text","fractionMode","fractionNumerator","fractionDenominator"]);
               setFractionEditorId(null);
             }}
             onSave={draft=>{
-              commit((pendingMathItem?.kind==="fraction"&&pendingMathItem.id===fractionEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===fractionEditorId?{
-                ...item,text:draft.title.slice(0,100),fractionMode:draft.mode,
-                fractionNumerator:draft.numerator,fractionDenominator:draft.denominator
-              }:item));
+              const origin=detachedEditorOrigin.current;
+              if(origin?.base.id===fractionEditorId)saveDetachedEditor(origin.base,{...origin.base,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator},true,["text","fractionMode","fractionNumerator","fractionDenominator"]);
               setFractionEditorId(null);setPendingMathItem(null);
             }}
           />,document.body)}
@@ -9588,32 +9605,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {atomEditorItem&&<LektrusAtomEditor key={atomEditorItem.id} item={atomEditorItem}
           onCancel={()=>setAtomEditorItem(null)}
           onClose={next=>{
-            if(itemsRef.current.some(i=>i.id===next.id)){
-              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-              setNotice("Модель атома сохранена");
-            }
+            if(detachedEditorOrigin.current?.existing&&saveDetachedEditor(atomEditorItem,next,false,["text","scienceAtomModel"]))setNotice("Модель атома сохранена");
             setAtomEditorItem(null);
           }}
           onSave={next=>{
-            commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
-            setAtomEditorItem(null);setNotice("Модель атома добавлена");
+            if(saveDetachedEditor(atomEditorItem,next,true,["text","scienceAtomModel"]))setNotice("Модель атома сохранена");
+            setAtomEditorItem(null);
           }}/>}
         {periodicEditorItem&&<LektrusPeriodicTableEditor key={periodicEditorItem.id}
           item={periodicEditorItem}
           onCancel={()=>setPeriodicEditorItem(null)}
           onClose={next=>{
-            if(itemsRef.current.some(i=>i.id===next.id)){
-              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-              setNotice("Периодическая таблица обновлена");
-            }
+            if(detachedEditorOrigin.current?.existing&&saveDetachedEditor(periodicEditorItem,next,false,["text","sciencePeriodicHighlights","sciencePeriodicLayout","sciencePeriodicShowNames"]))setNotice("Периодическая таблица сохранена");
             setPeriodicEditorItem(null);
           }}
           onSave={next=>{
-            commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
+            if(saveDetachedEditor(periodicEditorItem,next,true,["text","sciencePeriodicHighlights","sciencePeriodicLayout","sciencePeriodicShowNames"]))setNotice("Периодическая таблица сохранена");
             setPeriodicEditorItem(null);
-            setNotice("Периодическая таблица добавлена на доску");
           }}/>}
         {circuitEditorItem&&<LektrusCircuitEditor key={circuitEditorItem.id}
           shared={items.some(x=>x.id===circuitEditorItem.id)}
@@ -9626,7 +9634,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
           item={remoteLiveItems[schoolEditorItem.id]??items.find(item=>item.id===schoolEditorItem.id)??schoolEditorItem}
           userId={authUser.id} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
-          existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
+          existing={detachedEditorOrigin.current?.base.id===schoolEditorItem.id&&detachedEditorOrigin.current.existing}
           onCancel={()=>setSchoolEditorItem(null)}
           onLiveChange={(before,next)=>{
             const latest=itemsRef.current.find(item=>item.id===schoolEditorItem.id);
@@ -9656,10 +9664,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {...saved,schoolDiagram:{...saved.schoolDiagram,
                 contourMarks:next.schoolDiagram.contourMarks,contourStrokes:next.schoolDiagram.contourStrokes,
                 contourLegend:next.schoolDiagram.contourLegend,paintedCountries:next.schoolDiagram.paintedCountries}}:next;
-            const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(updated),saved);
-            commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
-            setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
+            const merged=detachedEditorResult(schoolEditorItem,updated,true,["text","schoolDiagram"]);
+            if(merged){
+              const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(merged),saved);
+              const current=itemsRef.current;
+              commit(saved?current.map(i=>i.id===next.id?fitted:i):[...current,fitted]);
+              setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
+            }else setNotice("Учебная схема удалена или заблокирована другим участником");
+            setSchoolEditorItem(null);
           }}/>}
         {subjectBoardSolution&&(()=>{
           const source=remoteLiveItems[subjectBoardSolution.boardId]??items.find(value=>value.id===subjectBoardSolution.boardId);
@@ -9735,8 +9747,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                  next.graphFigureId==="chem-experiment-free")
                 finalizePhysicalEditor(next,false);
               else{
-                commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-                setNotice("Изменения схемы сохранены");
+                if(saveDetachedEditor(scienceEditorItem,next,false,scienceEditorFields(scienceEditorItem,next)))setNotice("Изменения схемы сохранены");
               }
             }
             setScienceEditorItem(null);
@@ -9748,8 +9759,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               finalizePhysicalEditor(next,true);
               setNotice("Органическая структура синхронизирована");
             }else{
-              commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
-              setNotice("Предметная схема сохранена");
+              if(saveDetachedEditor(scienceEditorItem,next,true,scienceEditorFields(scienceEditorItem,next)))setNotice("Предметная схема сохранена");
             }
             setScienceEditorItem(null);
           }}/></Suspense>}</>}
@@ -9757,11 +9767,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
-            commit(itemsRef.current.some(x=>x.id===next.id)
-              ?itemsRef.current.map(x=>x.id===next.id?next:x)
-              :[...itemsRef.current,next]);
-            setSelected([next.id]);setChartEditorItem(null);setTool("select");
-            setNotice("Диаграмма сохранена");
+            if(saveDetachedEditor(chartEditorItem,next,true,["text","chartStyle","chartEntries"])){
+              setSelected([next.id]);setTool("select");setNotice("Диаграмма сохранена");
+            }
+            setChartEditorItem(null);
           }}/>,document.body)}
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
@@ -10221,7 +10230,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               // Equations have their own live chemical editor and independent
               // graph object. Keep the same editor for worksheet equations.
             }
-            const item=makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
+            const item=markDetachedEditor(makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId));
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
@@ -10249,7 +10258,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               setScienceEditorItem(item);
             }else{
               setPendingMathItem(item);
-              window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
+              window.setTimeout(()=>item.kind==="fraction"?openFractionEditor(item):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
             }
           }else{
             // Subject tools are never a shortcut to unrelated universal tools.
@@ -10899,13 +10908,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     setSelected([item.id]);
                     openChecklistEditor(item);
                   } else if ((tool === "select" || tool==="hand") && !space && item.kind==="graph" && item.graphFigureId==="contour-atlas") {
-                    setSelected([item.id]);setSchoolEditorItem(item);
+                    setSelected([item.id]);setSchoolEditorItem(markDetachedEditor(item));
 } else if (tool === "select" && !space && !item.locked && item.kind === "graph") {
                     setSelected([item.id]);
                     // Existing subject editors belong to collaborative pupils too.
                     // Do not require an undocumented geometry-only double-click.
                     openGraphEditor(item);
-                  } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); openFractionEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);
                     openQuizEditor(item);
@@ -11432,7 +11441,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {singleSelected?.kind === "cover" && !isStudent && !selectionLocked && (
                 <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
               )}
-              {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
+              {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>openFractionEditor(singleSelected)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
               {singleSelected?.kind==="graph"&&isSubjectBoard(singleSelected)&&
                 canEdit&&roleCapabilities.canUseTeacherTools&&!selectionLocked&&!singleSelected.locked&&(
                 <span className="graph-selection-controls lektrus-subject-board-controls">
