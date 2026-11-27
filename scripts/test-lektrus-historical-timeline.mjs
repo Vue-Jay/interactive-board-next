@@ -367,7 +367,8 @@ if(outDir&&sourceFile){
   const area=g=>g.reduce((a,p)=>a+ringArea(p[0])-p.slice(1).reduce((s,r)=>s+ringArea(r),0),0);
   const bounds=p=>p[0].reduce((a,[x,y])=>[Math.min(a[0],x),Math.min(a[1],y),Math.max(a[2],x),Math.max(a[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
   const tianjinSourceNames=new Set(['French Indochina','British Colonial Empire','United States of America','German Empire','Empire of Japan','Russian Empire','Kingdom of Belgium','Kingdom of Italy','Austria-Hungary']);
-    // The extra Japanese polygon at Tanggu/Taku represents a foreign garrison
+  const tianjinCells=original.flatMap(({f,index})=>{const {Name:name,FromYear:from,ToYear:to,Components:components}=f.properties;if(!tianjinSourceNames.has(name)||components||to<1860||from>1946)return [];return (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).flatMap((p,part)=>{const [x,y,X,Y]=bounds(p);return x>116.5&&X<118.3&&y>38.5&&Y<40.2?[{index,from,to,part,p,hash:componentHash(p)}]:[];});});
+  // The extra Japanese polygon at Tanggu/Taku represents a foreign garrison
   // corridor, not sovereign Japan or the Haihe urban Japanese concession.
   const southernJapaneseCells=tianjinCells.filter(c=>{
    const f=input.features[c.index];
@@ -382,7 +383,7 @@ if(outDir&&sourceFile){
     X>117.70&&X<117.72&&Y>38.99&&Y<39,
     'False Japanese Tanggu boundary changed: '+cell.index+'/'+cell.part);
   }
-const tianjinCells=original.flatMap(({f,index})=>{const {Name:name,FromYear:from,ToYear:to,Components:components}=f.properties;if(!tianjinSourceNames.has(name)||components||to<1860||from>1946)return [];return (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).flatMap((p,part)=>{const [x,y,X,Y]=bounds(p);return x>116.5&&X<118.3&&y>38.5&&Y<40.2?[{index,from,to,part,p,hash:componentHash(p)}]:[];});});
+
   assert.equal(tianjinCells.length,135);
   let tianjinClosed=0,tianjinOpen=0;
   const intersect=(a,b)=>{try{return polygonClipping.intersection(a,b);}catch(e){const snap=p=>p.map(r=>r.map(([x,y])=>[Math.round(x*1e7)/1e7,Math.round(y*1e7)/1e7]));return polygonClipping.intersection(snap(a),snap(b));}};
@@ -586,6 +587,13 @@ const tianjinCells=original.flatMap(({f,index})=>{const {Name:name,FromYear:from
           'Japanese garrison corridor falsely left as country territory '+year);
          else assert.ok(unresolved.some(i=>i.sourceIndex===coastal[0].index&&i.part===coastal[0].part),
           '1937 Japanese campaign change must remain unresolved');
+        }
+        if(year>=1900&&year<=1904){
+         const german=tianjinCells.filter(c=>c.from<=year&&year<=c.to&&
+           input.features[c.index].properties.Name==='German Empire'&&bounds(c.p)[1]<39);
+         assert.equal(german.length,1,'Former German/Japanese overlap input absent '+year);
+         assert.ok(!unresolved.some(i=>i.sourceIndex===german[0].index&&i.part===german[0].part),
+           'German source overlap should be closed after removing false Japanese sovereign polygon '+year);
         }
         if(year>=1900&&year<=1902){
          assert.equal(cells.length,8,'Unexpected Qing/Tianjin source cell count '+year);

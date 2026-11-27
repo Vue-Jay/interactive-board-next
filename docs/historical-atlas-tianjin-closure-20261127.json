@@ -146,5 +146,31 @@
     ],
     "verifiedComponents": 14,
     "formerGermanOverlapCasesNowResolved": 5
+  },
+  "validationGuards": {
+    "japaneseSouthPolity": "Empire of Japan",
+    "sourceWikidata": "Q188712",
+    "yearRange": [
+      1900,
+      1937
+    ],
+    "coordinateBounds": [
+      "117.26 < west < 117.27",
+      "38.73 < south < 38.75",
+      "117.70 < east < 117.72",
+      "38.99 < north < 39"
+    ],
+    "resolvedCrossForeignOverlap": [
+      1900,
+      1901,
+      1902,
+      1903,
+      1904
+    ],
+    "independentYearPreflight": {
+      "sourceComponentYears": 405,
+      "resolved": 397,
+      "pending": 8
+    }
   }
 }
