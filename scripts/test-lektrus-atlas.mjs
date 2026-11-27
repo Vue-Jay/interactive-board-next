@@ -1448,4 +1448,67 @@ assert.ok(map.includes('aria-label="Инструменты контурной к
 assert.ok(map.includes('<ContourToolIcon name={id}/>'));
 assert.ok(map.includes('lektrus-atlas-territory-dropdown'));
 assert.ok(map.includes('lektrus-atlas-sidebar--selected-only'));
+
+// Date-precise flag audit: prevent unauthorised Red Ensign national flags and
+// annual all-year claims for documented transitions or disputed colour variants.
+const historicalInsigniaRaw=fs.readFileSync(new URL("../src/lektrusHistoricalInsignia.ts",import.meta.url),"utf8");
+const historicalFlagModule={};
+new Function("exports",ts.transpileModule(historicalInsigniaRaw,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(historicalFlagModule);
+for(const row of historicalFlagModule.historicalDatedNationalFlags.filter(row=>row.code==="CA"&&row.from<1965))
+ assert.equal(historicalFlagModule.historicallyAttestedNationalFlag(row),false,"Red Ensign was not adopted as Canada's national flag");
+assert.equal(historicalFlagModule.findHistoricalCountryFlag("CA",1964),undefined);
+assert.ok(historicalFlagModule.findHistoricalCountryFlag("CA",1966));
+for(const [code,year] of [["US",1959],["US",1960],["CA",1960],["CA",1965],
+ ["CN",1949],["RO",1989],["BY",1995],["MK",1995],["BA",1998],
+ ["GE",2004],["FR",1974],["FR",1975],["FR",1976]]){
+ const review=historicalFlagModule.findHistoricalFlagReview(code,year);
+ assert.ok(review&&review.note&&review.sourceUrl.startsWith("https://"),code+" "+year);
+}
+for(const [code,year] of [["US",1961],["CA",1966],["MK",1996],["BA",1999],
+ ["GE",2005],["RO",1990],["FR",1977]]){
+ assert.equal(historicalFlagModule.findHistoricalFlagReview(code,year),undefined);
+}
+for(const [id,year] of [["goryeo",1100],["safavid",1600],["rome",150],
+ ["aztec",1500],["mali-empire",1325]]){
+ assert.equal(historicalFlagModule.findHistoricalStateInsignia(id,year),undefined,"Do not show unverified historical picture as a state flag: "+id);
+}
+const countrySymbolsRaw=fs.readFileSync(new URL("../src/lektrusAtlasCountrySymbols.ts",import.meta.url),"utf8");
+const countrySymbolModule={};
+const knownCountryLabels={
+ US:["United States","США"],CA:["Canada","Канада"],
+ CN:["China","Китай"],RO:["Romania","Румыния"],
+ BY:["Belarus","Беларусь"],MK:["North Macedonia","Северная Македония"],
+ BA:["Bosnia and Herzegovina","Босния и Герцеговина"],
+ GE:["Georgia","Грузия"],FR:["France","Франция"]
+};
+new Function("exports","require",ts.transpileModule(countrySymbolsRaw,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(countrySymbolModule,(name)=>{
+ if(name==="./regionDisplayNames")return {regionDisplayNames:(lang)=>({
+  of:(code)=>knownCountryLabels[code]?.[lang==="ru"?1:0]??code
+ })};
+ if(name==="./lektrusHistoricalReferences")return {findHistoricalReference:()=>undefined};
+ if(name==="./lektrusHistoricalInsignia")return historicalFlagModule;
+ throw new Error("Unexpected country-symbol import: "+name);
+});
+for(const [code,raw,year] of [
+ ["US","United States",1959],["US","United States",1960],
+ ["CA","Canada",1960],["CA","Canada",1965],
+ ["CN","People's Republic of China",1949],
+ ["RO","Romania",1989],["BY","Belarus",1995],
+ ["MK","North Macedonia",1995],["BA","Bosnia and Herzegovina",1998],
+ ["GE","Georgia",2004],["FR","France",1975]
+]){
+ const feature={geometry:{type:"Polygon",coordinates:[]},
+  properties:{NAME:raw,ISO_A2:code}};
+ const symbol=countrySymbolModule.atlasCountrySymbol(feature,raw,year,true);
+ assert.equal(symbol.kind,"symbol","Historical transition must not show single official flag: "+raw+" "+year);
+ assert.ok(symbol.note.includes("Источник: https://"));
+}
+assert.equal(countrySymbolModule.atlasCountrySymbol({
+ geometry:{type:"Polygon",coordinates:[]},properties:{NAME:"Canada",ISO_A2:"CA"}
+},"Canada",1966,true).kind,"historic");
+
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");

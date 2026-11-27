@@ -7,7 +7,7 @@ import type {GeoFeature} from "./lektrusAtlasData";
 import {regionDisplayNames} from "./regionDisplayNames";
 import {findHistoricalReference} from "./lektrusHistoricalReferences";
 import {findHistoricalStateInsignia,findHistoricalCountryFlag,
- historicalInsigniaUrl,historicalInsigniaSourceUrl} from "./lektrusHistoricalInsignia";
+ historicalInsigniaUrl,historicalInsigniaSourceUrl,findHistoricalFlagReview} from "./lektrusHistoricalInsignia";
 export type AtlasCountrySymbol={kind:"flag"|"symbol"|"historic";code:string|null;monogram:string;
  label:string;note:string;key:string;imageUrl?:string;sourceUrl?:string;
  period?:string;reconstruction?:boolean};
@@ -114,6 +114,12 @@ export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,h
    name.toLocaleLowerCase("en")===raw.toLocaleLowerCase("en"));
   // A dated present-day country name can use the dated flag archive. Ancient
   // states which merely inherit their territory's ISO never enter this branch.
+  // A real flag may be documented without being valid for every day in the
+  // selected calendar year. Never display one design as that year's only flag.
+  const flagReview=sourceMatchesNation&&code?findHistoricalFlagReview(code,year):undefined;
+  if(flagReview)return {kind:"symbol",code:null,monogram:"?",label:flagReview.label,
+   note:flagReview.note+" Источник: "+flagReview.sourceUrl,
+   key:raw+"|"+year+"|flag-chronology-reviewed"};
   const archive=emblem??(sourceMatchesNation&&code?findHistoricalCountryFlag(code,year):undefined);
   if(archive){
    const kind="Документированный исторический флаг";

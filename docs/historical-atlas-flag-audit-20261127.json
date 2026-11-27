@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-27",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "kind": "historical-flag-provenance-and-year-transition-guard",
+  "status": "implemented; whole atlas CI/build and physical review pending; not deployed",
+  "affectedDisplayCases": {
+    "canadaRedEnsignYears": 97,
+    "documentedTransitionsAndColorUncertainty": 12
+  },
+  "exclusions": [
+    "Canada's Red Ensign previously misclassified as a national flag for 1868–1964",
+    "A single flag used to depict a documented mid-year transition"
+  ],
+  "changedYearGuards": [
+    {
+      "code": "CA",
+      "from": 1868,
+      "to": 1964,
+      "reason": "national flag was not formally adopted"
+    },
+    {
+      "code": "US",
+      "years": [
+        1959,
+        1960
+      ]
+    },
+    {
+      "code": "CA",
+      "years": [
+        1965
+      ]
+    },
+    {
+      "code": "CN",
+      "years": [
+        1949
+      ]
+    },
+    {
+      "code": "RO",
+      "years": [
+        1989
+      ]
+    },
+    {
+      "code": "BY",
+      "years": [
+        1995
+      ]
+    },
+    {
+      "code": "MK",
+      "years": [
+        1995
+      ]
+    },
+    {
+      "code": "BA",
+      "years": [
+        1998
+      ]
+    },
+    {
+      "code": "GE",
+      "years": [
+        2004
+      ]
+    },
+    {
+      "code": "FR",
+      "from": 1974,
+      "to": 1976,
+      "reason": "shade-specific artwork unverified for precise year"
+    }
+  ],
+  "sources": [
+    "https://www.canada.ca/en/canadian-heritage/services/flag-canada-history.html",
+    "https://www.si.edu/spotlight/flag-day/flag-facts",
+    "https://www.archives.gov/federal-register/codification/executive-order/10834.html",
+    "https://www.ohr.int/ohr_archive/ohr-bulletin-66-23-february-1998/",
+    "https://www.matsne.gov.ge/en/document/view/13270",
+    "https://heraldika.org.mk/en/drzhavni-simboli/",
+    "https://www.crwflags.com/fotw/Flags/fr.html"
+  ],
+  "territorialOpenAfterExpectedPreviousPackage": 769,
+  "territorialCasesClosedByThisPackage": 0,
+  "notes": "These are user-facing symbol representation corrections and are not counted as territorial polygon adjudications; the 769 open cases remain open pending the full annual rebuild."
+}
