@@ -1071,10 +1071,18 @@ def check_undo_reconnect_sync(browser):
     contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
     teacher,pupil=[ctx.new_page() for ctx in contexts]
     pupil_sockets=[]
+    pupil_lifecycle=[]
     drop_results={"enabled":False,"count":0}
     def pupil_socket(route):
         upstream=route.connect_to_server()
         pupil_sockets.append((route,upstream))
+        index=len(pupil_sockets)
+        def outgoing(message):
+            event=json.loads(message)
+            if event.get("type") in ("auth","activity"):
+                pupil_lifecycle.append((index,event["type"],event.get("background"),event.get("idle_age_ms")))
+            upstream.send(message)
+        route.on_message(outgoing)
         def incoming(message):
             event=json.loads(message)
             if drop_results["enabled"] and event.get("type")=="attachment_result":
@@ -1437,10 +1445,52 @@ def check_undo_reconnect_sync(browser):
                         const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
                         return !!item&&JSON.stringify(item[field])===JSON.stringify(value);
                     }""",arg={"ident":ident,"id":obj["id"],"field":field,"value":value},timeout=15000)
+                # Exercise allowed positioning in the opposite role before deletion.
+                peer_move(obj)
                 select_all(teacher);teacher.keyboard.press("Delete")
                 wait_api(teacher,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" UI deletion not saved")
                 expect(pupil.locator(selector)).to_have_count(0,timeout=15000)
-                print(kind+" real UI create/peer display/allowed response/delete passed.")
+                print(kind+" real UI create/peer display/allowed response/peer move/delete passed.")
+
+            # Create the fraction via the actual subject catalogue, not only
+            # the previously seeded detached-editor fixture.
+            replace_items([])
+            teacher.locator('button[aria-label="Предметные инструменты"]:visible').first.click()
+            subject=teacher.get_by_role("combobox",name="Предмет доски для набора инструментов")
+            math_option=subject.locator("option").filter(has_text=re.compile(r"^математика$",re.I)).first
+            subject.select_option(value=math_option.get_attribute("value"))
+            teacher.get_by_role("button",name="Дроби",exact=True).click()
+            fraction_dialog=teacher.locator(".lektrus-fraction-dialog")
+            expect(fraction_dialog).to_be_visible()
+            fraction_dialog.locator(".lektrus-fraction-fields > label:first-child input").fill("QA fraction")
+            fraction_dialog.locator(".primary").click()
+            fraction_row=wait_api(teacher,lambda d:any(i["kind"]=="fraction" and i["text"]=="QA fraction" for i in d["items"]),"Fraction UI creation not saved")
+            fraction=next(i for i in fraction_row["items"] if i["kind"]=="fraction")
+            both(fraction["id"])
+            expect(pupil.locator(f'.board-object[data-object="{fraction["id"]}"]')).to_contain_text("QA fraction")
+            peer_move(fraction)
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(fraction["id"],False)
+            print("Fraction created through subject catalogue, peer movement and deletion passed.")
+
+            # Comments are a legacy persisted item kind: creation tool was
+            # intentionally removed, but old comments must remain editable.
+            comment={"id":"qa-legacy-comment","kind":"comment","x":220,"y":160,"width":300,"height":150,"text":"Legacy comment","createdBy":author,"resolved":False}
+            replace_items([comment])
+            selector='.board-object[data-object="qa-legacy-comment"]'
+            teacher.locator('[data-interface-control="select"]:visible').first.click()
+            teacher.locator(selector).dblclick()
+            field=teacher.locator('textarea[aria-label="Текст объекта"]')
+            expect(field).to_be_visible();field.fill("Edited legacy comment");field.press("Control+Enter")
+            wait_api(teacher,lambda d:any(i["id"]==comment["id"] and i["text"]=="Edited legacy comment" for i in d["items"]),"Legacy comment edit not saved")
+            expect(pupil.locator(selector)).to_contain_text("Edited legacy comment")
+            select_all(teacher)
+            teacher.locator('button[title="Отметить комментарий решённым"]:visible').first.click()
+            wait_api(teacher,lambda d:any(i["id"]==comment["id"] and i.get("resolved") is True for i in d["items"]),"Legacy comment resolution not saved")
+            expect(pupil.locator(selector)).to_contain_text("Решено")
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(comment["id"],False)
+            print("Legacy persisted comment edit, resolve and deletion converged.")
 
             # Actual ruler, set square and protractor creation, live move,
             # scale adjustment and deletion by both editing roles.
@@ -1527,11 +1577,16 @@ def check_undo_reconnect_sync(browser):
             expect(pupil.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("1",timeout=30000)
             print("Real two-page PDF upload, durable teacher approval and bidirectional pagination passed.")
 
-            # Accelerate only the pupil browser clock and simulate visibility
-            # events; the API, PostgreSQL, socket and actual UI are not mocked.
-            # This is not a physical Android suspend or ten wall-clock minutes.
+            # Change only the wall-clock read, not Chromium timers. Installing
+            # a fake timer scheduler after the board mounted can invalidate
+            # existing heartbeat/expiry timers. Actual socket and API remain real.
             replace_items([])
-            pupil.clock.install()
+            pupil.bring_to_front()
+            pupil.evaluate("""()=>{
+                window.__qaRealNow=Date.now;
+                window.__qaClockOffset=0;
+                Date.now=()=>window.__qaRealNow()+window.__qaClockOffset;
+            }""")
             def visibility(hidden):
                 pupil.evaluate("""hidden=>{
                     Object.defineProperty(document,"hidden",{configurable:true,get:()=>hidden});
@@ -1547,18 +1602,24 @@ def check_undo_reconnect_sync(browser):
                 visibility(True)
                 # Advance wall time but not timers: like an OS suspending a
                 # WebView for just under ten minutes.
-                pupil.clock.set_system_time(int(time.time()*1000)+590000)
+                pupil.evaluate("window.__qaClockOffset=590000")
                 visibility(False)
-                pupil.clock.set_system_time(int(time.time()*1000))
+                pupil.evaluate("window.__qaClockOffset=0")
                 expect(indicator).to_have_count(0,timeout=10000)
-                assert len(pupil_sockets)==initial_sockets,"Short background visit unnecessarily replaced the board socket"
+                assert len(pupil_sockets)==initial_sockets,("Short background visit unnecessarily replaced the board socket",pupil_lifecycle[-12:])
+                assert any(n==initial_sockets and t=="activity" and bg is True and age is not None and age<1000 for n,t,bg,age in pupil_lifecycle),"Short visit did not notify server of background"
                 first_after_short=draw(pupil,"pen",.65)
                 both(first_after_short)
                 assert len(pupil_sockets)==initial_sockets,"First input after short background visit reconnected the socket"
                 print("Browser background below 10 minutes: same socket, immediate first stroke, both copies converged.")
 
                 visibility(True)
-                pupil.clock.fast_forward(601000)
+                # Advance browser wall time beyond the limit. Negotiate a
+                # near-expired real server lease through the test proxy, so
+                # the actual 4410 close arrives without a ten-minute wait.
+                # This tests the browser on the server-driven idle path.
+                pupil.evaluate("window.__qaClockOffset=601000")
+                pupil_sockets[-1][1].send(json.dumps({"type":"activity","idle_age_ms":599000,"background":True}))
                 expect(indicator).to_contain_text("Соединение приостановлено",timeout=15000)
                 asleep_sockets=len(pupil_sockets)
                 missed=draw(teacher,"marker",.37)
@@ -1569,7 +1630,7 @@ def check_undo_reconnect_sync(browser):
                 }""",{"ident":ident,"id":missed}),"Suspended board unexpectedly received a durable revision"
                 assert len(pupil_sockets)==asleep_sockets,"Suspended board opened a new socket"
                 visibility(False)
-                pupil.clock.set_system_time(int(time.time()*1000))
+                pupil.evaluate("window.__qaClockOffset=0")
                 # No click or reload: foreground alone must recover the missed revision.
                 expect(indicator).to_have_count(0,timeout=30000)
                 both(missed)
@@ -1578,8 +1639,8 @@ def check_undo_reconnect_sync(browser):
                 assert len(pupil_sockets)>asleep_sockets,"Expired background lease did not establish a fresh socket"
                 print("Browser background above 10 minutes: suspended, missed revision recovered on foreground, first new stroke converged.")
             finally:
-                pupil.evaluate("""()=>{delete document.hidden;delete document.visibilityState;}""")
-                pupil.clock.set_system_time(int(time.time()*1000))
+                pupil.evaluate("""()=>{delete document.hidden;delete document.visibilityState;
+                    Date.now=window.__qaRealNow;delete window.__qaRealNow;delete window.__qaClockOffset;}""")
     finally:
         for ctx in contexts:ctx.close()
 

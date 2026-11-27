@@ -277,7 +277,9 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
  assert.deepEqual(applyEditorOps(next,rollback),peer,"Closing a modal repairs a previously missed reset");
  const withOptional={...peer,fontSize:18};
  const remove=live.boardModalDraftOps(peer,undefined,peer,["fontSize"],["fontSize"]);
- assert.deepEqual(applyEditorOps(withOptional,remove),peer,"Previously published optional fields can be explicitly cleared");
+ const cleared=applyEditorOps(withOptional,remove);
+ assert.equal(cleared.fontSize,undefined,"Previously published optional fields can be explicitly cleared");
+ assert.deepEqual(JSON.parse(JSON.stringify(cleared)),peer,"A cleared optional field is absent on the document wire");
  assert.match(app,/boardModalDraftOps\(stored,undefined,mergeModalPatch\(stored,patch\),fields,\[\.\.\.lastModalLiveTouched\.current\]\)/);
 }
 {
