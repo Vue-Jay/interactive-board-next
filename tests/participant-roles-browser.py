@@ -1383,7 +1383,7 @@ def check_undo_reconnect_sync(browser):
                     const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
                     if(!raw)return false;
                     const map=new Map(JSON.parse(raw).items.map(i=>[i.id,i]));
-                    return expected.every(i=>{const a=map.get(i.id);return a&&Math.abs(a.x-i.x)<0.01&&Math.abs(a.y-i.y)<0.01&&(a.rotation||0)===(i.rotation||0)});
+                    return expected.every(i=>{const a=map.get(i.id);return a&&Math.abs(a.x-i.x)<0.01&&Math.abs(a.y-i.y)<0.01&&Math.abs(a.width-i.width)<0.01&&Math.abs(a.height-i.height)<0.01&&(a.rotation||0)===(i.rotation||0)});
                 }""",arg={"ident":ident,"expected":expected},timeout=30000)
             pupil.locator('[data-interface-control="select"]:visible').first.click()
             pupil.keyboard.press("Control+a")
@@ -1430,12 +1430,26 @@ def check_undo_reconnect_sync(browser):
                 changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"]-10)<0.01 for i in d["items"]),"Peer transform did not save")
                 for page in (teacher,pupil):geometry_synced(page,changed["items"])
                 return next(i for i in changed["items"] if i["id"]==obj["id"])
+            def peer_resize_rotate(obj):
+                select_all(pupil)
+                handle=pupil.locator('.screen-transform-overlay [data-transform-handle="se"]:visible').first
+                expect(handle).to_be_visible(timeout=10000)
+                pos=handle.bounding_box()
+                x=pos["x"]+pos["width"]/2;y=pos["y"]+pos["height"]/2
+                pupil.mouse.move(x,y);pupil.mouse.down()
+                try:pupil.mouse.move(x+35,y+25,steps=5)
+                finally:pupil.mouse.up()
+                changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and (abs(i["width"]-obj["width"])>2 or abs(i["height"]-obj["height"])>2) for i in d["items"]),"Peer resize not saved: "+obj["kind"])
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                current=next(i for i in changed["items"] if i["id"]==obj["id"])
+                pupil.keyboard.press("Alt+ArrowRight")
+                rotated=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and (i.get("rotation",0)-current.get("rotation",0))%360==90 for i in d["items"]),"Peer rotation not saved: "+obj["kind"])
+                for page in (teacher,pupil):geometry_synced(page,rotated["items"])
+                return next(i for i in rotated["items"] if i["id"]==obj["id"])
             # Uploaded image is the real asset from the approval scenario.
             replace_items([item])
             moved_image=peer_move(item)
-            select_all(pupil);pupil.keyboard.press("Alt+ArrowRight")
-            rotated_image=wait_api(pupil,lambda d:any(i["id"]==item["id"] and i.get("rotation")==90 for i in d["items"]),"Approved image rotation not saved")
-            for page in (teacher,pupil):geometry_synced(page,rotated_image["items"])
+            peer_resize_rotate(moved_image)
             select_all(teacher);teacher.keyboard.press("Delete")
             both(item["id"],False)
             print("Real uploaded image move, rotation and deletion converged.")
@@ -1526,6 +1540,28 @@ def check_undo_reconnect_sync(browser):
             print("Circuit real nested settings and concurrent pupil geometry converged.")
             replace_items([])
 
+            # Live motion-graph editor: settings and point values must survive
+            # an intervening move of the entire graph by the other role.
+            motion_graph={"id":"qa-live-motion","kind":"graph","graphFigureId":"physics-motion","graphPurpose":"coordinates","graphAxisMode":"both","graphGrid":True,"graphSnap":True,"graphConnectPoints":True,"graphShowLabels":True,"graphXMin":0,"graphXMax":10,"graphYMin":0,"graphYMax":10,"graphPoints":[{"id":"qa-p1","x":1,"y":2,"label":"A"},{"id":"qa-p2","x":3,"y":4,"label":"B"}],"x":220,"y":160,"width":520,"height":360,"text":"QA motion","createdBy":author}
+            replace_items([motion_graph])
+            editor=open_existing(motion_graph,".lektrus-motion-editor")
+            editor.get_by_label("Сетка",exact=True).uncheck()
+            wait_api(teacher,lambda d:any(i["id"]==motion_graph["id"] and i.get("graphGrid") is False for i in d["items"]),"Motion graph grid not saved")
+            moved=peer_move(motion_graph)
+            editor.get_by_label("Значение точки 1",exact=True).fill("5")
+            changed=wait_api(teacher,lambda d:any(i["id"]==motion_graph["id"] and i.get("graphGrid") is False and any(p["y"]==5 for p in i.get("graphPoints",[])) and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),"Motion graph edit lost peer geometry")
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                    return item?.graphGrid===false&&item.graphPoints.some(p=>p.y===5);
+                }""",arg={"ident":ident,"id":motion_graph["id"]},timeout=15000)
+            editor.get_by_role("button",name="Закрыть редактор",exact=True).click()
+            expect(editor).to_have_count(0,timeout=15000)
+            for page in (teacher,pupil):geometry_synced(page,changed["items"])
+            print("Physical motion graph real point edit and peer geometry converged.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],
@@ -1609,8 +1645,19 @@ def check_undo_reconnect_sync(browser):
                         const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
                         return !!item&&JSON.stringify(item[field])===JSON.stringify(value);
                     }""",arg={"ident":ident,"id":obj["id"],"field":field,"value":value},timeout=15000)
-                # Exercise allowed positioning in the opposite role before deletion.
-                peer_move(obj)
+                # Exercise allowed positioning, resize and rotation in the opposite role.
+                moved_obj=peer_move(obj)
+                if kind!="connector":peer_resize_rotate(moved_obj)
+                else:
+                    select_all(pupil)
+                    endpoint=pupil.locator("[data-connector-endpoint=end]:visible").first
+                    expect(endpoint).to_be_visible(timeout=10000)
+                    rect=endpoint.bounding_box();x=rect["x"]+rect["width"]/2;y=rect["y"]+rect["height"]/2
+                    pupil.mouse.move(x,y);pupil.mouse.down()
+                    try:pupil.mouse.move(x+30,y+20,steps=5)
+                    finally:pupil.mouse.up()
+                    changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and (abs(i["width"]-moved_obj["width"])>2 or abs(i["height"]-moved_obj["height"])>2) for i in d["items"]),"Connector endpoint not saved")
+                    for page in (teacher,pupil):geometry_synced(page,changed["items"])
                 select_all(teacher);teacher.keyboard.press("Delete")
                 wait_api(teacher,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" UI deletion not saved")
                 expect(pupil.locator(selector)).to_have_count(0,timeout=15000)
@@ -1632,7 +1679,7 @@ def check_undo_reconnect_sync(browser):
             fraction=next(i for i in fraction_row["items"] if i["kind"]=="fraction")
             both(fraction["id"])
             expect(pupil.locator(f'.board-object[data-object="{fraction["id"]}"]')).to_contain_text("QA fraction")
-            peer_move(fraction)
+            peer_resize_rotate(peer_move(fraction))
             select_all(teacher);teacher.keyboard.press("Delete")
             both(fraction["id"],False)
             print("Fraction created through subject catalogue, peer movement and deletion passed.")
@@ -1740,6 +1787,7 @@ def check_undo_reconnect_sync(browser):
             wait_api(teacher,lambda d:any(i["id"]==pdf["id"] and i.get("pdfPage")==1 for i in d["items"]),"Teacher PDF page change not saved")
             expect(pupil.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("1",timeout=30000)
             moved_pdf=peer_move(pdf)
+            peer_resize_rotate(moved_pdf)
             select_all(teacher);teacher.keyboard.press("Delete")
             both(pdf["id"],False)
             print("Real two-page PDF upload, durable teacher approval, bidirectional pagination, movement and deletion passed.")

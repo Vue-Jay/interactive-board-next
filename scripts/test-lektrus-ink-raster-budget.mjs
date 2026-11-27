@@ -206,3 +206,31 @@ assert.match(instrument,/if\(g\.mode==="move"\)\{[\s\S]*?onUpdate\(item\.id,\{x:
  eraser.receive(frame(4,1,short,"erase:gesture"));
  assert.equal(eraser.project([long])[0].points.length,2,"A competing eraser is not mistaken for an old drawing prefix");
 }
+
+// Quiet-edge repair carries a full state and the original change watermark.
+{
+ const motion={};
+ new Function("exports",ts.transpileModule(read("boardInkMotion.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(motion);
+ const packets=[];
+ const sender=motion.createInkMotionSender("quiet-test",p=>{packets.push(p);return true;},()=>true,()=>1);
+ const stroke={id:"quiet-stroke",kind:"pen",text:"",createdBy:"peer",x:0,y:0,width:20,height:10,points:[{x:0,y:0},{x:20,y:10}]};
+ const first=[stroke];sender.publish([],first,stroke.id,{x:20,y:10});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const frames=packets.filter(p=>p.type==="ink_motion");
+ assert.equal(frames.length,2,"Lost last sample must get one quiet-edge retry");
+ assert.ok(frames[1].seq>frames[0].seq);
+ assert.deepEqual(frames[1].changes,frames[0].changes,"Replay preserves original change watermark");
+ const ledger=motion.createInkMotionLedger();ledger.reconcile([],1);
+ const identity={user_id:"peer",name:"Peer",role:"editor",sent_at:0};
+ ledger.receive({...frames[1],...identity});
+ assert.equal(ledger.project([])[0].id,stroke.id,"Receiver recovers a lost last frame before durable revision");
+ sender.ack(first,2);
+ ledger.reconcile([stroke],2,"peer");
+ const ack=packets.find(p=>p.type==="ink_motion_ack");
+ assert.equal(ack.seq,frames[0].changes[0].seq);
+ ledger.receive({...ack,...identity});
+ assert.deepEqual(ledger.project([stroke]),[stroke]);
+ sender.reset();
+}

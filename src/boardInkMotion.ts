@@ -90,6 +90,8 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
   let seq=0,lastSentAt=0,lastAck=0,lastGesture="",position:Point={x:0,y:0};
   let timer:ReturnType<typeof setTimeout>|undefined;
   let ackTimer:ReturnType<typeof setTimeout>|undefined;
+  let quietReplay:ReturnType<typeof setTimeout>|undefined;
+  const cancelQuietReplay=()=>{clearTimeout(quietReplay);quietReplay=undefined;};
   let pendingAck:InkMotionAck|undefined,ackFailures=0;
   const flushAck=()=>{
     clearTimeout(ackTimer);ackTimer=undefined;
@@ -121,6 +123,17 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
       }
       while(wire.size>64)wire.delete(wire.keys().next().value!);
       sends++;
+      // A lost final motion packet has no subsequent pointer sample to repair
+      // it. On a quiet edge, replay the full (not tail-delta) state once. The
+      // envelope gets a fresh sequence, but each change keeps its original
+      // watermark: a durable ACK can still retire it, and stale base versions
+      // remain subject to the receiver\'s tombstone/conflict rules.
+      cancelQuietReplay();
+      const full={...packet,changes:all};
+      if(JSON.stringify(full).length<105000)quietReplay=setTimeout(()=>{
+        quietReplay=undefined;
+        if(enabled()&&!queue.size&&seq===packet.seq)send({...full,seq:++seq});
+      },90);
     }else wire.clear();
     queue.clear();lastSentAt=Date.now();
   };
@@ -136,6 +149,7 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
       if(queue.size&&lastGesture!==gesture)flush();
       const changes=inkMotionChanges(before,after);
       if(!changes.length){watermarks.set(after,seq);return false;}
+      cancelQuietReplay();
       seq++;lastGesture=gesture;position=cursor;
       for(const change of changes){queue.delete(change.id);queue.set(change.id,{...change,seq});}
       if(queue.size>MAX_CHANGES){queue.clear();wire.clear();return false;}
@@ -149,7 +163,7 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
       pendingAck={type:"ink_motion_ack",client_id:clientId,seq:watermark,version:savedVersion};
       if(ackTimer===undefined)flushAck();
     },
-    reset(){clearTimeout(timer);clearTimeout(ackTimer);timer=undefined;ackTimer=undefined;
+    reset(){clearTimeout(timer);clearTimeout(ackTimer);cancelQuietReplay();timer=undefined;ackTimer=undefined;
       pendingAck=undefined;ackFailures=0;queue.clear();wire.clear();lastSentAt=0;},
   };
 }
