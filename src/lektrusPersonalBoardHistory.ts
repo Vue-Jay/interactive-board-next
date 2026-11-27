@@ -8,6 +8,61 @@ import type {Item} from "./boardModel";
  */
 export type PersonalBoardEdit={before:Item[];after:Item[];beforeOrder?:string[];afterOrder?:string[]};
 const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
+const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
+type Identified=Record<string,unknown>&{id:string};
+const idList=(v:unknown):v is Identified[]=>Array.isArray(v)&&v.every(x=>record(x)&&typeof x.id==="string"&&!!x.id)&&new Set(v.map(x=>x.id)).size===v.length;
+type InverseResult={value:unknown;changed:boolean;conflicts:number};
+
+// Compare against what this participant actually wrote, recursively. An
+// independent edit to a peer's sticker stroke, atlas mark or circuit element
+// must not block undo of our own element or be reverted by it.
+function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResult{
+ if(same(expected,desired))return {value:live,changed:false,conflicts:0};
+ if(same(expected,live))return {value:desired,changed:true,conflicts:0};
+ if(record(expected)&&record(desired)&&record(live)){
+  const result={...live};let changed=false,conflicts=0;
+  for(const key of new Set([...Object.keys(expected),...Object.keys(desired)])){
+   if(key==="id"||key==="createdBy"||key==="__proto__"||key==="constructor"||key==="prototype")continue;
+   const next=inverseValue(expected[key],desired[key],live[key]);
+   conflicts+=next.conflicts;
+   if(!next.changed)continue;
+   if(Object.hasOwn(desired,key))result[key]=next.value;else delete result[key];
+   changed=true;
+  }
+  return {value:changed?result:live,changed,conflicts};
+ }
+ if(idList(expected)&&idList(desired)&&idList(live)){
+  const old=new Map(expected.map(x=>[x.id,x])),target=new Map(desired.map(x=>[x.id,x]));
+  const result=new Map(live.map(x=>[x.id,x]));
+  let changed=false,conflicts=0;
+  for(const id of new Set([...old.keys(),...target.keys()])){
+   const next=inverseValue(old.get(id),target.get(id),result.get(id));
+   conflicts+=next.conflicts;
+   if(!next.changed)continue;
+   if(next.value===undefined)result.delete(id);else result.set(id,next.value as Identified);
+   changed=true;
+  }
+  // Stable IDs permit independent additions/deletions. Preserve live slots;
+  // never impose an obsolete array order on a collaborator's new element.
+  const shared=new Set(expected.filter(x=>target.has(x.id)&&result.has(x.id)).map(x=>x.id));
+  const oldOrder=expected.filter(x=>shared.has(x.id)).map(x=>x.id);
+  const nextOrder=desired.filter(x=>shared.has(x.id)).map(x=>x.id);
+  const items=[...result.values()];
+  if(!same(oldOrder,nextOrder)){
+   const liveOrder=items.filter(x=>shared.has(x.id)).map(x=>x.id);
+   if(!same(liveOrder,oldOrder))conflicts++;
+   else{
+    let index=0;
+    for(let i=0;i<items.length;i++)if(shared.has(items[i].id))items[i]=result.get(nextOrder[index++])!;
+    changed=true;
+   }
+  }
+  return {value:changed?items:live,changed,conflicts};
+ }
+ // Positional arrays (including pen geometry and non-ID graph vertices)
+ // cannot safely be merged when another participant changed their structure.
+ return {value:live,changed:false,conflicts:1};
+}
 
 export function personalBoardEdit(before:readonly Item[],after:readonly Item[]):PersonalBoardEdit|null{
  const old=new Map(before.map(item=>[item.id,item]));
@@ -58,8 +113,10 @@ export function applyPersonalBoardEdit(
   let changed=false;
   for(const field of new Set([...Object.keys(was),...Object.keys(to)])){
    if(field==="id"||field==="createdBy"||same(was[field],to[field]))continue;
-   if(!same(next[field],was[field])){conflicts++;continue;}
-   if(Object.hasOwn(to,field))next[field]=to[field];
+   const inverse=inverseValue(was[field],to[field],next[field]);
+   conflicts+=inverse.conflicts;
+   if(!inverse.changed)continue;
+   if(Object.hasOwn(to,field))next[field]=inverse.value;
    else delete next[field];
    changed=true;
   }

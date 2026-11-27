@@ -163,3 +163,35 @@ assert.match(board,/if\(usePersonalUndo\)\{\s*const stack=personalHistory.curren
 assert.match(board,/stack.entries.splice\(step,1\)/);
 assert.match(board,/const actual=direction<0\?personalBoardEdit\(restored.items,before\)/);
 assert.match(board,/const baseline = options\?\.previousItems\?\?options\?\.objectBaseline/);
+
+// Nested independent operations must not be lost merely because the parent
+// object/array was concurrently edited by another participant.
+for(const field of ["stickerInk","contourMarks","contourStrokes","components","wires","rays","vessels","graphPoints"]){
+ const own={id:"own",x:1,color:"red"},peer={id:"peer",x:2,color:"blue"};
+ const before={...object("shared"),[field]:[]};
+ const after={...before,[field]:[own]};
+ const live={...before,[field]:[own,peer]};
+ const op=choose([before],[after]);
+ const undo=applyPersonalBoardEdit([live],op,"undo");
+ assert.deepEqual(undo.items[0][field],[peer],field+" undo removes only local addition");
+ assert.deepEqual(applyPersonalBoardEdit(undo.items,op,"redo").items[0][field],[peer,own],field+" redo preserves peer");
+ const moved={...before,[field]:[{...own,x:5}]};
+ const colored={...before,[field]:[{...own,x:5,color:"green"},peer]};
+ const inverse=applyPersonalBoardEdit([colored],choose([{...before,[field]:[own]}],[moved]),"undo");
+ assert.deepEqual(inverse.items[0][field],[{...own,color:"green"},peer],field+" independent nested fields");
+}
+{
+ const original={...object("atlas"),schoolDiagram:{paintedCountries:{RU:"red"},title:"Map"}};
+ const edited={...original,schoolDiagram:{...original.schoolDiagram,paintedCountries:{RU:"blue"}}};
+ const peer={...edited,schoolDiagram:{...edited.schoolDiagram,paintedCountries:{RU:"blue",KZ:"green"}}};
+ const undo=applyPersonalBoardEdit([peer],choose([original],[edited]),"undo");
+ assert.deepEqual(undo.items[0].schoolDiagram.paintedCountries,{RU:"red",KZ:"green"});
+}
+for(const kind of ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment","table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument"]){
+ const original={...object("object-"+kind),kind},moved={...original,x:99},peer=object("peer-"+kind);
+ const op=choose([original],[moved]);
+ const undo=applyPersonalBoardEdit([{...moved,text:"peer-edit"},peer],op,"undo");
+ assert.deepEqual(undo.items,[{...original,text:"peer-edit"},peer],kind+" undo preserves peer field");
+ const redo=applyPersonalBoardEdit(undo.items,op,"redo");
+ assert.deepEqual(redo.items,[{...moved,text:"peer-edit"},peer],kind+" redo preserves peer field");
+}
