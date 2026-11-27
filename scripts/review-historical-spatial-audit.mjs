@@ -31,6 +31,10 @@ for(const r of current.cases){
  }
  if(r.classification==="archaeological-influence-not-verified-sovereign-frontier")assert.equal(r.archiveName,"Teotihuacan");
  if(r.classification==="polycentric-principalities-not-one-state")assert.equal(r.archiveName,"Shan states");
+ if(r.classification==="ethnonym-not-single-sovereign-state")assert.equal(r.archiveName,"Saxons");
+ if(r.classification==="personal-union-not-single-sovereign-country")assert.equal(r.archiveName,"Kalmar Union");
+ if(r.classification==="mac-dynasty-anachronistic-unqualified-dai-viet")assert.ok(r.archiveName==="Đại Việt"&&r.year===1530);
+ if(r.classification==="divided-dai-viet-multiple-effective-rulers")assert.ok(r.archiveName==="Đại Việt"&&r.year>1530);
  classes.set(r.classification,(classes.get(r.classification)??0)+1);
 }
 for(const f of mismatches)assert.ok(seen.has(f.id));
@@ -41,11 +45,15 @@ assert.equal(classes.get("noncomparable-archaeological-or-polycentric-aggregate"
 assert.equal(classes.get("incomplete-archipelago-source-outline"),2);
 assert.equal(classes.get("archaeological-influence-not-verified-sovereign-frontier"),8);
 assert.equal(classes.get("polycentric-principalities-not-one-state"),1);
-assert.equal(seen.size,48);assert.equal(current.counts.newlyExplained,43);
-assert.equal(current.counts.remainingWithoutExplanation,428);
+assert.equal(classes.get("ethnonym-not-single-sovereign-state"),3);
+assert.equal(classes.get("personal-union-not-single-sovereign-country"),1);
+assert.equal(classes.get("mac-dynasty-anachronistic-unqualified-dai-viet"),1);
+assert.equal(classes.get("divided-dai-viet-multiple-effective-rulers"),6);
+assert.equal(seen.size,59);assert.equal(current.counts.newlyExplained,54);
+assert.equal(current.counts.remainingWithoutExplanation,417);
 assert.equal(current.counts.historicallyVerifiedGeometries,0);
 assert.equal(current.counts.territorialComponentYearsStillOpenExpected,769);
 const source=fs.readFileSync(new URL("scripts/audit-historical-unique-geometries.py",base),"utf8");
 assert.ok(source.includes("name_key(name) == name_key(r['name'])"));
 assert.ok(!source.includes("name_key(r['name']), name_key(r['sourceName'])"));
-console.log("Atlas spatial comparison: 13 false historical name matches corrected, 48 mismatches explained, 428 awaiting review; geometry unverified.");
+console.log("Atlas spatial comparison: 13 false historical name matches corrected, 59 mismatches explained, 417 awaiting review; geometry unverified.");

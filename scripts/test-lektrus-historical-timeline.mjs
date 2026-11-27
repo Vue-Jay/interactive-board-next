@@ -54,6 +54,32 @@ assert.deepEqual(malaccaFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),[
 assert.equal(malaccaFixture.records[0].geometryId,malaccaFixture.records[1].geometryId);
 // No single state boundary may be inferred from the archaeological influence
 // of Teotihuacan or the multiple independent Shan principalities.
+// An ethnonym, dynastic union and nominally unified divided state cannot be
+// painted as single sovereign-polity boundaries.
+for(const [name,year,expectedName] of [
+ ['Saxons',500,'Saxon peoples and regional polities (thematic area)'],
+ ['Saxons',600,'Saxon peoples and regional polities (thematic area)'],
+ ['Saxons',700,'Saxon peoples and regional polities (thematic area)'],
+ ['Kalmar Union',1500,'Kalmar Union (dynastic union of distinct kingdoms)']
+]){
+ const x=normalizeHistoricalSource({type:'FeatureCollection',features:[feature(name,year,year)]}).records;
+ assert.equal(x.length,1);
+ assert.equal(x[0].role,'settlement',name+'/'+year);
+ assert.equal(x[0].sourceRole,'polity');
+ assert.equal(x[0].name,expectedName);
+ assert.ok(x[0].review?.sources?.length>=2&&x[0].review?.reasonRu);
+ assert.equal(x.filter(r=>r.role==='polity').length,0);
+}
+for(const [year,role,namePart] of [[1530,'polity','Mạc dynasty'],[1600,'settlement','Trịnh–Nguyễn'],[1650,'settlement','Trịnh–Nguyễn'],[1700,'settlement','Trịnh–Nguyễn'],[1715,'settlement','Trịnh–Nguyễn'],[1783,'settlement','Trịnh–Nguyễn'],[1800,'settlement','Tây Sơn–Nguyễn']]){
+ const x=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Đại Việt',year,year)]}).records;
+ assert.equal(x.length,1);
+ assert.equal(x[0].role,role,'Đại Việt '+year);
+ assert.ok(x[0].name.includes(namePart),'Đại Việt dynasty '+year);
+ assert.ok(x[0].review?.sources?.length>=3,'Vietnam dated evidence '+year);
+}
+const splitVietnam=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Đại Việt',1520,1810)]}).records;
+assert.deepEqual(splitVietnam.map(r=>[r.from,r.to]),[[1520,1526],[1527,1532],[1533,1599],[1600,1786],[1787,1801],[1802,1810]]);
+assert.deepEqual(splitVietnam.map(r=>r.role),['polity','polity','polity','settlement','settlement','polity']);
 const shanFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Shan States',1529,1540)]});
 assert.deepEqual(shanFixture.records.map(r=>[r.role,r.sourceRole,r.geometryStatus]),
  [['settlement','polity','candidate']]);
@@ -276,6 +302,11 @@ for(const [year,expected] of [[-101,false],[-100,true],[-1,true],[1,true],[500,t
   assert.ok(site[0].description.includes('не как достоверная'));
   assert.equal(site[0].lat,19.69167);
  }
+}
+for(const [year,expected] of [[1499,0],[1500,1],[1501,0],[1599,0],[1600,1],[1650,1],[1700,2],[1715,2],[1774,2],[1783,1],[1786,1],[1787,0],[1799,0],[1800,2],[1801,0]]){
+ const sites=historicalDatedGapCenters(year).filter(x=>/kalmar-union-monarch|dai-viet-|tay-son-phuxuan-1800|nguyen-gia-dinh-1800/.test(x.id));
+ assert.equal(sites.length,expected,'Dated plural polity locations '+year);
+ assert.ok(sites.every(x=>x.sources.length>=2&&x.description.match(/точка/i)));
 }
 assert.ok(historicalDatedGapCenters(2010).some(m=>m.title.includes('Кюрасао')));
 assert.ok(historicalDatedGapCenters(2010).some(m=>m.title.includes('Синт-Мартен')));

@@ -600,6 +600,10 @@ function editorialSegments(base,derived=[]){
  if([...DUTCH_HOLLAND_GROUPS,...DUTCH_HOLLAND_METRO,...DUTCH_HOLLAND_COLONIES].includes(base.sourceIndex))for(const y of [1807,1811])cut(y);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
+ // Distinguish the Mạc seizure in 1527, the restored Lê from 1533,
+ // the Trịnh/Nguyễn division and the Tây Sơn–Nguyễn civil war.
+ if(base.role==='polity'&&base.sourceName==='Đại Việt')
+  for(const boundary of [1527,1533,1600,1787,1802])cut(boundary);
  // A post-collapse archaeological settlement is not an extant political state.
  if(base.role==='polity'&&base.sourceName==='Teotihuacan'){cut(550);cut(651);}
  if(base.sourceIndex===13313){cut(1973);cut(1976)}
@@ -732,6 +736,44 @@ function editorialSegments(base,derived=[]){
   // poleis is not ONE sovereign state with a single historical boundary.
   // Keep the imported footprint accessible through the optional thematic
   // settlement layer, never as a merged country in the political atlas.
+  if(base.role==='polity'&&base.sourceName==='Saxons'){
+   r={...r,role:'settlement',sourceRole:'polity',
+    name:'Saxon peoples and regional polities (thematic area)',
+    nameRu:'Саксы (народ и местные владения; не единая страна)',
+    nameStatus:'reviewed'};
+   note('Saxons was an ethnonym applied to separate communities and early kingdoms, not a single centralized sovereign Saxon state across this imported regional polygon. Its approximate extent is retained only as thematic geography, without inventing local frontiers.',
+    ['https://www.royal.uk/anglo-saxon-kings','https://www.cambridge.org/core/books/abs/new-cambridge-medieval-history/earliest-anglosaxon-kingdoms/0F6BB7495276E8A45DE6D4464C4CC816'],
+    'Саксы — название различных общностей и местных политических образований, а не единого государства с общей границей. Контур сохранён только как тематический ареал.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Kalmar Union'){
+   r={...r,role:'settlement',sourceRole:'polity',
+    name:'Kalmar Union (dynastic union of distinct kingdoms)',
+    nameRu:'Кальмарская уния (династический союз трёх королевств)',
+    nameStatus:'reviewed'};
+   note('Denmark, Norway and Sweden retained distinct political institutions within the Kalmar personal union; Swedish regency and intermittent separation also changed actual power. The original union outline must not substitute a single sovereign country border in 1500.',
+    ['https://cas.au.dk/en/danish-history/modules/module-3-the-late-middle-ages-1340-1523/4-from-mortgaged-kingdom-to-regional-great-power','https://www.medievalists.net/2021/01/medieval-scandinavia-downfall-kalmar-union/'],
+    'Дания, Норвегия и Швеция сохраняли самостоятельные королевские институты в личной унии; шведские регентства меняли фактическое управление. Исходный общий контур не должен закрашиваться как граница одной суверенной страны.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Đại Việt'){
+   const dynasticSources=['https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content','https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf','https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/'];
+   if(from>=1527&&to<1533){
+    r={...r,name:'Đại Việt (Mạc dynasty)',nameRu:'Дайвьет (династия Мак)',nameStatus:'reviewed'};
+    note('Mạc Đăng Dung replaced the Lê dynasty in 1527. The restored Lê claim emerged in 1533; the source does not prove detailed 1530 frontiers.',dynasticSources,
+      'Мак Данг Зунг сверг династию Ле в 1527 году; восстановленная династия Ле появилась в 1533-м. Исходный контур не подтверждает точные границы 1530 года.');
+   }else if(from>=1600&&to<1787){
+    r={...r,role:'settlement',sourceRole:'polity',
+     name:'Đại Việt (Lê nominal unity; Trịnh–Nguyễn divided rule)',
+     nameRu:'Дайвьет (номинальная власть Ле; раздел Тринь и Нгуен)',nameStatus:'reviewed'};
+    note('Lê kings retained nominal sovereignty while Trịnh governed the north and Nguyễn governed the south. A blanket outline cannot establish one government’s direct rule across the whole region; preserve it only as a thematic source aggregate.',dynasticSources,
+      'Номинальная власть императоров Ле не означала единого управления: севером правили Тринь, югом Нгуен. Общий контур не подтверждает границы прямой власти ни одной из сторон.');
+   }else if(from>=1787&&to<1802){
+    r={...r,role:'settlement',sourceRole:'polity',
+     name:'Đại Việt (Tây Sơn–Nguyễn rival governments; region only)',
+     nameRu:'Дайвьет (противостояние Тэйшон и Нгуен; сводный ареал)',nameStatus:'reviewed'};
+    note('Tây Sơn forces and Nguyễn Ánh held rival territories; Nguyễn reunification followed in 1802. The unchanged original outline cannot be assigned to one effective administration in 1800.',dynasticSources,
+     'В конце XVIII века войска Тэйшон и Нгуен Аня удерживали разные районы. Объединение страны произошло в 1802 году; исходный общий контур не означает единого управления в 1800-м.');
+   }
+  }
   if(base.role==='polity'&&/^shan states$/i.test(base.sourceName)){
    // The 1530 source covers several shan saopha principalities, not a
    // single sovereign Shan nation. In 1922 a colonial federation emerged,

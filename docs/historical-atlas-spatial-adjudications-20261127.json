@@ -3,26 +3,30 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "48 audit comparison differences classified; Teotihuacan state boundary replaced by archaeological point and thematic region; Shan principalities no longer one country",
+  "status": "59 archive comparison cases classified; source polygons of Saxons, Kalmar and divided Đại Việt no longer pretend one state; historic boundaries unverified",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 48,
+    "explainedComparisonCases": 59,
     "previouslyExplained": 5,
-    "newlyExplained": 43,
-    "remainingWithoutExplanation": 428,
+    "newlyExplained": 54,
+    "remainingWithoutExplanation": 417,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
     "nonpoliticalCollectives": 9,
     "incompleteArchipelagoOutlines": 2,
     "teotihuacanArchaeologicalComparisons": 8,
-    "shanPolycentricComparisons": 1
+    "shanPolycentricComparisons": 1,
+    "ethnonymNotSovereign": 3,
+    "personalUnionsNotCountries": 1,
+    "dividedDaiViet": 6,
+    "macDynastyIdentified": 1
   },
-  "warning": "No newly verified polygon boundaries: 48 comparability classifications do NOT reduce the separate 769 historical territory source component-years.",
+  "warning": "These 59 cases are historical entity/comparability corrections, not verified borders. The separate 769 territorial source component-years remain open pending full rebuild.",
   "cases": [
     {
       "id": "2010:119",
@@ -503,6 +507,125 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1800:48",
+      "year": 1800,
+      "archiveName": "Đại Việt",
+      "effectiveCandidateName": "Đại Việt",
+      "archiveSha256": "51fcb6b1f1c361956a3fc24a9c646844ff88754842aa113780428fb4abcd5f2c",
+      "candidateGeometryId": "9a6972c84c793b2ba682b69b08c2479fe785a60020109a188c3b88841c91ef78",
+      "iou": 0.010681,
+      "classification": "divided-dai-viet-multiple-effective-rulers",
+      "reasonRu": "В 1800 году владения Тэйшон и Нгуен Аня не составляли единой управляемой территории. Общий исходный политический контур не отображается как государственная граница, вместо него указаны два исторических центра.",
+      "sources": [
+        "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
+        "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
+        "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1783:46",
+      "year": 1783,
+      "archiveName": "Đại Việt",
+      "effectiveCandidateName": "Đại Việt",
+      "archiveSha256": "7cfa92418a8628dffa41e386394b86fb6f93310e449d8261990f6903160c1060",
+      "candidateGeometryId": "57b2629313283c5c930d01abe3e0294302d7df2f19428ca294894c839af9656b",
+      "iou": 0.010369,
+      "classification": "divided-dai-viet-multiple-effective-rulers",
+      "reasonRu": "Номинальное название Дайвьет не свидетельствует о единой административной власти: на севере действовали Тринь, на юге Нгуен (а ранее и иные конкурирующие правители). Исходный общий политический контур не показан как достоверная единая граница.",
+      "sources": [
+        "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
+        "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
+        "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1715:90",
+      "year": 1715,
+      "archiveName": "Đại Việt",
+      "effectiveCandidateName": "Đại Việt",
+      "archiveSha256": "fdf5097dd21c30c9d7bfb1d5c2c2a11a5a39c397e6910116d7173580619f5b5a",
+      "candidateGeometryId": "57b2629313283c5c930d01abe3e0294302d7df2f19428ca294894c839af9656b",
+      "iou": 0.011044,
+      "classification": "divided-dai-viet-multiple-effective-rulers",
+      "reasonRu": "Номинальное название Дайвьет не свидетельствует о единой административной власти: на севере действовали Тринь, на юге Нгуен (а ранее и иные конкурирующие правители). Исходный общий политический контур не показан как достоверная единая граница.",
+      "sources": [
+        "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
+        "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
+        "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1700:58",
+      "year": 1700,
+      "archiveName": "Đại Việt",
+      "effectiveCandidateName": "Đại Việt",
+      "archiveSha256": "eb73d6b00e98205fb2082de050c35e4d698224b17849628d82584610186b88a4",
+      "candidateGeometryId": "57b2629313283c5c930d01abe3e0294302d7df2f19428ca294894c839af9656b",
+      "iou": 0.011044,
+      "classification": "divided-dai-viet-multiple-effective-rulers",
+      "reasonRu": "Номинальное название Дайвьет не свидетельствует о единой административной власти: на севере действовали Тринь, на юге Нгуен (а ранее и иные конкурирующие правители). Исходный общий политический контур не показан как достоверная единая граница.",
+      "sources": [
+        "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
+        "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
+        "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1650:56",
+      "year": 1650,
+      "archiveName": "Đại Việt",
+      "effectiveCandidateName": "Đại Việt",
+      "archiveSha256": "e691a3b5bab4ca7a0629daffaf8cd31731ee76ad390b19dffc1c267b139de4e2",
+      "candidateGeometryId": "6c57c4c3457356c15615d24c75d16fd96f6a85282e103cc68e996a0b81250658",
+      "iou": 0.033744,
+      "classification": "divided-dai-viet-multiple-effective-rulers",
+      "reasonRu": "Номинальное название Дайвьет не свидетельствует о единой административной власти: на севере действовали Тринь, на юге Нгуен (а ранее и иные конкурирующие правители). Исходный общий политический контур не показан как достоверная единая граница.",
+      "sources": [
+        "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
+        "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
+        "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1600:25",
+      "year": 1600,
+      "archiveName": "Đại Việt",
+      "effectiveCandidateName": "Đại Việt",
+      "archiveSha256": "7285c07eeedfda9048de5354ea1744d327b07614085e9696c5802bb54c86849c",
+      "candidateGeometryId": "6c57c4c3457356c15615d24c75d16fd96f6a85282e103cc68e996a0b81250658",
+      "iou": 0.033744,
+      "classification": "divided-dai-viet-multiple-effective-rulers",
+      "reasonRu": "Номинальное название Дайвьет не свидетельствует о единой административной власти: на севере действовали Тринь, на юге Нгуен (а ранее и иные конкурирующие правители). Исходный общий политический контур не показан как достоверная единая граница.",
+      "sources": [
+        "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
+        "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
+        "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1530:22",
+      "year": 1530,
+      "archiveName": "Đại Việt",
+      "effectiveCandidateName": "Đại Việt",
+      "archiveSha256": "984005809f085285a48318600e3a198274eb4679f5360ebfaead29da496e9f5b",
+      "candidateGeometryId": "0a171516314a693a1f77de7efb2529cfb0bd28479974e6e25663ad635d3a5f86",
+      "iou": 0.565565,
+      "classification": "mac-dynasty-anachronistic-unqualified-dai-viet",
+      "reasonRu": "В 1530 году власть в Дайвьете принадлежала династии Мак после переворота 1527 года; восстановление Ле началось в 1533 году. Название уточнено; точные границы не подтверждены.",
+      "sources": [
+        "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
+        "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
+        "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1530:61",
       "year": 1530,
       "archiveName": "Shan states",
@@ -515,6 +638,22 @@
       "sources": [
         "https://www.burmalibrary.org/docs21/UNDP-The_State_of_Local_Governance-Trends_in_Shan-en.pdf",
         "https://www.cambridge.org/core/journals/modern-asian-studies/article/strategic-fluidity-expansion-by-kengtung-chiang-tung-into-siamcontrolled-lan-na-18691892/69A3FCAFB0BC04C2A325E0DBB62DD883"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1500:265",
+      "year": 1500,
+      "archiveName": "Kalmar Union",
+      "effectiveCandidateName": "Kalmar Union",
+      "archiveSha256": "d01ffc9b80629787f13d2b1c2f881f005bc0164433548e30f5c058ddee0bfc7b",
+      "candidateGeometryId": "6cc056b54b227690143b44db499dced1aac47c339f1bc6d3ebc7e63f065627a9",
+      "iou": 0.304785,
+      "classification": "personal-union-not-single-sovereign-country",
+      "reasonRu": "В 1500 году Кальмарская уния была личным союзом юридически различных королевств Дания, Норвегия, Швеция; исходная единая политическая заливка не представляет одно суверенное государство. Геометрия сохранена только тематически.",
+      "sources": [
+        "https://cas.au.dk/en/danish-history/modules/module-3-the-late-middle-ages-1340-1523/4-from-mortgaged-kingdom-to-regional-great-power",
+        "https://www.medievalists.net/2021/01/medieval-scandinavia-downfall-kalmar-union/"
       ],
       "geometryHistoricallyConfirmed": false
     },
@@ -535,6 +674,22 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "700:91",
+      "year": 700,
+      "archiveName": "Saxons",
+      "effectiveCandidateName": "Saxons",
+      "archiveSha256": "bb66ebee15e57f5d43b0ca524dd9a230651bb821e7e002882b1981a25fd42a38",
+      "candidateGeometryId": "a844012dd9276a7eec02964e9e87f1b8b55b1f73fbd965983505045b355298ee",
+      "iou": 0.460622,
+      "classification": "ethnonym-not-single-sovereign-state",
+      "reasonRu": "Саксы в V–VIII веках представляли разные общности и локальные княжества. Единая страна Саксы и её проверенная граница не установлены; политическая заливка заменена необязательным тематическим ареалом.",
+      "sources": [
+        "https://www.royal.uk/anglo-saxon-kings",
+        "https://www.cambridge.org/core/books/abs/new-cambridge-medieval-history/earliest-anglosaxon-kingdoms/0F6BB7495276E8A45DE6D4464C4CC816"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "600:10",
       "year": 600,
       "archiveName": "Teotihuacan",
@@ -547,6 +702,38 @@
       "sources": [
         "https://whc.unesco.org/en/list/414/",
         "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "600:87",
+      "year": 600,
+      "archiveName": "Saxons",
+      "effectiveCandidateName": "Saxons",
+      "archiveSha256": "e8d285de5d4257c55158979e866191d13464abc74e3082fb5f2065b357beec7a",
+      "candidateGeometryId": "7a410679049b3a067f3f34dbb33e806fb03acb0a8f1779365eac4f6b0fd5a19a",
+      "iou": 0.460877,
+      "classification": "ethnonym-not-single-sovereign-state",
+      "reasonRu": "Саксы в V–VIII веках представляли разные общности и локальные княжества. Единая страна Саксы и её проверенная граница не установлены; политическая заливка заменена необязательным тематическим ареалом.",
+      "sources": [
+        "https://www.royal.uk/anglo-saxon-kings",
+        "https://www.cambridge.org/core/books/abs/new-cambridge-medieval-history/earliest-anglosaxon-kingdoms/0F6BB7495276E8A45DE6D4464C4CC816"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "500:150",
+      "year": 500,
+      "archiveName": "Saxons",
+      "effectiveCandidateName": "Saxons",
+      "archiveSha256": "06f7512efec9151b91b5967e8bee3e2dacf8c623e8719de8c64a996bec5ec2c1",
+      "candidateGeometryId": "7a410679049b3a067f3f34dbb33e806fb03acb0a8f1779365eac4f6b0fd5a19a",
+      "iou": 0.287886,
+      "classification": "ethnonym-not-single-sovereign-state",
+      "reasonRu": "Саксы в V–VIII веках представляли разные общности и локальные княжества. Единая страна Саксы и её проверенная граница не установлены; политическая заливка заменена необязательным тематическим ареалом.",
+      "sources": [
+        "https://www.royal.uk/anglo-saxon-kings",
+        "https://www.cambridge.org/core/books/abs/new-cambridge-medieval-history/earliest-anglosaxon-kingdoms/0F6BB7495276E8A45DE6D4464C4CC816"
       ],
       "geometryHistoricallyConfirmed": false
     },
