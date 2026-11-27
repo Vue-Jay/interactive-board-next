@@ -104,7 +104,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostExportBoardSync, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -129,8 +129,8 @@ import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveCon
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
-import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
-import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
+import {personalBoardEdit,applyPersonalBoardEdit, reattributeRestoredSharedInk,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
+import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops, blockedStudentObjectEdits } from "./lektrusBoardObjectAuth";
 import { parseDocument, parseRealtimeDocument, type RealtimeItemCache, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, type EraserMode } from "./inkEraser";
@@ -3282,6 +3282,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         fingerprint === acknowledgedSharedContent.current) return;
     remoteSaveInFlight.current = true;
     const inkGesture=lastInkGesture.current;
+    const startedAt=Date.now();
     const inkCursor=lastInkCursor.current?.gesture===inkGesture?lastInkCursor.current?.cursor:undefined;
     let retryAfterFailure=false;
     try {
@@ -3325,7 +3326,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           const initial=data;
           const stream=inkGesture?selfhostStartInkPipeline(
             boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture,inkCursor,
-            version=>acknowledge(initial,version)):null;
+            version=>acknowledge(initial,version),
+            isStudent&&!isBoardOwner?acknowledgedBoardData.current as unknown as Record<string,unknown>??undefined:undefined):null;
           if(stream&&inkGesture){
             inkPipeline.current={gesture:inkGesture,offer:next=>{
               if(!boardMounted.current||lastInkGesture.current!==inkGesture||pendingRemote.current||
@@ -3337,7 +3339,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             }};
           }
           const saved=stream?await stream.done:await selfhostSaveDocument(
-            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture??undefined,inkCursor
+            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture??undefined,inkCursor,
+            isStudent&&!isBoardOwner?acknowledgedBoardData.current as unknown as Record<string,unknown>??undefined:undefined
           );
           result={conflict:false,version:saved.version};
         }catch(error){
@@ -3396,11 +3399,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         remoteRetryTimer.current = null;
       }
       setSaveStatus("Сохранено на сервере");
+      if(selfhostMode&&!inkGesture)selfhostLogBoardSync(boardSummary.id,{event:"save_ack",version:result.version,elapsed_ms:Date.now()-startedAt,count:data.items.length});
       // The thumbnail is decorative metadata, not an autosave prerequisite.
       // It can finish even if the editor unmounts when returning to the dashboard.
       if(!selfhostMode)scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
     } catch (error) {
       retryAfterFailure=true;
+      if(selfhostMode)selfhostLogBoardSync(boardSummary.id,{event:"save_error",version:remoteVersion.current??0,status:error instanceof SelfhostHttpError?error.status:0,elapsed_ms:Date.now()-startedAt});
       const message=error instanceof Error?error.message:String(error);
       saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
       if(error instanceof SelfhostHttpError&&error.code==="plan_limit"){
@@ -3441,7 +3446,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if(!retryAfterFailure)void pushRemoteSnapshot(snapshot.current??queued);
       }
     }
-  }, [boardSummary.id, authUser.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
+  }, [boardSummary.id, authUser.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance,isStudent,isBoardOwner]);
 
   const flushSave = useCallback(() => {
     if (!canEdit || layoutEditing || demoMode) return;
@@ -3637,6 +3642,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       window.removeEventListener("focus",visibility);window.removeEventListener("pageshow",visibility);
     };
   },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,selfhostMode]);
+  const exportSyncJournal=async()=>{
+    if(!showAdminControls||!selfhostMode||demoMode||layoutEditing)return;
+    try{
+      const journal=await selfhostExportBoardSync(boardSummary.id);
+      const saved=await saveExport(new Blob([JSON.stringify(journal,null,2)],{type:"application/json"}),"lektrus-sync-"+boardSummary.id+"-"+new Date().toISOString().slice(0,10)+".json");
+      if(saved)setNotice("Журнал синхронизации выгружен");
+    }catch{setNotice("Не удалось выгрузить журнал синхронизации");}
+  };
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
@@ -4054,11 +4067,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];publishLiveEdits?:boolean}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];objectBaseline?:Item[];publishLiveEdits?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     if(!options?.previousItems){lastInkGesture.current=null;lastInkCursor.current=null;}
-    const current=options?.previousItems??itemsRef.current;
+    const current=options?.previousItems??options?.objectBaseline??itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
     const blocked=blockedBoardItemRemovals(current,next,authUser.id,isStudent,isBoardOwner);
@@ -4070,6 +4083,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setNotice("Нельзя обрезать чужое изображение");return;
     }
     const normalized = stampNewBoardItemAuthors(current,syncBoundConnectors(next),authUser.id);
+    if(isStudent&&!isBoardOwner&&blockedStudentObjectEdits(current,normalized,authUser.id).length){
+      if(options?.objectBaseline)display(current,true);
+      setNotice("Это изменение защищено преподавателем");return;
+    }
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
     const baseline = history.current[index.current];
@@ -4121,6 +4138,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(snapshot.current && !saveBlocked){
       snapshot.current=packDocumentInk({...snapshot.current,
         subject:lectrisBoardOrganization.subject,items:normalized});
+      if(selfhostMode&&documentSyncEnabled&&!isLabSimulation&&!options?.previousItems){
+        const before=getCurrentItemIndex(current),after=getCurrentItemIndex(normalized);
+        const added=normalized.filter(item=>!before.has(item.id)&&!isInkItem(item)).length;
+        const removed=current.filter(item=>!after.has(item.id)&&!isInkItem(item)).length;
+        const changed=normalized.filter(item=>!isInkItem(item)&&before.has(item.id)&&before.get(item.id)!==item&&JSON.stringify(before.get(item.id))!==JSON.stringify(item)).length;
+        if(added||removed||changed||current.some((item,i)=>normalized[i]?.id!==item.id)){
+          selfhostLogBoardSync(boardSummary.id,{event:"object_change",version:remoteVersion.current??0,added,changed,removed,count:normalized.length});
+          // A completed object operation must not wait for a React render,
+          // background animation frame, or a later gesture to be persisted.
+          queueMicrotask(()=>{if(boardMounted.current)flushSave()});
+        }
+      }
     }
   };
   // Paint the actual document item, not a second canvas that expires.
@@ -4227,6 +4256,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const startEdit = (item: Item) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if (item.kind !== "text" && item.kind !== "frame" && item.kind !== "comment") return;
+    const stored=itemsRef.current.find(candidate=>candidate.id===item.id)??item;
+    if(isStudent&&!isBoardOwner&&(stored.createdBy!==authUser.id||!canUseBoardCreationTool(item.kind,roleCapabilities))){
+      setNotice("Текст преподавателя доступен для чтения");return;
+    }
     setSelected([item.id]);
     setTool("select");
     setSpace(false);
@@ -4245,16 +4278,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         setNotice("Это действие уже изменено другим участником. Чужие правки не затронуты.");
         return;
       }
-      if(blockedBoardItemRemovals(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
-         blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length){
+      const restored=reattributeRestoredSharedInk(itemsRef.current,outcome.items,stack.entries[step],authUser.id);
+      if(blockedBoardItemRemovals(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedBoardImageCrops(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedStudentObjectEdits(itemsRef.current,restored.items,authUser.id).length){
         setNotice("Отмена не может изменить защищённую работу другого участника.");
         return;
       }
+      stack.entries[step]=restored.edit;
       stack.cursor=direction<0?step:step+1;
-      display(outcome.items);
-      if(snapshot.current&&!saveBlocked)
-        snapshot.current=packDocumentInk({...snapshot.current,items:outcome.items});
-      history.current=[outcome.items];index.current=0;
+      display(restored.items);
+      if(snapshot.current&&!saveBlocked){
+        snapshot.current=packDocumentInk({...snapshot.current,items:restored.items});
+        lastInkGesture.current=null;lastInkCursor.current=null;
+        if(selfhostMode)queueMicrotask(()=>{if(boardMounted.current)flushSave()});
+      }
+      history.current=[restored.items];index.current=0;
       setSelected([]);
       if(outcome.conflicts)setNotice("Отменены только ваши изменения. Более поздние чужие правки сохранены.");
       return;
@@ -4273,8 +4312,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     index.current = next;
     display(rebased);
-    if(snapshot.current&&!saveBlocked)
+    if(snapshot.current&&!saveBlocked){
       snapshot.current=packDocumentInk({...snapshot.current,items:rebased});
+      lastInkGesture.current=null;lastInkCursor.current=null;
+      if(selfhostMode)queueMicrotask(()=>{if(boardMounted.current)flushSave()});
+    }
     setSelected([]);
   };
   const local = (x: number, y: number): Point => {
@@ -4904,21 +4946,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(g.mode==="draw"&&g.ink){
       finishDurableInk(g,cancel);
     } else if (cancel) {
-      display(g.restore ?? g.before);
+      if(g.mode!=="pan"&&g.mode!=="marquee"&&g.mode!=="lasso")display(g.restore ?? g.before);
       setView(g.view);
     } else if (g.mode === "hand-smart") {
       if (g.dragging) {
         if (g.handMoveSelection) {
-          if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
-          else commit(itemsRef.current);
+          if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true,objectBaseline:g.before}));
+          else commit(itemsRef.current,{objectBaseline:g.before});
         }
       } else {
         setSelected(g.handHitIds ?? []);
       }
     } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
       if(dragPreview||rotatePreview||groupRotatePreview||resizePreview)
-            flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
-      else commit(itemsRef.current);
+            flushSync(()=>commit(itemsRef.current,{immediatePaint:true,objectBaseline:g.before}));
+      else commit(itemsRef.current,{objectBaseline:g.before});
     }
     else if (g.mode === "connector") {
       const startPoint = g.path[0];
@@ -6221,6 +6263,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const contourWorksheet=singleSelected?.graphFigureId==="contour-atlas";
     setLectrisInspectorOpen(false);
     if (!singleSelected || !canEdit || (singleSelected.locked&&!contourWorksheet) || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
+    if(isStudent&&!isBoardOwner&&["table","formula"].includes(singleSelected.kind)){setNotice("Редактирование учебного материала доступно преподавателю");return;}
     switch (singleSelected.kind) {
       case "text": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
@@ -6623,6 +6666,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const toggleLockSelected = () => {
+    if(isStudent&&!isBoardOwner){setNotice("Блокировка объектов доступна преподавателю");return;}
     if (rejectStudentStructuralEdit()) return;
     if (!selected.length) return;
     const lockable=selectedItems.filter(isLockableBoardItem);
@@ -8217,7 +8261,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     // Real ink may reconcile while drawing or erasing; other gesture geometry
     // still depends on its initial snapshot and must wait until release.
-    if (gesture.current&&gesture.current.mode!=="draw") {
+    if (gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode)) {
       if (!deferredRemote.current || row.version > deferredRemote.current.version)
         deferredRemote.current = row;
       return;
@@ -8316,6 +8360,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       applyServerDocument(row, data, remoteFingerprint);
     } catch {
+      if(selfhostMode)selfhostLogBoardSync(boardSummary.id,{event:"revision_rejected",version:row.version});
       setNotice("Не удалось прочитать новую серверную версию. Повторяем синхронизацию.");
       return false;
     }
@@ -8958,6 +9003,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
               {showAdminControls && <div className="topbar-menu-section">
                 <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>
+                {selfhostMode&&!demoMode&&!layoutEditing&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportSyncJournal()}}><Icon name="download" size={16}/><span>Выгрузить журнал синхронизации</span></button>}
               </div>}
               <div className="topbar-menu-section">
                 <button className="topbar-menu-danger" disabled={leavingBoard} onClick={()=>void saveBeforeLeaving(true)}><Icon name="close" size={16}/><span>{demoMode?"Закрыть демо":"Выйти из аккаунта"}</span></button>

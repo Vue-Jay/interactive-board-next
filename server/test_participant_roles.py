@@ -195,3 +195,62 @@ async def test_photo_permissions_and_peer_document_convergence(client):
     final = (await client.get(url,headers=owner)).json()["document"]
     assert reconstructed == final == {"version":1,"items":[{**pupil_photo,"imageCrop":crop}]}
     assert (await client.get(url,headers=pupil)).json()["document"] == final
+
+@pytest.mark.asyncio
+async def test_student_all_allowed_object_kinds_and_admin_sync_journal(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    _, pupil=await sign_in(client,"student@example.test")
+    board_id=(await client.post("/api/v1/boards",headers=owner,json={"title":"Lesson"})).json()["id"]
+    root="/api/v1/boards/"+board_id
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"student@example.test","role":"editor","participant_role":"student"})).status_code==200
+    original={"id":"teacher-shape","kind":"shape","createdBy":str(TEACHER),"x":0,"y":0}
+    doc={"version":1,"title":"Lesson","items":[original]}
+    assert (await client.put(root+"/document",headers=owner,json={"expected_version":0,"document":doc})).status_code==200
+    kinds=("sticky","text","shape","image","pdf","connector","comment","fraction","instrument","pen","marker")
+    objects=[{"id":"student-"+kind,"kind":kind,"createdBy":str(STUDENT),"x":1,"y":2} for kind in kinds]
+    saved=await client.patch(root+"/document",headers=pupil,json={"expected_version":1,"delta":{"items":{"upsert":objects}}})
+    assert saved.status_code==200,saved.text
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==[original,*objects]
+    changed=[{**item,"x":10,"y":11} for item in objects]
+    assert (await client.patch(root+"/document",headers=pupil,json={"expected_version":2,"delta":{"items":{"upsert":changed}}})).status_code==200
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==[original,*changed]
+    assert (await client.patch(root+"/document",headers=pupil,json={"expected_version":3,"delta":{"items":{"remove":[item["id"] for item in changed]}}})).status_code==200
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==[original]
+    assert (await client.post(root+"/sync-journal",headers=pupil,json={"events":[{"event":"object_change","added":len(objects),"version":1}]})).status_code==200
+    assert (await client.post(root+"/sync-journal",headers=pupil,json={"events":[{"event":"object_change","text":"private lesson"}]})).status_code==422
+    assert (await client.get(root+"/sync-journal",headers=pupil)).status_code==403
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1",TEACHER)
+    exported=await client.get(root+"/sync-journal",headers=owner)
+    assert exported.status_code==200,exported.text
+    rows=exported.json()["events"]
+    assert any(row["source"]=="client" and row["event"]=="object_change" and row["actor_id"]==str(STUDENT) for row in rows)
+    assert any(row["source"]=="server" and row["event"]=="save_ack" and row["version"]==4 for row in rows)
+
+@pytest.mark.asyncio
+async def test_student_interactive_teacher_objects_and_locked_content(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    _, pupil=await sign_in(client,"student@example.test")
+    root="/api/v1/boards/"+(await client.post("/api/v1/boards",headers=owner,json={"title":"Interactive"})).json()["id"]
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"student@example.test","role":"editor","participant_role":"student"})).status_code==200
+    cases=[
+      ({"kind":"sticky"},{"stickerInk":[{"id":"s","kind":"pen","points":[{"x":1,"y":2}],"color":"#112233","weight":2}]}),
+      ({"kind":"pdf","pdfPage":1},{"pdfPage":2}),
+      ({"kind":"instrument","instrumentScale":1},{"instrumentScale":2}),
+      ({"kind":"connector","connectorStart":{"x":0,"y":0},"connectorEnd":{"x":1,"y":1}},{"connectorEnd":{"x":2,"y":2}}),
+      ({"kind":"graph","graphPurpose":"coordinates","graphPoints":[]},{"graphPoints":[{"x":2,"y":3}],"graphXMin":-20,"graphXMax":20}),
+      ({"kind":"graph","graphPurpose":"geometry","graphPoints":[]},{"graphRotationX":20,"graphRotationY":30}),
+      ({"kind":"graph","graphFigureId":"chem-periodic"},{"sciencePeriodicHighlights":[1,2],"sciencePeriodicLayout":"long"}),
+      ({"kind":"graph","graphFigureId":"physics-motion","graphPoints":[]},{"graphPoints":[{"x":1,"y":2}]}),
+    ]
+    originals=[{**before,"id":str(i),"createdBy":str(TEACHER),"text":"Teacher material"} for i,(before,after) in enumerate(cases)]
+    locked={**originals[0],"id":"locked","locked":True}
+    worksheet={"id":"worksheet","kind":"graph","graphPurpose":"geometry","subjectBoardEntries":[],"createdBy":str(TEACHER)}
+    assert (await client.put(root+"/document",headers=owner,json={"expected_version":0,"document":{"version":1,"title":"Interactive","items":[*originals,locked,worksheet]}})).status_code==200
+    updates=[{**item,**cases[i][1]} for i,item in enumerate(originals)]
+    accepted=await client.patch(root+"/document",headers=pupil,json={"expected_version":1,"delta":{"items":{"upsert":updates}}})
+    assert accepted.status_code==200,accepted.text
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==[*updates,locked,worksheet]
+    for forbidden in ({**locked,**cases[0][1]},{**updates[1],"text":"Rewritten"},{**worksheet,"graphPoints":[{"x":1,"y":2}]},{**updates[4],"graphFigureId":"different"}):
+        result=await client.patch(root+"/document",headers=pupil,json={"expected_version":2,"delta":{"items":{"upsert":[forbidden]}}})
+        assert result.status_code==403,result.text

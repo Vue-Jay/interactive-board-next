@@ -101,8 +101,8 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
             async with websockets.connect(native_uri,origin="https://lektrus.ru") as first:
                 async with websockets.connect(native_uri,origin="https://lectrus.ru") as second:
                     for ws,session in ((first,owner_session),(second,student_session)):
-                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second,"durable_ink_commits":True,"ink_commit_chain":True,"ink_motion":True}))
-                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0,"durable_ink_commits":True,"ink_commit_chain":True,"ink_motion":True}
+                        await ws.send(json.dumps({"type":"auth","token":session["access_token"],"document_patches":ws is second,"ink_point_deltas":ws is second,"durable_ink_commits":True,"durable_object_commits":True,"ink_commit_chain":True,"ink_motion":True}))
+                        assert json.loads(await asyncio.wait_for(ws.recv(),3))=={"type":"ready","version":0,"durable_ink_commits":True,"durable_object_commits":True,"ink_commit_chain":True,"ink_motion":True}
                     for sender,receiver in ((first,second),(second,first)):
                         packet={"type":"live_ink","client_id":"native_1","stroke_id":"native_stroke","kind":"pen",
                                 "color":"#112233","weight":3,"offset":0,"points":[{"x":10,"y":20}],"finished":False}
@@ -144,14 +144,13 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                         {"items":{"upsert":edited}},
                         {"items":{"remove":[item["id"] for item in objects]}},
                     ),1):
-                        saved=await http.patch(url+"?version_only=true",headers=owner,
-                            json={"expected_version":revision,"delta":delta})
-                        assert saved.status_code==200,saved.text
+                        await first.send(json.dumps({"type":"ink_commit","request_id":f"object-{revision}","expected_version":revision,"delta":delta}))
                         legacy=json.loads(await asyncio.wait_for(first.recv(),3))
                         assert legacy=={"type":"document_changed","version":revision+1}
                         push=json.loads(await asyncio.wait_for(second.recv(),3))
                         assert push["type"]=="document_changed" and push["version"]==revision+1
                         assert push["base_version"]==revision and push["delta"]==delta
+                        assert json.loads(await asyncio.wait_for(first.recv(),3))=={"type":"ink_commit_ack","request_id":f"object-{revision}","version":revision+1}
                         pushed=apply_delta(peer,push["delta"])
                         update=(await http.get(url+f"?since_version={revision}",headers=student)).json()
                         assert update["version"]==revision+1
@@ -159,6 +158,27 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                             peer=apply_delta(peer,patch)
                         assert pushed==peer==(await http.get(url,headers=owner)).json()["document"]
                     assert peer["items"]==[]
+                    async with app.state.pool.acquire() as db:
+                        await db.execute("UPDATE board_members SET participant_role='student' WHERE board_id=$1 AND user_id=$2",UUID(native),STUDENT)
+                    pupil_objects=[{"id":"pupil-"+kind,"kind":kind,"createdBy":str(STUDENT),"x":1,"y":2,"text":""}
+                                   for kind in ("sticky","text","shape","image","pdf","connector","comment","fraction","instrument")]
+                    current_version=5
+                    for idx,delta in enumerate(({"items":{"upsert":pupil_objects}},
+                            {"items":{"upsert":[{**item,"x":15,"y":20} for item in pupil_objects]}},
+                            {"items":{"remove":[item["id"] for item in pupil_objects]}})):
+                        request_id=f"pupil-object-{idx}"
+                        await second.send(json.dumps({"type":"ink_commit","request_id":request_id,"expected_version":current_version,"delta":delta}))
+                        notice=json.loads(await asyncio.wait_for(first.recv(),3))
+                        pushed=json.loads(await asyncio.wait_for(second.recv(),3))
+                        current_version+=1
+                        assert notice=={"type":"document_changed","version":current_version}
+                        assert pushed["version"]==current_version and pushed["delta"]==delta
+                        assert json.loads(await asyncio.wait_for(second.recv(),3))=={"type":"ink_commit_ack","request_id":request_id,"version":current_version}
+                        peer=apply_delta(peer,delta)
+                        assert peer==(await http.get(url,headers=owner)).json()["document"]
+                    assert peer["items"]==[]
+                    async with app.state.pool.acquire() as db:
+                        await db.execute("UPDATE board_members SET participant_role=NULL WHERE board_id=$1 AND user_id=$2",UUID(native),STUDENT)
                     # A modern peer receives only the committed suffix; an
                     # old peer gets a version notice and the existing GET path.
                     version = (await http.get(url+"?version_only=true",headers=owner)).json()["version"]

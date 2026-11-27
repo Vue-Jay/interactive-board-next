@@ -249,6 +249,7 @@ async function loadSelfhost(enabled, platform="web") {
     if(u.pathname==="/api/v1/invitations/claim")return ok({claimed:1});
     if(u.pathname==="/api/v1/auth/signup")return ok({ok:true,message:"email sent"},202);
     if(u.pathname==="/api/v1/auth/verify-email")return ok({access_token:"token-verified",refresh_token:"refresh-verified",expires_in:900,user});
+    if(u.pathname.endsWith("/sync-journal"))return ok({ok:true});
     throw new Error("Unexpected pilot request "+u.pathname);
   };
   const nativeRequests=[];
@@ -1074,4 +1075,25 @@ console.log("Durable ink pipeline: three unacknowledged frames, bounded coalesci
  stop();await Promise.resolve();
  assert.equal(third.readyState,3);
  console.log("Reconnect regression: false offline, bearer refresh, room readiness and retry passed.");
+}
+
+/** A student's ordinary object creation must not reserialize a teacher's
+ * legacy default fields, and moving an object must preserve unknown metadata. */
+{
+ const raw={version:1,title:"Lesson",items:[{id:"teacher",kind:"shape",x:1,y:2,unknown:"keep"}]};
+ const canonical={version:1,title:"Lesson",subject:"",items:[{id:"teacher",kind:"shape",x:1,y:2,shapeType:"rounded"}]};
+ const next={...canonical,subject:"unrelated subject",items:[{...canonical.items[0],x:5},{id:"pupil",kind:"sticky",createdBy:"student"}]};
+ const projected=api.projectStudentDocument(raw,canonical,next);
+ assert.deepEqual(JSON.parse(JSON.stringify(projected.items)),[{id:"teacher",kind:"shape",x:5,y:2,unknown:"keep"},{id:"pupil",kind:"sticky",createdBy:"student"}]);
+ assert.equal(projected.subject,undefined);
+ const delta=api.diffSelfhostDocument(raw,projected);
+ assert.equal(delta.items.upsert.length,2);
+ const addedOnly=api.projectStudentDocument(raw,canonical,{...canonical,items:[canonical.items[0],next.items[1]]});
+ assert.deepEqual(JSON.parse(JSON.stringify(api.diffSelfhostDocument(raw,addedOnly).items.upsert)),[next.items[1]]);
+}
+
+{
+ const boardModelSource=readFileSync(new URL("../src/boardModel.ts",import.meta.url),"utf8");
+ const block=boardModelSource.slice(boardModelSource.indexOf("const persistedGraphKeys"),boardModelSource.indexOf("function persistedGraphData"));
+ assert.match(block,/"subjectBoardStandalone"/,"Standalone subject object must survive parsing and remote reload");
 }

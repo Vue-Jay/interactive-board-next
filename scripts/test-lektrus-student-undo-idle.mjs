@@ -5,7 +5,7 @@ const source=fs.readFileSync("src/lektrusPersonalBoardHistory.ts","utf8");
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};
 new Function("exports",compiled)(exports);
-const {personalBoardEdit,applyPersonalBoardEdit}=exports;
+const {personalBoardEdit,applyPersonalBoardEdit,reattributeRestoredSharedInk}=exports;
 const object=(id,createdBy="teacher",x=0,text=id)=>({id,kind:"text",createdBy,x,y:0,width:100,height:40,text});
 const owned=object("mine","pupil");
 const teacher=object("teacher","teacher");
@@ -121,3 +121,16 @@ const reconnected=colors.participantColors([{userId:"student",color:"#b23a56"}])
 assert.notEqual(newVisit.get("student"),reconnected.get("student"),"Each session follows fresh server allocation");
 
 console.log("10-minute wall-clock idle, foreground wake, unique participant colors: OK");
+
+{
+ const shared={...teacher,kind:"pen",points:[{x:0,y:0},{x:10,y:10}]};
+ const op=choose([shared,peer],[peer]);
+ const undo=applyPersonalBoardEdit([peer],op,"undo");
+ const restored=reattributeRestoredSharedInk([peer],undo.items,op,"pupil");
+ assert.equal(restored.items.find(i=>i.id===shared.id).createdBy,"pupil");
+ assert.equal(restored.items.find(i=>i.id===peer.id).createdBy,"another");
+ const redo=applyPersonalBoardEdit(restored.items,restored.edit,"redo");
+ assert.deepEqual(redo.items,[peer]);
+ const again=applyPersonalBoardEdit(redo.items,restored.edit,"undo");
+ assert.equal(again.items.find(i=>i.id===shared.id).createdBy,"pupil");
+}
