@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "date": "2026-11-27",
   "sourceDataset": "Cliopatria 0.2.1, pinned SHA-256 fc6f0d1e4cc42f45da83522b3696db6f2cc85ec0d12259a85c89b31347b8fc0a",
-  "status": "86 sourced component-year restorations implemented, full current-source annual rebuild/CI pending",
+  "status": "128 false-foreign source component-year corrections implemented, current full annual rebuild/CI PENDING",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "scope": "Tianjin false oversized foreign concession polygons and regional state attribution",
   "years": {
@@ -23,20 +23,22 @@
     "1927": 5,
     "1936": 4
   },
-  "closedSourceComponentYears": 86,
-  "closedDistinctSourceRegionYears": 86,
+  "closedSourceComponentYears": 128,
+  "closedDistinctSourceRegionYears": 128,
   "before": {
     "regionalResolved": 269,
     "tianjinPending": 98,
     "totalTerritorialOpen": 859,
-    "openRegionYears": 780
+    "openRegionYears": 780,
+    "totalReviewedTerritorial": 6486
   },
   "afterExpected": {
-    "regionalResolved": 355,
-    "tianjinPending": 12,
-    "totalTerritorialOpen": 773,
-    "openRegionYears": 694,
-    "territorialResolved": 5713
+    "regionalResolved": 397,
+    "tianjinPending": 8,
+    "totalTerritorialOpen": 769,
+    "openRegionYears": 690,
+    "territorialReviewed": 6524,
+    "territorialResolved": 5755
   },
   "correctedBackgroundPolities": [
     {
@@ -65,7 +67,7 @@
     1937,
     1945
   ],
-  "notClaimed": "No historical surveyed concession cadastral boundaries, no date-specific 1937 or 1945 replacement; only false oversized source concession cells transferred to legitimate background row where unique and non-competing.",
+  "notClaimed": "Not historical geodetic borders of leased railway or concessions. Qing/ROC regional sovereign background only, with non-sovereign Japanese garrison noted. 1937/1945 transition cells unresolved.",
   "sources": [
     "https://mainuat.chiculture.org.hk/en/photo-story/2348",
     "https://pure.tudelft.nl/ws/files/142459867/9789463666503_WEB.pdf",
@@ -118,5 +120,31 @@
       "https://history.state.gov/historicaldocuments/frus1901China/d122",
       "https://www.cambridge.org/core/journals/urban-history/article/multiimperial-dimensions-in-treatyport-tianjin-and-its-historiographical-significance/B0D546345E6077BF4C7AAD7872AC0399"
     ]
+  },
+  "additionalJapaneseSouthSourceYearCases": {
+    "from": 1900,
+    "to": 1937,
+    "total": 38,
+    "resolved": 37,
+    "transitionYearUnresolved": 1937,
+    "region": "Taku/Tanggu south of Tianjin urban concessions",
+    "approximateBbox": [
+      117.262535,
+      38.738853,
+      117.70903,
+      38.99723
+    ],
+    "sourcePolity": "Empire of Japan",
+    "sourceWikidata": "Q188712",
+    "sourceSovereigntyClaimRejected": true,
+    "legalJustification": "Boxer Protocol 1901 Article IX: privilege to station troops at communication points, not a territorial cession",
+    "sources": [
+      "https://history.state.gov/historicaldocuments/frus1901China/d179",
+      "https://history.state.gov/historicaldocuments/frus1901China/d102",
+      "https://openrivers.lib.umn.edu/article/river-conservancy-and-the-undetermined-future-of-the-port-of-tianjin-1888-1937/",
+      "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3"
+    ],
+    "verifiedComponents": 14,
+    "formerGermanOverlapCasesNowResolved": 5
   }
 }

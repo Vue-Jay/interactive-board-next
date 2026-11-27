@@ -1776,12 +1776,24 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
  const tianjinLocal=features.flatMap((f,source)=>{
   const {Name:name,FromYear:from,ToYear:to}=f.properties;if(to<1860||from>1946||f.properties.Type!=='POLITY'||f.properties.Components)return [];
   return rawParts(f).flatMap((p,part)=>{const b=box(p);if(!intersectsBox(b,[116.5,38.5,118.3,40.2]))return [];
-   const cell=tianjinNames.has(name)&&b[0]>116.5&&b[2]<118.3&&b[1]>38.5&&b[3]<40.2&&!(name==='Empire of Japan'&&b[1]<39);
+   const cell=tianjinNames.has(name)&&b[0]>116.5&&b[2]<118.3&&b[1]>38.5&&b[3]<40.2;
+   // The southern Japanese wartime/garrison corridor is NOT a separate
+   // Japanese sovereign territory. The 1901 Boxer Protocol (Article IX)
+   // granted occupation of communication points, not cession to Japan.
+   // Unlike the urban concession, this large shape is near Tanggu/Taku.
+   // Exact spatial/date/identity guards prevent removing Japanese land elsewhere.
+   if(cell&&name==='Empire of Japan'&&b[1]<39){
+    assert.equal(f.properties.Wikidata,'Q188712','Tianjin southern Japanese source identity');
+    assert.ok(from>=1900&&to<=1937&&b[0]>117.26&&b[0]<117.27&&
+     b[1]>38.73&&b[1]<38.75&&b[2]>117.70&&b[2]<117.72&&
+     b[3]>38.99&&b[3]<39,
+     'New southern occupied source cell must match the pinned Taku/Tanggu corridor');
+   }
    return [{source,part,from,to,name,p,b,cell}];});
  });
- const tianjinCells=tianjinLocal.filter(c=>c.cell);assert.equal(tianjinCells.length,121);
+ const tianjinCells=tianjinLocal.filter(c=>c.cell);assert.equal(tianjinCells.length,135);
  const tianjinHashes=new Set(tianjinCells.map(c=>componentHash(c.p)));
- assert.deepEqual(Object.fromEntries([...tianjinNames].map(n=>[n,tianjinCells.filter(c=>c.name===n).reduce((sum,c)=>sum+c.to-c.from+1,0)])),{'French Indochina':86,'British Colonial Empire':86,'United States of America':12,'German Empire':19,'Empire of Japan':40,'Russian Empire':34,'Kingdom of Belgium':36,'Kingdom of Italy':42,'Austria-Hungary':12});
+ assert.deepEqual(Object.fromEntries([...tianjinNames].map(n=>[n,tianjinCells.filter(c=>c.name===n).reduce((sum,c)=>sum+c.to-c.from+1,0)])),{'French Indochina':86,'British Colonial Empire':86,'United States of America':12,'German Empire':19,'Empire of Japan':78,'Russian Empire':34,'Kingdom of Belgium':36,'Kingdom of Italy':42,'Austria-Hungary':12});
  for(const c of tianjinCells)exclude(c.source,c.from,c.to,[c.part],tianjin);
  for(const [target,f] of features.entries())if(f.properties.Components&&f.properties.FromYear>=1860&&f.properties.ToYear<=1946){const parts=rawParts(f).flatMap((p,i)=>tianjinHashes.has(componentHash(p))?[i]:[]);if(parts.length)exclude(target,f.properties.FromYear,f.properties.ToYear,parts,tianjin);}
  // 1916: Hongxian abolished 22 March; 1917–27: Beiyang ROC authority,
@@ -1816,10 +1828,10 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
    covered=polygonClipping.union(...covered,c.p);
   }
  }
- // Reviewed source components: 1900–02 (3×6), 1916 (9), 1917–27 (11×5), 1936 (4).
- // 86 original oversized foreign-concession component-years are now assigned
+ // Reviewed source components: 1900–02 (3×6), 1916 (9), 1917–27 (11×5), 1936 (4);\n // plus 38 Japanese southern source-years 1900–37, and 5 previously competing\n // German source cells 1900–04 after the false southern Japanese overlap is excluded.
+ // 128 original false-foreign political component-years are now assigned
  // to the documented surrounding Chinese state row rather than left unresolved.
- assert.equal(tianjinResolved,355);assert.equal(tianjinPending,12);
+ assert.equal(tianjinResolved,397);assert.equal(tianjinPending,8);
  // The 1859 conquest of Saigon must not be confused with the later cession
  // of Cochinchina; this source has already painted most of the Mekong delta.
  const saigon=d('The French campaign began in 1858 and seized Saigon in 1859. The treaty of 5 June 1862 ceded the three eastern provinces and Poulo Condor; the three western provinces were annexed in June 1867, recognized by treaty in 1874. The identical source extent for 1859–1867 cannot substantiate French control of all these mainland areas before 1867.','Французская кампания началась в 1858 г., Сайгон был захвачен в 1859 г. По договору от 5 июня 1862 г. переданы три восточные провинции и Пуло-Кондор; три западные провинции аннексированы в июне 1867 г., уступка признана договором 1874 г. Одинаковый исходный контур 1859–1867 гг. не подтверждает контроль Франции над всей областью до 1867 г.',['https://mjp.univ-perp.fr/constit/vn1862.htm','https://archives-nationales-outre-mer.culture.gouv.fr/faire-une-recherche/indochine','https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf']);

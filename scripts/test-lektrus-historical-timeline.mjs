@@ -367,8 +367,23 @@ if(outDir&&sourceFile){
   const area=g=>g.reduce((a,p)=>a+ringArea(p[0])-p.slice(1).reduce((s,r)=>s+ringArea(r),0),0);
   const bounds=p=>p[0].reduce((a,[x,y])=>[Math.min(a[0],x),Math.min(a[1],y),Math.max(a[2],x),Math.max(a[3],y)],[Infinity,Infinity,-Infinity,-Infinity]);
   const tianjinSourceNames=new Set(['French Indochina','British Colonial Empire','United States of America','German Empire','Empire of Japan','Russian Empire','Kingdom of Belgium','Kingdom of Italy','Austria-Hungary']);
-  const tianjinCells=original.flatMap(({f,index})=>{const {Name:name,FromYear:from,ToYear:to,Components:components}=f.properties;if(!tianjinSourceNames.has(name)||components||to<1860||from>1946)return [];return (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).flatMap((p,part)=>{const [x,y,X,Y]=bounds(p);return x>116.5&&X<118.3&&y>38.5&&Y<40.2&&!(name==='Empire of Japan'&&y<39)?[{index,from,to,part,p,hash:componentHash(p)}]:[];});});
-  assert.equal(tianjinCells.length,121);
+    // The extra Japanese polygon at Tanggu/Taku represents a foreign garrison
+  // corridor, not sovereign Japan or the Haihe urban Japanese concession.
+  const southernJapaneseCells=tianjinCells.filter(c=>{
+   const f=input.features[c.index];
+   return f.properties.Name==='Empire of Japan'&&bounds(c.p)[1]<39;
+  });
+  assert.equal(southernJapaneseCells.length,14);
+  assert.equal(southernJapaneseCells.reduce((n,c)=>n+c.to-c.from+1,0),38);
+  for(const cell of southernJapaneseCells){
+   assert.equal(input.features[cell.index].properties.Wikidata,'Q188712');
+   const [x,y,X,Y]=bounds(cell.p);
+   assert.ok(x>117.26&&x<117.27&&y>38.73&&y<38.75&&
+    X>117.70&&X<117.72&&Y>38.99&&Y<39,
+    'False Japanese Tanggu boundary changed: '+cell.index+'/'+cell.part);
+  }
+const tianjinCells=original.flatMap(({f,index})=>{const {Name:name,FromYear:from,ToYear:to,Components:components}=f.properties;if(!tianjinSourceNames.has(name)||components||to<1860||from>1946)return [];return (f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).flatMap((p,part)=>{const [x,y,X,Y]=bounds(p);return x>116.5&&X<118.3&&y>38.5&&Y<40.2?[{index,from,to,part,p,hash:componentHash(p)}]:[];});});
+  assert.equal(tianjinCells.length,135);
   let tianjinClosed=0,tianjinOpen=0;
   const intersect=(a,b)=>{try{return polygonClipping.intersection(a,b);}catch(e){const snap=p=>p.map(r=>r.map(([x,y])=>[Math.round(x*1e7)/1e7,Math.round(y*1e7)/1e7]));return polygonClipping.intersection(snap(a),snap(b));}};
   assert.equal(manifest.counts.sourcePolities+manifest.counts.sourceComposites+manifest.counts.sourceRelations,original.length);
@@ -563,9 +578,18 @@ if(outDir&&sourceFile){
           'Missing corrected Chinese regional label '+year);
         }
         const cells=tianjinCells.filter(c=>c.from<=year&&year<=c.to),owner=tianjinReviewedSourceOwner(year);
+        if(year>=1900&&year<=1937){
+         const coastal=tianjinCells.filter(c=>c.from<=year&&year<=c.to&&
+          input.features[c.index].properties.Name==='Empire of Japan'&&bounds(c.p)[1]<39);
+         assert.equal(coastal.length,1,'Expected one nons sovereign coastal Japanese source cell per year '+year);
+         if(year<=1936)assert.ok(!unresolved.some(i=>i.sourceIndex===coastal[0].index&&i.part===coastal[0].part),
+          'Japanese garrison corridor falsely left as country territory '+year);
+         else assert.ok(unresolved.some(i=>i.sourceIndex===coastal[0].index&&i.part===coastal[0].part),
+          '1937 Japanese campaign change must remain unresolved');
+        }
         if(year>=1900&&year<=1902){
-         assert.equal(cells.length,7,'Unexpected Qing/Tianjin source cell count '+year);
-         assert.equal(unresolved.length,1,'One cross-polity cell must remain open '+year);
+         assert.equal(cells.length,8,'Unexpected Qing/Tianjin source cell count '+year);
+         assert.equal(unresolved.length,0,'The Japanese coastal garrison is not a sovereign polity '+year);
          const qing=state.drawable.filter(({record})=>record.sourceName==='Qing Dynasty'&&record.sourceWikidata==='Q8733');
          assert.ok(qing.length,'Qing sovereign regional background missing '+year);
         }
@@ -990,8 +1014,8 @@ if(outDir&&sourceFile){
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2201);assert.equal(externalRecordYears,477);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
-  assert.equal(tianjinClosed,355);assert.equal(tianjinOpen,12);
-  assert.equal(unresolvedSourceYears,773);assert.equal(unresolvedRegionYears,694);
+  assert.equal(tianjinClosed,397);assert.equal(tianjinOpen,8);
+  assert.equal(unresolvedSourceYears,769);assert.equal(unresolvedRegionYears,690);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
   assert.equal(sixthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),2);
   assert.equal(exactConflictPendingReviews.length,8);
@@ -1004,7 +1028,7 @@ if(outDir&&sourceFile){
   const groupLinkIssues=rows.flatMap(r=>r.groupLinkWarnings??[]);
   console.log('Remaining group links:',JSON.stringify([...new Set(groupLinkIssues.map(i=>JSON.stringify(i)))].map(s=>JSON.parse(s))));
   assert.equal(new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,7);assert.equal(groupLinkIssues.length,29);
-  const auditLedger={territorial:{total:6486,resolved:6486-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears,openByGroup:territorialOpenByGroup},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,confirmed:82-exactConflictPendingReviews.length-provisionalExactReviews.length,provisional:provisionalExactReviews.length,provisionalComponentYears,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears,openByGroup:exactOpenByGroup},partialReconstructions:{componentYears:Object.values(documentedCoreByGroup).reduce((a,b)=>a+b,0),byGroup:documentedCoreByGroup},groupLinks:{openGroups:new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,openAnnualOccurrences:groupLinkIssues.length}};
+  const auditLedger={territorial:{total:6524,resolved:6524-unresolvedSourceYears,open:unresolvedSourceYears,openRegionYears:unresolvedRegionYears,openByGroup:territorialOpenByGroup},exactPairs:{total:82,resolved:82-exactConflictPendingReviews.length,confirmed:82-exactConflictPendingReviews.length-provisionalExactReviews.length,provisional:provisionalExactReviews.length,provisionalComponentYears,open:exactConflictPendingReviews.length,openComponentYears:unresolvedExactComponentYears,openSourceYears:unresolvedExactSourceYears,openByGroup:exactOpenByGroup},partialReconstructions:{componentYears:Object.values(documentedCoreByGroup).reduce((a,b)=>a+b,0),byGroup:documentedCoreByGroup},groupLinks:{openGroups:new Set(groupLinkIssues.map(i=>JSON.stringify(i))).size,openAnnualOccurrences:groupLinkIssues.length}};
   console.log(`Historical audit ledger: ${JSON.stringify(auditLedger)}`);
   assert.equal(admissionWarnings,1,'Independent-state coverage must not regress');
   assert.deepEqual(rows.filter(r=>r.membershipWarnings?.length).map(r=>[r.year,...r.membershipWarnings.map(w=>w.name)]),[[1971,'United Arab Emirates']]);
