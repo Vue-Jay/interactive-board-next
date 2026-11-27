@@ -104,7 +104,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostExportBoardSync, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostExportBoardSync, selfhostDecideAttachment, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -2223,6 +2223,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }catch{return new Map<string,AttachmentApprovalResult>()}
   });
   const pendingApprovals=useRef(new Map<string,AttachmentApprovalRequest>());
+  const pendingApprovalHistory=useRef(new Map<string,Item>());
   const [attachmentRequestIndex,setAttachmentRequestIndex]=useState(0);
   useEffect(()=>{setAttachmentRequestIndex(index=>Math.max(0,Math.min(index,attachmentRequests.length-1)))},[attachmentRequests.length]);
   const pendingAttachmentStarted=useRef(new Map<string,number>());
@@ -2243,11 +2244,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const attachmentExists=(data:DocumentData|null,request:AttachmentApprovalRequest)=>
     !!data&&data.items.some(item=>(item.kind==="image"||item.kind==="pdf")&&item.assetId===request.assetId);
-  const rememberAttachmentDecision=(request:AttachmentApprovalRequest,approved:boolean)=>{
-    const result={requestId:request.requestId,studentId:request.studentId,approved,name:request.name};
-    attachmentDecisions.set(request.requestId,result);
+  const cacheAttachmentDecision=(result:AttachmentApprovalResult)=>{
+    attachmentDecisions.set(result.requestId,result);
     while(attachmentDecisions.size>200){const oldest=attachmentDecisions.keys().next().value;if(oldest===undefined)break;attachmentDecisions.delete(oldest)}
     try{localStorage.setItem(attachmentDecisionKey,JSON.stringify([...attachmentDecisions]))}catch{}
+  };
+  const rememberAttachmentDecision=(request:AttachmentApprovalRequest,approved:boolean)=>{
+    const result={requestId:request.requestId,studentId:request.studentId,approved,name:request.name};
+    cacheAttachmentDecision(result);
     attachmentApprovalRef.current?.result(result);
   };
   const confirmAttachmentDecisions=(data:DocumentData)=>{
@@ -2255,7 +2259,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     for(const request of pendingAttachmentRef.current.values())
       if(attachmentExists(data,request))cancelPendingAttachmentRequest(request.requestId);
     for(const request of pendingApprovals.current.values()){
-      if(!attachmentExists(data,request))continue;
+      if(request.durable||!attachmentExists(data,request))continue; // Native decisions are resolved by the server transaction.
       pendingApprovals.current.delete(request.requestId);
       rememberAttachmentDecision(request,true);
       setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
@@ -4626,18 +4630,32 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
       request=>{
-        if(isStudent)return;
+        if(isStudent){
+          // A server snapshot restores pending uploads on a different device.
+          if(request.durable&&request.studentId===authUser.id&&!attachmentExists(acknowledgedBoardData.current,request)&&!pendingAttachmentRef.current.has(request.requestId)){
+            pendingAttachmentRef.current.set(request.requestId,request);
+            updatePendingAttachments();
+          }
+          return;
+        }
         const decided=attachmentDecisions.get(request.requestId);
-        if(decided&&decided.studentId===request.studentId){attachmentApprovalRef.current?.result(decided);return;}
+        if(!request.durable&&decided&&decided.studentId===request.studentId){attachmentApprovalRef.current?.result(decided);return;}
         if(attachmentExists(acknowledgedBoardData.current,request)){rememberAttachmentDecision(request,true);return;}
         if(pendingApprovals.current.has(request.requestId))return;
         setAttachmentRequests(current=>current.some(x=>x.requestId===request.requestId)?current:[...current,request]);
         setNotice(`Новое вложение от ${request.studentName}`);
       },
       result=>{
+        if(!isStudent&&result.durable){
+          cacheAttachmentDecision(result);
+          pendingApprovals.current.delete(result.requestId);
+          setAttachmentRequests(current=>current.filter(x=>x.requestId!==result.requestId));
+          return;
+        }
         if(result.studentId!==authUser.id)return;
+        const wasPending=pendingAttachmentRef.current.has(result.requestId);
         cancelPendingAttachmentRequest(result.requestId);
-        setNotice(result.approved?`Преподаватель одобрил «${result.name}»`:`Преподаватель отклонил «${result.name}»`);
+        if(wasPending)setNotice(result.approved?`Преподаватель одобрил «${result.name}»`:`Преподаватель отклонил «${result.name}»`);
       },
     );
     attachmentApprovalRef.current=channel;
@@ -4737,8 +4755,51 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
   useEffect(()=>{if(demoMode||!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit,demoMode]);
 
+  const recordServerApprovalHistory=()=>{
+    if(!usePersonalUndo)return;
+    for(const [id,item] of pendingApprovalHistory.current){
+      if(!itemsRef.current.some(candidate=>candidate.id===id))continue;
+      pendingApprovalHistory.current.delete(id);
+      const edit=personalBoardEdit([],[item]);
+      if(edit){
+        const stack=personalHistory.current;
+        stack.entries=[...stack.entries.slice(0,stack.cursor),edit].slice(-80);
+        stack.cursor=stack.entries.length;
+        if(!gesture.current)setSelected([id]);
+      }
+    }
+  };
+  useEffect(()=>{recordServerApprovalHistory()},[items]);
+  const decideServerAttachment=(request:AttachmentApprovalRequest,approved:boolean,position?:Point)=>{
+    if(pendingApprovals.current.has(request.requestId))return;
+    pendingApprovals.current.set(request.requestId,request);
+    setNotice("Сохраняем решение преподавателя…");
+    void selfhostDecideAttachment(boardSummary.id,request.requestId,approved,position).then(response=>{
+      if(!boardMounted.current)return;
+      const decision=response.result;
+      cacheAttachmentDecision({requestId:decision.request_id,studentId:decision.target_user_id,
+        approved:decision.approved,name:decision.attachment_name,durable:true});
+      setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+      // Only the teacher whose transaction inserted the item gets a personal
+      // undo step. Another teacher's successful decision is not our action.
+      if(response.inserted_item){
+        const item=parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[response.inserted_item]})).items[0];
+        pendingApprovalHistory.current.set(item.id,item);
+        recordServerApprovalHistory();
+      }
+      setNotice(decision.approved?`Вложение «${decision.attachment_name}» одобрено`:`Вложение «${decision.attachment_name}» отклонено`);
+    }).catch(error=>{
+      if(boardMounted.current)setNotice(error instanceof Error?error.message:"Не удалось сохранить решение");
+    }).finally(()=>pendingApprovals.current.delete(request.requestId));
+  };
   const approveAttachmentRequest=(request:AttachmentApprovalRequest)=>{
     if(isStudent||!canEdit||boardResumePendingRef.current)return;
+    if(selfhostMode&&request.durable){
+      const rect=board.current?.getBoundingClientRect();
+      const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});
+      decideServerAttachment(request,true,{x:center.x-request.width/2,y:center.y-request.height/2});
+      return;
+    }
     if(attachmentExists(acknowledgedBoardData.current,request)){
       rememberAttachmentDecision(request,true);
       setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
@@ -4766,6 +4827,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const rejectAttachmentRequest=(request:AttachmentApprovalRequest)=>{
     if(isStudent||!canEdit)return;
+    if(selfhostMode&&request.durable){decideServerAttachment(request,false);return;}
     if(pendingApprovals.current.has(request.requestId)){setNotice("Вложение уже сохраняется на сервере");return;}
     setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
     rememberAttachmentDecision(request,false);

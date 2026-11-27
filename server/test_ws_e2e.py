@@ -26,7 +26,8 @@ from test_api import TEACHER, STUDENT, PASSWORD
 
 
 @pytest.mark.asyncio
-async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
+async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch,tmp_path):
+    monkeypatch.setenv("LEKTRUS_ASSETS_DIR",str(tmp_path/"private-assets"))
     monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru,http://127.0.0.1:5173")
     _login_attempts.clear()
     conn=await asyncpg.connect(os.environ["DATABASE_URL"])
@@ -137,7 +138,30 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     peer=(await http.get(url,headers=student)).json()["document"]
                     kinds=("sticky","text","shape","pen","marker","image","pdf","frame","connector","comment",
                            "table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument")
-                    objects=[{"id":"sync-"+kind,"kind":kind,"x":0,"y":0,"text":"","createdBy":str(TEACHER)} for kind in kinds]
+                    # Use complete, parser-compatible object payloads rather than
+                    # just a kind and ID; the wire matrix must carry real content.
+                    extras={
+                        "pen":{"points":[{"x":1,"y":2},{"x":20,"y":10}],"weight":2,"color":"#123456"},
+                        "marker":{"points":[{"x":1,"y":2},{"x":20,"y":10}],"weight":12,"color":"#123456"},
+                        "sticky":{"color":"#ffeeaa","stickerInk":[{"id":"attached","kind":"pen","color":"#123456","weight":2,"points":[{"x":1,"y":1}]}]},
+                        "shape":{"shapeType":"rectangle","color":"#123456"},
+                        "image":{"assetId":"matrix-image","name":"photo.png","mime":"image/png","imageSourceAspect":2},
+                        "pdf":{"assetId":"matrix-pdf","name":"file.pdf","mime":"application/pdf","pdfPage":1},
+                        "connector":{"connectorStart":{"x":0,"y":0},"connectorEnd":{"x":100,"y":50}},
+                        "table":{"tableRows":1,"tableCols":2,"tableCells":["A","B"]},
+                        "graph":{"graphPurpose":"coordinates","graphPoints":[{"id":"a","x":1,"y":2,"label":"A"}]},
+                        "fraction":{"fractionNumerator":1,"fractionDenominator":2},
+                        "checklist":{"checklistItems":["Task"],"checklistDone":[False]},
+                        "quiz":{"quizOptions":["A","B"],"quizCorrect":0},
+                        "flashcard":{"flashcardBack":"Answer"},
+                        "cover":{"coverOpen":False,"coverOpacity":1},
+                        "linkmedia":{"mediaUrl":"https://example.test/video","mediaTitle":"Video"},
+                        "instrument":{"instrumentType":"ruler","instrumentScale":1},
+                    }
+                    def object_fixture(prefix,kind,author):
+                        return {"id":prefix+kind,"kind":kind,"x":0,"y":0,"width":100,"height":50,
+                                "text":"","createdBy":str(author),**extras.get(kind,{})}
+                    objects=[object_fixture("sync-",kind,TEACHER) for kind in kinds]
                     moved=[{**item,"x":100,"y":50} for item in objects]
                     edited=[{**item,"text":"updated"} for item in moved]
                     for revision,delta in enumerate((
@@ -162,11 +186,12 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     assert peer["items"]==[]
                     async with app.state.pool.acquire() as db:
                         await db.execute("UPDATE board_members SET participant_role='student' WHERE board_id=$1 AND user_id=$2",UUID(native),STUDENT)
-                    pupil_objects=[{"id":"pupil-"+kind,"kind":kind,"createdBy":str(STUDENT),"x":1,"y":2,"text":""}
-                                   for kind in ("sticky","text","shape","image","pdf","connector","comment","fraction","instrument")]
+                    pupil_objects=[object_fixture("pupil-",kind,STUDENT)
+                                   for kind in ("sticky","text","shape","image","pdf","connector","comment","fraction","instrument","pen","marker")]
                     current_version=5
                     for idx,delta in enumerate(({"items":{"upsert":pupil_objects}},
                             {"items":{"upsert":[{**item,"x":15,"y":20} for item in pupil_objects]}},
+                            {"items":{"upsert":[{**item,"x":15,"y":20,"text":"pupil edit"} for item in pupil_objects]}},
                             {"items":{"remove":[item["id"] for item in pupil_objects]}})):
                         request_id=f"pupil-object-{idx}"
                         await second.send(json.dumps({"type":"ink_commit","request_id":request_id,"expected_version":current_version,"delta":delta}))

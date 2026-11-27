@@ -61,8 +61,8 @@ export type SelfhostLiveEvent=
   | {type:"focus_view";user_id:string;name:string;role:SelfhostBoardRole;target_user_id:string;center_x:number;center_y:number;zoom:number;sent_at:number}
   | {type:"teacher_view";user_id:string;name:string;role:SelfhostBoardRole;center_x:number;center_y:number;zoom:number;sent_at:number}
   | {type:"guided_follow";user_id:string;name:string;role:SelfhostBoardRole;enabled:boolean;sent_at:number}
-  | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
-  | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number}
+  | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number;durable?:boolean}
+  | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number;durable?:boolean}
   | {type:"ink_ack";client_id:string;stroke_id:string;offset:number;finished:boolean}
   | {type:"idle_timeout"}
   | {type:"comments_changed"}
@@ -954,6 +954,15 @@ export type SelfhostObjectPreview={
 export type SelfhostRemoteObjectPreview=SelfhostObjectPreview&{
   user_id:string;name:string;role:SelfhostBoardRole;sent_at:number;
 };
+export type SelfhostAttachmentRequestEvent=Extract<SelfhostLiveEvent,{type:"attachment_request"}>;
+export type SelfhostAttachmentResultEvent=Extract<SelfhostLiveEvent,{type:"attachment_result"}>;
+export const selfhostListAttachmentApprovals=(boardId:string,signal?:AbortSignal)=>
+  selfhostRequest<{requests:SelfhostAttachmentRequestEvent[];results:SelfhostAttachmentResultEvent[]}>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/attachment-requests",{signal});
+export const selfhostDecideAttachment=(boardId:string,requestId:string,approved:boolean,position?:{x:number;y:number})=>
+  selfhostRequest<{result:SelfhostAttachmentResultEvent;inserted_item?:Record<string,unknown>;version?:number}>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/attachment-requests/"+encodeURIComponent(requestId)+"/decision",
+    {method:"POST",body:JSON.stringify({approved,...position})});
 export const selfhostAccess=(boardId:string)=>selfhostRequest<SelfhostAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );

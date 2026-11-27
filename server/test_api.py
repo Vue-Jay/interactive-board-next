@@ -547,3 +547,86 @@ async def test_payload_limits_and_unconfirmed_accounts(client, monkeypatch):
         json={"email": "student@example.test", "password": PASSWORD},
     )
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_attachment_approval_is_durable_and_atomic_across_teachers(client, monkeypatch, tmp_path):
+    from attachment_approvals import register_request
+    from realtime_events import validate_live_event
+    monkeypatch.setenv("LEKTRUS_ASSETS_DIR", str(tmp_path/"private-assets"))
+    _, owner = await sign_in(client, "teacher@example.test")
+    _, pupil = await sign_in(client, "student@example.test")
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET account_role='teacher',teacher_status='approved' WHERE id=$1", OUTSIDER)
+    _, co_teacher = await sign_in(client, "outsider@example.test")
+    board_id = (await client.post("/api/v1/boards", headers=owner, json={"title":"Approval QA"})).json()["id"]
+    prefix = f"/api/v1/boards/{board_id}"
+    async with app.state.pool.acquire() as conn:
+        await conn.executemany("INSERT INTO board_members(board_id,user_id,role,participant_role) VALUES($1,$2,'editor',$3)",
+                               [(UUID(board_id), STUDENT, "student"), (UUID(board_id), OUTSIDER, "co_teacher")])
+    doc={"version":1,"title":"Approval QA","view":{"x":0,"y":0,"zoom":1},"items":[]}
+    assert (await client.put(prefix+"/document",headers=owner,json={"expected_version":0,"document":doc})).status_code==200
+
+    async def register(key):
+        asset_id="asset-"+key
+        upload=await client.post(prefix+"/assets/"+asset_id,headers={**pupil,"Content-Type":"image/png"},content=b"test-image-bytes")
+        assert upload.status_code==201,upload.text
+        event=validate_live_event({"type":"attachment_request","request_id":key,"asset_id":asset_id,
+            "name":key+".png","mime":"image/png","kind":"image","width":100,"height":50},
+            role="editor",user_id=str(STUDENT),name="Pupil")
+        async with app.state.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.fetchval("SELECT id FROM boards WHERE id=$1 FOR UPDATE",UUID(board_id))
+                registered=await register_request(conn,UUID(board_id),STUDENT,event)
+                assert registered["durable"] is True
+                assert await register_request(conn,UUID(board_id),STUDENT,event)==registered
+        return event
+
+    async def decide(key,headers,approved):
+        response=await client.post(prefix+"/attachment-requests/"+key+"/decision",headers=headers,
+                                   json={"approved":approved,"x":100,"y":200})
+        assert response.status_code==200,response.text
+        return response.json()
+
+    first=await register("rejected-first")
+    denied=await client.post(prefix+"/attachment-requests/rejected-first/decision",headers=pupil,json={"approved":False})
+    assert denied.status_code==403
+    pending=(await client.get(prefix+"/attachment-requests",headers=co_teacher)).json()
+    assert [x["request_id"] for x in pending["requests"]]==["rejected-first"]
+    rejected=await decide("rejected-first",owner,False)
+    assert rejected["result"]["approved"] is False
+    assert await decide("rejected-first",co_teacher,True)==rejected
+    # Even an older optimistic client cannot insert a rejected asset.
+    latest=(await client.get(prefix+"/document",headers=owner)).json()
+    stale={"id":"approved-media-rejected-first","kind":"image","x":0,"y":0,"width":100,"height":50,
+           "text":"","assetId":first["asset_id"],"name":"rejected.png","mime":"image/png","createdBy":str(OUTSIDER)}
+    blocked=await client.patch(prefix+"/document",headers=co_teacher,json={"expected_version":latest["version"],"delta":{"items":{"upsert":[stale]}}})
+    assert blocked.status_code==409 and "attachment_rejected" in blocked.text
+
+    await register("approved-first")
+    # A concurrent double approval creates exactly one object and one revision.
+    one,two=await asyncio.gather(decide("approved-first",owner,True),decide("approved-first",co_teacher,True))
+    assert one["result"]==two["result"]
+    assert one["result"]["approved"] is True
+    assert sum("inserted_item" in r for r in (one,two))==1
+    assert (await decide("approved-first",co_teacher,False))["result"]==one["result"]
+    after=(await client.get(prefix+"/document",headers=owner)).json()
+    assert after["version"]==latest["version"]+1
+    assert [i["id"] for i in after["document"]["items"]]==["approved-media-approved-first"]
+
+    # Mixed simultaneous decisions also converge on the winning transaction.
+    await register("simultaneous")
+    one,two=await asyncio.gather(decide("simultaneous",owner,True),decide("simultaneous",co_teacher,False))
+    assert one["result"]==two["result"]
+    result=one["result"]["approved"]
+    after=(await client.get(prefix+"/document",headers=owner)).json()
+    assert sum(i["id"]=="approved-media-simultaneous" for i in after["document"]["items"])==int(result)
+    recovered=(await client.get(prefix+"/attachment-requests",headers=pupil)).json()
+    assert not recovered["requests"]
+    assert {x["request_id"]:x["approved"] for x in recovered["results"]}=={
+        "rejected-first":False,"approved-first":True,"simultaneous":result}
+    async with app.state.pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.fetchval("SELECT id FROM boards WHERE id=$1 FOR UPDATE",UUID(board_id))
+            replay=await register_request(conn,UUID(board_id),STUDENT,first)
+            assert replay==rejected["result"]

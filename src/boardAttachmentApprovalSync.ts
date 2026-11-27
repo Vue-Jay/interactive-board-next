@@ -1,11 +1,11 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
-import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard, selfhostListAttachmentApprovals, type SelfhostLiveEvent } from "./selfhostApi";
 
 export type AttachmentApprovalRequest={
   requestId:string; studentId:string; studentName:string; assetId:string; name:string; mime:string;
-  kind:"image"|"pdf"; width:number; height:number; sentAt:number;
+  kind:"image"|"pdf"; width:number; height:number; sentAt:number; durable?:boolean;
 };
-export type AttachmentApprovalResult={requestId:string;studentId:string;approved:boolean;name:string};
+export type AttachmentApprovalResult={requestId:string;studentId:string;approved:boolean;name:string;durable?:boolean};
 
 export type AttachmentApprovalChannel={
   request:(payload:AttachmentApprovalRequest)=>void;
@@ -26,33 +26,58 @@ export function connectAttachmentApprovalChannel(
   // A periodic student retry is the same logical request, not another queue
   // entry. Keep unsuccessful transport writes until a subsequent flush.
   const queue=new Map<string,Queued>();
+  let lastSent=0;
   const flush=()=>{
    clearTimeout(retry);retry=undefined;
-   if(stopped||!ready)return;
-   for(const [key,next] of queue){
-    if(!channel.sendEvent({type:next.type,...next.payload})){
-     retry=setTimeout(flush,500);return;
-    }
-    queue.delete(key);
+   if(stopped||!ready||!queue.size)return;
+   // The server accepts at most eight attachment events per second. A
+   // backlog after reconnect must not trigger its abuse/disconnect limit.
+   const wait=160-(Date.now()-lastSent);
+   if(wait>0){retry=setTimeout(flush,wait);return;}
+   const [key,next]=queue.entries().next().value!;
+   if(!channel.sendEvent({type:next.type,...next.payload})){
+    retry=setTimeout(flush,500);return;
    }
+   lastSent=Date.now();
+   queue.delete(key);
+   if(queue.size)retry=setTimeout(flush,160);
   };
-  const channel=selfhostSubscribeBoard(boardId,()=>{},status=>{
-   ready=status==="online";
-   if(ready)flush();else{clearTimeout(retry);retry=undefined;}
-  },event=>{
+  let snapshotAbort:AbortController|undefined;
+  const resolved=new Set<string>();
+  const handle=(event:SelfhostLiveEvent)=>{
    if(event.type==="attachment_request"){
+    if(resolved.has(event.request_id))return;
     onRequest({
      requestId:event.request_id,studentId:event.user_id,studentName:event.name,
      assetId:event.asset_id,name:event.attachment_name,mime:event.mime,
-     kind:event.kind,width:event.width,height:event.height,sentAt:event.sent_at,
+     kind:event.kind,width:event.width,height:event.height,sentAt:event.sent_at,durable:event.durable,
     });
-   }else if(event.type==="attachment_result"&&event.target_user_id===me.userId){
+   }else if(event.type==="attachment_result"&&(event.target_user_id===me.userId||event.durable===true)){
+    if(event.durable){
+     resolved.add(event.request_id);
+     if(resolved.size>1000){const first=resolved.values().next().value;if(first!==undefined)resolved.delete(first)}
+    }
     onResult({
      requestId:event.request_id,studentId:event.target_user_id,
-     approved:event.approved,name:event.attachment_name,
+     approved:event.approved,name:event.attachment_name,durable:event.durable,
     });
    }
-  });
+  };
+  const recover=()=>{
+   snapshotAbort?.abort();
+   const controller=new AbortController();snapshotAbort=controller;
+   void selfhostListAttachmentApprovals(boardId,controller.signal).then(snapshot=>{
+    if(stopped||controller.signal.aborted)return;
+    // Apply decisions first so an older pending snapshot cannot reopen one.
+    for(const result of snapshot.results)handle(result);
+    for(const request of snapshot.requests)handle(request);
+   }).catch(()=>{/* legacy servers and a transient network loss retain retries */});
+  };
+  const channel=selfhostSubscribeBoard(boardId,()=>{},status=>{
+   ready=status==="online";
+   if(ready){flush();recover();}
+   else{clearTimeout(retry);retry=undefined;snapshotAbort?.abort();}
+  },handle);
   const send=(type:"attachment_request"|"attachment_result",payload:Record<string,unknown>)=>{
    if(stopped)return;
    const key=type+":"+String(payload.request_id);
@@ -70,7 +95,7 @@ export function connectAttachmentApprovalChannel(
    result:p=>send("attachment_result",{
     request_id:p.requestId,target_user_id:p.studentId,approved:p.approved,name:p.name,
    }),
-   close:()=>{stopped=true;clearTimeout(retry);queue.clear();channel()},
+   close:()=>{stopped=true;clearTimeout(retry);snapshotAbort?.abort();queue.clear();channel()},
   };
  }
  if(!isRemoteBackendEnabled())return{request:()=>{},result:()=>{},close:()=>{}};

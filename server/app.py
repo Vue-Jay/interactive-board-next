@@ -35,6 +35,7 @@ from finance import make_finance_router
 from fastapi.responses import JSONResponse
 from board_history import ensure_baseline, record_revision, make_history_router, ink_history_group
 from board_sync_journal import write_sync_events, SyncJournalBatch, read_sync_events
+import attachment_approvals as approvals
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
 from telegram_editor import telegram_enabled, run_telegram_editor, make_telegram_router
@@ -750,7 +751,11 @@ async def broadcast_checked(board_id: UUID, event: dict[str, Any], pool: asyncpg
         row = authorized.get(token)
         if row is None or row["role"] not in ("owner", "editor", "viewer"):
             return client, 4403
-        if target is not None and str(row["id"]) != target:
+        durable_attachment = event.get("durable") is True and event["type"] in ("attachment_request", "attachment_result")
+        teaching = approvals.can_decide(row["role"], row["participant_role"]) if durable_attachment else False
+        if durable_attachment and event["type"] == "attachment_request" and not teaching:
+            return None
+        if target is not None and str(row["id"]) != target and not teaching:
             return None
         if _subscribers.get(board_id, {}).get(client) != token:
             return None
@@ -972,10 +977,12 @@ async def persist_normalized_items(conn, board_id, previous, base, document, del
 
 async def _persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
                            user, version_only: bool, document: dict | None = None,
-                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None):
+                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None,
+                           approval_request_id: str | None = None):
     # Full saves remain supported for older clients and initial/recovery saves.
     serialized = serialize_document(document) if document is not None else None
     wire_delta = None
+    approval_events = []
     if delta is not None:
         try:
             if len(encode_delta(delta).encode("utf-8")) > MAX_DELTA_BYTES:
@@ -989,6 +996,12 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                 error(403, "Недостаточно прав для изменения доски.")
             participant = await board_participant(conn, board_id, user, role)
             restricted = participant == "student" and not user["is_admin"]
+            if approval_request_id is not None:
+                if not approvals.can_decide(role, participant):
+                    error(403, "Решение доступно преподавателю.")
+                approval = await approvals.get_request(conn, board_id, approval_request_id)
+                if approval["approved"] is not None:
+                    error(409, "attachment_already_resolved")
             if delta is not None:
                 # An obsolete autosave needs only the current revision, not
                 # reconstruction/transfer of a potentially 24 MB board.
@@ -1081,6 +1094,10 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                 fast = False
             if delta is not None and not fast:
                 serialized = serialize_document(document)
+            if not board["is_pilot"]:
+                approval_events = await approvals.approve_new_media(conn, board_id, user, role, restricted, base, document, delta)
+                if approval_request_id is not None and not any(e["request_id"] == approval_request_id for e in approval_events):
+                    error(409, "attachment_request_identity_conflict")
             history_group = await ink_history_group(conn,board_id,user,base,document,delta,ink_gesture)
             if normalized_delta:
                 revision = await persist_normalized_items(
@@ -1123,6 +1140,8 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
     if ink_cursor is not None:
         event["ink_cursor"] = ink_cursor
     await announce_board_event(board_id, event, request.app.state.pool)
+    for approval_event in approval_events:
+        await announce_board_event(board_id, approval_event, request.app.state.pool)
     if version_only:
         return {"version": version}
     return {"board_id": str(board_id), "document": document, "version": version,
@@ -1131,12 +1150,13 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
 
 async def persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
                            user, version_only: bool, document: dict | None = None,
-                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None):
+                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None,
+                           approval_request_id: str | None = None):
     started = time.monotonic()
     transport = "socket" if isinstance(request, WebSocket) else "http"
     try:
         result = await _persist_document(board_id, expected_version, request, user, version_only,
-                                        document, delta, ink_gesture, ink_cursor)
+                                        document, delta, ink_gesture, ink_cursor, approval_request_id)
     except HTTPException as exc:
         if exc.status_code in (403,409,413,422,429):
             await write_sync_events(request.app.state.pool, board_id, user["id"], "server",
@@ -1182,6 +1202,73 @@ async def patch_document(board_id: UUID, data: PatchDocumentInput, request: Requ
                          version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128), user=Depends(current_user)):
     return await persist_document(board_id, data.expected_version, request, user, version_only,
                                   delta=data.delta,ink_gesture=ink_gesture)
+
+class AttachmentDecisionInput(BaseModel):
+    approved: bool = Field(strict=True)
+    x: float | None = None
+    y: float | None = None
+
+
+@app.get("/api/v1/boards/{board_id}/attachment-requests")
+async def get_attachment_requests(board_id: UUID, request: Request, user=Depends(current_user)):
+    async with request.app.state.pool.acquire() as conn:
+        board, role = await board_access(conn, board_id, user["id"])
+        participant = await board_participant(conn, board_id, user, role)
+        return await approvals.list_requests(conn, board_id, user["id"], approvals.can_decide(role, participant))
+
+
+@app.post("/api/v1/boards/{board_id}/attachment-requests/{request_id}/decision")
+async def decide_attachment_request(board_id: UUID, request_id: str, data: AttachmentDecisionInput,
+                                    request: Request, user=Depends(current_user)):
+    if data.approved and (data.x is None or data.y is None or not (-1e7 < data.x < 1e7 and -1e7 < data.y < 1e7)):
+        error(422, "Некорректное расположение вложения.")
+    pool = request.app.state.pool
+    for _ in range(5):
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                board, role = await board_access(conn, board_id, user["id"], lock=True)
+                participant = await board_participant(conn, board_id, user, role)
+                if not approvals.can_decide(role, participant) or board["is_pilot"]:
+                    error(403, "Решение доступно преподавателю.")
+                if await conn.fetchval("SELECT billing_readonly($1)", board_id):
+                    error(403, "Доска доступна только для просмотра.")
+                row = await approvals.get_request(conn, board_id, request_id)
+                if row["approved"] is not None:
+                    return {"result": approvals.unpack(row["result_event"])}
+                if not data.approved:
+                    rejected = await approvals.resolve(conn, row, user, role, False)
+                else:
+                    rejected = None
+                    version = await conn.fetchval("SELECT version FROM board_documents WHERE board_id=$1", board_id) or 0
+                    payload = approvals.unpack(row["request_event"])
+                    item = {
+                        "id": "approved-media-" + request_id, "kind": payload["kind"],
+                        "x": data.x, "y": data.y, "width": payload["width"], "height": payload["height"],
+                        "text": "", "assetId": row["asset_id"], "name": payload["attachment_name"],
+                        "mime": payload["mime"], "createdBy": str(user["id"]),
+                    }
+                    if item["kind"] == "image":
+                        item["imageSourceAspect"] = item["width"] / item["height"]
+        if rejected:
+            await announce_board_event(board_id, rejected, pool)
+            return {"result": rejected}
+        try:
+            if version:
+                saved = await persist_document(board_id, version, request, user, True,
+                    delta={"items": {"upsert": [item]}}, approval_request_id=request_id)
+            else:
+                saved = await persist_document(board_id, 0, request, user, True,
+                    document={"version": 1, "title": board["title"], "view": {"x": 0, "y": 0, "zoom": 1}, "items": [item]},
+                    approval_request_id=request_id)
+        except HTTPException as exc:
+            if exc.status_code != 409:
+                raise
+            continue  # either a peer revision or a competing decision won
+        async with pool.acquire() as conn:
+            row = await approvals.get_request(conn, board_id, request_id)
+        return {"result": approvals.unpack(row["result_event"]), "inserted_item": item, "version": saved["version"]}
+    error(409, "Доска изменилась. Повторите согласование.")
+
 
 @app.websocket("/api/v1/boards/{board_id}/events")
 async def board_events(websocket: WebSocket, board_id: UUID):
@@ -1474,6 +1561,37 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     if limiter.violations >= 30:
                         await websocket.close(code=4429)
                         return
+                    continue
+                if not refreshed_user["is_pilot"] and event["type"] in ("attachment_request", "attachment_result"):
+                    try:
+                        async with websocket.app.state.pool.acquire() as conn:
+                            async with conn.transaction():
+                                _, actual_role = await board_access(conn, board_id, refreshed_user["id"], lock=True)
+                                actual_participant = await board_participant(conn, board_id, refreshed_user, actual_role)
+                                if actual_role not in ("owner", "editor"):
+                                    error(403, "read_only")
+                                if event["type"] == "attachment_request":
+                                    event = await approvals.register_request(conn, board_id, refreshed_user["id"], event)
+                                else:
+                                    if not approvals.can_decide(actual_role, actual_participant):
+                                        error(403, "teacher_participant_required")
+                                    row = await approvals.get_request(conn, board_id, event["request_id"])
+                                    if str(row["student_id"]) != event["target_user_id"]:
+                                        error(403, "invalid_target")
+                                    if row["approved"] is None and event["approved"]:
+                                        # Legacy clients commit the media before sending a result.
+                                        # Never announce approval merely because a browser claims it.
+                                        present = await conn.fetchval("""
+                                            SELECT EXISTS(SELECT 1 FROM board_documents d,
+                                                LATERAL jsonb_array_elements(lektrus_board_document(d)->'items') item
+                                                WHERE d.board_id=$1 AND item->>'assetId'=$2)
+                                            """, board_id, row["asset_id"])
+                                        if not present:
+                                            error(409, "attachment_not_saved")
+                                    event = await approvals.resolve(conn, row, refreshed_user, actual_role, event["approved"])
+                        await announce_board_event(board_id, event, websocket.app.state.pool)
+                    except HTTPException as exc:
+                        await websocket.send_json({"type": "event_error", "reason": str(exc.detail)})
                     continue
                 if event["type"] in ("focus_view", "attachment_result"):
                     target_id = event.get("target_user_id")
