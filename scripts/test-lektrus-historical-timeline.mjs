@@ -107,6 +107,16 @@ for(const [name,qid,year,label] of [
  assert.equal(rule?.[4],label,'False China polity attribution '+year);
  assert.ok(rule?.[6]?.startsWith('https://'));
 }
+// 1928–29 Nationalist governmental terminology, not a party as a country.
+const nationalist=historicalTitleCorrections.find(r=>r[0]==='Kuomintang'&&r[1]==='Q31113'&&r[2]===1928&&r[3]===1929);
+assert.equal(nationalist?.[4],'Republic of China (Nationalist government; source aggregate)');
+for(const [year,phrase] of [[1928,'июне 1928'],[1937,'30 июля 1937'],[1945,'6 октября 1945']]){
+ const transitions=tianjinConcessionStatus(year).transitions;
+ assert.ok(transitions.some(t=>t.from===year&&t.to===year&&t.description.includes(phrase)&&t.url.startsWith('https://')),
+  'Undocumented Tianjin change in '+year);
+ const marker=historicalTreatyPortCenters(year)[0];
+ assert.ok(marker?.description.includes(phrase),'Missing dated transition in Tianjin marker '+year);
+}
 assert.equal(historicalCorsicaLiberationCenters(1942).length,0);
 const corsica1943=historicalCorsicaLiberationCenters(1943);
 const corsica1944=historicalCorsicaLiberationCenters(1944);

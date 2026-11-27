@@ -68,5 +68,33 @@
     "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487",
     "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3",
     "https://journals.open.tudelft.nl/iphs/article/download/2751/2962/"
+  ],
+  "datedTransitionsAdded": [
+    {
+      "year": 1928,
+      "description": "В июне 1928 года после Северного похода муниципальное управление Тяньцзиня перешло к Националистическому правительству Китайской Республики. Гоминьдан не являлся отдельным государством.",
+      "source": "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487"
+    },
+    {
+      "year": 1937,
+      "description": "30 июля 1937 года после боёв японские войска захватили Тяньцзинь; до этой даты в китайских районах действовало управление Китайской Республики. Год 1937 остаётся переходным, без единого годового контура военного контроля.",
+      "source": "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3"
+    },
+    {
+      "year": 1945,
+      "description": "Формальная капитуляция японских войск в Тяньцзине состоялась 6 октября 1945 года. Это не означает, что китайская администрация восстановила полный контроль 15 августа или что все иностранные муниципальные вопросы были урегулированы одновременно.",
+      "source": "https://history.state.gov/historicaldocuments/frus1945v07/d447"
+    }
+  ],
+  "additionalHistoricalCountryTitle": [
+    "Kuomintang",
+    "Q31113",
+    1928,
+    1929,
+    "Republic of China (Nationalist government; source aggregate)",
+    "Китайская Республика (Националистическое правительство; исходный агрегат)",
+    "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487",
+    "After the 1928 Northern Expedition the Nanjing Nationalist Government governed Tianjin, but the party itself was not a separate sovereign country. Exact frontlines of Chinese rival administrations are not established by the imported polygon.",
+    "После Северного похода 1928 года Тяньцзинь перешёл под Националистическое правительство Китайской Республики. Гоминьдан не был отдельной суверенной страной, а исходный контур не является картой фронтов."
   ]
 }
