@@ -388,7 +388,15 @@ for(const [name,year,pattern] of [
  ["German Democratic Republic",1980,/German%20Democratic%20Republic/],
  ["Soviet Union",1940,/1936/],["Soviet Union",1980,/Soviet%20Union/]
 ])assert.match(symbols.atlasCountrySymbol(symbolCountry(name),name,year,true).imageUrl??"",pattern);
-assert.match(symbols.atlasCountrySymbol(symbolCountry("United States","US"),"США",1908,true).imageUrl??"",/1908/);
+for(const year of [1908,1911,1912]){
+ const us=symbols.atlasCountrySymbol(symbolCountry("United States","US"),"США",year,true);
+ assert.equal(us.kind,"symbol","US historical flag arrangement must be neutral in "+year);
+ assert.equal(us.imageUrl,undefined,"No unverified US stars pattern in "+year);
+ assert.ok(us.label.length>=8);
+}
+const usaStandardized=symbols.atlasCountrySymbol(symbolCountry("United States","US"),"США",1913,true);
+assert.equal(usaStandardized.kind,"historic");
+assert.match(usaStandardized.imageUrl??"",/1912-1959/);
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("France","FR"),"Франция",1200,true).kind,"symbol");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Spain","ES"),"Испания",1800,true).kind,"symbol");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Spain","ES"),"Испания",1900,true).kind,"historic");
