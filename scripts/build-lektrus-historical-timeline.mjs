@@ -222,6 +222,7 @@ independentIslands.states.push(
  {iso:'SMR',wikidata:'Q238',from:1992,name:'San Marino',nameRu:'Сан-Марино',neighbors:[13384,13794],reasonRu:'Республика существовала до вступления в ООН в 1992 году; последнее территориальное расширение состоялось в 1463 году.',sources:['https://www.elezioni.sm/on-line/home/elezioni-giunte/cenni-storici-e-curiosita.html']}
 );
 export const independenceTransitions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independence-transitions.json',import.meta.url),'utf8'));
+export const modernIslandGeography=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-modern-island-geometries-20261127.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
  const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],subtractions=[],pendingExtensions=[];
  const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer,mindanao=territorialResolutions.mindanaoReview;
@@ -2591,12 +2592,90 @@ export function normalizeHistoricalSource(source) {
       }
     }
   }
+  if(batch.count){
+    const repairedModernIslands=applyReviewedModernIslandGeographies(records,geometries);
+    counts.reviewedModernIslandStates=repairedModernIslands.length;
+    counts.reviewedModernIslandRevisions=repairedModernIslands.reduce((sum,r)=>sum+r.revisions,0);
+    counts.reviewedModernIslandRecordYears=repairedModernIslands.reduce((sum,r)=>sum+r.years,0);
+  }
   counts.revisions = records.length;
   counts.rejectedRevisions=records.filter(r=>r.geometryStatus==='rejected').length;
   const geometryReferences=r=>[r.geometryId,...(r.mapPartition?[r.mapPartition.outlineGeometryId]:[]),...(r.boundaryAdjustment?[r.boundaryAdjustment.baseGeometryId,...r.boundaryAdjustment.cuts.map(c=>c.cutGeometryId)]:[]),...(r.datedGeography?[r.datedGeography.outlineGeometryId,...r.datedGeography.trimGeometryIds]:[]),...(r.territorialIssues??[]).map(i=>i.geometryId)];
   const used=new Set(records.flatMap(geometryReferences));for(const id of geometries.keys())if(!used.has(id))geometries.delete(id);
   counts.uniqueGeometries = geometries.size;
   return {records,geometries,counts};
+}
+
+
+// Recover independently verified modern ISLAND land parts without treating
+// today's coastline as a measured historical border. Replace *only* the
+// archived, pinned political geometry in 1994–2024; preserve older years.
+// Natural Earth omits some minor islets. Retain disjoint source islets inside
+// the country's bounded island cluster, but never borrow a foreign territory.
+export function applyReviewedModernIslandGeographies(records,geometries,policy=modernIslandGeography){
+ assert.equal(policy.schemaVersion,1);
+ assert.equal(policy.source.sha256,independentIslands.source.sha256);
+ assert.equal(policy.entries.length,4);
+ const polys=g=>g.type==='Polygon'?[g.coordinates]:g.coordinates;
+ const bbox=p=>{let x=Infinity,y=Infinity,X=-Infinity,Y=-Infinity;
+  for(const ring of p)for(const [lon,lat] of ring){x=Math.min(x,lon);y=Math.min(y,lat);X=Math.max(X,lon);Y=Math.max(Y,lat);}
+  return [x,y,X,Y];};
+ const overlaps=(a,b)=>a[0]<=b[2]&&a[1]<=b[3]&&b[0]<=a[2]&&b[1]<=a[3];
+ const tally=[];
+ for(const d of policy.entries){
+  assert.equal(d.snapshots.length,3);
+  const raw=geometries.get(d.originalGeometryId);
+  assert.ok(raw,'Pinned original coastlines unavailable: '+d.iso);
+  const main=polys(d.geometry);assert.equal(main.length,d.parts);
+  validateGeometry(d.geometry);
+  for(const [name,lon,lat] of d.landmarks)
+   assert.ok(capitalInsideCountry([lon,lat],d.geometry),'Absent verified island '+d.iso+'/'+name);
+  // Do not truncate e.g. Comino, Petite Martinique or Mayreau solely because
+  // the 1:10m national dataset is too coarse to represent them.
+  const boxes=main.map(bbox);
+  const cluster=[Math.min(...boxes.map(b=>b[0]))-.1,Math.min(...boxes.map(b=>b[1]))-.1,
+   Math.max(...boxes.map(b=>b[2]))+.1,Math.max(...boxes.map(b=>b[3]))+.1];
+  const legacyExtras=polys(raw).filter(p=>{
+   const b=bbox(p);
+   return b[0]>=cluster[0]&&b[1]>=cluster[1]&&b[2]<=cluster[2]&&b[3]<=cluster[3]&&!boxes.some(n=>overlaps(b,n));
+  });
+  const repaired={type:'MultiPolygon',coordinates:[...main,...legacyExtras]};
+  validateGeometry(repaired);
+  const newId=sha256(JSON.stringify(repaired));
+  assert.notEqual(newId,d.originalGeometryId,'Modern coastline replacement was a no-op '+d.iso);
+  for(const s of d.snapshots){
+   assert.equal(s.candidateGeometryId,d.originalGeometryId);
+   const active=records.filter(r=>r.role==='polity'&&r.geometryStatus==='candidate'&&r.name===d.name&&r.geometryId===d.originalGeometryId&&r.from<=s.year&&r.to>=s.year);
+   assert.equal(active.length,1,'Archive source anchor drift '+d.iso+'/'+s.year);
+  }
+  geometries.set(newId,repaired);
+  let revisions=0,years=0;
+  for(let i=0;i<records.length;i++){
+   const r=records[i];if(r.role!=='polity'||r.geometryStatus!=='candidate'||r.name!==d.name||
+      r.geometryId!==d.originalGeometryId||r.to<policy.from||r.from>policy.to)continue;
+   assert.ok(!r.mapPartition&&!r.boundaryAdjustment&&!r.datedGeography&&!(r.territorialIssues?.length),
+      'Modern island geometry has an unresolved existing partition '+d.iso+'/'+r.from);
+   const start=Math.max(policy.from,r.from),end=Math.min(policy.to,r.to);
+   const repairedRecord={...r,id:identity('reviewed-modern-island-outline',r.id,d.iso,start,end,newId),
+    from:start,to:end,geometryId:newId,geometryRepair:'reviewed-modern-island-outline',
+    sourceGeometryId:r.sourceGeometryId??d.originalGeometryId,
+    externalGeography:{iso:d.iso,neId:d.neId,datasetHash:policy.source.sha256,url:policy.source.url,
+     kind:'modern-generalized-island-outline',originalGeometryId:d.originalGeometryId,
+     keptDisjointSourceIslands:legacyExtras.length,unrepresentedTinyIslands:d.limitations},
+    review:{reason:[r.review?.reason,'Modern Natural Earth generalized island geometry supersedes the mismatched archived outline; tiny islands and dated historical coastlines require separate validation.'].filter(Boolean).join(' '),
+     reasonRu:[r.review?.reasonRu,'Исторически устойчивые острова страны уточнены по современной генерализованной геометрии Natural Earth. Это не датированная береговая съёмка; '+d.limitations].filter(Boolean).join(' '),
+     sources:[...new Set([...(r.review?.sources??[]),d.sourceUrl,policy.source.url])]}};
+   const inserts=[];
+   if(r.from<start)inserts.push({...r,id:identity('before-modern-outline',r.id,start),to:start-1});
+   inserts.push(repairedRecord);
+   if(r.to>end)inserts.push({...r,id:identity('after-modern-outline',r.id,end),from:end+1});
+   records.splice(i,1,...inserts);i+=inserts.length-1;
+   revisions++;years+=end-start+1;
+  }
+  assert.ok(revisions>0&&years>=17,'No useful modern island source correction '+d.iso);
+  tally.push({iso:d.iso,revisions,years,modernPolygons:main.length,retainedLegacyIslets:legacyExtras.length,newGeometryId:newId});
+ }
+ return tally;
 }
 
 /** Dated evidence for a state omitted from the independently accepted

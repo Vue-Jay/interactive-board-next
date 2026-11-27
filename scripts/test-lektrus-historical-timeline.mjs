@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,tianjinReviewedSourceOwner,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,applyReviewedModernIslandGeographies,modernIslandGeography,historicalTitleCorrections,tianjinReviewedSourceOwner,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalDatedGapCenters,tianjinConcessionChronology,tianjinConcessionStatus,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,historicalYearSourcesComparable,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -89,7 +89,54 @@ assert.deepEqual(papalRevolutionary.map(r=>[r.from,r.to,r.role]),[
  [1789,1790,'polity'],[1791,1796,'polity'],[1797,1797,'settlement']]);
 assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
 
- // Year-gated source splits preserve raw geometric identity and never invent
+ 
+ // Four modern island countries: 1994/2000/2010 archive anchors, named
+ // sub-islands, and fixed original source identities. Small islets omitted
+ // by Natural Earth are NOT automatically declared geodetically complete.
+ assert.equal(modernIslandGeography.entries.length,4);
+ for(const d of modernIslandGeography.entries){
+  assert.deepEqual(d.snapshots.map(x=>x.year),[1994,2000,2010]);
+  assert.ok(d.sourceUrl.startsWith('https://'));
+  assert.ok(d.landmarks.length>=2&&d.parts>=2);
+  for(const [name,lon,lat] of d.landmarks)
+   assert.ok(capitalInsideCountry([lon,lat],d.geometry),d.iso+' lacks '+name);
+  const originals=new Map([[d.originalGeometryId,square(0,0)]]);
+  // Isolate this country but retain the exact policy's pinned geometry data.
+  const selected={...modernIslandGeography,entries:[d]};
+  const fixture={...d,geometry:d.geometry};
+  const fake={id:'old-'+d.iso,name:d.name,geometryId:d.originalGeometryId,
+   role:'polity',geometryStatus:'candidate',sourceIndex:12345,from:1989,to:2024};
+  const rows=[fake];
+  // In the narrow test, expose the policy's four entries to meet the safety
+  // invariant. Three non-target sentinels use already-correct geometry.
+  const fixtureData={...modernIslandGeography,entries:[
+   d,...modernIslandGeography.entries.filter(e=>e.iso!==d.iso)]};
+  // The complete-policy test below covers all four in one operation.
+ }
+ const modernSyntheticRecords=modernIslandGeography.entries.map((d,i)=>({
+  id:'island-fixture-'+i,entityId:'state-'+d.iso,name:d.name,geometryId:d.originalGeometryId,
+  role:'polity',geometryStatus:'candidate',sourceIndex:13000+i,from:1990,to:2024
+ }));
+ const modernOriginals=new Map(modernIslandGeography.entries.map(d=>[d.originalGeometryId,
+  {type:'MultiPolygon',coordinates:[d.geometry.type==='Polygon'?d.geometry.coordinates:d.geometry.coordinates[0]]}]));
+ const modernTallies=applyReviewedModernIslandGeographies(modernSyntheticRecords,modernOriginals);
+ assert.equal(modernTallies.length,4);
+ assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT']);
+ for(const d of modernIslandGeography.entries){
+  const newer=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1994&&r.to===2024);
+  const earlier=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1990&&r.to===1993);
+  assert.ok(newer&&earlier,'Modern island year split '+d.iso);
+  assert.equal(earlier.geometryId,d.originalGeometryId,'Pre-1994 geography changed '+d.iso);
+  assert.notEqual(newer.geometryId,d.originalGeometryId,'No new coastline '+d.iso);
+  assert.equal(newer.geometryStatus,'candidate');
+  assert.ok(newer.review.sources.includes(d.sourceUrl));
+  const geom=modernOriginals.get(newer.geometryId);
+  assert.ok(geom.coordinates.length>=d.parts,'Lost island parts '+d.iso);
+  for(const [name,lon,lat] of d.landmarks)
+   assert.ok(capitalInsideCountry([lon,lat],geom),d.iso+' missing '+name+' in new record');
+ }
+
+// Year-gated source splits preserve raw geometric identity and never invent
  // a surveyed border during administrative/territorial transitions.
  for(const [name,from,to,markers] of [
   ['Montenegro',1877,1915,[1878,1880,1912,1913]],

@@ -3,17 +3,17 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "112 historically classified archived comparisons; 14 more dated Montenegro/Ottoman/Sardinia/Papal issues; original boundaries still candidates",
+  "status": "124 historically classified archived comparisons, including 12 pinned modern island coastline candidates; no new archival geometry historically certified",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 112,
+    "explainedComparisonCases": 124,
     "previouslyExplained": 5,
-    "newlyExplained": 107,
-    "remainingWithoutExplanation": 364,
+    "newlyExplained": 119,
+    "remainingWithoutExplanation": 352,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
@@ -28,9 +28,10 @@
     "lateHordeSuccessorConfusion": 2,
     "datedScopeDiscrepancies": 34,
     "ukColonialScopeComparisonCases": 3,
-    "datedPoliticalStatusScopeReviews": 14
+    "datedPoliticalStatusScopeReviews": 14,
+    "modernIslandCoastlineReviewCases": 12
   },
-  "warning": "Historical classification does not certify any original border; 364 comparisons without an explanation, 769 territorial component-years unchanged pending full independent rebuild.",
+  "warning": "All 12 new modern-island coastline cases are technically implemented candidates, NOT post-rebuild confirmed improvements. 352 without classification; 769 territorial source component-years unchanged.",
   "cases": [
     {
       "id": "2010:119",
@@ -1840,6 +1841,198 @@
         "https://www.treccani.it/enciclopedia/regno-di-sardegna_%28Enciclopedia-dei-ragazzi%29/",
         "https://www.treccani.it/enciclopedia/torino_%28Dizionario-di-Storia%29/",
         "https://history.state.gov/countries/piedmont-sardinia"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2010:159",
+      "year": 2010,
+      "archiveName": "Antigua and Barbuda",
+      "effectiveCandidateName": "Antigua and Barbuda",
+      "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
+      "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
+      "iou": 0.294042,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://thecommonwealth.org/our-member-countries/antigua-and-barbuda",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:159",
+      "year": 2000,
+      "archiveName": "Antigua and Barbuda",
+      "effectiveCandidateName": "Antigua and Barbuda",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
+      "iou": 0.294042,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://thecommonwealth.org/our-member-countries/antigua-and-barbuda",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:158",
+      "year": 1994,
+      "archiveName": "Antigua and Barbuda",
+      "effectiveCandidateName": "Antigua and Barbuda",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
+      "iou": 0.294042,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://thecommonwealth.org/our-member-countries/antigua-and-barbuda",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2010:168",
+      "year": 2010,
+      "archiveName": "Saint Vincent and the Grenadines",
+      "effectiveCandidateName": "Saint Vincent and the Grenadines",
+      "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
+      "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
+      "iou": 0.38263,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://www.gov.vc/index.php/visitors/about-svg",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:168",
+      "year": 2000,
+      "archiveName": "Saint Vincent and the Grenadines",
+      "effectiveCandidateName": "Saint Vincent and the Grenadines",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
+      "iou": 0.38263,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://www.gov.vc/index.php/visitors/about-svg",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:167",
+      "year": 1994,
+      "archiveName": "Saint Vincent and the Grenadines",
+      "effectiveCandidateName": "Saint Vincent and the Grenadines",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
+      "iou": 0.38263,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://www.gov.vc/index.php/visitors/about-svg",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2010:162",
+      "year": 2010,
+      "archiveName": "Grenada",
+      "effectiveCandidateName": "Grenada",
+      "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
+      "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
+      "iou": 0.513519,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://www.gov.gd/grenada",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:162",
+      "year": 2000,
+      "archiveName": "Grenada",
+      "effectiveCandidateName": "Grenada",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
+      "iou": 0.513519,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://www.gov.gd/grenada",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:161",
+      "year": 1994,
+      "archiveName": "Grenada",
+      "effectiveCandidateName": "Grenada",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
+      "iou": 0.513519,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://www.gov.gd/grenada",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2010:187",
+      "year": 2010,
+      "archiveName": "Malta",
+      "effectiveCandidateName": "Malta",
+      "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
+      "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
+      "iou": 0.520931,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:187",
+      "year": 2000,
+      "archiveName": "Malta",
+      "effectiveCandidateName": "Malta",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
+      "iou": 0.520931,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:186",
+      "year": 1994,
+      "archiveName": "Malta",
+      "effectiveCandidateName": "Malta",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
+      "iou": 0.520931,
+      "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "sources": [
+        "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
       ],
       "geometryHistoricallyConfirmed": false
     }
