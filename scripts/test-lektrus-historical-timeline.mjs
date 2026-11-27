@@ -52,6 +52,12 @@ assert.deepEqual(evidenceFixture[0].intervals[0].matches.map(m=>[m.left,m.right]
 const malaccaFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Sultanate of Malacca',1520,1535)]});
 assert.deepEqual(malaccaFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),[[1520,1528,'candidate'],[1529,1535,'rejected']]);
 assert.equal(malaccaFixture.records[0].geometryId,malaccaFixture.records[1].geometryId);
+const teotihuacanFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Teotihuacan',1,700)]});
+assert.deepEqual(teotihuacanFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),
+ [[1,549,'candidate'],[550,650,'candidate'],[651,700,'rejected']]);
+assert.ok(teotihuacanFixture.records[1].review?.reasonRu?.includes('неопределённой'));
+assert.ok(teotihuacanFixture.records[2].review?.reasonRu?.includes('После 650'));
+assert.ok(teotihuacanFixture.records[2].review.sources.length>=2);
 const settlementFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Viking settlements',1028,1325)]});
 assert.equal(settlementFixture.records[0].role,'settlement');
 assert.equal(settlementFixture.records[0].sourceRole,'polity');

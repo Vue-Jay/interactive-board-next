@@ -600,6 +600,8 @@ function editorialSegments(base,derived=[]){
  if([...DUTCH_HOLLAND_GROUPS,...DUTCH_HOLLAND_METRO,...DUTCH_HOLLAND_COLONIES].includes(base.sourceIndex))for(const y of [1807,1811])cut(y);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
+ // A post-collapse archaeological settlement is not an extant political state.
+ if(base.role==='polity'&&base.sourceName==='Teotihuacan'){cut(550);cut(651);}
  if(base.sourceIndex===13313){cut(1973);cut(1976)}
  if(base.sourceIndex===12910)cut(1944);
  if(base.components.includes('County of Savoy'))cut(1416);
@@ -744,6 +746,21 @@ function editorialSegments(base,derived=[]){
    r={...r,name:'Byzantine remnants (unverified source aggregate)',nameRu:'Остаточные византийские территории (непроверенный сводный контур)',nameStatus:'reviewed',entityId:identity('reviewed-polity','byzantine-remnants-7187')};
    if(from>=1462)r.geometryStatus='rejected';
    note('Constantinople fell in 1453, Morea in 1460 and Trebizond in 1461. Remaining source components cannot be identified as a surviving Byzantine empire; after 1461 the unidentified remnant is rejected for drawing and retained for separate attribution.',['https://www.ime.gr/chronos/10/en/p/pb9/pb9c.html'],'Константинополь пал в 1453 году, Морея — в 1460, Трапезунд — в 1461. Оставшиеся компоненты источника не представляют сохранившуюся Византийскую империю; с 1462 года неопознанный остаток исключён из отрисовки, исходник сохранён для атрибуции.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Teotihuacan'){
+   const evidence=[
+    'https://www.metmuseum.org/toah/ht/06/cam.html',
+    'https://www.cambridge.org/core/books/abs/ancient-teotihuacan/interesting-times-teotihuacan-comes-apart-and-a-new-story-begins-550-ce-and-after/21338750E61C3AE3BCE97A8B4BB269D6',
+    'https://www.cambridge.org/core/journals/radiocarbon/article/refining-ceramic-chronology-and-epiclassic-reoccupation-at-la-ventilla-teotihuacan-using-trapezoidal-bayesian-modeling/2DD984699F1C4531D949944A84371529'
+   ];
+   if(from>=651){
+    r={...r,geometryStatus:'rejected'};
+    note('Teotihuacan governing institutions collapsed approximately 550–650 CE. Later habitation does not establish a surviving state with the identical polygon. Suppress unsupported political fill after 650, preserve the archaeological record.',evidence,'Политическая система Теотиуакана распалась приблизительно в 550–650 годах. Более позднее население не подтверждает прежнее государство с тем же контуром. После 650 года политическая заливка отклонена; археологическая история сохраняется.');
+   }else if(from>=550){
+    note('The date of the political collapse around 550–650 CE remains approximate; a fixed sovereign frontier is not established.',evidence,'В 550–650 годах политическая система переживала распад с неопределённой точной датой; неизменная государственная граница не подтверждена.');
+   }else{
+    note('Archaeological influence and exact direct state administration differ: the imported regional polygon is not a surveyed political frontier.',evidence,'Археологическое влияние и прямое политическое управление не тождественны; исходный региональный полигон не является исторически измеренной границей.');
+   }
   }
   if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca'&&from>=1529){
    r={...r,geometryStatus:'rejected'};

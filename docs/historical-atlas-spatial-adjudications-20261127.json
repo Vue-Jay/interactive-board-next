@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-27",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
+  "status": "28 methodological mismatches explained, political geometry NOT approved; whole atlas rebuild still pending",
+  "frozenBaselinePreserved": true,
+  "counts": {
+    "archivedNamedDisagreements": 476,
+    "falseExactNameMatchesCorrected": 13,
+    "noncomparableDanishRealm": 13,
+    "noncomparableMilitaryControl": 2,
+    "explainedComparisonCases": 28,
+    "previouslyExplained": 5,
+    "newlyExplained": 23,
+    "remainingWithoutExplanation": 448,
+    "historicallyVerifiedGeometries": 0,
+    "unverifiedArchiveGeometries": 476,
+    "territorialComponentYearsStillOpenExpected": 769
+  },
+  "warning": "The 28 entries are audit comparability explanations, not proven border fixes. They must not be subtracted from 769 open territorial component-years, and their geometry remains historically unverified.",
+  "cases": [
+    {
+      "id": "2010:119",
+      "year": 2010,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
+      "candidateGeometryId": "b33556919841a2668ad4df2ea6851ba71f24428d663ba39ce9ff16967e116d3f",
+      "iou": 0.013726,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:119",
+      "year": 2000,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "candidateGeometryId": "b33556919841a2668ad4df2ea6851ba71f24428d663ba39ce9ff16967e116d3f",
+      "iou": 0.013726,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:86",
+      "year": 2000,
+      "archiveName": "Afghanistan",
+      "effectiveCandidateName": "Afghanistan",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "candidateGeometryId": "5d5cbbce4b2a8c3e0ad0717abe3f5a8bb8b713b7d39ee4eff063d6866172ac6d",
+      "iou": 0.117066,
+      "classification": "wartime-control-vs-recognized-sovereignty",
+      "reasonRu": "Сравниваются линия фактического военно-политического контроля и юридическая граница государства. Это разные исторические слои, не одно и то же свидетельство.",
+      "sources": [
+        "https://www.un.org/en/about-us/member-states",
+        "https://history.state.gov/historicaldocuments/frus1992-94v01/d375"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:120",
+      "year": 1994,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "candidateGeometryId": "b33556919841a2668ad4df2ea6851ba71f24428d663ba39ce9ff16967e116d3f",
+      "iou": 0.013726,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:71",
+      "year": 1994,
+      "archiveName": "Bosnia and Herzegovina",
+      "effectiveCandidateName": "Bosnia and Herzegovina",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "candidateGeometryId": "1db878272895fad3e69dfe532529c89ecef4b520fc90140d2c5b806b5d003a88",
+      "iou": 0.25912,
+      "classification": "wartime-control-vs-recognized-sovereignty",
+      "reasonRu": "Сравниваются линия фактического военно-политического контроля и юридическая граница государства. Это разные исторические слои, не одно и то же свидетельство.",
+      "sources": [
+        "https://www.un.org/en/about-us/member-states",
+        "https://history.state.gov/historicaldocuments/frus1992-94v01/d375"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1960:28",
+      "year": 1960,
+      "archiveName": "Sri Lanka",
+      "effectiveCandidateName": "Ceylon",
+      "archiveSha256": "6067386755f8fc120a4fca44f198952a18da89cd062aa8013d5a0d08cbad8988",
+      "candidateGeometryId": "ffcd8732dca22402545d14d938261811f5bf82e0553e67c9a902dcedccb5ae01",
+      "iou": 0.826168,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "В 1960 году страна называлась Цейлон. Архивная подпись Шри-Ланка относится к позднейшему периоду, а современное исправленное название кандидатной записи соответствует эпохе.",
+      "sources": [
+        "https://www.un.org/en/about-us/member-states/sri-lanka"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1960:95",
+      "year": 1960,
+      "archiveName": "Papua New Guinea",
+      "effectiveCandidateName": "Territory of Papua and New Guinea (Australian administration)",
+      "archiveSha256": "6067386755f8fc120a4fca44f198952a18da89cd062aa8013d5a0d08cbad8988",
+      "candidateGeometryId": "69089b0eb7caa80f669504863b13b227d75aa6816b81a565d145be71354b4bbf",
+      "iou": 0.843401,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "В 1960 году это была территория под австралийским управлением, а не независимое государство Папуа — Новая Гвинея.",
+      "sources": [
+        "https://www.dfat.gov.au/geo/papua-new-guinea/papua-new-guinea-country-brief"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1960:98",
+      "year": 1960,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "6067386755f8fc120a4fca44f198952a18da89cd062aa8013d5a0d08cbad8988",
+      "candidateGeometryId": "b33556919841a2668ad4df2ea6851ba71f24428d663ba39ce9ff16967e116d3f",
+      "iou": 0.013726,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1945:160",
+      "year": 1945,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "3005839db7bcc5256d511b3abb01f1140c0cce245189bc5c28e7d557a47bc775",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1945:98",
+      "year": 1945,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "3005839db7bcc5256d511b3abb01f1140c0cce245189bc5c28e7d557a47bc775",
+      "candidateGeometryId": "aa214d483c0e07afae1ff2af7029a81b63b9da27fc2dbe6f8d566a83727c290d",
+      "iou": 0.014439,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1938:123",
+      "year": 1938,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "f2565926fed1b197227b7fe126934a43ed75b8fce007e38be72a7d21a415d813",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1938:139",
+      "year": 1938,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "f2565926fed1b197227b7fe126934a43ed75b8fce007e38be72a7d21a415d813",
+      "candidateGeometryId": "dd6b40d5590933d58f70a78ddc54ebbd79e12b8e752e87e18ec05253f4f827ba",
+      "iou": 0.015925,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1930:18",
+      "year": 1930,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "5666e451125ceb0193532338bfecf6f403e1a4d7ff62f54fd560cafb0b0b1b61",
+      "candidateGeometryId": "aa214d483c0e07afae1ff2af7029a81b63b9da27fc2dbe6f8d566a83727c290d",
+      "iou": 0.018724,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1930:57",
+      "year": 1930,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "5666e451125ceb0193532338bfecf6f403e1a4d7ff62f54fd560cafb0b0b1b61",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1920:139",
+      "year": 1920,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "fce1c97dc6a6095594cbb7eb896ccd5ce8b2d72254e73a24148c0a4ea200849f",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1920:183",
+      "year": 1920,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "fce1c97dc6a6095594cbb7eb896ccd5ce8b2d72254e73a24148c0a4ea200849f",
+      "candidateGeometryId": "e4121069ae5ecb861e9973d320ef9e4c7830368d209f7a55ef4845bfd8b71ecd",
+      "iou": 0.016936,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1914:121",
+      "year": 1914,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "a99425f9486e2243835fdc75ad7d82e6ddf3c72fcef87a63429f3313d830cf19",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1914:126",
+      "year": 1914,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "a99425f9486e2243835fdc75ad7d82e6ddf3c72fcef87a63429f3313d830cf19",
+      "candidateGeometryId": "5d02cf71d1e00954326c62ffeff615bb29a6e0bda33377a4fe08067b4cfca50e",
+      "iou": 0.0161,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:146",
+      "year": 1900,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:202",
+      "year": 1900,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "5d02cf71d1e00954326c62ffeff615bb29a6e0bda33377a4fe08067b4cfca50e",
+      "iou": 0.193978,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:111",
+      "year": 1880,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "5d02cf71d1e00954326c62ffeff615bb29a6e0bda33377a4fe08067b4cfca50e",
+      "iou": 0.193978,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:145",
+      "year": 1880,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:226",
+      "year": 1880,
+      "archiveName": "French Indochina",
+      "effectiveCandidateName": "French Cochinchina and Cambodia (source aggregate)",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "b7cb6cf984ec9f6c4ac3e926ff9f0e85a1b75ac4c5bbaa7535d48d8a963d1f4c",
+      "iou": 0.58772,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Французский Индокитай создан в 1887 году; в 1878–1880 годах существовали отдельные французские владения Кохинхины и протекторат Камбоджа.",
+      "sources": [
+        "https://mjp.univ-perp.fr/constit/vn1862.htm",
+        "https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:107",
+      "year": 1878,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "5d02cf71d1e00954326c62ffeff615bb29a6e0bda33377a4fe08067b4cfca50e",
+      "iou": 0.193978,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:141",
+      "year": 1878,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions and Suriname (source aggregate)",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "230dde77fd2a46ca6eef3a0cc15d0b52c38f29bdb717e8e77596301c66aa7488",
+      "iou": 0.004705,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:222",
+      "year": 1878,
+      "archiveName": "French Indochina",
+      "effectiveCandidateName": "French Cochinchina and Cambodia (source aggregate)",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "b7cb6cf984ec9f6c4ac3e926ff9f0e85a1b75ac4c5bbaa7535d48d8a963d1f4c",
+      "iou": 0.58772,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Французский Индокитай создан в 1887 году; в 1878–1880 годах существовали отдельные французские владения Кохинхины и протекторат Камбоджа.",
+      "sources": [
+        "https://mjp.univ-perp.fr/constit/vn1862.htm",
+        "https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1815:149",
+      "year": 1815,
+      "archiveName": "Netherlands Antilles",
+      "effectiveCandidateName": "Dutch Caribbean possessions",
+      "archiveSha256": "fb654f734583f550904cfa45f361e395c1a488c4960050da2632cb2ac7d1cd1e",
+      "candidateGeometryId": "efc5e230b7fbc9696d7a7e75c4b5c08b717b79bf434a46fd6789f09a4cf6947e",
+      "iou": 0.306165,
+      "classification": "retrospective-source-name-not-exact-historical-label",
+      "reasonRu": "Архивное название Нидерландские Антилы ретроспективно применено к дате до конституционного оформления 1954 года. Датированная исходная запись включает и другие владения, в том числе Суринам.",
+      "sources": [
+        "https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands",
+        "https://www.royal-house.nl/topics/history/history-of-the-kingdom-of-the-netherlands"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1815:423",
+      "year": 1815,
+      "archiveName": "Denmark",
+      "effectiveCandidateName": "Denmark",
+      "archiveSha256": "fb654f734583f550904cfa45f361e395c1a488c4960050da2632cb2ac7d1cd1e",
+      "candidateGeometryId": "1401e102f8c7be81968d4c532fe0c6d77fc2bf3c7b177de3924e8ebea95e1d48",
+      "iou": 0.056711,
+      "classification": "nonlike-for-like-metropolitan-denmark-vs-danish-realm",
+      "reasonRu": "Архивная карта европейской Дании и источник, охватывающий зависимые острова и иные владения Датского королевства, не представляют географически одинаковый объект. Низкий IoU не доказывает ошибки границ; исторический охват всё ещё требует проверки.",
+      "sources": [
+        "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+        "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    }
+  ]
+}

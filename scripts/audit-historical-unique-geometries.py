@@ -241,7 +241,9 @@ def audit(folder, archive, output, original_source):
                     iou, old_fraction, candidate_fraction = pairs[key]
                     if iou <= 0:
                         continue
-                    exact_name = bool(name) and name_key(name) in (name_key(r['name']), name_key(r['sourceName']))
+                    # Use the year-effective reviewed name only. The raw sourceName is
+                    # provenance, not proof of the historical name on this date.
+                    exact_name = bool(name) and name_key(name) == name_key(r['name'])
                     candidates.append({'revisionId': r['id'], 'entityId': r['entityId'], 'geometryId': r['geometryId'], 'name': r['name'], 'exactName': exact_name, 'iou': round(iou, 6), 'archiveFraction': round(old_fraction, 6), 'candidateFraction': round(candidate_fraction, 6)})
             candidates.sort(key=lambda c: c['iou'], reverse=True)
             exact = [c for c in candidates if c['exactName']]
