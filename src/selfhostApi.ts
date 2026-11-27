@@ -1059,7 +1059,7 @@ function connectSelfhostBoard(
   onStatus:(status:SelfhostRealtimeStatus)=>void,
   onLive?:(event:SelfhostLiveEvent)=>void,
   presence?:{visible:boolean;idle?:boolean},
-  activity?:()=>number,
+  activity?:()=>number|null,
 ):SelfhostBoardChannel{
   let stopped=false,generation=0,attempt=0;
   let socket:WebSocket|null=null;
@@ -1068,7 +1068,8 @@ function connectSelfhostBoard(
   let expiry:ReturnType<typeof setTimeout>|undefined;
   let responseDeadline:ReturnType<typeof setTimeout>|undefined;
   let lastVersion=-1;
-  let idleLease=false,idlePaused=false,lastActivitySent=-Infinity,lastReportedActivity=-Infinity;
+  let idleLease=false,backgroundIdle=false,idlePaused=false;
+  let lastReportedActivity:number|null|undefined;
   let rejectedAccessToken:string|undefined;
   let activityTimer:ReturnType<typeof setTimeout>|undefined;
   let ready=false;
@@ -1098,18 +1099,17 @@ function connectSelfhostBoard(
     clearTimeout(activityTimer);activityTimer=undefined;
     if(!idleLease||!activity)return;
     const last=activity();
-    if(sendRaw({type:"activity",idle_age_ms:Math.floor(boardIdleAge(last))})){
-      lastActivitySent=Date.now();lastReportedActivity=last;
+    if(sendRaw({type:"activity",idle_age_ms:Math.floor(boardIdleAge(last)),
+      ...(backgroundIdle?{background:last!==null}:{})})){
+      lastReportedActivity=last;
     }
   };
   const noteActivity=(expired=false)=>{
     if(stopped||!activity)return;
     if(expired||idlePaused||retry!==undefined){reconnect(true);return;}
     if(!ready||!idleLease)return;
-    if(activityTimer===undefined){
-      const delay=Math.max(0,300-(Date.now()-lastActivitySent));
-      if(delay===0)flushActivity();else activityTimer=setTimeout(flushActivity,delay);
-    }
+    // Send lifecycle transitions immediately, before WebView timers freeze.
+    flushActivity();
   };
   const canCommitInk=()=>ready&&durableInkCommits&&socket?.readyState===WebSocket.OPEN;
   const canPipelineInk=()=>canCommitInk()&&inkCommitChain;
@@ -1216,7 +1216,7 @@ function connectSelfhostBoard(
     clearTimeout(activityTimer);activityTimer=undefined;
   };
   const closeSocket=()=>{
-    ready=false;idleLease=false;lastActivitySent=-Infinity;lastReportedActivity=-Infinity;
+    ready=false;idleLease=false;backgroundIdle=false;lastReportedActivity=undefined;
     compactInk=false;durableInkCommits=false;inkCommitChain=false;inkMotion=false;lastInkRequestId=undefined;
     for(const entry of pendingCommits.values()){
       clearTimeout(entry.timer);entry.reject(new SelfhostHttpError(409,"Соединение прервано. Сверяем версию доски."));
@@ -1278,13 +1278,14 @@ function connectSelfhostBoard(
           ws.send(JSON.stringify({
             type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,ink_motion:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
-            ...(presence?.idle&&activity?{idle_age_ms:Math.floor(boardIdleAge(activity()))}:{}),
+            ...(presence?.idle&&activity?{idle_age_ms:Math.floor(boardIdleAge(activity())),background_idle:true,background:activity()!==null}:{}),
           }));
         }catch{reconnect();return}
         heartbeat=setInterval(()=>{
           if(!active())return;
           if(activity&&boardIdleExpired(activity())){pauseForIdle();return;}
-          if(idleLease&&activity&&activity()>lastReportedActivity)flushActivity();
+          // Legacy servers have an inactivity lease: renew only in foreground.
+          if(idleLease&&activity&&(activity()!==lastReportedActivity||(!backgroundIdle&&activity()===null)))flushActivity();
           if(sendRaw({type:"ping"})){
             clearTimeout(responseDeadline);
             responseDeadline=setTimeout(reconnect,8000);
@@ -1306,6 +1307,7 @@ function connectSelfhostBoard(
             inkCommitChain=message.ink_commit_chain===true;
             inkMotion=message.ink_motion===true;
             idleLease=message.idle_lease===true;
+            backgroundIdle=message.background_idle===true;
             attempt=0;ready=true;
             if(idleLease)flushActivity();
             confirmReady();
@@ -1492,7 +1494,7 @@ class SharedSelfhostBoard {
   private socket?:SelfhostBoardChannel;
   private presence?:boolean;
   private idle=false;
-  private lastActivity=Date.now();
+  private hiddenSince:number|null=typeof document!=="undefined"&&document.hidden?Date.now():null;
   private version=-1;
   private status:SelfhostRealtimeStatus="reconnecting";
   private reconcileQueued=false;
@@ -1529,11 +1531,16 @@ class SharedSelfhostBoard {
         for(const listener of this.listeners)listener.onStatus(status);
       },event=>{
         for(const listener of this.listeners)listener.onLive?.(event);
-      },presence,this.idle?()=>this.lastActivity:undefined);
+      },presence,this.idle?()=>this.hiddenSince:undefined);
     });
   }
 
-  noteActivity(){const expired=boardIdleExpired(this.lastActivity);this.lastActivity=Date.now();this.socket?.noteActivity(expired);}
+  setBackground(since:number|null){
+    const expired=boardIdleExpired(this.hiddenSince);
+    this.hiddenSince=since;
+    this.socket?.noteActivity(expired&&since===null);
+  }
+  noteActivity(){this.socket?.noteActivity();}
   canCommitInk(){return !!this.socket?.canCommitInk()}
   canPipelineInk(){return !!this.socket?.canPipelineInk()}
   canSendInkMotion(){return !!this.socket?.canSendInkMotion()}
@@ -1566,7 +1573,7 @@ class SharedSelfhostBoard {
 }
 
 const selfhostBoardSockets=new Map<string,SharedSelfhostBoard>();
-export function selfhostNoteBoardActivity(boardId:string){selfhostBoardSockets.get(boardId)?.noteActivity();}
+export function selfhostSetBoardBackground(boardId:string,since:number|null){selfhostBoardSockets.get(boardId)?.setBackground(since);}
 
 export function selfhostSubscribeBoard(
   boardId:string,onRevision:BoardListener["onRevision"],onStatus:BoardListener["onStatus"],

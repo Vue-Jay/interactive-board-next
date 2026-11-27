@@ -104,7 +104,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostNoteBoardActivity, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -3141,9 +3141,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [, setRemoteConflict] = useState<RemoteBoardDocument | null>(null);
   const [, setConflictLocalBackup] = useState<DocumentData | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("reconnecting");
-  // After ten minutes without a user action, close all board-specific sockets.
-  // A hidden app sleeps earlier. Auth stays intact; reconnection checks the
-  // server document version before accepting the next local edit.
+  // Only ten continuous minutes in the background suspend board sockets.
+  // A visible board stays connected even without pointer or keyboard activity.
   const [boardRealtimeAwake,setBoardRealtimeAwake]=useState(true);
   // Until the latest server revision is fetched, no interaction may edit a
   // document that another participant updated while this board was asleep.
@@ -3151,18 +3150,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const boardResumePendingRef=useRef(false);
   const boardResumeRequestRunning=useRef(false);
   const [boardResumeAttempt,setBoardResumeAttempt]=useState(0);
-  const boardLastAction=useRef(Date.now());
+  const boardBackgroundSince=useRef<number|null>(document.hidden?Date.now():null);
   const boardIdleSleeping=useRef(false);
 
   const receiveRemote = useRef<(row: RemoteBoardDocument) => boolean|void>(() => {});
-  // Watching a pupil work is classroom activity even without local clicks.
-  // Backgrounded boards retain the exact ten-minute local inactivity limit.
-  const noteVisiblePeerActivity=()=>{
-    if(document.visibilityState!=="visible"||boardIdleSleeping.current||
-      Date.now()-boardLastAction.current<10000)return;
-    boardLastAction.current=Date.now();
-    if(selfhostMode)selfhostNoteBoardActivity(boardSummary.id);
-  };
   const boardMounted = useRef(true);
   useEffect(() => {
     boardMounted.current = true;
@@ -3579,12 +3570,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [flushSave]);
-  // One timer per open board. User input wakes sockets, but the first action
-  // is consumed until a fresh server document has been fetched and reconciled.
+  // Visibility drives the lease. Returning before the deadline keeps the
+  // same connection and never consumes an input.
   useEffect(()=>{
     if(demoMode||layoutEditing)return;
-    // Exactly one inactivity window, visible or backgrounded.
+    let timeout:ReturnType<typeof setTimeout>|undefined;
     const suspend=()=>{
+      if(boardIdleSleeping.current)return;
       boardIdleSleeping.current=true;
       if(remoteRetryTimer.current){clearTimeout(remoteRetryTimer.current);remoteRetryTimer.current=null;}
       boardResumePendingRef.current=false;
@@ -3593,56 +3585,56 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setRealtimeStatus("offline");
       setBoardRealtimeAwake(false);
     };
-    let timeout:ReturnType<typeof setTimeout>|undefined;
     const arm=()=>{
-      if(!boardRealtimeAwake||timeout!==undefined)return;
-      const due=Math.max(0,boardIdleRemaining(boardLastAction.current));
+      if(!boardRealtimeAwake||timeout!==undefined||boardBackgroundSince.current===null)return;
+      const due=boardIdleRemaining(boardBackgroundSince.current);
       timeout=setTimeout(()=>{
         timeout=undefined;
-        if(!boardIdleExpired(boardLastAction.current)){arm();return;}
+        if(boardBackgroundSince.current===null||!document.hidden)return;
+        if(!boardIdleExpired(boardBackgroundSince.current)){arm();return;}
         suspend();
       },due);
     };
-    const wake=()=>{
-      const expired=boardIdleExpired(boardLastAction.current);
-      boardLastAction.current=Date.now();
+    const visibility=()=>{
+      if(document.hidden){
+        if(boardBackgroundSince.current===null){
+          boardBackgroundSince.current=Date.now();
+          if(selfhostMode)selfhostSetBoardBackground(boardSummary.id,boardBackgroundSince.current);
+        }
+        arm();
+        return;
+      }
+      clearTimeout(timeout);timeout=undefined;
+      const wasHidden=boardBackgroundSince.current!==null;
+      const expired=boardIdleExpired(boardBackgroundSince.current);
+      boardBackgroundSince.current=null;
+      const mustResume=expired||boardIdleSleeping.current||!boardRealtimeAwake;
       boardIdleSleeping.current=false;
-      if(selfhostMode)selfhostNoteBoardActivity(boardSummary.id);
-      if(!boardRealtimeAwake||expired){
+      if(mustResume){
         boardResumePendingRef.current=true;
         setBoardResumePending(true);
         setBoardRealtimeAwake(true);
-        arm();
-      }else if(boardResumePendingRef.current&&!boardResumeRequestRunning.current){
-        // User action can also accelerate a failed document refresh.
-        setBoardResumeAttempt(value=>value+1);
-      }else arm();
+      }
+      if(selfhostMode&&(wasHidden||mustResume))selfhostSetBoardBackground(boardSummary.id,null);
     };
     const userAction=(event:Event)=>{
-      if(!event.isTrusted)return;
+      if(!event.isTrusted||!boardResumePendingRef.current)return;
       if(event.type==="pointermove"&&(!(event instanceof PointerEvent)||(!event.buttons&&event.pointerType!=="touch")))return;
-      wake();
-      if(boardResumePendingRef.current){
-        if(event.cancelable)event.preventDefault();
-        event.stopImmediatePropagation();
-      }
+      if(!boardResumeRequestRunning.current)setBoardResumeAttempt(value=>value+1);
+      if(event.cancelable)event.preventDefault();
+      event.stopImmediatePropagation();
     };
-    // Mouse hover and passive network messages never keep the socket awake.
-    // Capture before React board handlers; passive:false is necessary to
-    // prevent a stale pointer or keystroke from changing the shared document.
     const events=["pointerdown","pointerup","pointermove","click","keydown","beforeinput","wheel","input"] as const;
     for(const type of events)
       document.addEventListener(type,userAction,{capture:true,passive:false});
-    const visibility=()=>{if(document.visibilityState==="visible")wake();else if(boardRealtimeAwake)arm()};
-    const focus=()=>{if(document.visibilityState==="visible"&&(!boardRealtimeAwake||boardIdleExpired(boardLastAction.current)))wake()};
     document.addEventListener("visibilitychange",visibility);
-    window.addEventListener("focus",focus);window.addEventListener("pageshow",focus);
-    arm();
+    window.addEventListener("focus",visibility);window.addEventListener("pageshow",visibility);
+    visibility();
     return()=>{
       clearTimeout(timeout);
       for(const type of events)document.removeEventListener(type,userAction,true);
       document.removeEventListener("visibilitychange",visibility);
-      window.removeEventListener("focus",focus);window.removeEventListener("pageshow",focus);
+      window.removeEventListener("focus",visibility);window.removeEventListener("pageshow",visibility);
     };
   },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,selfhostMode]);
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
@@ -8208,8 +8200,6 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   receiveRemote.current = row => {
     if (!boardMounted.current || row.board_id !== boardSummary.id) return;
-    if(row.version>(remoteVersion.current??-1)&&row.updated_by&&row.updated_by!==authUser.id)
-      noteVisiblePeerActivity();
     for(const cursor of row.ink_cursors??[]){
       if(cursor.user_id===authUser.id)continue;
       const previous=pendingCommittedCursors.current.get(cursor.user_id);
@@ -8413,18 +8403,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     },event=>{
       if(!active)return;
       if(event.type==="idle_timeout"){
-        if(boardIdleExpired(boardLastAction.current)){
+        if(document.hidden&&boardIdleExpired(boardBackgroundSince.current)){
           boardIdleSleeping.current=true;
           if(remoteRetryTimer.current){clearTimeout(remoteRetryTimer.current);remoteRetryTimer.current=null;}
           flushSave();
           boardResumePendingRef.current=false;setBoardResumePending(false);setBoardRealtimeAwake(false);
-        }else selfhostNoteBoardActivity(boardSummary.id);
+        }else if(!document.hidden)selfhostSetBoardBackground(boardSummary.id,null);
         return;
       }
       if(event.type==="presence_diff"){
         for(const user of event.leaves)if(inkMotionLedger.leave(user.user_id))setInkMotionRevision(n=>n+1);
       }else if((event.type==="ink_motion"||event.type==="ink_motion_ack")&&event.user_id!==authUser.id){
-        if(event.type==="ink_motion")noteVisiblePeerActivity();
         // Apply the ordinary item geometry and its cursor in one paint.
         flushSync(()=>{if(inkMotionLedger.receive(event))setInkMotionRevision(n=>n+1);});
         if(event.type==="ink_motion")remoteCursorStore.push({userId:event.user_id,name:event.name,role:event.role,

@@ -1,5 +1,5 @@
 from board_presence_policy import (BOARD_IDLE_SECONDS, TEACHER_COLOR, STUDENT_PALETTE,
-                                   participant_color, idle_deadline, valid_idle_age)
+                                   participant_color, idle_deadline, valid_idle_age, background_deadline)
 
 def test_board_idle_lease_and_colors():
     assert BOARD_IDLE_SECONDS == 600
@@ -37,3 +37,15 @@ def test_new_entry_renews_color_but_empty_board_resets_queue():
     assert participant_color("pupil",[teacher,other,{"user_id":"pupil","role":"editor","color":second}],sequence=50)==second
     # When the last presence socket goes away, the server drops its counter.
     assert participant_color("pupil",[],sequence=0)==first
+
+def test_background_only_lease():
+    import pytest
+    assert background_deadline(False, 0, now=10000) is None
+    assert background_deadline(True, 0, now=10000) == 10600
+    assert background_deadline(True, 599000, now=10599) == 10600
+    assert background_deadline(True, 600000, now=10600) == 10600
+    assert background_deadline(False, 0, now=10599) is None
+    with pytest.raises(ValueError):
+        background_deadline(False, 1)
+    with pytest.raises(ValueError):
+        background_deadline("false", 0)

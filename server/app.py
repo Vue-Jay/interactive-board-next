@@ -636,7 +636,7 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
         return {**document_view(row, board_id), **({"ink_point_deltas": True} if ink_point_deltas else {})}
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
-from board_presence_policy import TEACHER_COLOR, participant_color, valid_idle_age, idle_deadline
+from board_presence_policy import TEACHER_COLOR, participant_color, valid_idle_age, idle_deadline, background_deadline
 
 _subscriber_users: dict[UUID, dict[WebSocket, dict[str, str]]] = defaultdict(dict)
 # Per-board allocation cursor: only live visible users count; discard at empty room.
@@ -1168,7 +1168,12 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         if idle_enabled and (not presence_enabled or not valid_idle_age(idle_age)):
             await websocket.close(code=4401)
             return
-        activity_deadline = idle_deadline(idle_age) if idle_enabled else None
+        background_idle = initial.get("background_idle", False)
+        if type(background_idle) is not bool or (background_idle and not idle_enabled):
+            await websocket.close(code=4401)
+            return
+        activity_deadline = (background_deadline(initial.get("background"), idle_age)
+                             if background_idle else idle_deadline(idle_age) if idle_enabled else None)
         if activity_deadline is not None and activity_deadline <= time.monotonic():
             await websocket.close(code=4410)
             return
@@ -1220,7 +1225,8 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                                    **({"durable_ink_commits": True} if durable_ink_commits else {}),
                                    **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {}),
                                    **({"ink_motion": True} if ink_motion and durable_ink_commits else {}),
-                                   **({"idle_lease": True} if idle_enabled else {})})
+                                   **({"idle_lease": True} if idle_enabled else {}),
+                                   **({"background_idle": True} if background_idle else {})})
         if presence_enabled:
             await websocket.send_json({"type": "presence_state", "users": _unique_presence(board_id)})
             if presence_visible and not already_present:
@@ -1332,14 +1338,21 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                     await websocket.send_json({"type": "event_error", "reason": "invalid_frame"})
                     continue
                 if message.get("type") == "activity":
-                    if not idle_enabled or set(message) != {"type","idle_age_ms"} or not valid_idle_age(message["idle_age_ms"]):
+                    fields = {"type","idle_age_ms","background"} if background_idle else {"type","idle_age_ms"}
+                    if not idle_enabled or set(message) != fields or not valid_idle_age(message["idle_age_ms"]):
+                        await websocket.send_json({"type":"event_error","reason":"invalid_activity"})
+                        continue
+                    try:
+                        deadline = (background_deadline(message["background"], message["idle_age_ms"])
+                                    if background_idle else idle_deadline(message["idle_age_ms"]))
+                    except ValueError:
                         await websocket.send_json({"type":"event_error","reason":"invalid_activity"})
                         continue
                     # Authenticated socket-local lease, no DB traffic or peer fan-out.
                     if time.monotonic() - last_activity_auth >= 30:
                         await lookup_board_session(websocket.app.state.pool, board_id, token)
                         last_activity_auth = time.monotonic()
-                    activity_deadline = idle_deadline(message["idle_age_ms"])
+                    activity_deadline = deadline
                     continue
                 if message.get("type") == "ink_commit" and ink_worker is not None:
                     if ink_worker.done() or ink_queue.full() or not limiter.check("ink_commit"):
