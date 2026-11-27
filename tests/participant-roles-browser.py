@@ -1247,7 +1247,7 @@ def check_undo_reconnect_sync(browser):
                 return next(i for i in changed["items"] if i["id"]==obj["id"])
             def open_existing(obj,dialog):
                 teacher.locator('[data-interface-control="select"]:visible').first.click()
-                teacher.locator(f'.board-object[data-object="{obj["id"]}"]').dblclick()
+                teacher.locator(f'.board-object[data-object="{obj["id"]}"]').dblclick(position={"x":12,"y":12})
                 expect(teacher.locator(dialog)).to_be_visible(timeout=15000)
                 return teacher.locator(dialog)
 
@@ -1257,10 +1257,10 @@ def check_undo_reconnect_sync(browser):
                 ("chart",{"kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}]},
                  ".lektrus-data-chart-dialog",'input[placeholder="Название диаграммы"]',".primary"),
                 ("fraction",{"kind":"fraction","fractionMode":"circle","fractionNumerator":1,"fractionDenominator":4},
-                 ".lektrus-fraction-dialog",'.lektrus-fraction-fields label:first-child input',".primary"),
-                ("periodic",{"kind":"graph","graphFigureId":"chem-periodic","sciencePeriodicHighlights":[8],"sciencePeriodicLayout":"school","sciencePeriodicShowNames":True},
+                 ".lektrus-fraction-dialog",'.lektrus-fraction-fields > label:first-child input',".primary"),
+                ("periodic",{"kind":"graph","graphFigureId":"chem-periodic","graphPurpose":"geometry","graphAxisMode":"none","sciencePeriodicHighlights":[8],"sciencePeriodicLayout":"school","sciencePeriodicShowNames":True},
                  ".lektrus-periodic-dialog",'.lektrus-periodic-panel label:first-child input',".primary"),
-                ("atom",{"kind":"graph","graphFigureId":"chem-atom","scienceAtomModel":{"atomicNumber":8,"massNumber":16,"charge":0,"view":"shells"}},
+                ("atom",{"kind":"graph","graphFigureId":"chem-atom","graphPurpose":"geometry","graphAxisMode":"none","scienceAtomModel":{"atomicNumber":8,"mode":"shell","labelX":0,"labelY":0,"showElectronConfiguration":True}},
                  ".lektrus-atom-dialog",'.lektrus-atom-controls label:first-child input',".primary"),
             ]
             for name,fields,dialog,field,save in subject_cases:
@@ -1350,9 +1350,11 @@ def check_undo_reconnect_sync(browser):
                         "flashcard":(".flashcard-flip-button","flashcardFlipped",True),
                         "cover":(".cover-toggle","coverOpen",True)
                     }[kind]
-                    pupil.locator(selector+" "+control).first.click()
-                    wait_api(pupil,lambda d:any(i["id"]==obj["id"] and i.get(field)==value for i in d["items"]),kind+" student response did not synchronize")
-                    teacher.wait_for_function("""({ident,id,field,value})=>{
+                    # The cover toggle is intentionally teacher-only in the UI.
+                    actor,receiver=(teacher,pupil) if kind=="cover" else (pupil,teacher)
+                    actor.locator(selector+" "+control).first.click()
+                    wait_api(actor,lambda d:any(i["id"]==obj["id"] and i.get(field)==value for i in d["items"]),kind+" response did not synchronize")
+                    receiver.wait_for_function("""({ident,id,field,value})=>{
                         const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
                         const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
                         return !!item&&JSON.stringify(item[field])===JSON.stringify(value);
@@ -1360,7 +1362,73 @@ def check_undo_reconnect_sync(browser):
                 select_all(teacher);teacher.keyboard.press("Delete")
                 wait_api(teacher,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" UI deletion not saved")
                 expect(pupil.locator(selector)).to_have_count(0,timeout=15000)
-                print(kind+" real UI create/peer display/student response where applicable/delete passed.")
+                print(kind+" real UI create/peer display/allowed response/delete passed.")
+
+            # Actual ruler, set square and protractor creation, live move,
+            # scale adjustment and deletion by both editing roles.
+            for actor,receiver in ((teacher,pupil),(pupil,teacher)):
+                for label,kind in (("Линейка","ruler"),("Угольник","triangle"),("Транспортир","protractor")):
+                    replace_items([])
+                    actor.locator('button[aria-label="Добавить измерительный инструмент"]:visible').first.click()
+                    actor.get_by_role("button",name="Добавить: "+label,exact=True).click()
+                    row=wait_api(actor,lambda d:any(i["kind"]=="instrument" and i.get("instrumentType")==kind for i in d["items"]),kind+" instrument missing")
+                    obj=next(i for i in row["items"] if i["kind"]=="instrument")
+                    selector=f'[data-shared-instrument="{obj["id"]}"]'
+                    for page in (actor,receiver):expect(page.locator(selector)).to_be_visible(timeout=15000)
+                    target=actor.locator(selector+" .geometry-instrument-body")
+                    box=target.bounding_box()
+                    x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
+                    actor.mouse.move(x,y);actor.mouse.down()
+                    try:
+                        actor.mouse.move(x+70,y+30,steps=8)
+                        receiver.wait_for_function("""({selector,x,y})=>{
+                            const e=document.querySelector(selector);return e&&Math.hypot(parseFloat(e.style.left)-x,parseFloat(e.style.top)-y)>20;
+                        }""",arg={"selector":selector,"x":obj["x"],"y":obj["y"]},timeout=5000)
+                    finally:actor.mouse.up()
+                    moved=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"])>20 for i in d["items"]),kind+" move not saved")
+                    for page in (actor,receiver):geometry_synced(page,moved["items"])
+                    actor.locator(selector+' button[aria-label="Уменьшить инструмент"]').click()
+                    wait_api(actor,lambda d:any(i["id"]==obj["id"] and i["instrumentScale"]<obj["instrumentScale"] for i in d["items"]),kind+" scale not saved")
+                    actor.locator(selector+' button[aria-label="Убрать инструмент"]').click()
+                    wait_api(actor,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" instrument deletion not saved")
+                    expect(receiver.locator(selector)).to_have_count(0,timeout=15000)
+                    print(kind+" creation/motion/scale/deletion by "+("teacher" if actor is teacher else "student")+" passed")
+
+            # Minimal valid two-page PDF with real xref and different colored
+            # page content. No external files or network are needed.
+            def make_pdf():
+                streams=[b"0.1 0.4 0.8 rg 10 10 180 180 re f",b"0.8 0.2 0.1 rg 10 10 180 180 re f"]
+                objects=[b"<< /Type /Catalog /Pages 2 0 R >>",
+                         b"<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+                         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> /Contents 5 0 R >>",
+                         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> /Contents 6 0 R >>"]
+                objects += [b"<< /Length "+str(len(stream)).encode()+b" >>\nstream\n"+stream+b"\nendstream" for stream in streams]
+                out=b"%PDF-1.4\n";offsets=[0]
+                for index,obj in enumerate(objects,1):
+                    offsets.append(len(out));out+=str(index).encode()+b" 0 obj\n"+obj+b"\nendobj\n"
+                xref=len(out)
+                out+=b"xref\n0 "+str(len(offsets)).encode()+b"\n0000000000 65535 f \n"
+                out+=b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets[1:])
+                return out+b"trailer\n<< /Size "+str(len(offsets)).encode()+b" /Root 1 0 R >>\nstartxref\n"+str(xref).encode()+b"\n%%EOF\n"
+            replace_items([])
+            pupil.locator('input[aria-label="Добавить фото или PDF"]').set_input_files({"name":"qa-two-pages.pdf","mimeType":"application/pdf","buffer":make_pdf()})
+            expect(pupil.locator(".student-media-pending")).to_be_visible(timeout=30000)
+            expect(teacher.locator(".teacher-media-request-head")).to_contain_text("qa-two-pages.pdf",timeout=30000)
+            teacher.locator(".teacher-media-request-actions button.approve").click()
+            row=wait_api(teacher,lambda d:any(i["kind"]=="pdf" and i.get("name")=="qa-two-pages.pdf" for i in d["items"]),"Approved PDF never committed")
+            pdf=next(i for i in row["items"] if i["kind"]=="pdf")
+            both(pdf["id"])
+            for page in (teacher,pupil):expect(page.locator(f'.board-object[data-object="{pdf["id"]}"]')).to_be_visible(timeout=30000)
+            select_all(pupil)
+            next_page=pupil.get_by_role("button",name="Следующая страница PDF",exact=True)
+            expect(next_page).to_be_enabled(timeout=30000);next_page.click()
+            wait_api(pupil,lambda d:any(i["id"]==pdf["id"] and i.get("pdfPage")==2 for i in d["items"]),"PDF page change not saved")
+            select_all(teacher)
+            expect(teacher.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("2",timeout=30000)
+            teacher.get_by_role("button",name="Предыдущая страница PDF",exact=True).click()
+            wait_api(teacher,lambda d:any(i["id"]==pdf["id"] and i.get("pdfPage")==1 for i in d["items"]),"Teacher PDF page change not saved")
+            expect(pupil.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("1",timeout=30000)
+            print("Real two-page PDF upload, durable teacher approval and bidirectional pagination passed.")
     finally:
         for ctx in contexts:ctx.close()
 

@@ -85,3 +85,7 @@ Source inspection found stale full-item replacement in atom, periodic table, cha
 ## Active modal preview and GUI coverage
 
 Runs 46018942268/46018942295 passed, including checkpointed text undo/redo/cancel after a real pupil revision. Added idempotent full unsaved modal-field previews and bounded refresh of small active drafts, plus retry of failed work-state, editor-packet and object-transform sends. Table double-click now initializes the proper modal base. Expanded real browser acceptance for detached subject modal vs pupil movement, deleted-chart save denial, teacher tool creation/peer rendering/deletion, and student responses for checklist, quiz, flashcard and cover. These tests are not yet passed at this head. Physical Android devices and complete subject-specific gesture permutations remain outside current evidence.
+
+### Expanded acceptance fixtures
+
+Corrected the atom fixture to the actual validated AtomModel shape and covered the intentionally teacher-only cover toggle. Added real ruler/set-square/protractor creation, movement, scale and deletion for teacher and pupil, plus a generated valid two-page PDF uploaded through the pupil approval flow with bidirectional page switching. These are new tests, not yet verified results.
