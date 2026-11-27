@@ -54,6 +54,17 @@ assert.deepEqual(malaccaFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),[
 assert.equal(malaccaFixture.records[0].geometryId,malaccaFixture.records[1].geometryId);
 // No single state boundary may be inferred from the archaeological influence
 // of Teotihuacan or the multiple independent Shan principalities.
+// Late source names must not extend the unified Golden Horde across its
+// successor khanates or beyond the 1502 defeat of the Great Horde.
+for(const [year,role,status] of [[1450,'polity','candidate'],[1466,'settlement','candidate'],[1492,'settlement','candidate'],[1500,'settlement','candidate'],[1501,'settlement','candidate'],[1502,'polity','rejected'],[1530,'polity','rejected']]){
+ const r=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Golden Horde',year,year)]}).records;
+ assert.equal(r.length,1);
+ assert.equal(r[0].role,role,'Great Horde stage '+year);
+ assert.equal(r[0].geometryStatus,status,'Great Horde source geometry '+year);
+ if(year>=1466)assert.ok(r[0].review?.sources?.length>=2);
+}
+const goldenHordeTimeline=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Golden Horde',1450,1510)]}).records;
+assert.deepEqual(goldenHordeTimeline.map(r=>[r.from,r.to,r.role,r.geometryStatus]),[[1450,1465,'polity','candidate'],[1466,1501,'settlement','candidate'],[1502,1510,'polity','rejected']]);
 // An ethnonym, dynastic union and nominally unified divided state cannot be
 // painted as single sovereign-polity boundaries.
 for(const [name,year,expectedName] of [

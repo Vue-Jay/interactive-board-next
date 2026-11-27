@@ -3,17 +3,17 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "59 archive comparison cases classified; source polygons of Saxons, Kalmar and divided Đại Việt no longer pretend one state; historic boundaries unverified",
+  "status": "61 archive name/geometry comparisons historically classified, 415 pending; late Golden Horde is not drawn as a unified state",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 59,
+    "explainedComparisonCases": 61,
     "previouslyExplained": 5,
-    "newlyExplained": 54,
-    "remainingWithoutExplanation": 417,
+    "newlyExplained": 56,
+    "remainingWithoutExplanation": 415,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
@@ -24,9 +24,10 @@
     "ethnonymNotSovereign": 3,
     "personalUnionsNotCountries": 1,
     "dividedDaiViet": 6,
-    "macDynastyIdentified": 1
+    "macDynastyIdentified": 1,
+    "lateHordeSuccessorConfusion": 2
   },
-  "warning": "These 59 cases are historical entity/comparability corrections, not verified borders. The separate 769 territorial source component-years remain open pending full rebuild.",
+  "warning": "No historical borders proved by the 61 classifications; 769 distinct territorial component-years remain open pending a rebuilt verified spatial audit.",
   "cases": [
     {
       "id": "2010:119",
@@ -654,6 +655,38 @@
       "sources": [
         "https://cas.au.dk/en/danish-history/modules/module-3-the-late-middle-ages-1340-1523/4-from-mortgaged-kingdom-to-regional-great-power",
         "https://www.medievalists.net/2021/01/medieval-scandinavia-downfall-kalmar-union/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1500:283",
+      "year": 1500,
+      "archiveName": "Golden Horde",
+      "effectiveCandidateName": "Golden Horde",
+      "archiveSha256": "d01ffc9b80629787f13d2b1c2f881f005bc0164433548e30f5c058ddee0bfc7b",
+      "candidateGeometryId": "69abbf1f4fe0522e3ab92704ffde7e535ec59935443ecc8bc950743cf0fd19d3",
+      "iou": 0.186964,
+      "classification": "late-golden-horde-successor-confusion",
+      "reasonRu": "В 1492 и 1500 годах не существовало единой Золотой Орды в границах прежней державы. Большая Орда была отдельным наследником, наряду с Крымским, Казанским и Астраханским ханствами; она прекратила существование после поражения 1502 года. Исходный общий контур оставлен только тематически, не как подтверждённая государственная граница.",
+      "sources": [
+        "https://www.cambridge.org/core/books/abs/history-of-inner-asia/rise-of-russia-the-fall-of-the-golden-horde-and-the-resilient-chaghatayids/C7BEE0D065984C4593D00F66E2724A93",
+        "https://www.cambridge.org/core/books/abs/cambridge-history-of-the-mongol-empire/golden-horde-c-12601502/194D20494453E0AC8373BE9ADFB8B8D6"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1492:62",
+      "year": 1492,
+      "archiveName": "Golden Horde",
+      "effectiveCandidateName": "Golden Horde",
+      "archiveSha256": "b0e6b0f299fc7b191fd427547c83dec9808087d390304a37a32bc0357e97c1b8",
+      "candidateGeometryId": "69abbf1f4fe0522e3ab92704ffde7e535ec59935443ecc8bc950743cf0fd19d3",
+      "iou": 0.179244,
+      "classification": "late-golden-horde-successor-confusion",
+      "reasonRu": "В 1492 и 1500 годах не существовало единой Золотой Орды в границах прежней державы. Большая Орда была отдельным наследником, наряду с Крымским, Казанским и Астраханским ханствами; она прекратила существование после поражения 1502 года. Исходный общий контур оставлен только тематически, не как подтверждённая государственная граница.",
+      "sources": [
+        "https://www.cambridge.org/core/books/abs/history-of-inner-asia/rise-of-russia-the-fall-of-the-golden-horde-and-the-resilient-chaghatayids/C7BEE0D065984C4593D00F66E2724A93",
+        "https://www.cambridge.org/core/books/abs/cambridge-history-of-the-mongol-empire/golden-horde-c-12601502/194D20494453E0AC8373BE9ADFB8B8D6"
       ],
       "geometryHistoricallyConfirmed": false
     },

@@ -600,6 +600,7 @@ function editorialSegments(base,derived=[]){
  if([...DUTCH_HOLLAND_GROUPS,...DUTCH_HOLLAND_METRO,...DUTCH_HOLLAND_COLONIES].includes(base.sourceIndex))for(const y of [1807,1811])cut(y);
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
+ if(base.role==='polity'&&base.sourceName==='Golden Horde'){cut(1466);cut(1502)}
  // Distinguish the Mạc seizure in 1527, the restored Lê from 1533,
  // the Trịnh/Nguyễn division and the Tây Sơn–Nguyễn civil war.
  if(base.role==='polity'&&base.sourceName==='Đại Việt')
@@ -736,6 +737,21 @@ function editorialSegments(base,derived=[]){
   // poleis is not ONE sovereign state with a single historical boundary.
   // Keep the imported footprint accessible through the optional thematic
   // settlement layer, never as a merged country in the political atlas.
+  if(base.role==='polity'&&base.sourceName==='Golden Horde'&&from>=1466){
+   const sources=['https://www.cambridge.org/core/books/abs/history-of-inner-asia/rise-of-russia-the-fall-of-the-golden-horde-and-the-resilient-chaghatayids/C7BEE0D065984C4593D00F66E2724A93','https://www.cambridge.org/core/books/abs/cambridge-history-of-the-mongol-empire/golden-horde-c-12601502/194D20494453E0AC8373BE9ADFB8B8D6'];
+   if(from<1502){
+    r={...r,role:'settlement',sourceRole:'polity',
+     name:'Great Horde (Golden Horde successor; territory unverified)',
+     nameRu:'Большая Орда (наследник Золотой Орды; граница не проверена)',
+     nameStatus:'reviewed'};
+    note('By the mid-fifteenth century the Golden Horde had split into the Great Horde and separate Kazan, Astrakhan and Crimean khanates. The original blanket Golden Horde footprint is not a valid border for the successor Great Horde. Keep as an optional thematic source range only.',sources,
+      'К середине XV века Золотая Орда распалась на Большую Орду и самостоятельные Казанское, Астраханское и Крымское ханства. Прежний общий контур не является достоверной границей Большой Орды; оставлен как тематический источник.');
+   }else{
+    r={...r,geometryStatus:'rejected',name:'Great Horde (ceased in 1502)',nameRu:'Большая Орда (прекратила существование в 1502 г.)',nameStatus:'reviewed'};
+    note('The remaining Great Horde was defeated by the Crimean Khanate in 1502; no subsequent single Golden Horde state can inherit the old blanket regional polygon. Retained solely as rejected source provenance.',sources,
+      'Большая Орда была разгромлена Крымским ханством в 1502 году. После этого исходный общий контур нельзя выдавать за государство Золотой Орды; запись оставлена лишь как отвергнутый первоисточник.');
+   }
+  }
   if(base.role==='polity'&&base.sourceName==='Saxons'){
    r={...r,role:'settlement',sourceRole:'polity',
     name:'Saxon peoples and regional polities (thematic area)',

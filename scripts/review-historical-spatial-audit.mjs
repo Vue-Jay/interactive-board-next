@@ -35,6 +35,7 @@ for(const r of current.cases){
  if(r.classification==="personal-union-not-single-sovereign-country")assert.equal(r.archiveName,"Kalmar Union");
  if(r.classification==="mac-dynasty-anachronistic-unqualified-dai-viet")assert.ok(r.archiveName==="Đại Việt"&&r.year===1530);
  if(r.classification==="divided-dai-viet-multiple-effective-rulers")assert.ok(r.archiveName==="Đại Việt"&&r.year>1530);
+ if(r.classification==="late-golden-horde-successor-confusion")assert.ok(r.archiveName==="Golden Horde"&&[1492,1500].includes(r.year));
  classes.set(r.classification,(classes.get(r.classification)??0)+1);
 }
 for(const f of mismatches)assert.ok(seen.has(f.id));
@@ -49,11 +50,12 @@ assert.equal(classes.get("ethnonym-not-single-sovereign-state"),3);
 assert.equal(classes.get("personal-union-not-single-sovereign-country"),1);
 assert.equal(classes.get("mac-dynasty-anachronistic-unqualified-dai-viet"),1);
 assert.equal(classes.get("divided-dai-viet-multiple-effective-rulers"),6);
-assert.equal(seen.size,59);assert.equal(current.counts.newlyExplained,54);
-assert.equal(current.counts.remainingWithoutExplanation,417);
+assert.equal(classes.get("late-golden-horde-successor-confusion"),2);
+assert.equal(seen.size,61);assert.equal(current.counts.newlyExplained,56);
+assert.equal(current.counts.remainingWithoutExplanation,415);
 assert.equal(current.counts.historicallyVerifiedGeometries,0);
 assert.equal(current.counts.territorialComponentYearsStillOpenExpected,769);
 const source=fs.readFileSync(new URL("scripts/audit-historical-unique-geometries.py",base),"utf8");
 assert.ok(source.includes("name_key(name) == name_key(r['name'])"));
 assert.ok(!source.includes("name_key(r['name']), name_key(r['sourceName'])"));
-console.log("Atlas spatial comparison: 13 false historical name matches corrected, 59 mismatches explained, 417 awaiting review; geometry unverified.");
+console.log("Atlas spatial comparison: 13 false historical name matches corrected, 61 mismatches explained, 415 awaiting review; geometry unverified.");
