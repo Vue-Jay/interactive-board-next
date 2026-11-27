@@ -1648,6 +1648,35 @@ def check_undo_reconnect_sync(browser):
                         const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
                         return !!item&&JSON.stringify(item[field])===JSON.stringify(value);
                     }""",arg={"ident":ident,"id":obj["id"],"field":field,"value":value},timeout=15000)
+                # Reopen existing structural editors, not just initial creation.
+                # Hold a draft while the pupil moves the same object.
+                edit_cases={
+                    "formula":("Редактировать формулу","#formula-source",".formula-editor-footer .primary","x^3+2","text"),
+                    "checklist":("Редактировать чек-лист",".checklist-title-input input",".checklist-editor-footer .primary","Edited checklist","text"),
+                    "quiz":("Редактировать мини-тест",'textarea[placeholder="Введите вопрос…"]',".quiz-editor-footer .primary","Edited quiz","text"),
+                    "flashcard":("Редактировать карточку",".flashcard-editor-modal textarea:first-of-type",".flashcard-editor-footer .primary","Edited front","text"),
+                    "linkmedia":("Изменить ссылку",".link-media-dialog input:nth-of-type(1)",".link-media-dialog .boards-create","https://example.test/changed","mediaUrl"),
+                }
+                if kind in edit_cases:
+                    title,field,save,value,key=edit_cases[kind]
+                    select_all(teacher)
+                    teacher.locator(f'button[title="{title}"]:visible').first.click()
+                    control=teacher.locator(field).first
+                    expect(control).to_be_visible()
+                    control.fill(value)
+                    current=next(i for i in read()["items"] if i["id"]==obj["id"])
+                    moved=peer_move(current)
+                    teacher.locator(save).click()
+                    edited=wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i.get(key)==value and abs(i["x"]-moved["x"])<.01 for i in d["items"]),kind+" existing draft lost content or peer geometry")
+                    for page in (teacher,pupil):
+                        geometry_synced(page,edited["items"])
+                        page.wait_for_function("""({ident,id,key,value})=>{
+                            const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                            const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                            return item?.[key]===value;
+                        }""",arg={"ident":ident,"id":obj["id"],"key":key,"value":value},timeout=15000)
+                    obj=next(i for i in edited["items"] if i["id"]==obj["id"])
+                    print(kind+" existing editor save preserved peer geometry.")
                 # Exercise allowed positioning, resize and rotation in the opposite role.
                 moved_obj=peer_move(obj)
                 if kind!="connector":peer_resize_rotate(moved_obj)
@@ -1682,6 +1711,13 @@ def check_undo_reconnect_sync(browser):
             fraction=next(i for i in fraction_row["items"] if i["kind"]=="fraction")
             both(fraction["id"])
             expect(pupil.locator(f'.board-object[data-object="{fraction["id"]}"]')).to_contain_text("QA fraction")
+            select_all(teacher)
+            teacher.locator('button[title="Редактировать дробь"]:visible').first.click()
+            fraction_dialog.get_by_label("Знаменатель",exact=True).fill("8")
+            moved=peer_move(fraction)
+            fraction_dialog.locator(".primary").click()
+            edited=wait_api(teacher,lambda d:any(i["id"]==fraction["id"] and i.get("fractionDenominator")==8 and abs(i["x"]-moved["x"])<.01 for i in d["items"]),"Fraction denominator or peer movement lost")
+            fraction=next(i for i in edited["items"] if i["id"]==fraction["id"])
             peer_resize_rotate(peer_move(fraction))
             select_all(teacher);teacher.keyboard.press("Delete")
             both(fraction["id"],False)

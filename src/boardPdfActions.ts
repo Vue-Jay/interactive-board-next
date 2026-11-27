@@ -8,6 +8,6 @@ export function resolvePdfAction(items:Item[],rendered:Item,canEdit:boolean,coun
  if(!item||item.kind!=="pdf"||item.locked||item.assetId!==rendered.assetId)return;
  return item;
 }
-export function nextPdfPage(item:Item,page:number,count:number):number{
+export function nextPdfPage(page:number,count:number):number{
  return Math.max(1,Math.min(count,Math.round(Number.isFinite(page)?page:1)));
 }

@@ -2438,6 +2438,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [linkMediaUrl,setLinkMediaUrl]=useState("");
   const [linkMediaTitle,setLinkMediaTitle]=useState("");
   const [linkMediaEditId,setLinkMediaEditId]=useState<string|null>(null);
+  const linkMediaBase=useRef<Item|null>(null);
   const [imageCropEditorId,setImageCropEditorId]=useState<string|null>(null);
   const imageCropApplyRef=useRef<(()=>Promise<void>)|null>(null);
   const imageCropApplyingRef=useRef(false);
@@ -2916,6 +2917,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const pendingEditorBases=useRef(new Map<string,Item>());
   const modalEditorBase=useRef<Item|null>(null);
   const mergeModalPatch=(latest:Item,patch:Partial<Item>)=>{
+    if(!canEdit||latest.locked||structurallyLockedForStudent(latest))return latest;
     const base=modalEditorBase.current;
     return base?.id===latest.id?mergeEditedValue(base,{...base,...patch},latest):{...latest,...patch};
   };
@@ -4806,8 +4808,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return item;
   };
 
-  const openLinkMediaEditor=(item?:Item)=>{if(demoMode)return;setLinkMediaEditId(item?.kind==="linkmedia"?item.id:null);setLinkMediaUrl(item?.kind==="linkmedia"?item.mediaUrl??"":"");setLinkMediaTitle(item?.kind==="linkmedia"?item.mediaTitle??"":"");setLinkMediaOpen(true)};
-  const saveLinkMedia=()=>{if(demoMode||!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){commit(itemsRef.current.map(i=>i.id===linkMediaEditId?{...i,mediaUrl:info.sourceUrl,mediaTitle:title}:i));setNotice("Ссылка мультимедиа обновлена")}else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
+  const openLinkMediaEditor=(item?:Item)=>{
+    if(demoMode||!canEdit)return;
+    const current=item?itemsRef.current.find(candidate=>candidate.id===item.id):undefined;
+    if(item&&(!current||current.kind!=="linkmedia"||current.locked||structurallyLockedForStudent(current)))return;
+    linkMediaBase.current=current??null;
+    setLinkMediaEditId(current?.id??null);setLinkMediaUrl(current?.mediaUrl??"");setLinkMediaTitle(current?.mediaTitle??"");setLinkMediaOpen(true);
+  };
+  const saveLinkMedia=()=>{if(demoMode||!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){
+    const base=linkMediaBase.current,latest=itemsRef.current.find(i=>i.id===linkMediaEditId);
+    const result=base?.id===linkMediaEditId&&!structurallyLockedForStudent(latest)?mergeDetachedBoardItem(base,{...base,mediaUrl:info.sourceUrl,mediaTitle:title},latest,false,["mediaUrl","mediaTitle"]):null;
+    if(result){commit(itemsRef.current.map(i=>i.id===result.id?result:i));setNotice("Ссылка мультимедиа обновлена")}
+    else setNotice("Объект удалён или заблокирован другим участником");
+    }else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
 
   useEffect(()=>{if(demoMode||!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit,demoMode]);
 
@@ -4924,7 +4937,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const setPdfPage = (rendered: Item, page: number) => {
     const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
     if(!item||!pdfPageCount)return;
-    const nextPage = nextPdfPage(item,page,pdfPageCount);
+    const nextPage = nextPdfPage(page,pdfPageCount);
     if (nextPage === (item.pdfPage ?? 1)) return nextPage;
     commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, pdfPage: nextPage } : candidate));
     setNotice(`PDF · страница ${nextPage}`);

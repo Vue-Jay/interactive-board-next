@@ -310,7 +310,7 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
  const item={id:"pdf",kind:"pdf",assetId:"asset",pdfPage:1,x:0,y:0};
  const latest={...item,pdfPage:3,x:25};
  assert.equal(pdf.resolvePdfAction([latest],item,true,8),latest);
- assert.equal(pdf.nextPdfPage(latest,latest.pdfPage+1,8),4);
+ assert.equal(pdf.nextPdfPage(latest.pdfPage+1,8),4);
  assert.equal(pdf.resolvePdfAction([],item,true,8),undefined);
  assert.equal(pdf.resolvePdfAction([{...latest,locked:true}],item,true,8),undefined);
  assert.equal(pdf.resolvePdfAction([{...latest,assetId:"replacement"}],item,true,8),undefined);
