@@ -1582,7 +1582,7 @@ export function selfhostSubscribeBoard(
 
 /** Download only the latest announced revision and retry failed reads. */
 export function selfhostWatchDocument(
-  boardId:string,currentVersion:()=>number,onDocument:(row:SelfhostDocument)=>void,
+  boardId:string,currentVersion:()=>number,onDocument:(row:SelfhostDocument)=>unknown,
   onStatus:(status:SelfhostRealtimeStatus)=>void,
 ):()=>void{
   const controller=new AbortController();
@@ -1594,6 +1594,7 @@ export function selfhostWatchDocument(
   let status:SelfhostRealtimeStatus="reconnecting";
   let pollTimer:ReturnType<typeof setTimeout>|undefined;
   let accessDenied=false;
+  let forceFullRead=false;
   const committedCursors=new Map<string,{version:number;cursor:SelfhostCommittedCursor}>();
   const attachCursors=(row:SelfhostDocument):SelfhostDocument=>{
     const cursors:SelfhostCommittedCursor[]=[];
@@ -1609,9 +1610,15 @@ export function selfhostWatchDocument(
     if(controller.signal.aborted||accessDenied||target<=Math.max(currentVersion(),delivered))return;
     reading=true;
     try{
-      const row=await selfhostReadDocument(boardId,controller.signal,true);
+      const row=await selfhostReadDocument(boardId,controller.signal,!forceFullRead);
       if(controller.signal.aborted)return;
-      if(row.document&&row.version>Math.max(currentVersion(),delivered))onDocument(attachCursors(row));
+      if(row.version>Math.max(currentVersion(),delivered)){
+        if(!row.document||onDocument(attachCursors(row))===false){
+          forceFullRead=true;
+          throw new Error("Board revision was not applied");
+        }
+      }
+      forceFullRead=false;
       delivered=Math.max(delivered,row.version);
       failures=row.version<target?Math.min(failures+1,5):0;
       if(!failures)onStatus(status);
@@ -1630,26 +1637,35 @@ export function selfhostWatchDocument(
       schedule();
     }
   };
-  // If a proxy/VPN drops WebSocket handshakes, saved work must still arrive.
-  // Poll only the small revision value, and only while WS is disconnected.
+  // A healthy socket can still miss a revision notice. Probe just the version
+  // during quiet periods; continuous collaboration resets this watchdog.
+  // Never fetch a full document unless the server is actually ahead.
   const schedulePoll=()=>{
     clearTimeout(pollTimer);pollTimer=undefined;
-    if(controller.signal.aborted||accessDenied||status==="online")return;
+    if(controller.signal.aborted||accessDenied)return;
     pollTimer=setTimeout(async()=>{
       pollTimer=undefined;
-      if(controller.signal.aborted||accessDenied||status==="online")return;
+      if(controller.signal.aborted||accessDenied)return;
       try{
         const row=await selfhostReadDocumentVersion(boardId,controller.signal);
         if(controller.signal.aborted)return;
         if(Number.isSafeInteger(row.version)&&row.version>=0){
-          target=Math.max(target,row.version);schedule();
+          target=Math.max(target,row.version);
+          // A revision may have been queued by an active gesture or rejected
+          // during its later application. Retry from a fresh full snapshot
+          // rather than treating delivery as acknowledgement forever.
+          if(row.version>currentVersion()&&delivered>=row.version){
+            delivered=currentVersion();
+            forceFullRead=true;
+          }
+          schedule();
         }
       }catch(error){
         if(error instanceof SelfhostHttpError&&[401,403,404].includes(error.status)){
           accessDenied=true;onStatus("offline");
         }
       }finally{schedulePoll()}
-    },typeof document!=="undefined"&&document.hidden?10000:2500);
+    },typeof document!=="undefined"&&document.hidden?15000:status==="online"?5000:2500);
   };
   const socket=selfhostSubscribeBoard(boardId,(version,patch)=>{
     target=Math.max(target,version);
@@ -1663,13 +1679,18 @@ export function selfhostWatchDocument(
           const row:SelfhostDocument={board_id:boardId,version,document:next,
             updated_at:patch.updated_at,updated_by:patch.updated_by};
           rememberDocument(boardId,userId,version,next);
-          onDocument(attachCursors(row));
-          delivered=version;
-          failures=0;
+          if(onDocument(attachCursors(row))===false){
+            forceFullRead=true;
+          }else{
+            delivered=version;
+            failures=0;
+            forceFullRead=false;
+          }
         }catch{/* A missed or invalid patch falls back to the versioned read. */}
       }
     }
     schedule();
+    schedulePoll();
   },next=>{
     const wasOnline=status==="online";
     status=next;
@@ -1680,8 +1701,7 @@ export function selfhostWatchDocument(
       schedule();
     }
     onStatus(next);
-    if(next==="online"){clearTimeout(pollTimer);pollTimer=undefined}
-    else if(pollTimer===undefined)schedulePoll();
+    schedulePoll();
   });
   schedulePoll();
   return ()=>{

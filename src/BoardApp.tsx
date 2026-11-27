@@ -3154,7 +3154,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const boardLastAction=useRef(Date.now());
   const boardIdleSleeping=useRef(false);
 
-  const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
+  const receiveRemote = useRef<(row: RemoteBoardDocument) => boolean|void>(() => {});
+  // Watching a pupil work is classroom activity even without local clicks.
+  // Backgrounded boards retain the exact ten-minute local inactivity limit.
+  const noteVisiblePeerActivity=()=>{
+    if(document.visibilityState!=="visible"||boardIdleSleeping.current||
+      Date.now()-boardLastAction.current<10000)return;
+    boardLastAction.current=Date.now();
+    if(selfhostMode)selfhostNoteBoardActivity(boardSummary.id);
+  };
   const boardMounted = useRef(true);
   useEffect(() => {
     boardMounted.current = true;
@@ -3413,9 +3421,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // so retry the latest snapshot quietly with a small exponential backoff.
       remoteSaveFailures.current += 1;
       const delay = Math.min(8000, 1000 * 2 ** Math.min(remoteSaveFailures.current - 1, 3));
-      setSaveStatus(remoteSaveFailures.current < 3
-        ? "Сохранено локально · повторная синхронизация…"
-        : "Сохранено локально · восстанавливаем связь с сервером…");
+      setSaveStatus(error instanceof SelfhostHttpError&&[403,413,422].includes(error.status)
+        ? "Не отправлено на сервер · "+message.slice(0,140)
+        : remoteSaveFailures.current < 3
+          ? "Сохранено локально · повторная синхронизация…"
+          : "Сохранено локально · восстанавливаем связь с сервером…");
       if (remoteRetryTimer.current) clearTimeout(remoteRetryTimer.current);
       if(boardIdleSleeping.current)return;
       remoteRetryTimer.current = setTimeout(() => {
@@ -8198,6 +8208,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   receiveRemote.current = row => {
     if (!boardMounted.current || row.board_id !== boardSummary.id) return;
+    if(row.version>(remoteVersion.current??-1)&&row.updated_by&&row.updated_by!==authUser.id)
+      noteVisiblePeerActivity();
     for(const cursor of row.ink_cursors??[]){
       if(cursor.user_id===authUser.id)continue;
       const previous=pendingCommittedCursors.current.get(cursor.user_id);
@@ -8313,7 +8325,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         return;
       }
       applyServerDocument(row, data, remoteFingerprint);
-    } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
+    } catch {
+      setNotice("Не удалось прочитать новую серверную версию. Повторяем синхронизацию.");
+      return false;
+    }
     finally{publishCommittedCursors();}
   };
   useEffect(()=>{
@@ -8345,10 +8360,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             : await getRemoteBoardDocument(boardSummary.id);
           if(cancelled)return;
           if(!row)throw new Error("Серверный документ недоступен");
-          if(row.document)receiveRemote.current({
+          if(row.document&&receiveRemote.current({
             board_id:row.board_id,version:row.version,document:row.document,
             updated_at:row.updated_at??"",updated_by:row.updated_by
-          });
+          })===false)throw new Error("Серверная версия не применена");
         }
         boardResumePendingRef.current=false;
         setBoardResumePending(false);
@@ -8374,8 +8389,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if(!latest.document)return;
         const row={board_id:latest.board_id,version:latest.version,document:latest.document,
           updated_at:latest.updated_at??"",updated_by:latest.updated_by,ink_cursors:latest.ink_cursors};
-        if(latest.ink_cursors?.length)flushSync(()=>receiveRemote.current(row));
-        else receiveRemote.current(row);
+        return latest.ink_cursors?.length
+          ?flushSync(()=>receiveRemote.current(row))
+          :receiveRemote.current(row);
       },setRealtimeStatus);
     }
     return subscribeBoardDocument(
@@ -8408,6 +8424,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       if(event.type==="presence_diff"){
         for(const user of event.leaves)if(inkMotionLedger.leave(user.user_id))setInkMotionRevision(n=>n+1);
       }else if((event.type==="ink_motion"||event.type==="ink_motion_ack")&&event.user_id!==authUser.id){
+        if(event.type==="ink_motion")noteVisiblePeerActivity();
         // Apply the ordinary item geometry and its cursor in one paint.
         flushSync(()=>{if(inkMotionLedger.receive(event))setInkMotionRevision(n=>n+1);});
         if(event.type==="ink_motion")remoteCursorStore.push({userId:event.user_id,name:event.name,role:event.role,
