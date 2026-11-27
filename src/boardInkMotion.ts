@@ -78,6 +78,20 @@ export function inkMotionChanges(before:Item[],after:Item[]):Omit<FullChange,"se
 export function createInkMotionSender(clientId:string,send:Send,enabled:()=>boolean,version:()=>number){
   let seq=0,lastSentAt=0,lastAck=0,lastGesture="",position:Point={x:0,y:0};
   let timer:ReturnType<typeof setTimeout>|undefined;
+  let ackTimer:ReturnType<typeof setTimeout>|undefined;
+  let pendingAck:InkMotionAck|undefined,ackFailures=0;
+  const flushAck=()=>{
+    clearTimeout(ackTimer);ackTimer=undefined;
+    if(!pendingAck||!enabled()){pendingAck=undefined;ackFailures=0;return;}
+    if(send(pendingAck)){
+      lastAck=Math.max(lastAck,pendingAck.seq);
+      pendingAck=undefined;ackFailures=0;return;
+    }
+    // A full socket buffer may reject the final watermark even though the
+    // durable revision succeeded. Retry without needing another user edit.
+    if(++ackFailures<=6)ackTimer=setTimeout(flushAck,Math.min(100*2**(ackFailures-1),1000));
+    else{pendingAck=undefined;ackFailures=0;}
+  };
   const queue=new Map<string,FullChange>(),wire=new Map<string,MotionShape>();
   const watermarks=new WeakMap<Item[],number>();
   let sends=0;
@@ -120,9 +134,12 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
     ack(items:Item[],savedVersion:number){
       const watermark=watermarks.get(items)??0;
       if(watermark<=lastAck||!enabled())return;
-      if(send({type:"ink_motion_ack",client_id:clientId,seq:watermark,version:savedVersion}))lastAck=watermark;
+      if(pendingAck&&watermark<pendingAck.seq)return;
+      pendingAck={type:"ink_motion_ack",client_id:clientId,seq:watermark,version:savedVersion};
+      if(ackTimer===undefined)flushAck();
     },
-    reset(){clearTimeout(timer);timer=undefined;queue.clear();wire.clear();lastSentAt=0;},
+    reset(){clearTimeout(timer);clearTimeout(ackTimer);timer=undefined;ackTimer=undefined;
+      pendingAck=undefined;ackFailures=0;queue.clear();wire.clear();lastSentAt=0;},
   };
 }
 type Pending=FullChange&{gesture:string;base:number;order:number};

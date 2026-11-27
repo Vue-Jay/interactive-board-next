@@ -1505,6 +1505,29 @@ def check_undo_reconnect_sync(browser):
                 print(name+" real live nested controls, peer transform and close converged.")
                 replace_items([])
 
+            # Electrical circuit editor: its two nested settings must remain
+            # independent of a pupil's concurrent change of the board pose.
+            circuit={"id":"qa-live-circuit","kind":"graph","graphFigureId":"physics-circuit-free","graphPurpose":"geometry","graphAxisMode":"none","x":220,"y":160,"width":520,"height":360,"text":"QA circuit","createdBy":author,
+                     "scienceCircuit":{"version":1,"components":[],"junctions":[],"wires":[],"showGrid":True,"snap":True}}
+            replace_items([circuit])
+            editor=open_existing(circuit,".lektrus-circuit-editor")
+            editor.get_by_label("Сетка",exact=True).uncheck()
+            wait_api(teacher,lambda d:any(i["id"]==circuit["id"] and i.get("scienceCircuit",{}).get("showGrid") is False for i in d["items"]),"Circuit grid not saved live")
+            moved=peer_move(circuit)
+            editor.get_by_label("Привязка",exact=True).uncheck()
+            changed=wait_api(teacher,lambda d:any(i["id"]==circuit["id"] and i.get("scienceCircuit",{}).get("showGrid") is False and i["scienceCircuit"].get("snap") is False and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),"Circuit nested settings lost peer geometry")
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                    return item?.scienceCircuit?.showGrid===false&&item.scienceCircuit.snap===false;
+                }""",arg={"ident":ident,"id":circuit["id"]},timeout=15000)
+            editor.get_by_role("button",name="Закрыть редактор",exact=True).click()
+            expect(editor).to_have_count(0,timeout=15000)
+            for page in (teacher,pupil):geometry_synced(page,changed["items"])
+            print("Circuit real nested settings and concurrent pupil geometry converged.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],

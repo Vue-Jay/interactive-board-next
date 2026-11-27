@@ -137,3 +137,45 @@ for(const kind of ["pen","marker"]){
  assert.ok(changedInkBounds(original,undefined,1).right>=1000,"Deleted stroke clears all of its previous pixels");
 }
 console.log("Permanent raster: changed world-coordinate tail only; marker joins, translated bounds and deletion verified.");
+
+// Execute the actual motion sender with a rejected final acknowledgement.
+{
+ const motion={};
+ new Function("exports",ts.transpileModule(read("boardInkMotion.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(motion);
+ let failures=2,enabled=true;
+ const attempts=[],delivered=[];
+ const sender=motion.createInkMotionSender("test",packet=>{
+  if(packet.type==="ink_motion_ack"){
+   attempts.push(packet);
+   if(failures>0){failures--;return false;}
+  }
+  delivered.push(packet);return true;
+ },()=>enabled,()=>1);
+ const stroke={id:"ink",kind:"pen",text:"",x:0,y:0,width:10,height:10,points:[{x:0,y:0},{x:10,y:10}]};
+ const first=[stroke];
+ sender.publish([],first,"gesture",{x:10,y:10});
+ sender.ack(first,2);
+ const second=[{...stroke,width:20,points:[...stroke.points,{x:20,y:10}]}];
+ sender.publish(first,second,"gesture",{x:20,y:10});
+ sender.ack(second,3);
+ await new Promise(resolve=>setTimeout(resolve,450));
+ assert.equal(attempts.length,3);
+ const acknowledgements=delivered.filter(p=>p.type==="ink_motion_ack");
+ assert.deepEqual(acknowledgements.map(p=>[p.seq,p.version]),[[2,3]],
+  "A rejected watermark retries the newest durable acknowledgement without further input");
+ sender.ack(second,3);
+ assert.equal(attempts.length,3,"Never repeat an accepted watermark");
+ failures=5;
+ const third=[{...second[0],width:30,points:[...second[0].points,{x:30,y:10}]}];
+ sender.publish(second,third,"gesture",{x:30,y:10});
+ sender.ack(third,4);
+ const beforeReset=attempts.length;
+ sender.reset();enabled=false;
+ await new Promise(resolve=>setTimeout(resolve,250));
+ assert.equal(attempts.length,beforeReset,"Connection reset cancels old watermark retry");
+}
+const instrument=read("GeometryInstruments.tsx");
+assert.match(instrument,/if\(g\.mode==="move"\)\{[\s\S]*?onUpdate\(item\.id,\{x:next\.x,y:next\.y\}\)/,
+ "Instrument translation must not overwrite a concurrent remote angle");

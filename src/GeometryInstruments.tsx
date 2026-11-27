@@ -135,7 +135,7 @@ function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,
   const next=g.mode==="move"?{
    x:g.x+(event.clientX-g.startX)/zoom,
    y:g.y+(event.clientY-g.startY)/zoom,
-   rotation:g.angle,
+   rotation:item.rotation??0,
   }:rotateInstrumentAboutPivot({x:g.x,y:g.y,rotation:g.angle},type,scale,
     g.angle+angleTo(event.clientX,event.clientY,screenPosition)-g.startAngle);
   g.latest=next;setLive(next);
@@ -147,11 +147,15 @@ function SharedInstrument({item,view,boardRef,portalContainer,editable,selected,
   gesture.current=null;event.stopPropagation();
   const next=g.latest;setLive(null);
   if(event.type==="pointercancel"){
-   onPreview?.(item.id,{x:g.x,y:g.y,rotation:g.angle},true);
+   onPreview?.(item.id,{x:item.x,y:item.y,rotation:item.rotation??0},true);
    return;
   }
-  onPreview?.(item.id,next,true);
-  if(next.x!==item.x||next.y!==item.y||next.rotation!==(item.rotation??0))
+  onPreview?.(item.id,g.mode==="move"?{x:next.x,y:next.y}:next,true);
+  if(g.mode==="move"){
+   // Translation does not own rotation. A remote angle change made during
+   // a captured drag must not be reverted by the pointer-up write.
+   if(next.x!==item.x||next.y!==item.y)onUpdate(item.id,{x:next.x,y:next.y});
+  }else if(next.x!==item.x||next.y!==item.y||next.rotation!==(item.rotation??0))
    onUpdate(item.id,{x:next.x,y:next.y,rotation:next.rotation});
  };
  const updateScale=(delta:number)=>editable&&onUpdate(item.id,{
