@@ -418,6 +418,9 @@ def check_shared_eraser_sync(browser):
                     before={i["id"] for i in api.get(url).json()["document"]["items"]}
                     sender.locator('[data-interface-control="select"]:visible').first.click()
                     sender.keyboard.press(shortcut)
+                    if kind=="shape":
+                        sender.locator('.lektrus-figures-floating button[title="Прямоугольник"]').click()
+                    expect(sender.locator("section.board")).to_have_class(re.compile(r"\bboard-tool-"+kind+r"\b"))
                     box=sender.locator("section.board").bounding_box()
                     sender.mouse.click(box["x"]+box["width"]*.70,box["y"]+box["height"]*.55)
                     if kind=="text":

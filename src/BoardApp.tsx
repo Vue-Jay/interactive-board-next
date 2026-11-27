@@ -129,7 +129,7 @@ import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveCon
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
-import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
+import {personalBoardEdit,applyPersonalBoardEdit, reattributeRestoredSharedInk,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops, blockedStudentObjectEdits } from "./lektrusBoardObjectAuth";
 import { parseDocument, parseRealtimeDocument, type RealtimeItemCache, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
@@ -4278,20 +4278,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         setNotice("Это действие уже изменено другим участником. Чужие правки не затронуты.");
         return;
       }
-      if(blockedBoardItemRemovals(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
-         blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
-         blockedStudentObjectEdits(itemsRef.current,outcome.items,authUser.id).length){
+      const restored=reattributeRestoredSharedInk(itemsRef.current,outcome.items,stack.entries[step],authUser.id);
+      if(blockedBoardItemRemovals(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedBoardImageCrops(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedStudentObjectEdits(itemsRef.current,restored.items,authUser.id).length){
         setNotice("Отмена не может изменить защищённую работу другого участника.");
         return;
       }
+      stack.entries[step]=restored.edit;
       stack.cursor=direction<0?step:step+1;
-      display(outcome.items);
+      display(restored.items);
       if(snapshot.current&&!saveBlocked){
-        snapshot.current=packDocumentInk({...snapshot.current,items:outcome.items});
+        snapshot.current=packDocumentInk({...snapshot.current,items:restored.items});
         lastInkGesture.current=null;lastInkCursor.current=null;
         if(selfhostMode)queueMicrotask(()=>{if(boardMounted.current)flushSave()});
       }
-      history.current=[outcome.items];index.current=0;
+      history.current=[restored.items];index.current=0;
       setSelected([]);
       if(outcome.conflicts)setNotice("Отменены только ваши изменения. Более поздние чужие правки сохранены.");
       return;

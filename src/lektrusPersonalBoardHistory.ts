@@ -74,3 +74,22 @@ export function applyPersonalBoardEdit(
   result.push(item);
  return {items:result,changed:true,conflicts};
 }
+
+/** A newly restored shared stroke is a new write by the undoing participant.
+ * Keep its ID and geometry, attribute the insertion to that participant, and
+ * update the history entry so redo still compares against the actual object.
+ * Do not reattribute any existing object or anyone else's surviving ink. */
+export function reattributeRestoredSharedInk(
+ current:readonly Item[],items:Item[],edit:PersonalBoardEdit,actorId:string
+):{items:Item[];edit:PersonalBoardEdit}{
+ const present=new Set(current.map(item=>item.id));
+ const restored=new Map<string,Item>();
+ const next=items.map(item=>{
+  if(present.has(item.id)||!(item.kind==="pen"||item.kind==="marker")||item.createdBy===actorId)return item;
+  const owned={...item,createdBy:actorId};
+  restored.set(item.id,owned);return owned;
+ });
+ if(!restored.size)return {items,edit};
+ return {items:next,edit:{before:edit.before.map(item=>restored.get(item.id)??item),
+                         after:edit.after.map(item=>restored.get(item.id)??item)}};
+}

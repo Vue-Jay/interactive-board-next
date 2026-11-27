@@ -100,7 +100,7 @@ export function blockedStudentObjectEdits(before:readonly Item[],after:readonly 
  const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
  return after.filter(item=>{
   const old=originals.get(item.id);
-  if(!old)return forbidden.includes(item.kind)||!!item.locked;
+  if(!old)return forbidden.includes(item.kind)||!!item.locked||item.createdBy!==actorId;
   if(old.kind!==item.kind||old.createdBy!==item.createdBy)return true;
   if(isInkItem(item))return !!item.locked;
   if(!!old.locked!==!!item.locked)return true;
