@@ -145,7 +145,23 @@
       "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3"
     ],
     "verifiedComponents": 14,
-    "formerGermanOverlapCasesNowResolved": 5
+    "formerGermanOverlapCasesNowResolved": 5,
+    "originalSourceIndices": [
+      12182,
+      12260,
+      12306,
+      12371,
+      12440,
+      12522,
+      12577,
+      12617,
+      12632,
+      12649,
+      12667,
+      12678,
+      12712,
+      12777
+    ]
   },
   "validationGuards": {
     "japaneseSouthPolity": "Empire of Japan",

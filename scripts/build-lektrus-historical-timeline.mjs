@@ -1792,6 +1792,13 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
    return [{source,part,from,to,name,p,b,cell}];});
  });
  const tianjinCells=tianjinLocal.filter(c=>c.cell);assert.equal(tianjinCells.length,135);
+ const tianjinJapaneseSouthSourceIndices=new Set([12182,12260,12306,12371,12440,12522,12577,12617,12632,12649,12667,12678,12712,12777]);
+ const southernJapaneseRows=tianjinCells.filter(c=>c.name==='Empire of Japan'&&c.b[1]<39);
+ assert.deepEqual(southernJapaneseRows.map(c=>c.source),[...tianjinJapaneseSouthSourceIndices]);
+ assert.equal(southernJapaneseRows.reduce((sum,c)=>sum+(c.to-c.from+1),0),38);
+ for(const row of southernJapaneseRows)
+  assert.ok(tianjinJapaneseSouthSourceIndices.has(row.source)&&row.from>=1900&&row.to<=1937,
+   'Pinned false Japanese corridor source index/interval unexpectedly changed');
  const tianjinHashes=new Set(tianjinCells.map(c=>componentHash(c.p)));
  assert.deepEqual(Object.fromEntries([...tianjinNames].map(n=>[n,tianjinCells.filter(c=>c.name===n).reduce((sum,c)=>sum+c.to-c.from+1,0)])),{'French Indochina':86,'British Colonial Empire':86,'United States of America':12,'German Empire':19,'Empire of Japan':78,'Russian Empire':34,'Kingdom of Belgium':36,'Kingdom of Italy':42,'Austria-Hungary':12});
  for(const c of tianjinCells)exclude(c.source,c.from,c.to,[c.part],tianjin);

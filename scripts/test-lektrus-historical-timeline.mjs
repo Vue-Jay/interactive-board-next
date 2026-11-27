@@ -375,6 +375,7 @@ if(outDir&&sourceFile){
    return f.properties.Name==='Empire of Japan'&&bounds(c.p)[1]<39;
   });
   assert.equal(southernJapaneseCells.length,14);
+  assert.deepEqual(southernJapaneseCells.map(c=>c.index),[12182,12260,12306,12371,12440,12522,12577,12617,12632,12649,12667,12678,12712,12777]);
   assert.equal(southernJapaneseCells.reduce((n,c)=>n+c.to-c.from+1,0),38);
   for(const cell of southernJapaneseCells){
    assert.equal(input.features[cell.index].properties.Wikidata,'Q188712');
