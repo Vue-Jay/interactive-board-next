@@ -206,3 +206,33 @@ for(const kind of ["sticky","text","shape","pen","marker","image","pdf","frame",
  assert.deepEqual(applyPersonalBoardEdit(undo.items,op,"redo").items,[{...blank,stickerInk:[b,a]}]);
  assert.deepEqual(applyPersonalBoardEdit([{...blank,stickerInk:[a]}],op,"undo").items,[blank]);
 }
+
+
+// Round-trip through the real board parser, not a synthetic identical object.
+const model={};
+new Function("exports",ts.transpileModule(fs.readFileSync("src/boardModel.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(model);
+const canonical=item=>({...item,...model.parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[item]})).items[0]});
+{
+ const ink={...model.stroke("roundtrip-ink","pen",[{x:0,y:0},{x:100,y:4}],"#123456",2),createdBy:"teacher"};
+ const roundtrip=canonical(ink);
+ assert.notEqual(JSON.stringify(ink),JSON.stringify(roundtrip),"Parser changes key order");
+ const operation=choose([],[ink]);
+ const undo=applyPersonalBoardEdit([roundtrip,peer],operation,"undo",canonical);
+ assert.deepEqual(undo.items,[peer]);
+ const redo=applyPersonalBoardEdit(undo.items,operation,"redo",canonical);
+ assert.deepEqual(redo.items,[peer,ink]);
+ const edited={...roundtrip,points:roundtrip.points.map((p,i)=>i===0?{...p,x:p.x+1}:p)};
+ assert.equal(applyPersonalBoardEdit([edited,peer],operation,"undo",canonical).changed,false,"Peer geometry changes still prevent deletion");
+}
+for(const kind of ["text","sticky","shape","frame","table","checklist","quiz","flashcard","cover","comment"]){
+ const original={...object("canonical-"+kind),kind};
+ const normalized=canonical(original);
+ const operation=choose([],[original]);
+ assert.deepEqual(applyPersonalBoardEdit([normalized,peer],operation,"undo",canonical).items,[peer],kind+" server defaults do not block undo");
+ const moved={...original,x:24};
+ const undo=applyPersonalBoardEdit([canonical(moved),peer],choose([original],[moved]),"undo",canonical);
+ assert.equal(undo.items[0].x,original.x);
+ assert.equal(undo.items[1],peer);
+}
+assert.match(board,/\(isStudent&&!isBoardOwner&&blockedStudentObjectEdits\(itemsRef\.current,restored\.items,authUser\.id\)\.length\)/,
+ "Teacher inverse operations must not use the student-only gate");

@@ -4308,7 +4308,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const step=direction<0?stack.cursor-1:stack.cursor;
       if(step<0||step>=stack.entries.length)return;
       const before=itemsRef.current;
-      const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo");
+      const normalizeHistoryItem=(item:Item):Item=>{
+        try{
+          // The reader inserts defaults and canonicalizes nested fields.
+          // Preserve any additional locally stored fields, while comparing
+          // history against the same normalized values as the server.
+          return {...item,...parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[item]})).items[0]};
+        }catch{return item;}
+      };
+      const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo",normalizeHistoryItem);
       if(!outcome.changed){
         // A superseded action cannot block every earlier undo or later redo.
         stack.entries.splice(step,1);
@@ -4321,7 +4329,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         :{items:outcome.items,edit:stack.entries[step]};
       if(blockedBoardItemRemovals(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
          blockedBoardImageCrops(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
-         blockedStudentObjectEdits(itemsRef.current,restored.items,authUser.id).length){
+         (isStudent&&!isBoardOwner&&blockedStudentObjectEdits(itemsRef.current,restored.items,authUser.id).length)){
         setNotice("Отмена не может изменить защищённую работу другого участника.");
         return;
       }

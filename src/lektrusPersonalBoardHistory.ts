@@ -7,8 +7,17 @@ import type {Item} from "./boardModel";
  * separate participant's later changes.
  */
 export type PersonalBoardEdit={before:Item[];after:Item[];beforeOrder?:string[];afterOrder?:string[]};
-const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
+// JSONB and the board parser reorder keys. Equality must describe content,
+// including nested point objects, not the insertion order of properties.
+const same=(a:unknown,b:unknown):boolean=>{
+ if(a===b)return true;
+ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((v,i)=>same(v,b[i]));
+ if(!record(a)||!record(b))return false;
+ const keys=Object.keys(a).filter(k=>a[k]!==undefined);
+ const other=Object.keys(b).filter(k=>b[k]!==undefined);
+ return keys.length===other.length&&keys.every(k=>Object.hasOwn(b,k)&&same(a[k],b[k]));
+};
 type Identified=Record<string,unknown>&{id:string};
 const idList=(v:unknown):v is Identified[]=>Array.isArray(v)&&v.every(x=>record(x)&&typeof x.id==="string"&&!!x.id)&&new Set(v.map(x=>x.id)).size===v.length;
 type InverseResult={value:unknown;changed:boolean;conflicts:number};
@@ -84,7 +93,8 @@ export function personalBoardEdit(before:readonly Item[],after:readonly Item[]):
 }
 
 export function applyPersonalBoardEdit(
- current:readonly Item[],edit:PersonalBoardEdit,direction:"undo"|"redo"
+ current:readonly Item[],edit:PersonalBoardEdit,direction:"undo"|"redo",
+ canonicalize?:(item:Item)=>Item
 ):{items:Item[];changed:boolean;conflicts:number}{
  const expected=direction==="undo"?edit.after:edit.before;
  const desired=direction==="undo"?edit.before:edit.after;
@@ -95,12 +105,16 @@ export function applyPersonalBoardEdit(
  const changes=new Map<string,Item|null>();
  let conflicts=0;
  for(const id of ids){
-  const old=expectedById.get(id),target=desiredById.get(id),live=currentById.get(id);
+  const rawOld=expectedById.get(id),rawTarget=desiredById.get(id),rawLive=currentById.get(id);
+  // Locally created objects may omit defaults added by the validated server
+  // parser. Compare the same representation for touched IDs only.
+  const normalize=(item:Item|undefined)=>item&&canonicalize?canonicalize(item):item;
+  const old=normalize(rawOld),target=normalize(rawTarget),live=normalize(rawLive);
   if(!old&&target){
    // Undo of this user's deletion or redo of this user's insertion.
    // Never replace an independently resurrected/created item with this ID.
    if(live){conflicts++;continue;}
-   changes.set(id,target);continue;
+   changes.set(id,rawTarget!);continue;
   }
   if(old&&!target){
    // A peer has since edited the item: that work must NOT disappear.
@@ -109,13 +123,14 @@ export function applyPersonalBoardEdit(
   }
   if(!old||!target)continue;
   if(!live){conflicts++;continue;}
-  const next={...live} as Record<string,unknown>;
+  const next={...rawLive} as Record<string,unknown>;
+  const comparison=live as unknown as Record<string,unknown>;
   const was=old as unknown as Record<string,unknown>;
   const to=target as unknown as Record<string,unknown>;
   let changed=false;
   for(const field of new Set([...Object.keys(was),...Object.keys(to)])){
    if(field==="id"||field==="createdBy"||same(was[field],to[field]))continue;
-   const inverse=inverseValue(was[field],to[field],next[field]);
+   const inverse=inverseValue(was[field],to[field],comparison[field]);
    conflicts+=inverse.conflicts;
    if(!inverse.changed)continue;
    if(inverse.value!==undefined||Object.hasOwn(to,field))next[field]=inverse.value;

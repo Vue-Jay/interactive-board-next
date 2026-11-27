@@ -1048,7 +1048,7 @@ def check_undo_reconnect_sync(browser):
                     doc=read()
                     if predicate(doc):return doc
                     page.wait_for_timeout(100)
-                raise AssertionError(label)
+                raise AssertionError(f"{label}; server items={[(i.get('id'),i.get('kind'),i.get('createdBy')) for i in doc['items']]}; page={page.locator('body').inner_text()[-1000:]}")
             def stored(page,stroke_id,present=True):
                 page.wait_for_function("""({ident,id,present})=>{
                     const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
@@ -1072,7 +1072,7 @@ def check_undo_reconnect_sync(browser):
                 undo=actor.locator(".mobile-undo-redo").get_by_role("button",name="Отменить",exact=True)
                 redo=actor.locator(".mobile-undo-redo").get_by_role("button",name="Повторить",exact=True)
                 expect(undo).to_be_enabled(timeout=10000);undo.click()
-                wait_api(actor,lambda d:mine not in ids(d) and peer in ids(d),"Undo reverted peer work")
+                wait_api(actor,lambda d:mine not in ids(d) and peer in ids(d),f"{'teacher' if actor is teacher else 'student'} undo failed: remove {mine}, preserve {peer}")
                 both(mine,False);both(peer)
                 expect(redo).to_be_enabled(timeout=10000);redo.click()
                 wait_api(actor,lambda d:{mine,peer}<=ids(d),"Redo did not converge")
