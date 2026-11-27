@@ -239,10 +239,12 @@ assert.match(nextView,/\{studentMode\?<span>Основание:/,
  "a pupil cannot change a teacher's number base");
 assert.match(russianView,/const inline=onChange&&!studentMode&&/,
  "teacher source-word and phonetic editor does not appear to pupil");
-assert.match(foreignView,/const \[order,setOrder\]=useState<string\[\]>\(initial\)/,
- "foreign-language rearrangement uses local answer state");
-assert.doesNotMatch(foreignView,/onChange\s*\(/,
- "foreign-language puzzle cannot rewrite teacher's board JSON");
+assert.match(foreignView,/onChange\?\.\(\{\.\.\.d,answerOrder:next,answerChecked:complete\}\)/,
+ "foreign-language rearrangement publishes a shared answer");
+const sharedSentence={kind:"sentence-builder",title:"Phrase",parts:[{id:"a",text:"I"},{id:"b",text:"read"}]};
+assert.deepEqual(restrictStudentDiagramChange(sharedSentence,{...sharedSentence,title:"forged",answerOrder:["b","a"],answerChecked:true}),
+ {...sharedSentence,answerOrder:["b","a"],answerChecked:true});
+assert.equal(restrictStudentDiagramChange(sharedSentence,{...sharedSentence,answerOrder:["a","a"],answerChecked:true}),null);
 const approvedView=read("src/LektrusApprovedSchoolView.tsx");
 assert.match(approvedView,/const \[index,setIndex\]=useState\(0\),\[revealed,setRevealed\]=useState\(false\)/,
  "foreign vocabulary flashcards flip locally without overwriting teacher data");

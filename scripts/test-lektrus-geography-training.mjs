@@ -115,7 +115,7 @@ assert.equal((trainingView.match(/\[codesKey,d\.relation,d\.reverse\]/g)??[]).le
  "Realtime refreshes must not erase the pupil's matching/card progress");
 assert.doesNotMatch(trainingView,/\[d\.countryCodes,d\.relation,d\.reverse\]/);
 
-assert.ok(app.includes("fitGeoMatchingItem(updated)")&&app.includes("onMatchingSize="),
+assert.ok(app.includes("fitGeoMatchingItem(merged)")&&app.includes("onMatchingSize="),
  "Saved exercises and previously placed board objects must both auto-fit");
 
 const registry=read("lektrusSubjectToolRegistry.ts"),editor=read("LektrusSchoolDiagramEditor.tsx"),

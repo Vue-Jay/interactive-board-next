@@ -55,6 +55,8 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  if(same(base,edit))return latest;
  if(same(edit,latest))return latest;
  if(same(base,latest))return edit;
+ // Permutations are atomic. Index merging can create duplicate words.
+ if(key==="answerOrder"||key==="practice")return edit;
  // Old stickers have no ink field. Concurrent first strokes must merge just
  // as two additions to an existing sticker, instead of replacing each other.
  if(key==="stickerInk"&&base==null&&Array.isArray(edit)&&Array.isArray(latest))

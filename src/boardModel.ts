@@ -211,7 +211,10 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    !Array.isArray(d.parts)||d.parts.length<2||d.parts.length>24)return false;
   const parts=d.parts as Record<string,unknown>[];
   return parts.every(p=>p&&typeof p==="object"&&field(p.id,64)&&field(p.text,65))&&
-   new Set(parts.map(p=>p.id)).size===parts.length;
+   new Set(parts.map(p=>p.id)).size===parts.length&&
+   (d.answerOrder===undefined||Array.isArray(d.answerOrder)&&d.answerOrder.length===parts.length&&
+    new Set(d.answerOrder).size===parts.length&&d.answerOrder.every(id=>typeof id==="string"&&parts.some(p=>p.id===id)))&&
+   (d.answerChecked===undefined||typeof d.answerChecked==="boolean");
  }
  if(d.kind==="state-structure"){
   if(typeof d.subtitle!=="string"||d.subtitle.length>160||

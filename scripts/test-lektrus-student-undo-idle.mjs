@@ -79,7 +79,7 @@ assert.doesNotMatch(board,/document\.addEventListener\("pointermove",userAction/
 const sentence=fs.readFileSync("src/LektrusLanguageSocialView.tsx","utf8");
 assert.match(sentence,/data-board-interactive="true"/);
 assert.match(sentence,/dropSlotRef\.current=slot/);
-assert.match(sentence,/setOrder\(moveSentenceWord\(gesture\.origin,gesture\.id,slot\)\)/);
+assert.match(sentence,/updateAnswer\.current\(moveSentenceWord\(orderRef\.current,gesture\.id,slot\),false\)/);
 assert.doesNotMatch(sentence,/setOrder\(current=>moveSentenceWord\(current,gesture\.id,slot\)\)/);
 assert.match(sentence,/window\.addEventListener\("pointermove",move/);
 assert.match(sentence,/window\.addEventListener\("pointerup",finish,true\)/);
