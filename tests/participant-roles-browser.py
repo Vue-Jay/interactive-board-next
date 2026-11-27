@@ -737,14 +737,17 @@ def check_shared_eraser_sync(browser):
                     const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
                     return !!raw&&JSON.parse(raw).items.length===0;
                 }""",arg=ident,timeout=20000)
+            relay_lateness=[]
             def pump_impairment(force=False):
                 now=time.monotonic()
                 for state in controls.values():
                     pending=state["delayed"];state["delayed"]=[]
                     for due,route,message in pending:
-                        if force or due<=now:route.send(message)
+                        if force or due<=now:
+                            relay_lateness.append(max(0,(time.monotonic()-due)*1000))
+                            route.send(message)
                         else:state["delayed"].append((due,route,message))
-            samples=[];expected_ids=set()
+            samples=[];dispatch_samples=[];post_dispatch_samples=[];expected_ids=set()
             for state in controls.values():state["impair"]=True
             started=time.monotonic()
             try:
@@ -764,14 +767,23 @@ def check_shared_eraser_sync(browser):
                         pointer_start=time.monotonic()
                         writer.mouse.down()
                         try:
-                            writer.mouse.move(x+100,y,steps=10)
+                            # Interleave the proxy relay with individual pointer
+                            # inputs; a single blocking multi-step call starves
+                            # this synchronous test router for its entire duration.
+                            for step in range(1,11):
+                                writer.mouse.move(x+step*10,y)
+                                pump_impairment()
+                            dispatched=time.monotonic()
+                            dispatch_samples.append(round((dispatched-pointer_start)*1000,1))
                             deadline=pointer_start+5
                             while time.monotonic()<deadline:
                                 pump_impairment()
                                 if ink_pixels(receiver,[point])==[True]:break
                                 writer.wait_for_timeout(15)
                             else:raise AssertionError(("Sustained peer raster deadline exceeded",round_index,side))
-                            samples.append(round((time.monotonic()-pointer_start)*1000,1))
+                            observed=time.monotonic()
+                            samples.append(round((observed-pointer_start)*1000,1))
+                            post_dispatch_samples.append(round((observed-dispatched)*1000,1))
                         finally:writer.mouse.up()
                         deadline=time.monotonic()+12
                         while time.monotonic()<deadline:
@@ -805,7 +817,10 @@ def check_shared_eraser_sync(browser):
             print("Sustained real UI input-dispatch-to-peer-raster (ms):",json.dumps({
                 "seconds":round(time.monotonic()-started,2),"strokes":len(samples),"drops":drops,
                 "injected_delay_ms":120,"median":round((ordered[11]+ordered[12])/2,1),
-                "p95":ordered[22],"max":ordered[-1],"samples":samples
+                "p95":ordered[22],"max":ordered[-1],"samples":samples,
+                "dispatch_median_ms":round(sorted(dispatch_samples)[12],1),
+                "post_dispatch_median_ms":round(sorted(post_dispatch_samples)[12],1),
+                "proxy_extra_delay_p95_ms":round(sorted(relay_lateness)[int((len(relay_lateness)-1)*.95)],1)
             }))
     finally:
         for ctx in contexts: ctx.close()
@@ -1417,6 +1432,15 @@ def check_undo_reconnect_sync(browser):
                 changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"]-10)<0.01 for i in d["items"]),"Peer transform did not save")
                 for page in (teacher,pupil):geometry_synced(page,changed["items"])
                 return next(i for i in changed["items"] if i["id"]==obj["id"])
+            # Uploaded image is the real asset from the approval scenario.
+            replace_items([item])
+            moved_image=peer_move(item)
+            select_all(pupil);pupil.keyboard.press("Alt+ArrowRight")
+            rotated_image=wait_api(pupil,lambda d:any(i["id"]==item["id"] and i.get("rotation")==90 for i in d["items"]),"Approved image rotation not saved")
+            for page in (teacher,pupil):geometry_synced(page,rotated_image["items"])
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(item["id"],False)
+            print("Real uploaded image move, rotation and deletion converged.")
             def open_existing(obj,dialog):
                 teacher.locator('[data-interface-control="select"]:visible').first.click()
                 # Embedded subject widgets deliberately stop double-click propagation.
@@ -1452,6 +1476,33 @@ def check_undo_reconnect_sync(browser):
                 changed=wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i["text"]=="Edited "+name and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),name+" stale editor overwrote peer geometry")
                 for page in (teacher,pupil):geometry_synced(page,changed["items"])
                 print(name+" real modal + pupil transform passed")
+                replace_items([])
+
+            # Live physics editors commit actual controls before closing.
+            # A peer transform between two nested changes must survive.
+            physics_cases=[
+                ("mechanics","physics-forces","scienceMechanics",{"version":1,"bodies":[],"supports":[],"forces":[],"grid":True,"labels":True},".lektrus-mechanics-layout","Названия и величины"),
+                ("optics","physics-optics","scienceOptics",{"version":1,"elements":[],"rays":[],"grid":True,"labels":True,"normals":True},".lektrus-optics-layout","Подписи"),
+            ]
+            for name,figure,field,model,dialog,label in physics_cases:
+                obj={"id":"qa-live-"+name,"kind":"graph","graphFigureId":figure,"graphPurpose":"geometry","graphAxisMode":"none","x":220,"y":160,"width":520,"height":360,"text":"QA "+name,"createdBy":author,field:model}
+                replace_items([obj])
+                editor=open_existing(obj,dialog)
+                editor.get_by_label("Точки сетки",exact=True).uncheck()
+                wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i.get(field,{}).get("grid") is False for i in d["items"]),name+" live grid change not saved")
+                moved=peer_move(obj)
+                editor.get_by_label(label,exact=True).uncheck()
+                changed=wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i.get(field,{}).get("grid") is False and i.get(field,{}).get("labels") is False and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),name+" live nested edit lost previous state or geometry")
+                for page in (teacher,pupil):
+                    page.wait_for_function("""({ident,id,field})=>{
+                        const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                        const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                        return item?.[field]?.grid===false&&item[field].labels===false;
+                    }""",arg={"ident":ident,"id":obj["id"],"field":field},timeout=15000)
+                teacher.get_by_role("button",name="Закрыть редактор",exact=True).click()
+                expect(editor).to_have_count(0,timeout=15000)
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                print(name+" real live nested controls, peer transform and close converged.")
                 replace_items([])
 
             # Save on an open chart after a co-teacher deletes it: do not
