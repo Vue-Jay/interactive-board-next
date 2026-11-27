@@ -137,3 +137,8 @@ Checkpoint 11 is now evidenced; 6 checkpoints remain (15–20). Physical device 
 ## Background-only timeout and repeated outage acceptance
 
 Added a real PostgreSQL/WebSocket integration assertion for the negotiated background-only lease: foreground return cancels an almost-expired lease, another background interval expires with code 4410. Extended the real two-account browser lesson with three actual transport outages, alternating post-reconnect authors, and preservation of earlier strokes. Added separate sub-10-minute and over-10-minute browser lifecycle cases (accelerated browser clock and simulated visibility, actual server and UI), including same socket plus first stroke for short background, missed revision recovery without clicking and fresh socket for long background. This is accelerated lifecycle coverage, not evidence of ten actual minutes on physical devices or a sustained impaired-network lesson. Existing 14/20 (70%) baseline is unchanged until exact results are available. No main merge or deployment.
+
+
+## Lost modal reset recovery
+
+Source audit found a dropped reset frame could leave a peer seeing an old value indefinitely while refreshes of a different unsaved field kept the preview alive. Track only modal fields previously published; periodic refresh and close rollback now explicitly reassert those fields, even if they match the durable base, including removed optional fields. Untouched properties remain excluded. Added regression cases for missed reset, rollback and optional-field removal. Candidate tests pending. Progress remains 14/20 (70%) until verified; physical devices and sustained impaired-network testing remain open. Main untouched.

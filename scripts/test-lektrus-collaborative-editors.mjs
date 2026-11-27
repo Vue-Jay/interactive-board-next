@@ -269,6 +269,16 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
  assert.deepEqual(applyEditorOps(next,ops),next,"Repeating draft is idempotent");
  const reset={...next,tableHeader:true};
  assert.deepEqual(applyEditorOps(next,live.boardModalDraftOps(peer,next,reset,["tableCells","tableHeader"])),reset,"Reverted fields reset preview");
+ // The receiver missed the reset packet while another field remained dirty.
+ const refresh=live.boardModalDraftOps(peer,undefined,reset,["tableCells","tableHeader","fontSize"],["tableCells","tableHeader"]);
+ assert.deepEqual(applyEditorOps(next,refresh),reset,"Periodic refresh repairs a lost reset even when it equals the committed value");
+ assert.ok(!refresh.some(op=>op.path[0]==="fontSize"),"Never reset untouched modal fields");
+ const rollback=live.boardModalDraftOps(peer,reset,peer,["tableCells","tableHeader"],["tableCells","tableHeader"]);
+ assert.deepEqual(applyEditorOps(next,rollback),peer,"Closing a modal repairs a previously missed reset");
+ const withOptional={...peer,fontSize:18};
+ const remove=live.boardModalDraftOps(peer,undefined,peer,["fontSize"],["fontSize"]);
+ assert.deepEqual(applyEditorOps(withOptional,remove),peer,"Previously published optional fields can be explicitly cleared");
+ assert.match(app,/boardModalDraftOps\(stored,undefined,mergeModalPatch\(stored,patch\),fields,\[\.\.\.lastModalLiveTouched\.current\]\)/);
 }
 {
  const work={};let status,failures=2;const frames=[];

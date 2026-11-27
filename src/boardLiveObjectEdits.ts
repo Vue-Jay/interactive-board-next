@@ -36,12 +36,20 @@ export function boardLiveContent(stored:Item,preview:Item|undefined):Item{
 /** Absolute draft packets include every unsaved field plus fields reverted
  * since the previous preview. A lost packet or committed peer revision can
  * therefore never leave the next preview dependent on a missing change. */
-export function boardModalDraftOps(stored:Item,previous:Item|undefined,next:Item,fields:readonly string[]):LiveEditorOp[]{
+export function boardModalDraftOps(stored:Item,previous:Item|undefined,next:Item,fields:readonly string[],previouslyPublished:readonly string[]=[]):LiveEditorOp[]{
  const allowed=new Set(fields);
  const ops=new Map<string,LiveEditorOp>();
  for(const op of [...boardDraftLiveOps(stored,next),...(previous?.id===stored.id?boardDraftLiveOps(previous,next):[])]){
   const key=String(op.path[0]);
   if(allowed.has(key))ops.set(key,op);
+ }
+ // A reset equal to the durable value still matters to a peer that missed
+ // the reset frame. Re-assert only fields touched by this modal, not every
+ // unrelated property, and always use the latest merged draft value.
+ const draft=next as unknown as Record<string,unknown>;
+ for(const key of previouslyPublished){
+  if(!allowed.has(key)||!isLiveBoardObjectField(key)||ops.has(key))continue;
+  ops.set(key,draft[key]===undefined?{path:[key],kind:"remove"}:{path:[key],kind:"set",value:draft[key]});
  }
  return [...ops.values()];
 }

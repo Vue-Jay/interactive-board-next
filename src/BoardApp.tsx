@@ -7746,6 +7746,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const lastModalLiveDraft=useRef<Item|null>(null);
   const lastModalLiveBase=useRef<Item|null>(null);
   const lastModalLiveFields=useRef<string[]>([]);
+  const lastModalLiveTouched=useRef(new Set<string>());
   const lastModalLiveStatus=useRef<RealtimeStatus|null>(null);
   useEffect(()=>{
     if(!canEdit)return;
@@ -7766,10 +7767,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(previous&&(!latest||previous.id!==latest.id)){
       const stored=getCurrentItemIndex(itemsRef.current).get(previous.id);
       if(stored){
-        const rollback=boardDraftLiveOps(previous,stored).filter(op=>lastModalLiveFields.current.includes(String(op.path[0])));
+        const rollback=boardModalDraftOps(stored,previous,stored,lastModalLiveFields.current,[...lastModalLiveTouched.current]);
         if(rollback.length)workChannel.current?.publishEdit(stored.id,rollback);
       }
-      lastModalLiveDraft.current=null;lastModalLiveBase.current=null;lastModalLiveFields.current=[];
+      lastModalLiveDraft.current=null;lastModalLiveBase.current=null;lastModalLiveFields.current=[];lastModalLiveTouched.current.clear();
     }
     if(!latest||!patch||latest.locked)return;
     const fields=Object.keys(patch);
@@ -7779,20 +7780,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const changed=!prior||boardDraftLiveOps(prior,next).some(op=>fields.includes(String(op.path[0])));
     const rebased=!base||base.id!==latest.id||boardDraftLiveOps(base,latest).some(op=>fields.includes(String(op.path[0])));
     const reconnected=realtimeStatus==="online"&&lastModalLiveStatus.current!=="online";
-    const ops=boardModalDraftOps(latest,prior,next,fields);
-    if(ops.length&&(changed||rebased||reconnected))workChannel.current?.publishEdit(latest.id,ops);
+    const ops=boardModalDraftOps(latest,prior,next,fields,[...lastModalLiveTouched.current]);
+    if(ops.length&&(changed||rebased||reconnected)){
+      for(const op of ops)lastModalLiveTouched.current.add(String(op.path[0]));
+      workChannel.current?.publishEdit(latest.id,ops);
+    }
     lastModalLiveDraft.current=next;lastModalLiveBase.current=latest;
     lastModalLiveFields.current=fields;lastModalLiveStatus.current=realtimeStatus;
     // Active unsaved drafts should not disappear after the receiver's 15 s
     // expiry, or after a packet lost to a revision race. Small snapshots
     // refresh at a modest rate; large drafts still save durably on completion.
-    const refresh=boardModalDraftOps(latest,undefined,next,fields);
+    const refresh=boardModalDraftOps(latest,undefined,next,fields,[...lastModalLiveTouched.current]);
     if(!refresh.length||JSON.stringify(refresh).length>16000||!boardRealtimeAwake)return;
     const timer=setInterval(()=>{
       if(document.hidden||!boardMounted.current)return;
       const stored=itemsRef.current.find(item=>item.id===latest.id);
       if(!stored||stored.locked)return;
-      const retry=boardModalDraftOps(stored,undefined,mergeModalPatch(stored,patch),fields);
+      const retry=boardModalDraftOps(stored,undefined,mergeModalPatch(stored,patch),fields,[...lastModalLiveTouched.current]);
       if(retry.length&&JSON.stringify(retry).length<=16000)workChannel.current?.publishEdit(stored.id,retry);
     },5000);
     return ()=>clearInterval(timer);
