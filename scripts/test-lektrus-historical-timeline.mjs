@@ -92,7 +92,7 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  // Year-gated source splits preserve raw geometric identity and never invent
  // a surveyed border during administrative/territorial transitions.
  for(const [name,from,to,markers] of [
-  ['Montenegro',1877,1915,[1878,1880,1910,1912,1913,1914]],
+  ['Montenegro',1877,1915,[1878,1880,1912,1913]],
   ['Kingdom of Sardinia',1797,1816,[1798,1799,1800,1814,1815]],
   ['Ottoman Empire',1877,1915,[1878,1881,1882,1898,1908,1912,1913,1914]]
  ]){
@@ -113,6 +113,13 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
   const rs=normalizeHistoricalSource({type:'FeatureCollection',features:[feature(name,year,year)]}).records;
   assert.equal(rs.length,1);assert.ok(rs[0].nameRu.includes(fragment));assert.equal(rs[0].role,'polity');
  }
+const monarchicalMontenegro=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Montenegro',1909,1914)]}).records;
+assert.equal(monarchicalMontenegro.find(r=>r.from===1910).role,'polity','1910 title change is NOT a new independent state');
+assert.ok(monarchicalMontenegro.find(r=>r.from===1910).nameRu.includes('Королевство'));
+assert.ok(monarchicalMontenegro.find(r=>r.from===1911).nameRu.includes('Королевство'));
+assert.equal(monarchicalMontenegro.find(r=>r.from===1912).role,'settlement');
+assert.equal(monarchicalMontenegro.find(r=>r.from===1913).role,'settlement');
+assert.equal(monarchicalMontenegro.find(r=>r.from===1914).role,'polity');
 // Papal sovereignty was interrupted several times. Never project a former
 // territorial outline as an uninterrupted state, nor synthesize successor borders.
 const papalNapoleonic=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Papal States',1797,1815)]}).records;

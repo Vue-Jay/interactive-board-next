@@ -696,14 +696,24 @@ function editorialSegments(base,derived=[]){
     'Черногория (передача Улциня в ноябре 1880 года)',
     'Ulcinj/Dulcigno was handed over only in November 1880 after the contested Berlin settlement. The pre/post-transfer border cannot be inferred from a whole-year coastline.',
     'Улцинь передан Черногории в ноябре 1880 года, после споров об исполнении Берлинского договора. Нельзя подменять смену границы единым контуром на весь 1880 год.');
-   else if(from===1910)transitional('Montenegro (1910 kingdom proclamation transition)',
-    'Черногория (провозглашение королевства в 1910 году)',
-    'Montenegro was proclaimed a kingdom in 1910 without establishing a new surveyed border at the proclamation.',
-    'В 1910 году Черногория провозглашена королевством. Смена государственного титула не устанавливает новую геодезическую границу.');
-   else if(from===1912||from===1913)transitional('Montenegro (1912–1913 Balkan Wars control transition)',
-    'Черногория (Балканские войны 1912–1913 годов; контур переходный)',
-    'Balkan Wars changed Montenegrin territorial control in 1912–1913. The precise intra-year front and postwar border are not evidenced by this source outline.',
-    'Балканские войны 1912–1913 годов изменили территориальный контроль Черногории. Исходный полигон не подтверждает фронт или годовую линию разграничения.');
+   else if(from===1910){
+    r={...r,name:'Kingdom of Montenegro (proclaimed 1910; outline unverified)',
+      nameRu:'Королевство Черногория (провозглашено в 1910 году; контур не проверен)',nameStatus:'reviewed'};
+    note('Montenegro was proclaimed a kingdom in 1910. This is a title change, not the disappearance of state sovereignty or a surveyed border.',docs,
+      'Черногория стала королевством в 1910 году. Само провозглашение не прерывало государственный суверенитет и не меняло территориальную границу.');
+   }else if(from===1911){
+    r={...r,name:'Kingdom of Montenegro (before the Balkan Wars; outline unverified)',
+      nameRu:'Королевство Черногория (до Балканских войн; контур не проверен)',nameStatus:'reviewed'};
+    note('The kingdom title continued in 1911; territorial enlargement during the Balkan Wars must not be backdated.',docs,
+      'В 1911 году существовало Королевство Черногория; территориальные расширения 1912–1913 годов ещё не произошли.');
+   }else if(from===1912)transitional('Kingdom of Montenegro (1912 First Balkan War; changing control)',
+    'Королевство Черногория (1912 год: Первая Балканская война)',
+    'The First Balkan War began in October 1912. Military control during the year is not a single sovereign boundary.',
+    'Первая Балканская война началась в октябре 1912 года. Линия военного контроля в течение года менялась и не восстановлена.');
+   else if(from===1913)transitional('Kingdom of Montenegro (1913 territorial settlement; changing control)',
+    'Королевство Черногория (1913 год: послевоенные территориальные изменения)',
+    'Post-war territorial arrangements in 1913 differ from the campaigning front and cannot be read from the same raw polygon.',
+    'Послевоенные договорённости 1913 года отличаются от фронтов 1912 года; единый старый контур не подтверждает линию нового разграничения.');
    else if(from>=1879&&to<=1909){
     r={...r,name:'Montenegro (post-Berlin, pre-Balkan-Wars; outline unverified)',
       nameRu:'Черногория (после Берлинского договора, до Балканских войн; контур не проверен)',nameStatus:'reviewed'};
@@ -729,14 +739,26 @@ function editorialSegments(base,derived=[]){
     'Савойская монархия (французская оккупация Пьемонта в 1798 году)',
     'French troops occupied Turin in December 1798. The mainland and the island Sardinia cannot be painted as one uninterrupted effective government throughout the year.',
     'Французские войска заняли Турин в декабре 1798 года. Не следует изображать материковые владения и остров Сардинию как одну территорию непрерывного управления в течение всего года.');
-   else if(from>=1799&&to<=1813)transitional('Savoy monarchy in Sardinia / French-administered Piedmont (source footprint)',
-    'Савойский дом на Сардинии / французское управление Пьемонтом (исходный ареал)',
-    'The Savoy court retained its Sardinian island base while Piedmont was ruled by France or its allies; the source multi-region polygon does not represent one effectively governed kingdom.',
-    'Савойская династия сохраняла власть на острове Сардиния, а Пьемонт находился под иным управлением. Прежний общий политический контур не отражает реальное разделение.');
-   else if(from===1814||from===1815)transitional('Kingdom of Sardinia (1814–1815 restoration and Genoa acquisition)',
-    'Сардинское королевство (реставрация 1814–1815 годов и присоединение Генуи)',
-    'The Congress of Vienna restored and enlarged Piedmont-Sardinia with Genoa. Do not treat 1814/1815 as a fixed border for every day of each year.',
-    'Реставрация Савойской династии и присоединение Генуи по решению Венского конгресса изменили владения в 1814–1815 годах; единый годовой контур не подтверждён.');
+   else if(from===1799)transitional('Savoy court on Sardinia; Piedmont contested in 1799 (historical source footprint)',
+    'Савойский двор на Сардинии; Пьемонт оспаривался в 1799 году (ареал источника)',
+    'The Savoy court was on Sardinia. Piedmont changed military administration during the 1799 campaigns; a single mainland and island political extent is false.',
+    'Савойский двор находился на острове Сардиния, а материковый Пьемонт менял военное управление во время кампаний 1799 года.');
+   else if(from===1800)transitional('Savoy Sardinia / renewed French control of Piedmont (1800 transition)',
+    'Савойская Сардиния / восстановление французского контроля в Пьемонте (1800)',
+    'France regained Turin in June 1800, while the Savoy crown remained on Sardinia. The same polygon cannot be the full-year de facto border.',
+    'В июне 1800 года французская армия снова заняла Турин. Савойская династия сохраняла остров Сардинию: материковый контур не отражает власть в течение всего года.');
+   else if(from>=1801&&to<=1813)transitional('Savoy crown on Sardinia / Piedmont incorporated in France (source footprint)',
+    'Савойский дом на Сардинии / Пьемонт в составе Франции (исходный ареал)',
+    'Piedmont was annexed to France during the Napoleonic era while the Savoy crown retained the island. The imported aggregate is not one state border.',
+    'Пьемонт входил в состав Франции, а Савойский двор сохранял остров Сардинию. Объединённая заливка не подтверждает границу одного государства.');
+   else if(from===1814)transitional('Kingdom of Sardinia (1814 Savoy restoration transition)',
+    'Сардинское королевство (восстановление Савойской власти в 1814 году)',
+    'Savoy government returned to Piedmont in 1814; its original full-year polygon does not show the military and administrative handover.',
+    'В 1814 году Савойская власть восстановлена в Пьемонте; весь год нельзя обозначать одной неподвижной границей.');
+   else if(from===1815)transitional('Kingdom of Sardinia (1815 Genoa incorporation transition)',
+    'Сардинское королевство (присоединение Генуи в 1815 году)',
+    'The 1815 Vienna settlement incorporated the former Republic of Genoa; the old source polygon is not a verified pre/post-addition frontier.',
+    'В 1815 году присоединены земли бывшей Генуэзской республики; старый контур не доказывает точную границу до и после включения.');
    else if(from===1860)transitional('Kingdom of Sardinia (1860 Savoy and Nice cessions; transition)',
     'Сардинское королевство (уступка Савойи и Ниццы в 1860 году)',
     'Savoy and Nice were ceded to France in 1860; a single unchanged polygon is not a dated pre/post-cession frontier.',
