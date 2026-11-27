@@ -215,6 +215,41 @@ assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Олинда
 assert.ok(historicalDatedGapCenters(1673)[0].title.includes('Новый Оранж'));
 assert.ok(historicalDatedGapCenters(1674)[0].description.includes('Вестминстерскому'));
 assert.ok(historicalCenterSources(historicalDatedGapCenters(1673)[0]).length>=2);
+// Date-scoped documentary control markers are independently sourced; they
+// never replace unresolved boundaries or overstate conquest as sovereignty.
+const eventById=new Map([
+ ['maguindanao-spanish-treaty-1837',[1837,1837]],
+ ['davao-mandaya-treaties-1838',[1838,1838]],
+ ['davao-cession-disputed-1844',[1844,1844]],
+ ['davao-oyanguren-capture-1848',[1848,1848]],
+ ['mytho-french-capture-1861',[1861,1861]],
+ ['bienhoa-french-capture-1861',[1861,1861]],
+ ['cochinchina-treaty-three-provinces-1862',[1862,1862]],
+ ['vinhlong-western-provinces-1867',[1867,1867]],
+ ['chaudoc-western-provinces-1867',[1867,1867]],
+ ['hatien-western-provinces-1867',[1867,1867]],
+ ['tianjin-japanese-puppet-municipality-1938-1944',[1938,1944]]
+]);
+const eventYears=[1836,1837,1838,1839,1844,1845,1847,1848,1849,1860,1861,1862,1863,1866,1867,1868,1937,1938,1940,1944,1945];
+for(const year of eventYears){
+ const actual=historicalDatedGapCenters(year).filter(event=>eventById.has(event.id.slice('historical-center-'.length)));
+ const expected=[...eventById].filter(([,range])=>year>=range[0]&&year<=range[1]).map(([id])=>'historical-center-'+id).sort();
+ assert.deepEqual(actual.map(x=>x.id).sort(),expected,'Documented historic control points '+year);
+ for(const event of actual){
+  assert.ok(event.description.includes('Точка'),event.id);
+  assert.ok(event.sources.length>=2&&event.sources.every(url=>url.startsWith('https://')),event.id);
+  assert.ok(event.lon> -180&&event.lon<180&&event.lat> -90&&event.lat<90,event.id);
+  assert.ok(!event.description.includes('точная граница'),event.id);
+ }
+}
+assert.ok(historicalDatedGapCenters(1861).some(x=>x.title.includes('Бьенхоа')));
+assert.ok(historicalDatedGapCenters(1861).some(x=>x.title.includes('Митхо')));
+assert.ok(historicalDatedGapCenters(1867).filter(x=>x.group.includes('захват западных провинций')).length===3);
+assert.ok(historicalDatedGapCenters(1838).some(x=>x.description.includes('вождями мандая')));
+assert.ok(historicalDatedGapCenters(1848).some(x=>x.description.includes('фактическое испанское')));
+assert.ok(historicalDatedGapCenters(1940).some(x=>x.title.includes('японская оккупация')));
+assert.ok(!historicalDatedGapCenters(1945).some(x=>x.id.includes('puppet-municipality')));
+
 // 1954/1986/2010 Caribbean constitutional changes have real island locators,
 // never invented polygons. The old Netherlands Antilles outline is incomplete.
 for(const [year,expected] of [
