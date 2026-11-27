@@ -716,8 +716,12 @@ function editorialSegments(base,derived=[]){
     'Мюнхенское соглашение сентября 1938 года изменило границы Чехословакии; годовой полигон не является проверенной линией до и после изменений.');
   }
   if(base.role==='polity'&&base.sourceName==='Rattanakosin Kingdom'&&to<=1900){
-   r={...r,name:'Siam (Rattanakosin, tributary frontiers uncertain)',
-    nameRu:'Сиам (Раттанакосин; границы даннических владений спорные)',nameStatus:'reviewed'};
+   r={...r,name:from>=1893?
+    'Siam (Rattanakosin after 1893 Mekong treaty; tributary frontiers uncertain)':
+    'Siam (Rattanakosin before 1893 Mekong treaty; tributary frontiers uncertain)',
+    nameRu:from>=1893?'Сиам (после договора 1893 года; границы даннических владений спорные)':
+     'Сиам (до договора 1893 года; границы даннических владений спорные)',
+    nameStatus:'reviewed'};
    note('Direct Siamese administration, suzerainty and tributary relations were not identical sovereign boundaries. French expansion in 1893, later French treaties in 1907 and British treaty in 1909 redefined parts of the region; the source map is not cadastral proof.',
     ['https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf','https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf'],
     'Даннические связи и прямое управление Сиама не образовывали одну достоверную границу; договоры с Францией и Британией изменяли статус зависимых владений. Точный контур не восстановлен.');

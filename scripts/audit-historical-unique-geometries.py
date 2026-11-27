@@ -247,11 +247,23 @@ def audit(folder, archive, output, original_source):
                     # Use the year-effective reviewed name only. The raw sourceName is
                     # provenance, not proof of the historical name on this date.
                     exact_name = bool(name) and name_key(name) == name_key(r['name'])
-                    candidates.append({'revisionId': r['id'], 'entityId': r['entityId'], 'geometryId': r['geometryId'], 'name': r['name'], 'exactName': exact_name, 'iou': round(iou, 6), 'archiveFraction': round(old_fraction, 6), 'candidateFraction': round(candidate_fraction, 6)})
+                    # Diagnostic only: original imported name is retrospective
+                    # provenance, not independent proof of a historically
+                    # correct country label or a surveyed source frontier.
+                    alias_only = (not exact_name and bool(name) and
+                                  name_key(name) == name_key(r['sourceName']))
+                    candidates.append({'revisionId': r['id'], 'entityId': r['entityId'],
+                                       'geometryId': r['geometryId'], 'name': r['name'],
+                                       'exactName': exact_name, 'sourceAliasOnly': alias_only,
+                                       'iou': round(iou, 6), 'archiveFraction': round(old_fraction, 6),
+                                       'candidateFraction': round(candidate_fraction, 6)})
             candidates.sort(key=lambda c: c['iou'], reverse=True)
             exact = [c for c in candidates if c['exactName']]
             row['bestSpatialCandidates'] = candidates[:3]
             row['exactNamedCandidates'] = exact
+            row['retrospectiveAliasCandidates'] = [c for c in candidates if c['sourceAliasOnly']]
+            row['retrospectiveAliasWithoutEffectiveMatch'] = bool(
+                row['retrospectiveAliasCandidates'] and not exact)
             row['status'] = 'excluded' if polygon is None else 'named-high-overlap' if exact and exact[0]['iou'] >= .85 else 'named-disagreement' if exact else 'spatial-only' if candidates else 'no-spatial-match'
             rows.append(row)
         named_unions = compare_named_unions(named_archive_rows, active, geom, name_key)
@@ -264,7 +276,9 @@ def audit(folder, archive, output, original_source):
         snapshots.append({'year': year, 'file': filename.name, 'sha256': hash_bytes(data),
                           'counts': counts, 'rows': rows,
                           'namedUnionComparisons': named_unions,
-                          'fragmentAlertsClearedByNamedUnion': false_fragment_alerts})
+                          'fragmentAlertsClearedByNamedUnion': false_fragment_alerts,
+                          'retrospectiveAliasWithoutEffectiveMatch': sum(
+                              x['retrospectiveAliasWithoutEffectiveMatch'] for x in rows)})
     snapshots.sort(key=lambda s: s['year'], reverse=True)
     union_diagnostics = {
         'comparedNameYears': sum(len(s['namedUnionComparisons']) for s in snapshots),
@@ -272,6 +286,8 @@ def audit(folder, archive, output, original_source):
         'disagreementNameYears': sum(sum(x['status'] == 'named-union-disagreement' for x in s['namedUnionComparisons']) for s in snapshots),
         'incompleteArchiveNameYears': sum(sum(x['status'] == 'incomplete-archive-geometry' for x in s['namedUnionComparisons']) for s in snapshots),
         'falseFragmentAlertsCleared': sum(s['fragmentAlertsClearedByNamedUnion'] for s in snapshots),
+        'rawSourceAliasOnlyArchiveFeatures': sum(
+            s['retrospectiveAliasWithoutEffectiveMatch'] for s in snapshots),
         'ambiguousSameNameNameYears': sum(sum(x['ambiguousAtlasIdentities'] for x in s['namedUnionComparisons']) for s in snapshots),
     }
     report = {'source': manifest['source'], 'method': 'EPSG:6933; legacy per-feature IoU plus independent both-sided year-effective exact-name polygon unions; neither is historical proof of territorial borders; invalid source repairs are diagnostic only',

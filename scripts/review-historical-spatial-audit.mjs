@@ -74,4 +74,7 @@ assert.equal(current.counts.territorialComponentYearsStillOpenExpected,769);
 const source=fs.readFileSync(new URL("scripts/audit-historical-unique-geometries.py",base),"utf8");
 assert.ok(source.includes("name_key(name) == name_key(r['name'])"));
 assert.ok(!source.includes("name_key(r['name']), name_key(r['sourceName'])"));
+assert.ok(source.includes("sourceAliasOnly"));
+assert.ok(source.includes("retrospectiveAliasWithoutEffectiveMatch"));
+assert.ok(source.includes("rawSourceAliasOnlyArchiveFeatures"));
 console.log("Atlas spatial comparison: 13 false historical name matches corrected, 95 mismatches explained, 381 awaiting review; geometry unverified.");
