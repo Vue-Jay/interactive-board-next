@@ -521,12 +521,12 @@ const TANZANIA_UN='https://www.un.org/en/about-us/member-states/tanzania';
 // geometry for Tianjin, after the source's false KMT / Hongxian-year labels
 // receive explicit corrections in historicalTitleCorrections.
 export function tianjinReviewedSourceOwner(year){
- if(year<=1899||year>=1903&&year<=1911)return 'Qing Dynasty';
+ if(year<=1911)return 'Qing Dynasty'; // 1900–02: Qing sovereign background under international provisional city administration
  if(year>=1912&&year<=1915||year>=1930&&year<=1936||year===1946)return 'Republic of China';
  if(year===1916)return 'Empire of China'; // ROC restored March 22
  if(year>=1917&&year<=1929)return 'Kuomintang'; // 1917–27 is Beiyang-era ROC, NOT KMT rule of Tianjin
  if(year>=1938&&year<=1944)return 'Empire of Japan';
- return null; // 1900–02, 1937 and 1945 require divided/transition-year treatment
+ return null; // 1937 and 1945 are year-level transitions; 1900–02 retain only competing cell uncertainties
 }
 
 export const historicalTitleCorrections=[
@@ -1769,7 +1769,7 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
  // sovereign territories. Preserve original footprints as provenance; repair
  // the underlying regional control only in independently documented years.
  const tianjin=d('The nine Tianjin concessions were confined to an urban area along the Hai River. The oversized source footprints are not surveyed concession boundaries. For the world map, use the documented surrounding regional authority; the concessions themselves require a separate municipal-scale layer.','Девять концессий Тяньцзиня располагались в городской зоне вдоль Хайхэ, а не на десятках километров вокруг города. Исходные крупные ячейки не являются границами концессий. На мировой карте восстанавливается подтверждённая принадлежность окружающей территории; точные городские границы концессий требуют отдельного слоя.',['https://journals.open.tudelft.nl/iphs/article/download/2751/2962/','https://archivesdiplomatiques.diplomatie.gouv.fr/ark%3A/14366/tdp05kl67vqh','https://www.cambridge.org/core/journals/urban-history/article/multiimperial-dimensions-in-treatyport-tianjin-and-its-historiographical-significance/B0D546345E6077BF4C7AAD7872AC0399','https://history.state.gov/historicaldocuments/frus1928v02/d100','https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3']);
- const tianjinTransfer={...tianjin,group:'Тяньцзинь — фон',allowSourceOverlap:true};
+ const tianjinTransfer={...tianjin,group:'Тяньцзинь — фон',allowSourceOverlap:true,sources:[...tianjin.sources,'https://history.state.gov/historicaldocuments/frus1902/d159','https://history.state.gov/historicaldocuments/frus1901China/d122']};
  const tianjinNames=new Set(['French Indochina','British Colonial Empire','United States of America','German Empire','Empire of Japan','Russian Empire','Kingdom of Belgium','Kingdom of Italy','Austria-Hungary']);
  const box=p=>{let x=180,y=90,X=-180,Y=-90;for(const [a,b] of p[0]){x=Math.min(x,a);y=Math.min(y,b);X=Math.max(X,a);Y=Math.max(Y,b);}return [x,y,X,Y];};
  const intersectsBox=(a,b)=>a[0]<b[2]&&a[1]<b[3]&&a[2]>b[0]&&a[3]>b[1];
@@ -1794,8 +1794,8 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
   const local=tianjinLocal.filter(c=>c.from<=year&&year<=c.to),cells=local.filter(c=>c.cell),owner=tianjinOwner(year),base=local.filter(c=>!c.cell&&c.name===owner);
   const targets=new Set(base.map(c=>c.source));if(owner)assert.equal(targets.size,1,`Tianjin regional owner ${year}`);
   // Protect against attributing the city to any identically named later row.
-  if(year===1916||year>=1917&&year<=1927||year===1936){
-   const expected=year===1916?'Q175379':year<=1927?'Q31113':'Q148';
+  if(year>=1900&&year<=1902||year===1916||year>=1917&&year<=1927||year===1936){
+   const expected=year<=1902?'Q8733':year===1916?'Q175379':year<=1927?'Q31113':'Q148';
    assert.equal(features[base[0].source].properties.Wikidata,expected,
     `Incorrect dated Chinese source identity in Tianjin ${year}`);
   }
@@ -1816,10 +1816,10 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
    covered=polygonClipping.union(...covered,c.p);
   }
  }
- // Independently checked source components: 1916 (9), 1917–27 (11×5), 1936 (4).
- // 68 original oversized foreign-concession component-years are now assigned
+ // Reviewed source components: 1900–02 (3×6), 1916 (9), 1917–27 (11×5), 1936 (4).
+ // 86 original oversized foreign-concession component-years are now assigned
  // to the documented surrounding Chinese state row rather than left unresolved.
- assert.equal(tianjinResolved,337);assert.equal(tianjinPending,30);
+ assert.equal(tianjinResolved,355);assert.equal(tianjinPending,12);
  // The 1859 conquest of Saigon must not be confused with the later cession
  // of Cochinchina; this source has already painted most of the Mekong delta.
  const saigon=d('The French campaign began in 1858 and seized Saigon in 1859. The treaty of 5 June 1862 ceded the three eastern provinces and Poulo Condor; the three western provinces were annexed in June 1867, recognized by treaty in 1874. The identical source extent for 1859–1867 cannot substantiate French control of all these mainland areas before 1867.','Французская кампания началась в 1858 г., Сайгон был захвачен в 1859 г. По договору от 5 июня 1862 г. переданы три восточные провинции и Пуло-Кондор; три западные провинции аннексированы в июне 1867 г., уступка признана договором 1874 г. Одинаковый исходный контур 1859–1867 гг. не подтверждает контроль Франции над всей областью до 1867 г.',['https://mjp.univ-perp.fr/constit/vn1862.htm','https://archives-nationales-outre-mer.culture.gouv.fr/faire-une-recherche/indochine','https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf']);

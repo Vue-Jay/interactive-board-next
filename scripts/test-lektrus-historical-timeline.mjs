@@ -92,10 +92,10 @@ for(const rule of historicalTitleCorrections){
  history.push(rule);allDatedNames.set(key,history);
 }
 // New Tianjin background owners have exact chronological and source-identity gates.
-for(const [year,source] of [[1916,'Empire of China'],[1917,'Kuomintang'],
+for(const [year,source] of [[1900,'Qing Dynasty'],[1901,'Qing Dynasty'],[1902,'Qing Dynasty'],[1916,'Empire of China'],[1917,'Kuomintang'],
  [1923,'Kuomintang'],[1927,'Kuomintang'],[1928,'Kuomintang'],
  [1936,'Republic of China'],[1937,null],[1945,null],
- [1901,null],[1946,'Republic of China']]){
+ [1901,'Qing Dynasty'],[1946,'Republic of China']]){
  assert.equal(tianjinReviewedSourceOwner(year),source,'Tianjin background '+year);
 }
 for(const [name,qid,year,label] of [
@@ -116,6 +116,11 @@ for(const [year,phrase] of [[1928,'июне 1928'],[1937,'30 июля 1937'],[19
   'Undocumented Tianjin change in '+year);
  const marker=historicalTreatyPortCenters(year)[0];
  assert.ok(marker?.description.includes(phrase),'Missing dated transition in Tianjin marker '+year);
+}
+for(const year of [1900,1901,1902]){
+ const marker=historicalTreatyPortCenters(year)[0];
+ assert.ok(marker?.description.includes('не означала прекращения китайского суверенитета'));
+ assert.ok(tianjinConcessionStatus(year).transitions.some(t=>t.from===1900&&t.to===1902&&t.url.endsWith('/frus1902/d159')));
 }
 assert.equal(historicalCorsicaLiberationCenters(1942).length,0);
 const corsica1943=historicalCorsicaLiberationCenters(1943);
@@ -558,6 +563,12 @@ if(outDir&&sourceFile){
           'Missing corrected Chinese regional label '+year);
         }
         const cells=tianjinCells.filter(c=>c.from<=year&&year<=c.to),owner=tianjinReviewedSourceOwner(year);
+        if(year>=1900&&year<=1902){
+         assert.equal(cells.length,7,'Unexpected Qing/Tianjin source cell count '+year);
+         assert.equal(unresolved.length,1,'One cross-polity cell must remain open '+year);
+         const qing=state.drawable.filter(({record})=>record.sourceName==='Qing Dynasty'&&record.sourceWikidata==='Q8733');
+         assert.ok(qing.length,'Qing sovereign regional background missing '+year);
+        }
         for(const c of cells){
           // A transferred component can belong to a regional owner, but never
           // to its original concession row or any unrelated aggregate.
@@ -979,8 +990,8 @@ if(outDir&&sourceFile){
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2201);assert.equal(externalRecordYears,477);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
-  assert.equal(tianjinClosed,337);assert.equal(tianjinOpen,30);
-  assert.equal(unresolvedSourceYears,791);assert.equal(unresolvedRegionYears,712);
+  assert.equal(tianjinClosed,355);assert.equal(tianjinOpen,12);
+  assert.equal(unresolvedSourceYears,773);assert.equal(unresolvedRegionYears,694);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
   assert.equal(sixthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),2);
   assert.equal(exactConflictPendingReviews.length,8);

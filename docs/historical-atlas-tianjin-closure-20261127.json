@@ -2,10 +2,13 @@
   "schemaVersion": 1,
   "date": "2026-11-27",
   "sourceDataset": "Cliopatria 0.2.1, pinned SHA-256 fc6f0d1e4cc42f45da83522b3696db6f2cc85ec0d12259a85c89b31347b8fc0a",
-  "status": "source-polygon correction implemented; full rebuilt annual audit pending",
+  "status": "86 sourced component-year restorations implemented, full current-source annual rebuild/CI pending",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "scope": "Tianjin false oversized foreign concession polygons and regional state attribution",
   "years": {
+    "1900": 6,
+    "1901": 6,
+    "1902": 6,
     "1916": 9,
     "1917": 5,
     "1918": 5,
@@ -20,8 +23,8 @@
     "1927": 5,
     "1936": 4
   },
-  "closedSourceComponentYears": 68,
-  "closedDistinctSourceRegionYears": 68,
+  "closedSourceComponentYears": 86,
+  "closedDistinctSourceRegionYears": 86,
   "before": {
     "regionalResolved": 269,
     "tianjinPending": 98,
@@ -29,10 +32,11 @@
     "openRegionYears": 780
   },
   "afterExpected": {
-    "regionalResolved": 337,
-    "tianjinPending": 30,
-    "totalTerritorialOpen": 791,
-    "openRegionYears": 712
+    "regionalResolved": 355,
+    "tianjinPending": 12,
+    "totalTerritorialOpen": 773,
+    "openRegionYears": 694,
+    "territorialResolved": 5713
   },
   "correctedBackgroundPolities": [
     {
@@ -96,5 +100,23 @@
     "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487",
     "After the 1928 Northern Expedition the Nanjing Nationalist Government governed Tianjin, but the party itself was not a separate sovereign country. Exact frontlines of Chinese rival administrations are not established by the imported polygon.",
     "После Северного похода 1928 года Тяньцзинь перешёл под Националистическое правительство Китайской Республики. Гоминьдан не был отдельной суверенной страной, а исходный контур не является картой фронтов."
-  ]
+  ],
+  "preexistingRawSourceOwner": {
+    "name": "Qing Dynasty",
+    "wikidata": "Q8733",
+    "sourceIndex": 12207,
+    "from": 1900,
+    "to": 1904
+  },
+  "legalAndMunicipalDifference": {
+    "period": "1900-1902",
+    "status": "Qing dynasty retains legal sovereignty while multinational provisional government administers Tianjin city and district",
+    "resolved18": "Only source cells with a unique Qing backdrop and no competing regional polygon",
+    "open3": "One in each of 1900, 1901 and 1902 has overlapping Empire of Japan regional polygon, retained as unresolved",
+    "evidence": [
+      "https://history.state.gov/historicaldocuments/frus1902/d159",
+      "https://history.state.gov/historicaldocuments/frus1901China/d122",
+      "https://www.cambridge.org/core/journals/urban-history/article/multiimperial-dimensions-in-treatyport-tianjin-and-its-historiographical-significance/B0D546345E6077BF4C7AAD7872AC0399"
+    ]
+  }
 }
