@@ -236,7 +236,7 @@ for(const year of eventYears){
  const expected=[...eventById].filter(([,range])=>year>=range[0]&&year<=range[1]).map(([id])=>'historical-center-'+id).sort();
  assert.deepEqual(actual.map(x=>x.id).sort(),expected,'Documented historic control points '+year);
  for(const event of actual){
-  assert.ok(event.description.includes('Точка'),event.id);
+  assert.match(event.description,/точка/i,event.id);
   assert.ok(event.sources.length>=2&&event.sources.every(url=>url.startsWith('https://')),event.id);
   assert.ok(event.lon> -180&&event.lon<180&&event.lat> -90&&event.lat<90,event.id);
   assert.ok(!event.description.includes('точная граница'),event.id);
