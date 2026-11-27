@@ -3,17 +3,17 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "95 archive comparison cases historically classified; 34 additional treaty/status/scope corrections marked; source border geometries remain candidates",
+  "status": "98 of 476 historical comparison cases classified, three additional UK-vs-empire scope warnings; unchanged frozen source geometry; full annual rebuild/CI pending",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 95,
+    "explainedComparisonCases": 98,
     "previouslyExplained": 5,
-    "newlyExplained": 90,
-    "remainingWithoutExplanation": 381,
+    "newlyExplained": 93,
+    "remainingWithoutExplanation": 378,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
@@ -26,9 +26,10 @@
     "dividedDaiViet": 6,
     "macDynastyIdentified": 1,
     "lateHordeSuccessorConfusion": 2,
-    "datedScopeDiscrepancies": 34
+    "datedScopeDiscrepancies": 34,
+    "ukColonialScopeComparisonCases": 3
   },
-  "warning": "95 classification explanations are not verified borders: 769 separate territorial component-years still require reconstruction and a full build.",
+  "warning": "98 classifications explain historical status or comparison scope, not accepted borders; 378 archived spatial candidates and 769 distinct territorial component-years remain pending independent reconstruction.",
   "cases": [
     {
       "id": "2010:119",
@@ -1552,6 +1553,54 @@
       "sources": [
         "https://openstax.org/books/world-history-volume-1/pages/3-4-the-indus-valley-civilization",
         "https://link.springer.com/article/10.1007/s10814-020-09147-9"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:7",
+      "year": 1900,
+      "archiveName": "United Kingdom of Great Britain and Ireland",
+      "effectiveCandidateName": "United Kingdom of Great Britain and Ireland",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "eb65f1fe068908a01b20550774d1083c6dfa012d055a73d547f82c3bea57e4ef",
+      "iou": 0.368404,
+      "classification": "historical-uk-proper-vs-imperial-source-scope-not-like-for-like",
+      "reasonRu": "У сравнения собственно Соединённого Королевства и исходной британской записи сильно различается охват: доля совпадения исходного контура около 38%, тогда как почти весь архивный контур внутри исходника. Официальные исторические материалы различают пределы UK и заморские владения империи. Это классификация несопоставимости географического охвата и повод проверить отдельные компоненты, не признание какой-либо границы достоверной.",
+      "sources": [
+        "https://tile.loc.gov/storage-services/service/gdc/gdclccn/06/01/83/18/06018318/06018318.pdf",
+        "https://www.nationalarchives.gov.uk/help-with-your-research/research-guides/colonies-dependencies-further-research"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1914:2",
+      "year": 1914,
+      "archiveName": "United Kingdom of Great Britain and Ireland",
+      "effectiveCandidateName": "United Kingdom of Great Britain and Ireland",
+      "archiveSha256": "a99425f9486e2243835fdc75ad7d82e6ddf3c72fcef87a63429f3313d830cf19",
+      "candidateGeometryId": "233b41cd9f5a55f7e616de3c64efc4419b21a0987e25e79ea533ffff50968eec",
+      "iou": 0.376092,
+      "classification": "historical-uk-proper-vs-imperial-source-scope-not-like-for-like",
+      "reasonRu": "У сравнения собственно Соединённого Королевства и исходной британской записи сильно различается охват: доля совпадения исходного контура около 39%, тогда как почти весь архивный контур внутри исходника. Официальные исторические материалы различают пределы UK и заморские владения империи. Это классификация несопоставимости географического охвата и повод проверить отдельные компоненты, не признание какой-либо границы достоверной.",
+      "sources": [
+        "https://tile.loc.gov/storage-services/service/gdc/gdclccn/06/01/83/18/06018318/06018318.pdf",
+        "https://www.nationalarchives.gov.uk/help-with-your-research/research-guides/colonies-dependencies-further-research"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1920:3",
+      "year": 1920,
+      "archiveName": "United Kingdom of Great Britain and Ireland",
+      "effectiveCandidateName": "United Kingdom of Great Britain and Ireland",
+      "archiveSha256": "fce1c97dc6a6095594cbb7eb896ccd5ce8b2d72254e73a24148c0a4ea200849f",
+      "candidateGeometryId": "c18f3d9a5037ab22893b561f0435051792f8a0ee539e1e52bd1dfe137d6084b7",
+      "iou": 0.377971,
+      "classification": "historical-uk-proper-vs-imperial-source-scope-not-like-for-like",
+      "reasonRu": "У сравнения собственно Соединённого Королевства и исходной британской записи сильно различается охват: доля совпадения исходного контура около 38%, тогда как почти весь архивный контур внутри исходника. Официальные исторические материалы различают пределы UK и заморские владения империи. Это классификация несопоставимости географического охвата и повод проверить отдельные компоненты, не признание какой-либо границы достоверной.",
+      "sources": [
+        "https://tile.loc.gov/storage-services/service/gdc/gdclccn/06/01/83/18/06018318/06018318.pdf",
+        "https://www.nationalarchives.gov.uk/help-with-your-research/research-guides/colonies-dependencies-further-research"
       ],
       "geometryHistoricallyConfirmed": false
     }

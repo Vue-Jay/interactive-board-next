@@ -601,6 +601,11 @@ function editorialSegments(base,derived=[]){
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
  if(base.role==='polity'&&base.sourceName==='Golden Horde'){cut(1466);cut(1502)}
+ // A chronological source label must not resurrect Papal sovereignty during
+ // the Roman Republics or Napoleon's annexation; year-boundary transitions
+ // have a separate warning and never imply a year-round uniform ruler.
+ if(base.role==='polity'&&base.sourceName==='Papal States')
+  for(const year of [1798,1799,1800,1809,1810,1814,1815,1849,1850,1860,1861,1870,1871])cut(year);
  // Distinguish the Mạc seizure in 1527, the restored Lê from 1533,
  // the Trịnh/Nguyễn division and the Tây Sơn–Nguyễn civil war.
  if(base.role==='polity'&&base.sourceName==='Đại Việt')
@@ -660,6 +665,64 @@ function editorialSegments(base,derived=[]){
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
   // Historical legal scope warnings. Keep the immutable source polygon:
   // these independent treaties are not digital cadastral boundary datasets.
+  // The source is a *historical footprint*, not a cadastre of the Roman
+  // Republics, Napoleonic departments or post-1860 papal remnant. Do not
+  // invent successor borders from the old outline.
+  if(base.role==='polity'&&base.sourceName==='Papal States'){
+   const sources=['https://www.archontology.org/nations/italy/papal_states/01_polity.php',
+    'https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=10&TipoPag=contesto',
+    'https://www.encyclopedia.com/religion/encyclopedias-almanacs-transcripts-and-maps/states-church'];
+   const thematic=(en,ru,reason,reasonRu)=>{
+    r={...r,role:'settlement',sourceRole:'polity',name:en,nameRu:ru,nameStatus:'reviewed'};
+    note(reason,sources,reasonRu);
+   };
+   if(from===1798||from===1799){
+    thematic('Papal lands / Roman Republic (1798–1799; historic source footprint)',
+     'Папские земли / Римская республика (1798–1799; контур прежнего владения)',
+     'The Roman Republic was proclaimed in February 1798 and ended in September 1799. A Papal sovereignty polygon for either entire year would be false; this source footprint is thematic.',
+     'Римская республика провозглашена в феврале 1798 года и прекратила существование в сентябре 1799 года. Политическую заливку Папской области на весь год использовать нельзя.');
+   }else if(from===1800){
+    thematic('Papal States (1800 restoration transition; footprint unverified)',
+     'Папская область (восстановление в 1800 году; контур не проверен)',
+     'Restoration of papal administration in 1800 was not a uniform authority throughout that year.',
+     'Восстановление папского управления в 1800 году не означает одинаковую власть на всей территории в течение полного года.');
+   }else if(from===1809||from>=1810&&to<=1813){
+    thematic('Former Papal States under Napoleonic annexation (source footprint)',
+     'Бывшая Папская область при наполеоновской аннексии (исторический ареал)',
+     'Napoleonic annexations began in 1808 and the remainder including Rome was annexed in May–June 1809. From 1810 through 1813 the Papal States were not a sovereign polity. Source outline is not a verified departmental boundary.',
+     'Французская аннексия была оформлена в 1809 году; с 1810 по 1813 год независимого Папского государства не существовало. Исходный контур не подтверждает границ французских департаментов.');
+   }else if(from===1814){
+    thematic('Papal States (1814 restoration transition; source footprint)',
+     'Папская область (переходный 1814 год; исходный контур)',
+     'The 1814 restoration followed changing Napoleonic and Neapolitan control. A full-year Papal polygon would hide the transition.',
+     'Восстановление папской администрации в мае 1814 года последовало за сменой наполеоновского и неаполитанского управления. Одного установленного владельца для всего года нет.');
+   }else if(from===1849){
+    thematic('Roman Republic / restored Papal rule (1849 transition)',
+     'Римская республика / восстановление папской власти (переходный 1849 год)',
+     'A Roman Republic was proclaimed 9 February 1849 and suppressed in July. Do not paint the whole year as continuously ruled by the Pope.',
+     '9 февраля 1849 года провозглашена Римская республика; в июле она была подавлена. Папская власть не была непрерывной в течение 1849 года.');
+   }else if(from===1860){
+    thematic('Papal States (1860 territorial cessions; unreconstructed outline)',
+     'Папская область (территориальные уступки 1860 года; граница не восстановлена)',
+     'The 1860 annexations stripped Romagna, the Marches and Umbria from papal authority. The original year-wide outline is not an accepted before/after border.',
+     'В 1860 году Романья, Марке и Умбрия перешли из-под папского управления. Единый контур за весь год не подтверждён.');
+   }else if(from>=1861&&to<=1869){
+    r={...r,name:'Papal States (reduced territory after 1860; outline unverified)',
+     nameRu:'Папская область (сократившаяся территория после 1860 года; граница не проверена)',nameStatus:'reviewed'};
+    note('After the 1860 annexations the Papal States survived mainly around Rome and Latium. The imported pre-unification outline must not be treated as an approved frontier.',sources,
+     'После утрат 1860 года Папская область сохранялась главным образом вокруг Рима и Лация. Исходный контур нельзя считать подтверждённой границей.');
+   }else if(from===1870){
+    thematic('Papal States / Kingdom of Italy (1870 transition; source footprint)',
+     'Папская область / Королевство Италия (переходный 1870 год)',
+     'Italian troops occupied Rome in September 1870; royal incorporation followed in October. No complete-year Papal sovereign polygon is valid.',
+     'Рим занят итальянскими войсками в сентябре 1870 года, включение в Королевство Италия оформлено в октябре. Папского суверенитета на весь год не было.');
+   }else if(from>=1871){
+    r={...r,geometryStatus:'rejected',nameStatus:'reviewed'};
+    note('The Papal States ceased to exist as a territorial state in 1870. Any later source polygon in its name must not be displayed as a sovereign territory.',sources,
+     'После 1870 года Папская область не существовала как отдельное территориальное государство; позднюю заливку по этому имени отклоняем.');
+   }
+  }
+
   if(base.role==='polity'&&base.sourceName==='Greenland'&&from>=1721&&to<=1900){
    r={...r,name:'Greenland (partial Danish colonial coastal source outline)',
     nameRu:'Гренландия (частичный прибрежный колониальный контур)',nameStatus:'reviewed'};
@@ -1038,6 +1101,9 @@ function editorialSegments(base,derived=[]){
   if(british&&from>=1801){
    r={...r,name:ukName(from),nameRu:from<1927?'Соединённое Королевство Великобритании и Ирландии':'Соединённое Королевство Великобритании и Северной Ирландии',nameStatus:'reviewed',entityId:identity('reviewed-polity','united-kingdom')};
    note('The 1801 union established the United Kingdom; the 1927 title distinguishes Northern Ireland. The original geometry is not independent proof of historical borders.',[UK_SOURCE],'С 1801 года — Соединённое Королевство, с 1927 года в официальном названии указана Северная Ирландия. Исторические границы требуют независимой проверки.');
+   if(from>=1900&&to<=1926)note('United Kingdom proper and its overseas Empire were different geographical jurisdictions. The imported broad source footprint, especially in 1900, 1914 and 1920, is not automatically a comparable UK boundary; review detached colonial components individually.',
+    ['https://tile.loc.gov/storage-services/service/gdc/gdclccn/06/01/83/18/06018318/06018318.pdf','https://www.nationalarchives.gov.uk/help-with-your-research/research-guides/colonies-dependencies-further-research'],
+    'Территория самого Соединённого Королевства и владения Британской империи не совпадали. Обширный исходный контур нельзя принимать за единую подтверждённую границу Великобритании; заморские компоненты требуют раздельной сверки.');
    if(from>=2000&&to<=2023&&base.memberOf.includes('(British Empire)')){r={...r,sourceMemberOf:base.memberOf,memberOf:base.memberOf.filter(n=>n!=='(British Empire)')};note('Removed obsolete map link to an absent empire grouping; this is not a claim about Commonwealth membership.',[COMMONWEALTH])}
    if(base.sourceIndex===13305||base.sourceIndex===13684)note('UK core only: excluded disconnected non-UK territories (including Crown dependency Isle of Man); retained original UK islands and Northern Ireland. Missing or separately administered territories require separate review.',[UK_DEPENDENCIES],'Оставлены острова Великобритании и Северная Ирландия; исключены отдельные территории, не входящие в состав самого Соединённого Королевства. Контуры этих территорий требуют отдельной проверки.');
   }
