@@ -70,6 +70,28 @@ begin
   if v_kind='connector' and coalesce(v_old->>'locked','false')<>'true' then
     v_fields:=v_fields||array['connectorStart','connectorEnd','connectorStartBinding','connectorEndBinding'];
   end if;
+  if coalesce(v_old->>'locked','false')<>'true' then
+   if v_kind='sticky' then
+    v_fields:=v_fields||array['stickerInk'];
+   elsif v_kind='pdf' then
+    v_fields:=v_fields||array['pdfPage'];
+   elsif v_kind='instrument' then
+    v_fields:=v_fields||array['instrumentScale'];
+   elsif v_kind='graph' and not (v_old ? 'subjectBoardEntries') and not (v_old ? 'schoolDiagram') then
+    if v_old->>'graphPurpose' in ('coordinates','number-line','geometry','unit-circle','function') then
+     v_fields:=v_fields||array['graphPoints','graphSegments','graphAngles','graphCircles',
+       'graphPolygons','graphTriangleLines','graphTriangleVertex','graphMidpoints','graphConstraints',
+       'graphFreePathStart','graphGrid','graphSnap','graphMagneticSnap','graphAxisLabelScale',
+       'graphXMin','graphXMax','graphYMin','graphYMax','graphRotationX','graphRotationY'];
+    end if;
+    if v_old->>'graphFigureId'='chem-periodic' then
+     v_fields:=v_fields||array['sciencePeriodicHighlights','sciencePeriodicLayout'];
+    end if;
+    if v_old->>'graphFigureId' like 'physics-%' then
+     v_fields:=v_fields||array['graphPoints','scienceMechanics','scienceOptics','scienceCircuit'];
+    end if;
+   end if;
+  end if;
   v_fields:=v_fields || case v_kind
    when 'checklist' then array['checklistDone']
    when 'quiz' then array['quizSelected','quizRevealed']

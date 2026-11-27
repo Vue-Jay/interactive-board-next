@@ -312,3 +312,20 @@ for(const accountRole of ["student","teacher"]){
 const guestColleague=boardRoleCapabilities({preview:"actual",boardRole:"editor",participantRole:"co_teacher",accountRole:"teacher",isAppAdmin:false,adminMaintenance:false,isGuest:true});
 assert.ok(guestColleague.isStudent&&!guestColleague.canCreateAssignments);
 console.log("Board-local participant roles: explicit role matrix passed");
+
+{
+ const objectPolicy={};
+ const compiled=ts.transpileModule(read("src/lektrusBoardObjectAuth.ts"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ new Function("exports","require",compiled)(objectPolicy,name=>name==="./boardModel"?{isInkItem:i=>i.kind==="pen"||i.kind==="marker"}:api);
+ const allowed=objectPolicy.blockedStudentObjectEdits;
+ const teacher={id:"t",createdBy:"teacher",kind:"sticky",x:0,text:"Task"};
+ assert.equal(allowed([teacher],[{...teacher,stickerInk:[{id:"p"}]}],"student").length,0);
+ assert.equal(allowed([teacher],[{...teacher,text:"changed"}],"student").length,1);
+ assert.equal(allowed([teacher],[{...teacher,x:20}],"student").length,0);
+ assert.equal(allowed([{...teacher,locked:true}],[{...teacher,locked:true,x:20}],"student").length,1);
+ assert.equal(allowed([],[{id:"s",kind:"quiz",createdBy:"student"}],"student").length,1);
+ assert.equal(allowed([],[{id:"s",kind:"text",createdBy:"student"}],"student").length,0);
+ const graph={...teacher,kind:"graph",graphPurpose:"coordinates"};
+ assert.equal(allowed([graph],[{...graph,graphPoints:[{x:1,y:2}]}],"student").length,0);
+ assert.equal(allowed([{...graph,subjectBoardEntries:[]}],[{...graph,subjectBoardEntries:[],graphPoints:[{x:1,y:2}]}],"student").length,1);
+}

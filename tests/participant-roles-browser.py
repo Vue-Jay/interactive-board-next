@@ -410,6 +410,36 @@ def check_shared_eraser_sync(browser):
         for page in (teacher,pupil):
             expect(page.locator(shape)).to_have_count(0,timeout=20000)
         print("Live object motion across accounts and tabs, measuring instrument and text before pointer-up/blur verified against real peer.")
+        # Create and delete real UI objects in BOTH directions. A seeded server
+        # object alone cannot catch student-side serialization/author bugs.
+        with httpx.Client(base_url=API,headers=headers("owner")) as api:
+            for sender,receiver in ((pupil,teacher),(teacher,pupil)):
+                for shortcut,kind in (("t","text"),("r","shape"),("s","sticky")):
+                    before={i["id"] for i in api.get(url).json()["document"]["items"]}
+                    sender.locator('[data-interface-control="select"]:visible').first.click()
+                    sender.keyboard.press(shortcut)
+                    box=sender.locator("section.board").bounding_box()
+                    sender.mouse.click(box["x"]+box["width"]*.70,box["y"]+box["height"]*.55)
+                    if kind=="text":
+                        field=sender.locator('textarea[aria-label="Текст объекта"]')
+                        expect(field).to_be_visible(timeout=5000)
+                        field.fill("Two-way object sync")
+                        field.press("Tab")
+                    added=None
+                    for _ in range(60):
+                        row=api.get(url).json()
+                        added=next((i for i in row["document"]["items"] if i["id"] not in before and i["kind"]==kind),None)
+                        if added: break
+                        sender.wait_for_timeout(100)
+                    assert added, (kind,"created locally but not committed")
+                    selector=f'.board-object[data-object="{added["id"]}"]'
+                    expect(receiver.locator(selector)).to_be_visible(timeout=7000)
+                    sender.locator('[data-interface-control="select"]:visible').first.click()
+                    sender.locator(selector).click()
+                    sender.keyboard.press("Delete")
+                    expect(receiver.locator(selector)).to_have_count(0,timeout=7000)
+                    assert all(i["id"]!=added["id"] for i in api.get(url).json()["document"]["items"])
+        print("Teacher and student UI creation/deletion of text, shape and sticky converged.")
         with httpx.Client(base_url=API,headers=headers("owner")) as client:
             def read():
                 response=client.get(url)

@@ -130,7 +130,7 @@ import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
 import {personalBoardEdit,applyPersonalBoardEdit,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
-import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops } from "./lektrusBoardObjectAuth";
+import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops, blockedStudentObjectEdits } from "./lektrusBoardObjectAuth";
 import { parseDocument, parseRealtimeDocument, type RealtimeItemCache, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
 import { eraseInkAlongPath, type EraserMode } from "./inkEraser";
@@ -4067,11 +4067,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];publishLiveEdits?:boolean}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];objectBaseline?:Item[];publishLiveEdits?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     if(!options?.previousItems){lastInkGesture.current=null;lastInkCursor.current=null;}
-    const current=options?.previousItems??itemsRef.current;
+    const current=options?.previousItems??options?.objectBaseline??itemsRef.current;
     // Central destructive-action gate covers keyboard, toolbar, eraser,
     // selected instruments and other paths that do not call deleteSelected().
     const blocked=blockedBoardItemRemovals(current,next,authUser.id,isStudent,isBoardOwner);
@@ -4083,6 +4083,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setNotice("Нельзя обрезать чужое изображение");return;
     }
     const normalized = stampNewBoardItemAuthors(current,syncBoundConnectors(next),authUser.id);
+    if(isStudent&&!isBoardOwner&&blockedStudentObjectEdits(current,normalized,authUser.id).length){
+      if(options?.objectBaseline)display(current,true);
+      setNotice("Это изменение защищено преподавателем");return;
+    }
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
     const baseline = history.current[index.current];
@@ -4139,7 +4143,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         const added=normalized.filter(item=>!before.has(item.id)&&!isInkItem(item)).length;
         const removed=current.filter(item=>!after.has(item.id)&&!isInkItem(item)).length;
         const changed=normalized.filter(item=>!isInkItem(item)&&before.has(item.id)&&before.get(item.id)!==item&&JSON.stringify(before.get(item.id))!==JSON.stringify(item)).length;
-        if(added||removed||changed){
+        if(added||removed||changed||current.some((item,i)=>normalized[i]?.id!==item.id)){
           selfhostLogBoardSync(boardSummary.id,{event:"object_change",version:remoteVersion.current??0,added,changed,removed,count:normalized.length});
           // A completed object operation must not wait for a React render,
           // background animation frame, or a later gesture to be persisted.
@@ -4252,6 +4256,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const startEdit = (item: Item) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if (item.kind !== "text" && item.kind !== "frame" && item.kind !== "comment") return;
+    const stored=itemsRef.current.find(candidate=>candidate.id===item.id)??item;
+    if(isStudent&&!isBoardOwner&&(stored.createdBy!==authUser.id||!canUseBoardCreationTool(item.kind,roleCapabilities))){
+      setNotice("Текст преподавателя доступен для чтения");return;
+    }
     setSelected([item.id]);
     setTool("select");
     setSpace(false);
@@ -4271,14 +4279,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         return;
       }
       if(blockedBoardItemRemovals(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
-         blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length){
+         blockedBoardImageCrops(itemsRef.current,outcome.items,authUser.id,isStudent,isBoardOwner).length||
+         blockedStudentObjectEdits(itemsRef.current,outcome.items,authUser.id).length){
         setNotice("Отмена не может изменить защищённую работу другого участника.");
         return;
       }
       stack.cursor=direction<0?step:step+1;
       display(outcome.items);
-      if(snapshot.current&&!saveBlocked)
+      if(snapshot.current&&!saveBlocked){
         snapshot.current=packDocumentInk({...snapshot.current,items:outcome.items});
+        lastInkGesture.current=null;lastInkCursor.current=null;
+        if(selfhostMode)queueMicrotask(()=>{if(boardMounted.current)flushSave()});
+      }
       history.current=[outcome.items];index.current=0;
       setSelected([]);
       if(outcome.conflicts)setNotice("Отменены только ваши изменения. Более поздние чужие правки сохранены.");
@@ -4298,8 +4310,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     index.current = next;
     display(rebased);
-    if(snapshot.current&&!saveBlocked)
+    if(snapshot.current&&!saveBlocked){
       snapshot.current=packDocumentInk({...snapshot.current,items:rebased});
+      lastInkGesture.current=null;lastInkCursor.current=null;
+      if(selfhostMode)queueMicrotask(()=>{if(boardMounted.current)flushSave()});
+    }
     setSelected([]);
   };
   const local = (x: number, y: number): Point => {
@@ -4929,21 +4944,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(g.mode==="draw"&&g.ink){
       finishDurableInk(g,cancel);
     } else if (cancel) {
-      display(g.restore ?? g.before);
+      if(g.mode!=="pan"&&g.mode!=="marquee"&&g.mode!=="lasso")display(g.restore ?? g.before);
       setView(g.view);
     } else if (g.mode === "hand-smart") {
       if (g.dragging) {
         if (g.handMoveSelection) {
-          if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
-          else commit(itemsRef.current);
+          if(dragPreview)flushSync(()=>commit(itemsRef.current,{immediatePaint:true,objectBaseline:g.before}));
+          else commit(itemsRef.current,{objectBaseline:g.before});
         }
       } else {
         setSelected(g.handHitIds ?? []);
       }
     } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end") {
       if(dragPreview||rotatePreview||groupRotatePreview||resizePreview)
-            flushSync(()=>commit(itemsRef.current,{immediatePaint:true}));
-      else commit(itemsRef.current);
+            flushSync(()=>commit(itemsRef.current,{immediatePaint:true,objectBaseline:g.before}));
+      else commit(itemsRef.current,{objectBaseline:g.before});
     }
     else if (g.mode === "connector") {
       const startPoint = g.path[0];
@@ -6246,6 +6261,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     const contourWorksheet=singleSelected?.graphFigureId==="contour-atlas";
     setLectrisInspectorOpen(false);
     if (!singleSelected || !canEdit || (singleSelected.locked&&!contourWorksheet) || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
+    if(isStudent&&!isBoardOwner&&["table","formula"].includes(singleSelected.kind)){setNotice("Редактирование учебного материала доступно преподавателю");return;}
     switch (singleSelected.kind) {
       case "text": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
@@ -6648,6 +6664,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const toggleLockSelected = () => {
+    if(isStudent&&!isBoardOwner){setNotice("Блокировка объектов доступна преподавателю");return;}
     if (rejectStudentStructuralEdit()) return;
     if (!selected.length) return;
     const lockable=selectedItems.filter(isLockableBoardItem);

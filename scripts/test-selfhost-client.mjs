@@ -1091,3 +1091,9 @@ console.log("Durable ink pipeline: three unacknowledged frames, bounded coalesci
  const addedOnly=api.projectStudentDocument(raw,canonical,{...canonical,items:[canonical.items[0],next.items[1]]});
  assert.deepEqual(JSON.parse(JSON.stringify(api.diffSelfhostDocument(raw,addedOnly).items.upsert)),[next.items[1]]);
 }
+
+{
+ const boardModelSource=readFileSync(new URL("../src/boardModel.ts",import.meta.url),"utf8");
+ const block=boardModelSource.slice(boardModelSource.indexOf("const persistedGraphKeys"),boardModelSource.indexOf("function persistedGraphData"));
+ assert.match(block,/"subjectBoardStandalone"/,"Standalone subject object must survive parsing and remote reload");
+}

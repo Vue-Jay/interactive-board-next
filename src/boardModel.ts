@@ -691,7 +691,7 @@ const persistedGraphKeys = [
   "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
   "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions","scienceReactionDomain","scienceReactionSteps","subjectBoardEntries",
-  "scienceReagents","scienceEnvironment","scienceLabBench","schoolDiagram",
+  "scienceReagents","scienceEnvironment","scienceLabBench","schoolDiagram","subjectBoardStandalone",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
   "graphType","graphExpression","graphConnectPoints",
