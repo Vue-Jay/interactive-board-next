@@ -239,17 +239,17 @@ assert.match(nextView,/\{studentMode\?<span>Основание:/,
  "a pupil cannot change a teacher's number base");
 assert.match(russianView,/const inline=onChange&&!studentMode&&/,
  "teacher source-word and phonetic editor does not appear to pupil");
-assert.match(foreignView,/const \[order,setOrder\]=useState<string\[\]>\(initial\)/,
- "foreign-language rearrangement uses local answer state");
-assert.doesNotMatch(foreignView,/onChange\s*\(/,
- "foreign-language puzzle cannot rewrite teacher's board JSON");
+assert.match(foreignView,/useSchoolPractice<Extract<SchoolPractice,\{kind:"sentence"\}>>/,
+ "foreign-language rearrangement shares practice, separate from the teacher's sentence");
+assert.match(app,/practiceFitsDiagram\(practice,before\.schoolDiagram\)/,
+ "the shared puzzle cannot rewrite the teacher's board JSON");
 const approvedView=read("src/LektrusApprovedSchoolView.tsx");
-assert.match(approvedView,/const \[index,setIndex\]=useState\(0\),\[revealed,setRevealed\]=useState\(false\)/,
- "foreign vocabulary flashcards flip locally without overwriting teacher data");
+assert.match(approvedView,/useSchoolPractice<Extract<SchoolPractice,\{kind:"language-cards"\}>>/,
+ "foreign vocabulary flashcards flip on the shared board without overwriting teacher data");
 assert.doesNotMatch(approvedView,/onChange\s*\(/,
  "foreign flashcard interactions must not save over a teacher's cards");
-assert.match(russianView,/const \[picked,setPicked\]=useState/,
- "spelling puzzle answers remain local to the learner");
+assert.match(russianView,/useSchoolPractice<Extract<SchoolPractice,\{kind:"orthography"\}>>/,
+ "spelling choices use shared practice separate from the teacher’s questions");
 assert.match(app,/restrictStudentDiagramChange\(before.schoolDiagram,diagram\)/,
  "students cannot rewrite a teacher's assignment");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,

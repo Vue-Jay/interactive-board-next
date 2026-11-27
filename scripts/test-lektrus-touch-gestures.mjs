@@ -101,14 +101,25 @@ const mobileGroupIds=groups.elements.flatMap(group=>{
   return id.text;
  });
 });
-const mobileDock=definition("mobileDockTools");
-assert.ok(ts.isArrayLiteralExpression(mobileDock));
-const shownIds=[...mobileGroupIds,...mobileDock.elements.map(x=>x.text),"hand"];
+const prefs=read("src/lektrusBoardRolePreview.ts");
+const prefModule={exports:{}};
+new Function("exports",ts.transpileModule(prefs,{compilerOptions:{
+ target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS
+}}).outputText)(prefModule.exports);
+const {TOOLBAR_DEFAULT_TOUCH,TOOLBAR_DEFAULT_DESKTOP,normalizeToolbarPins,resolveToolbarPins}=prefModule.exports;
+const allowed=registeredIds.filter(id=>!["select","hand","lasso","formula","graph"].includes(id));
+assert.match(app,/const lectrisTouchDockTools=useMemo<Tool\[\]>\(\(\)=>\["select","lasso",\.\.\.lectrisPinned\]/,
+ "The live touch dock combines navigation and validated user pins");
+assert.match(app,/normalizeToolbarPins\(toolbarChoice\.pinned,availablePinnedTools\)/);
+assert.match(app,/resolveToolbarPins\(saved,legacy,lectrisDefaultPinned,availablePinnedTools\)/);
+const shownIds=[...mobileGroupIds,...TOOLBAR_DEFAULT_TOUCH,...TOOLBAR_DEFAULT_DESKTOP,"select","lasso","hand"];
 for(const id of shownIds)assert.ok(registeredIds.includes(id),
  "The mobile dock would crash reading label for unregistered tool: "+id);
-const desktopSet=definition("primaryDesktopTools");
-assert.ok(ts.isNewExpression(desktopSet));
-assert.ok(!desktopSet.getText(parsed).includes('"hand"'),
+assert.ok(TOOLBAR_DEFAULT_TOUCH.every(id=>allowed.includes(id)));
+assert.ok(TOOLBAR_DEFAULT_DESKTOP.every(id=>allowed.includes(id)));
+assert.deepEqual(normalizeToolbarPins(["hand","pen","nonexistent","pen"],allowed),["pen"]);
+assert.deepEqual(resolveToolbarPins({version:3,pinned:["hand","pen","nonexistent"]},null,TOOLBAR_DEFAULT_TOUCH,allowed),["pen"]);
+assert.ok(!TOOLBAR_DEFAULT_DESKTOP.includes("hand"),
  "Hand must remain touch-only, not a default PC toolbar tool");
 assert.ok(registeredIds.includes("hand")&&app.includes('case "hand": return'),
  "Hand must render its real icon, not just supply a label");

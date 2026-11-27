@@ -443,6 +443,64 @@ def check_shared_eraser_sync(browser):
                     expect(receiver.locator(selector)).to_have_count(0,timeout=7000)
                     assert all(i["id"]!=added["id"] for i in api.get(url).json()["document"]["items"])
         print("Teacher and student UI creation/deletion of text, shape and sticky converged.")
+        # Real shared exercise interactions, not just a server-injected answer.
+        with httpx.Client(base_url=API,headers=headers("owner")) as api:
+            fixtures=[
+              ("sentence", "language-sentence-builder", {"kind":"sentence-builder","title":"Shared sentence","instructions":"Order words","parts":[{"id":"a","text":"I"},{"id":"b","text":"read"},{"id":"c","text":"books"}],"showKey":False,"showHint":False,"patternId":""}),
+              ("matching", "geo-matching", {"kind":"geo-training","title":"Shared matching","exercise":"matching","relation":"country-capital","reverse":False,"countryCodes":["RU","FR"]}),
+              ("cards", "language-flashcards", {"kind":"flashcards","title":"Shared cards","cards":[{"id":"a","term":"book","translation":"книга","transcription":""},{"id":"b","term":"cat","translation":"кот","transcription":""}],"showTranslation":False,"showTranscription":False,"direction":"foreign-first"}),
+              ("orthography", "ru-orthography", {"kind":"orthography","title":"Shared orthography","showExplanation":True,"questions":[{"id":"a","prompt":"тр□ва","options":["а","о"],"correct":0,"explanation":"трава"}]})
+            ]
+            for practice_id,figure,diagram in fixtures:
+                row=api.get(url).json()
+                item={"id":"sync-"+practice_id,"kind":"graph","graphFigureId":figure,"graphPurpose":"geometry","text":diagram["title"],"x":210,"y":150,"width":680,"height":410,"schoolDiagram":diagram}
+                doc={**row["document"],"items":[item]}
+                api.put(url,json={"expected_version":row["version"],"document":doc}).raise_for_status()
+                selector=f'.board-object[data-object="sync-{practice_id}"]'
+                owner_view=teacher.locator(selector)
+                pupil_view=pupil.locator(selector)
+                expect(owner_view).to_be_visible(timeout=15000)
+                expect(pupil_view).to_be_visible(timeout=15000)
+                if practice_id=="sentence":
+                    words=pupil_view.locator("[data-sentence-word]")
+                    expect(words).to_have_count(3)
+                    first=words.first.get_attribute("data-sentence-word")
+                    words.first.focus()
+                    pupil.keyboard.press("End")
+                    expect(owner_view.locator("[data-sentence-word]").last).to_have_attribute("data-sentence-word",first,timeout=10000)
+                    pupil_view.get_by_role("button",name="Проверить",exact=True).click()
+                    expect(owner_view.locator(".lektrus-sentence-status")).not_to_contain_text("Перетаскивайте",timeout=10000)
+                elif practice_id=="matching":
+                    pupil_view.get_by_role("button",name="Страна 1",exact=True).click()
+                    expect(owner_view.get_by_role("button",name="Страна 1",exact=True)).to_have_attribute("aria-pressed","true",timeout=10000)
+                    pupil_view.get_by_text("Москва",exact=True).click()
+                    expect(owner_view.locator(".lektrus-geo-game-progress")).to_contain_text("1 / 2",timeout=10000)
+                elif practice_id=="cards":
+                    pupil_view.get_by_role("button",name="Перевернуть карточку",exact=True).click()
+                    expect(owner_view.locator(".lektrus-flashcard-word")).to_have_text("книга",timeout=10000)
+                    owner_view.get_by_role("button",name="Следующая карточка",exact=True).click()
+                    expect(pupil_view.locator(".lektrus-flashcard-word")).to_have_text("cat",timeout=10000)
+                else:
+                    pupil_view.get_by_role("button",name="а",exact=True).click()
+                    pupil_view.get_by_role("button",name="Проверить",exact=True).click()
+                    expect(owner_view.locator(".lektrus-orthography-feedback")).to_contain_text("Верно!",timeout=10000)
+                def final_state(practice):
+                    if not practice:return False
+                    if practice_id=="sentence":return practice.get("order",[])[-1:]==[first] and practice.get("checked") is True
+                    if practice_id=="matching":return practice.get("matched")==["RU"]
+                    if practice_id=="cards":return practice.get("index")==1 and practice.get("revealed") is False
+                    return practice.get("picked")==0 and practice.get("checked") is True
+                for _ in range(150):
+                    saved=api.get(url).json()
+                    if final_state(saved["document"]["items"][0].get("schoolPractice")):break
+                    pupil.wait_for_timeout(100)
+                assert final_state(saved["document"]["items"][0].get("schoolPractice")), (practice_id,saved)
+                assert saved["document"]["items"][0]["schoolDiagram"]==diagram,practice_id
+            row=api.get(url).json()
+            api.put(url,json={"expected_version":row["version"],"document":{**row["document"],"items":[]}}).raise_for_status()
+            for page in (teacher,pupil):
+                expect(page.locator('[data-object="sync-orthography"]')).to_have_count(0,timeout=15000)
+        print("Shared sentence ordering, matching, language flashcards, and orthography converge in two actual browsers.")
         with httpx.Client(base_url=API,headers=headers("owner")) as client:
             def read():
                 response=client.get(url)

@@ -7,7 +7,11 @@ const server=await createServer({configFile:"./vite.config.ts",server:{middlewar
 try{
   const {subjectToolsFor,releaseHiddenSubjectToolIds,makeSubjectToolItem}=
     await server.ssrLoadModule("/src/lektrusSubjectToolRegistry.ts");
-  const {parseDocument}=await server.ssrLoadModule("/src/boardModel.ts");
+  const {parseDocument,parseRealtimeDocument}=await server.ssrLoadModule("/src/boardModel.ts");
+  const {diffSelfhostDocument,applySelfhostDocumentDelta,projectStudentDocument}=await server.ssrLoadModule("/src/selfhostApi.ts");
+  const {mergeBoardDocumentEdits}=await server.ssrLoadModule("/src/lektrusBoardThreeWayMerge.ts");
+  const {mergeEditedValue,editorDiff,applyEditorOps}=await server.ssrLoadModule("/src/lektrusLiveEditorMerge.ts");
+  const {practiceKey,practiceFitsDiagram,validSchoolPractice,orthographyPracticeInitial}=await server.ssrLoadModule("/src/schoolPractice.ts");
   const {ids,makeSchoolDiagram,isSchoolDiagram}=await server.ssrLoadModule("/src/lektrusSchoolDiagramModel.ts");
   const {atlasModesFor,historicalSnapshots,legacyAtlasModes,createAtlasDocument}=await server.ssrLoadModule("/src/lektrusAtlasModel.ts");
   const roundTrip=(id,schoolDiagram)=>{
@@ -109,6 +113,71 @@ try{
     })),/Повреждена предметная учебная схема/,id+" invalid legacy data must be rejected");
   }
 
+  // Every saved school-diagram kind follows the actual delta + cached peer
+  // parser + conflict-rebase path, rather than merely reopening a file.
+  let audited=0;
+  const exercise=(item)=>{
+    const base=parseDocument(JSON.stringify({version:1,title:"Sync audit",view:{x:0,y:0,zoom:1},items:[item]}));
+    const changed={...base,items:[{...base.items[0],x:base.items[0].x+17,y:base.items[0].y+23}]};
+    const remote={...base,items:[{...base.items[0],rotation:12}]};
+    const wire=projectStudentDocument(base,base,changed);
+    assert.ok(wire,item.id+" projection");
+    const delta=diffSelfhostDocument(base,wire);
+    const received=parseRealtimeDocument(applySelfhostDocumentDelta(base,delta),new WeakMap());
+    assert.deepEqual(received,parseDocument(JSON.stringify(changed)),item.id+" peer convergence");
+    const merged=mergeBoardDocumentEdits(base,changed,remote);
+    assert.equal(merged.items[0].x,changed.items[0].x,item.id+" local position");
+    assert.equal(merged.items[0].rotation,12,item.id+" independent remote rotation");
+    const deleted={...base,items:[]};
+    assert.deepEqual(mergeBoardDocumentEdits(base,changed,deleted).items,[],item.id+" deleted object resurrected");
+    audited++;
+  };
+  for(const id of ids){
+    let schoolDiagram=makeSchoolDiagram(id);
+    if(id==="geo-matching"||id==="geo-question-cards")schoolDiagram={...schoolDiagram,countryCodes:["RU","FR"]};
+    exercise({id,kind:"graph",text:schoolDiagram.title,x:0,y:0,width:600,height:360,graphFigureId:id,schoolDiagram});
+  }
+  const types=[
+    {kind:"sticky",stickerInk:[]},{kind:"text"},{kind:"shape",shapeType:"rectangle"},
+    {kind:"pen",points:[{x:0,y:0},{x:10,y:10}],color:"#202124",weight:3},
+    {kind:"marker",points:[{x:0,y:0},{x:10,y:10}],color:"#202124",weight:5},
+    {kind:"image",assetId:"image-asset",name:"test.png",mime:"image/png"},
+    {kind:"pdf",assetId:"pdf-asset",name:"test.pdf",mime:"application/pdf",pdfPage:1},
+    {kind:"frame"},{kind:"connector",connectorStart:{x:0,y:0},connectorEnd:{x:100,y:30},connectorStyle:"arrow"},
+    {kind:"comment"},{kind:"table",tableRows:2,tableCols:2,tableCells:["a","b","c","d"]},
+    {kind:"formula"},{kind:"graph",graphPurpose:"coordinates",graphPoints:[]},
+    {kind:"fraction",fractionNumerator:1,fractionDenominator:2},
+    {kind:"checklist",checklistItems:["Task"],checklistDone:[false]},
+    {kind:"quiz",quizOptions:["A","B"],quizCorrect:0},
+    {kind:"flashcard",flashcardBack:"Answer"},{kind:"cover"},
+    {kind:"linkmedia",mediaUrl:"https://example.test/video"},{kind:"instrument",instrumentType:"ruler",instrumentScale:1}
+  ];
+  for(const fields of types)exercise({id:"kind-"+fields.kind,x:0,y:0,width:300,height:180,text:"Test",...fields});
+  const diagram={kind:"sentence-builder",parts:[{id:"a",text:"I"},{id:"b",text:"read"}]};
+  const practice={kind:"sentence",key:practiceKey(diagram.parts),order:["b","a"],checked:true};
+  assert.ok(validSchoolPractice(practice)&&practiceFitsDiagram(practice,diagram));
+  assert.equal(practiceFitsDiagram({...practice,order:["b","unknown"]},diagram),false);
+  assert.equal(practiceFitsDiagram(practice,{...diagram,parts:[{id:"a",text:"We"},diagram.parts[1]]}),false);
+  assert.equal(practiceKey({b:1,a:2}),practiceKey({a:2,b:1}));
+  const q1={id:"q1",prompt:"a",options:["a","b"]},q2={id:"q2",prompt:"b",options:["a","b"]};
+  const orth={...orthographyPracticeInitial([q1,q2]),picked:0,checked:true};
+  assert.equal(practiceFitsDiagram(orth,{kind:"orthography",questions:[q1,{...q2,prompt:"changed"}]}),true);
+  assert.equal(practiceFitsDiagram(orth,{kind:"orthography",questions:[{...q1,prompt:"changed"},q2]}),false);
+  const pdoc={version:1,title:"Shared practice",view:{x:0,y:0,zoom:1},items:[{id:"practice",kind:"graph",x:0,y:0,width:500,height:300,text:"Sentence",graphFigureId:"language-sentence-builder",schoolDiagram:{...diagram,title:"Sentence",instructions:"Order",showKey:false,showHint:false,patternId:""},schoolPractice:practice}]};
+  assert.deepEqual(parseRealtimeDocument(pdoc,new WeakMap()).items[0].schoolPractice,practice);
+  // A student's stale response must stay attached to its exercise ID when
+  // the teacher moves, inserts or deletes another exercise.
+  const a={id:"a",answer:""},b={id:"b",answer:""},c={id:"c",answer:""};
+  const start={subjectBoardEntries:[a,b]};
+  const local={subjectBoardEntries:[{...a,answer:"student"},b]};
+  const remote={subjectBoardEntries:[c,b,a]};
+  assert.deepEqual(mergeEditedValue(start,local,remote).subjectBoardEntries,[c,b,{...a,answer:"student"}]);
+  assert.deepEqual(mergeEditedValue(start,{subjectBoardEntries:[b,a]},{subjectBoardEntries:[{...a,answer:"remote"},b]}).subjectBoardEntries,[b,{...a,answer:"remote"}]);
+  assert.deepEqual(mergeEditedValue(start,local,{subjectBoardEntries:[b]}).subjectBoardEntries,[b]);
+  const ops=editorDiff(start,local);
+  assert.deepEqual(applyEditorOps(remote,ops).subjectBoardEntries,[c,b,{...a,answer:"student"}]);
+  assert.deepEqual(applyEditorOps({subjectBoardEntries:[b]},ops).subjectBoardEntries,[b]);
+  console.log("Synchronization audit: "+audited+" universal and school-diagram kinds through projection, delta, actual peer parser, conflict and deletion; shared practice and worksheet ID merge.");
   const panel=readFileSync(new URL("../src/LektrusSubjectToolsPanel.tsx",import.meta.url),"utf8");
   assert.ok(panel.includes('title:"Задания на предметной доске"'),
     "The subject panel must display the standard board-assignments item");

@@ -16,7 +16,7 @@ const isIdCollection=(values:unknown[],key:string)=>(
  ["contourMarks","contourStrokes","bodies","supports","forces","components","junctions","wires","elements","rays",
   // Chemical glassware and appliances are addressed by persistent IDs.
   // Index-based array appends can duplicate a beaker on an evaporation tick.
-  "vessels","placedDevices","graphPoints","points","stickerInk"].includes(key)&&
+  "vessels","placedDevices","graphPoints","points","stickerInk","subjectBoardEntries"].includes(key)&&
  values.every(x=>record(x)&&typeof x.id==="string")
 );
 function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):unknown[]{
@@ -32,7 +32,16 @@ function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):u
    if(result.has(id)&&!same(original,value))result.set(id,mergeEditedValue(original,value,result.get(id),key));
   }
   for(const [id] of before)if(!edit.some(v=>(v as {id:string}).id===id))result.delete(id);
-  return [...result.values()];
+  const values=[...result.values()];
+  // Reordering a worksheet must retain independently submitted responses.
+  const shared=new Set(base.map(v=>(v as {id:string}).id).filter(id=>result.has(id)&&edit.some(v=>(v as {id:string}).id===id)));
+  const previousOrder=base.map(v=>(v as {id:string}).id).filter(id=>shared.has(id));
+  const nextOrder=edit.map(v=>(v as {id:string}).id).filter(id=>shared.has(id));
+  if(!same(previousOrder,nextOrder)){
+   let index=0;
+   return values.map(v=>shared.has((v as {id:string}).id)?result.get(nextOrder[index++])!:v);
+  }
+  return values;
  }
  // Editing coordinates of an existing vertex cannot overwrite edits to other
  // vertices. Unrelated new vertices and strokes are appended, not discarded.
@@ -61,6 +70,11 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
   return mergeArray([],edit,latest,key) as T;
  if(Array.isArray(base)&&Array.isArray(edit)&&Array.isArray(latest))
   return mergeArray(base,edit,latest,key) as T;
+ // Two first responses to separate fields of the same worksheet must survive.
+ if(base==null&&record(edit)&&record(latest)&&["activityResponse","workedSolution","russianWork"].includes(key))
+  return mergeEditedValue<Record<string,unknown>>({},edit,latest,key) as T;
+ // Practice is one deliberate action, not a positional array to concatenate.
+ if(key==="schoolPractice")return edit;
  if(record(base)&&record(edit)&&record(latest)){
   let effectiveEdit:Record<string,unknown>=edit;
   // Concurrent point additions need index rebasing. Point-indexed graph
@@ -136,6 +150,9 @@ export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
    if(isIdCollection(a,key)&&isIdCollection(b,key)){
     const previous=new Map(a.map(v=>[(v as {id:string}).id,v]));
     const following=new Map(b.map(v=>[(v as {id:string}).id,v]));
+    const previousOrder=[...previous.keys()].filter(id=>following.has(id));
+    const nextOrder=[...following.keys()].filter(id=>previous.has(id));
+    if(!same(previousOrder,nextOrder)){changes.push({path,kind:"set",value:b});return;}
     for(const [id,value] of following)
      if(!same(value,previous.get(id)))
       changes.push({path,kind:"upsert-id",id,value,before:previous.get(id)});
@@ -186,7 +203,7 @@ export function applyEditorOps<T>(input:T,ops:readonly LiveEditorOp[]):T{
    case "upsert-id":{
      if(!Array.isArray(value)||!action.id||!record(action.value))return value;
      const index=value.findIndex(v=>record(v)&&v.id===action.id);
-     if(index<0)return [...value,action.value];
+     if(index<0)return action.before===undefined?[...value,action.value]:value;
      return value.map((v,i)=>i===index&&action.before!==undefined?mergeEditedValue(action.before,action.value,v):i===index?action.value:v);
    }
    case "remove-id":{

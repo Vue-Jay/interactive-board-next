@@ -1,4 +1,5 @@
-import {useEffect,useState} from "react";
+import {practiceKey,type SchoolPracticeBinding,type SchoolPractice} from "./schoolPractice";
+import {useSchoolPractice} from "./useSchoolPractice";
 import type {ApprovedSchoolDiagram,FamilyPerson,MorphemeRole} from "./lektrusApprovedSchoolModel";
 import {familyGenerations,morphemeNames} from "./lektrusApprovedSchoolModel";
 
@@ -87,14 +88,15 @@ function FamilyGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:
   </text>
  </svg>;
 }
-function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:"flashcards"}>}){
- const [index,setIndex]=useState(0),[revealed,setRevealed]=useState(false);
+function FlashcardGraphic({diagram:d,practice}:{diagram:Extract<ApprovedSchoolDiagram,{kind:"flashcards"}>;practice?:SchoolPracticeBinding}){
+ const key=practiceKey([d.cards,d.direction]);
+ const {value:{index,revealed},update,editable}=useSchoolPractice<Extract<SchoolPractice,{kind:"language-cards"}>>({kind:"language-cards",key,index:0,revealed:false},practice);
+ const flip=()=>update(prev=>({...prev,revealed:!prev.revealed}));
  const card=d.cards[Math.min(index,d.cards.length-1)];
  const front=card?(d.direction==="foreign-first"?card.term:card.translation):"";
  const back=card?(d.direction==="foreign-first"?card.translation:card.term):"";
- useEffect(()=>{setIndex(0);setRevealed(false)},[d.cards,d.direction]);
- const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
- const navigation=(to:number)=>{setIndex(to);setRevealed(false)};
+  const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
+ const navigation=(to:number)=>update(prev=>({...prev,index:to,revealed:false}));
  if(!card)return <div className="lektrus-flashcards-on-board" role="status"
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   <div className="lektrus-flashcard-heading">{d.title}</div>
@@ -105,7 +107,7 @@ function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{ki
   <div className="lektrus-flashcard-heading">{d.title}</div>
   <div className="lektrus-flashcard-counter">{index+1} / {d.cards.length}</div>
   <button type="button" className="lektrus-flashcard-surface"
-   onClick={()=>setRevealed(v=>!v)} aria-label={revealed?"Вернуть лицевую сторону":"Перевернуть карточку"}>
+   disabled={!editable} onClick={flip} aria-label={revealed?"Вернуть лицевую сторону":"Перевернуть карточку"}>
    <span className="lektrus-flashcard-word">{revealed?back:front}</span>
    {!revealed&&d.showTranscription&&d.direction==="foreign-first"&&card.transcription&&
     <span className="lektrus-flashcard-pronunciation">{card.transcription}</span>}
@@ -114,15 +116,15 @@ function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{ki
   </button>
   <div className="lektrus-flashcard-actions">
    <button type="button" onClick={()=>navigation(Math.max(0,index-1))}
-    disabled={index===0} aria-label="Предыдущая карточка">‹ Предыдущая</button>
-   <button type="button" onClick={()=>setRevealed(v=>!v)}>{revealed?"Скрыть ответ":"Показать ответ"}</button>
+    disabled={!editable||index===0} aria-label="Предыдущая карточка">‹ Предыдущая</button>
+   <button type="button" disabled={!editable} onClick={flip}>{revealed?"Скрыть ответ":"Показать ответ"}</button>
    <button type="button" onClick={()=>navigation(Math.min(d.cards.length-1,index+1))}
-    disabled={index===d.cards.length-1} aria-label="Следующая карточка">Следующая ›</button>
+    disabled={!editable||index===d.cards.length-1} aria-label="Следующая карточка">Следующая ›</button>
   </div>
  </div>;
 }
-export default function LektrusApprovedSchoolView({diagram}: {diagram:ApprovedSchoolDiagram}){
+export default function LektrusApprovedSchoolView({diagram,practice}: {diagram:ApprovedSchoolDiagram;practice?:SchoolPracticeBinding}){
  if(diagram.kind==="morphemes")return <MorphemeGraphic diagram={diagram}/>;
  if(diagram.kind==="family-tree")return <FamilyGraphic diagram={diagram}/>;
- return <FlashcardGraphic diagram={diagram}/>;
+ return <FlashcardGraphic diagram={diagram} practice={practice}/>;
 }

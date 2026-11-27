@@ -254,3 +254,44 @@ async def test_student_interactive_teacher_objects_and_locked_content(client):
     for forbidden in ({**locked,**cases[0][1]},{**updates[1],"text":"Rewritten"},{**worksheet,"graphPoints":[{"x":1,"y":2}]},{**updates[4],"graphFigureId":"different"}):
         result=await client.patch(root+"/document",headers=pupil,json={"expected_version":2,"delta":{"items":{"upsert":[forbidden]}}})
         assert result.status_code==403,result.text
+
+@pytest.mark.asyncio
+async def test_shared_school_practice_student_teacher_observer(client):
+    _, owner=await sign_in(client,"teacher@example.test")
+    _, pupil=await sign_in(client,"student@example.test")
+    _, observer=await sign_in(client,"outsider@example.test")
+    root="/api/v1/boards/"+(await client.post("/api/v1/boards",headers=owner,json={"title":"Practice"})).json()["id"]
+    for email,role,participant in (("student@example.test","editor","student"),("outsider@example.test","viewer","observer")):
+        assert (await client.post(root+"/invitations",headers=owner,json={"email":email,"role":role,"participant_role":participant})).status_code==200
+    cases=[
+      ("language-sentence-builder",{"kind":"sentence-builder","parts":[{"id":"a","text":"I"},{"id":"b","text":"read"}]},
+       {"kind":"sentence","key":"12345678","order":["b","a"],"checked":True}),
+      ("geo-matching",{"kind":"geo-training","exercise":"matching","countryCodes":["RU","FR"]},
+       {"kind":"geo-matching","key":"12345678","order":["FR","RU"],"matched":["RU"],"selected":None,"wrong":0,"feedback":"correct"}),
+      ("geo-question-cards",{"kind":"geo-training","exercise":"cards","countryCodes":["RU","FR"]},
+       {"kind":"geo-cards","key":"12345678","order":["FR","RU"],"index":1,"revealed":True,"known":["FR"]}),
+      ("language-flashcards",{"kind":"flashcards","cards":[{"id":"a"},{"id":"b"}]},
+       {"kind":"language-cards","key":"12345678","index":1,"revealed":True}),
+      ("ru-orthography",{"kind":"orthography","questions":[{"options":["а","о"]}]},
+       {"kind":"orthography","key":"12345678","index":0,"picked":1,"checked":True}),
+    ]
+    items=[{"id":ident,"kind":"graph","createdBy":str(TEACHER),"graphFigureId":ident,"schoolDiagram":diagram} for ident,diagram,_ in cases]
+    document={"version":1,"title":"Practice","items":items}
+    assert (await client.put(root+"/document",headers=owner,json={"expected_version":0,"document":document})).status_code==200
+    updated=[{**item,"schoolPractice":cases[i][2]} for i,item in enumerate(items)]
+    delta={"items":{"upsert":updated}}
+    saved=await client.patch(root+"/document",headers=pupil,json={"expected_version":1,"delta":delta})
+    assert saved.status_code==200,saved.text
+    for headers in (owner,pupil,observer):
+        assert (await client.get(root+"/document",headers=headers)).json()["document"]["items"]==updated
+    invalid=[{**updated[0],"schoolPractice":{**cases[0][2],"order":["a","alien"]}},
+             {**updated[1],"schoolPractice":{**cases[1][2],"matched":["alien"]}},
+             {**updated[2],"schoolPractice":{**cases[2][2],"index":2}},
+             {**updated[3],"schoolPractice":{**cases[3][2],"index":2}},
+             {**updated[4],"schoolPractice":{**cases[4][2],"picked":2}},
+             {**updated[0],"schoolDiagram":{**cases[0][1],"parts":[{"id":"a","text":"Rewrite"},{"id":"b","text":"read"}]}}]
+    for item in invalid:
+        response=await client.patch(root+"/document",headers=pupil,json={"expected_version":2,"delta":{"items":{"upsert":[item]}}})
+        assert response.status_code==403,response.text
+    assert (await client.patch(root+"/document",headers=observer,json={"expected_version":2,"delta":delta})).status_code==403
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==updated

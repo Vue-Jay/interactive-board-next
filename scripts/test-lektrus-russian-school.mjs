@@ -57,7 +57,7 @@ assert.ok(!controls.includes('prompt:"Сл□во"'),"No example must be inserte
 assert.ok(!controls.includes('feature:"Новый признак"'),"No fake grammatical labels");
 assert.ok(russianView.includes('question.options.every(option=>option.trim().length>0)'),
  "Pupils are not offered unfinished spelling questions");
-assert.ok(russianView.includes('const signature=question?'),
+assert.ok(russianView.includes('orthographyPracticeInitial(d.questions,candidate)'),
  "Editing another question does not reset a pupil's current progress");
 assert.ok(nextView.includes('onMark={onChange?'),"Standalone syntax diagram supports marking words directly");
 assert.ok(approvedModel.includes('!okString(m.id,64)||!okString(m.text,24,true)'),
