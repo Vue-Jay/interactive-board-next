@@ -125,8 +125,14 @@ assert.equal(monarchicalMontenegro.find(r=>r.from===1914).role,'polity');
 const papalNapoleonic=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Papal States',1797,1815)]}).records;
 assert.deepEqual(papalNapoleonic.map(r=>[r.from,r.to,r.role,r.geometryStatus]),[
  [1797,1797,'settlement','candidate'],[1798,1798,'settlement','candidate'],[1799,1799,'settlement','candidate'],
- [1800,1807,'polity','candidate'],[1808,1808,'settlement','candidate'],[1809,1809,'settlement','candidate'],
+ [1800,1800,'settlement','candidate'],[1801,1807,'polity','candidate'],
+ [1808,1808,'settlement','candidate'],[1809,1809,'settlement','candidate'],
  [1810,1813,'settlement','candidate'],[1814,1814,'settlement','candidate'],[1815,1815,'polity','candidate']]);
+assert.ok(papalNapoleonic.find(r=>r.from===1801).role==='polity',
+ '1801–1807 restored Papal state cannot be hidden as archaeological/thematic area');
+assert.ok(papalNapoleonic.find(r=>r.from===1798).nameRu.includes('провозглашена'));
+assert.ok(papalNapoleonic.find(r=>r.from===1799).nameRu.includes('подавлена'));
+assert.ok(papalNapoleonic.find(r=>r.from===1809).nameRu.includes('аннексии'));
 for(const r of papalNapoleonic.filter(r=>r.role==='settlement')){
  assert.equal(r.sourceRole,'polity');assert.equal(r.geometryId,sha256(JSON.stringify(square())));
  assert.ok(r.review?.sources?.length>=3&&r.review?.reasonRu,'Papal transition provenance '+r.from);

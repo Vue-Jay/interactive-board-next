@@ -614,7 +614,7 @@ function editorialSegments(base,derived=[]){
  // the Roman Republics or Napoleon's annexation; year-boundary transitions
  // have a separate warning and never imply a year-round uniform ruler.
  if(base.role==='polity'&&base.sourceName==='Papal States')
-  for(const year of [1791,1797,1798,1799,1800,1808,1809,1810,1814,1815,1849,1850,1859,1860,1861,1870,1871])cut(year);
+  for(const year of [1791,1797,1798,1799,1800,1801,1808,1809,1810,1814,1815,1849,1850,1859,1860,1861,1870,1871])cut(year);
  // Distinguish the Mạc seizure in 1527, the restored Lê from 1533,
  // the Trịnh/Nguyễn division and the Tây Sơn–Nguyễn civil war.
  if(base.role==='polity'&&base.sourceName==='Đại Việt')
@@ -817,11 +817,16 @@ function editorialSegments(base,derived=[]){
      'Папская область (Толентинский договор 1797 года; переход территории)',
      'The Treaty of Tolentino forced the cession of Bologna, Ferrara and Romagna in 1797; this former source outline is not a proven before/after border.',
      'По Толентинскому договору 1797 года уступлены Болонья, Феррара и Романья. Единый исходный контур не показывает переход внутри года.');
-   }else if(from===1798||from===1799){
-    thematic('Papal lands / Roman Republic (1798–1799; historic source footprint)',
-     'Папские земли / Римская республика (1798–1799; контур прежнего владения)',
-     'The Roman Republic was proclaimed in February 1798 and ended in September 1799. A Papal sovereignty polygon for either entire year would be false; this source footprint is thematic.',
-     'Римская республика провозглашена в феврале 1798 года и прекратила существование в сентябре 1799 года. Политическую заливку Папской области на весь год использовать нельзя.');
+   }else if(from===1798){
+    thematic('Former Papal States / Roman Republic proclaimed (1798)',
+     'Бывшая Папская область / Римская республика провозглашена в 1798 году',
+     'A Roman Republic was proclaimed in February 1798; the former Papal territory should not be shown as unbroken Papal sovereignty during that year.',
+     'В феврале 1798 года провозглашена Римская республика; прежнюю Папскую область нельзя показывать как непрерывное суверенное государство всего года.');
+   }else if(from===1799){
+    thematic('Roman Republic suppressed in 1799 (historic Papal footprint)',
+     'Римская республика подавлена в 1799 году (исторический ареал Папской области)',
+     'The Roman Republic ended in September 1799. Military and civil administration changed; no single Papal government controlled this entire polygon for the whole year.',
+     'В сентябре 1799 года Римская республика прекратила существование; власть менялась, и папский суверенитет над прежним контуром не был непрерывным весь год.');
    }else if(from===1800){
     thematic('Papal States (1800 restoration transition; footprint unverified)',
      'Папская область (восстановление в 1800 году; контур не проверен)',
@@ -832,11 +837,16 @@ function editorialSegments(base,derived=[]){
      'Папская область (1808: оккупация Рима и аннексия Марке; переходный контур)',
      'French troops occupied Rome and the Marches were annexed to the Napoleonic Kingdom of Italy in 1808; the old Papal polygon no longer establishes one uniform ruler.',
      'В 1808 году французские войска заняли Рим, а Марке были присоединены к наполеоновскому Итальянскому королевству. Единый папский полигон неверен.');
-   }else if(from===1809||from>=1810&&to<=1813){
-    thematic('Former Papal States under Napoleonic annexation (source footprint)',
-     'Бывшая Папская область при наполеоновской аннексии (исторический ареал)',
-     'Napoleonic annexations began in 1808 and the remainder including Rome was annexed in May–June 1809. From 1810 through 1813 the Papal States were not a sovereign polity. Source outline is not a verified departmental boundary.',
-     'Французская аннексия была оформлена в 1809 году; с 1810 по 1813 год независимого Папского государства не существовало. Исходный контур не подтверждает границ французских департаментов.');
+   }else if(from===1809){
+    thematic('Papal States annexation completed in 1809 (territorial transition)',
+     'Папская область: завершение французской аннексии в 1809 году',
+     'The remaining Papal lands, including Rome, were annexed by Napoleon in May–June 1809. No sovereign Papal polygon is valid for the whole transition year.',
+     'В мае–июне 1809 года остаток Папской области, включая Рим, присоединили к Французской империи. Контур не подтверждает единого владельца на весь год.');
+   }else if(from>=1810&&to<=1813){
+    thematic('Former Papal States under Napoleonic administration (1810–1813)',
+     'Бывшая Папская область под французской властью в 1810–1813 годах',
+     'From 1810 to 1813 the Papal States were not an independent sovereign state. The retained old footprint is thematic, not a surveyed boundary of French departments.',
+     'В 1810–1813 годах самостоятельной Папской области не существовало. Прежний контур сохранён тематически, не как граница французских департаментов.');
    }else if(from===1814){
     thematic('Papal States (1814 restoration transition; source footprint)',
      'Папская область (переходный 1814 год; исходный контур)',
