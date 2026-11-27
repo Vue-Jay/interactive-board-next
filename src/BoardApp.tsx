@@ -1194,7 +1194,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       onOpenEditor={onOpenEditor} onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
-    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} studentMode={studentMode} onMatchingSize={onMatchingSize} practice={{value:item.schoolPractice&&practiceFitsDiagram(item.schoolPractice,item.schoolDiagram)?item.schoolPractice:undefined,onChange:onSchoolPracticeChange}}/></div>;
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} studentMode={studentMode} onMatchingSize={onMatchingSize} practice={{value:item.schoolPractice&&(practiceFitsDiagram(item.schoolPractice,item.schoolDiagram)||item.schoolPractice.kind==="orthography"&&item.schoolDiagram.kind==="orthography")?item.schoolPractice:undefined,onChange:onSchoolPracticeChange}}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item} onBenchChange={onLabBenchChange} onOpenEditor={onOpenEditor}/>

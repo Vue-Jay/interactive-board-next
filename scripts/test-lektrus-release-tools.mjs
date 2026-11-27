@@ -11,7 +11,7 @@ try{
   const {diffSelfhostDocument,applySelfhostDocumentDelta,projectStudentDocument}=await server.ssrLoadModule("/src/selfhostApi.ts");
   const {mergeBoardDocumentEdits}=await server.ssrLoadModule("/src/lektrusBoardThreeWayMerge.ts");
   const {mergeEditedValue,editorDiff,applyEditorOps}=await server.ssrLoadModule("/src/lektrusLiveEditorMerge.ts");
-  const {practiceKey,practiceFitsDiagram,validSchoolPractice}=await server.ssrLoadModule("/src/schoolPractice.ts");
+  const {practiceKey,practiceFitsDiagram,validSchoolPractice,orthographyPracticeInitial}=await server.ssrLoadModule("/src/schoolPractice.ts");
   const {ids,makeSchoolDiagram,isSchoolDiagram}=await server.ssrLoadModule("/src/lektrusSchoolDiagramModel.ts");
   const {atlasModesFor,historicalSnapshots,legacyAtlasModes,createAtlasDocument}=await server.ssrLoadModule("/src/lektrusAtlasModel.ts");
   const roundTrip=(id,schoolDiagram)=>{
@@ -159,6 +159,10 @@ try{
   assert.equal(practiceFitsDiagram({...practice,order:["b","unknown"]},diagram),false);
   assert.equal(practiceFitsDiagram(practice,{...diagram,parts:[{id:"a",text:"We"},diagram.parts[1]]}),false);
   assert.equal(practiceKey({b:1,a:2}),practiceKey({a:2,b:1}));
+  const q1={id:"q1",prompt:"a",options:["a","b"]},q2={id:"q2",prompt:"b",options:["a","b"]};
+  const orth={...orthographyPracticeInitial([q1,q2]),picked:0,checked:true};
+  assert.equal(practiceFitsDiagram(orth,{kind:"orthography",questions:[q1,{...q2,prompt:"changed"}]}),true);
+  assert.equal(practiceFitsDiagram(orth,{kind:"orthography",questions:[{...q1,prompt:"changed"},q2]}),false);
   const pdoc={version:1,title:"Shared practice",view:{x:0,y:0,zoom:1},items:[{id:"practice",kind:"graph",x:0,y:0,width:500,height:300,text:"Sentence",graphFigureId:"language-sentence-builder",schoolDiagram:{...diagram,title:"Sentence",instructions:"Order",showKey:false,showHint:false,patternId:""},schoolPractice:practice}]};
   assert.deepEqual(parseRealtimeDocument(pdoc,new WeakMap()).items[0].schoolPractice,practice);
   // A student's stale response must stay attached to its exercise ID when

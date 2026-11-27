@@ -17,6 +17,10 @@ export function practiceOrder(codes:readonly string[],key:string):string[]{
  if(result.length>1&&result.every((v,i)=>v===codes[i]))[result[0],result[1]]=[result[1],result[0]];
  return result;
 }
+export function orthographyPracticeInitial(questions:readonly unknown[],candidate?:SchoolPractice):Extract<SchoolPractice,{kind:"orthography"}>{
+ const index=candidate?.kind==="orthography"?Math.min(candidate.index,Math.max(0,questions.length-1)):0;
+ return {kind:"orthography",key:practiceKey(questions[index]??null),index,picked:null,checked:false};
+}
 export function practiceFitsDiagram(value:SchoolPractice,diagram:unknown):boolean{
  if(!validSchoolPractice(value)||!obj(diagram))return false;
  const d=diagram;
@@ -26,7 +30,7 @@ export function practiceFitsDiagram(value:SchoolPractice,diagram:unknown):boolea
  if(value.kind==="language-cards")return d.kind==="flashcards"&&Array.isArray(d.cards)&&value.index<d.cards.length&&value.key===practiceKey([d.cards,d.direction]);
  if(value.kind==="orthography"){
   if(d.kind!=="orthography"||!Array.isArray(d.questions)||value.index>=d.questions.length)return false;
-  const q=d.questions[value.index];return obj(q)&&Array.isArray(q.options)&&(value.picked===null||value.picked<q.options.length)&&value.key===practiceKey(d.questions);
+  const q=d.questions[value.index];return obj(q)&&Array.isArray(q.options)&&(value.picked===null||value.picked<q.options.length)&&value.key===practiceKey(q);
  }
  return false;
 }

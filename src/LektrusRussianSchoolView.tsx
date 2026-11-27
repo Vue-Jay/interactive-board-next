@@ -1,4 +1,4 @@
-import {practiceKey,type SchoolPracticeBinding,type SchoolPractice} from "./schoolPractice";
+import {orthographyPracticeInitial,type SchoolPracticeBinding,type SchoolPractice} from "./schoolPractice";
 import {useSchoolPractice} from "./useSchoolPractice";
 import {type SyntheticEvent} from "react";
 import type {RussianSchoolDiagram} from "./lektrusRussianSchoolModel";
@@ -73,15 +73,14 @@ function PhoneticsGraphic({d}:{d:Extract<RussianSchoolDiagram,{kind:"phonetics"}
  </svg>;
 }
 function OrthographyBoard({d,practice}:{d:Extract<RussianSchoolDiagram,{kind:"orthography"}>;practice?:SchoolPracticeBinding}){
- const key=practiceKey(d.questions);
- const {value:{index,picked,checked},update,editable}=useSchoolPractice<Extract<SchoolPractice,{kind:"orthography"}>>({kind:"orthography",key,index:0,picked:null,checked:false},practice);
+ const {value:{index,picked,checked},update,editable}=useSchoolPractice<Extract<SchoolPractice,{kind:"orthography"}>>(candidate=>orthographyPracticeInitial(d.questions,candidate),practice);
  const question=d.questions[index];
  const setPicked=(picked:number|null)=>update(prev=>({...prev,picked,checked:false}));
  const setChecked=(checked:boolean)=>update(prev=>({...prev,checked}));
  const ok=checked&&question!==undefined&&picked===question.correct;
  const ready=!!question&&question.prompt!=="□"&&
   question.options.length>=2&&question.options.every(option=>option.trim().length>0);
- const next=(i:number)=>update(prev=>({...prev,index:i,picked:null,checked:false}));
+ const next=(i:number)=>update(prev=>orthographyPracticeInitial(d.questions,{...prev,index:i}));
  const stop=(e:SyntheticEvent)=>e.stopPropagation();
  if(!ready)return <div className="lektrus-orthography-board" role="status"
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
