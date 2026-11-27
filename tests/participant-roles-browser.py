@@ -1132,6 +1132,62 @@ def check_undo_reconnect_sync(browser):
             expect(pupil.locator(".student-media-pending")).to_have_count(0,timeout=30000)
             assert not any(i.get("name")=="sync-rejection.png" for i in read()["items"])
             print("Real attachment request reload, lost approval, duplicate protection and rejected-result replay passed.")
+
+            # Load all six protected assignment families through the real
+            # document API. The pupil may position them but cannot delete or
+            # change their construction, regardless of input method.
+            row=client.get(url).json()
+            author=next(i["createdBy"] for i in row["document"]["items"] if i["id"]==first)
+            payloads={
+                "frame":{},
+                "checklist":{"checklistItems":["Task"],"checklistDone":[False]},
+                "quiz":{"quizOptions":["A","B"],"quizCorrect":0},
+                "flashcard":{"flashcardBack":"Answer"},
+                "cover":{"coverOpen":False,"coverOpacity":1},
+                "linkmedia":{"mediaUrl":"https://example.test/video","mediaTitle":"Video"},
+            }
+            lesson_items=[{"id":"qa-protected-"+kind,"kind":kind,"x":100+(n%3)*380,"y":100+(n//3)*280,
+                           "width":260,"height":180,"text":"QA "+kind,"createdBy":author,**fields}
+                          for n,(kind,fields) in enumerate(payloads.items())]
+            base_positions={i["id"]:i["x"] for i in lesson_items}
+            document={**row["document"],"items":lesson_items}
+            client.put(url,json={"expected_version":row["version"],"document":document}).raise_for_status()
+            for obj in lesson_items:
+                both(obj["id"])
+            def geometry_synced(page,expected):
+                page.wait_for_function("""({ident,expected})=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    if(!raw)return false;
+                    const map=new Map(JSON.parse(raw).items.map(i=>[i.id,i]));
+                    return expected.every(i=>{const a=map.get(i.id);return a&&Math.abs(a.x-i.x)<0.01&&Math.abs(a.y-i.y)<0.01&&(a.rotation||0)===(i.rotation||0)});
+                }""",arg={"ident":ident,"expected":expected},timeout=30000)
+            pupil.locator('[data-interface-control="select"]:visible').first.click()
+            pupil.keyboard.press("Control+a")
+            pupil.keyboard.press("Shift+ArrowRight")
+            moved=wait_api(pupil,lambda d:len(d["items"])==len(lesson_items) and all(
+                abs(i["x"]-base_positions[i["id"]]-10)<0.01 for i in d["items"]),"Protected lesson keyboard move rejected")
+            for page in (teacher,pupil):geometry_synced(page,moved["items"])
+            pupil.keyboard.press("Alt+ArrowRight")
+            rotated=wait_api(pupil,lambda d:len(d["items"])==len(lesson_items) and all(
+                i.get("rotation")==90 for i in d["items"]),"Protected lesson keyboard rotation rejected")
+            for page in (teacher,pupil):geometry_synced(page,rotated["items"])
+            pupil.keyboard.press("Delete")
+            pupil.wait_for_timeout(1000)
+            assert {i["id"] for i in read()["items"]}==set(base_positions),"Pupil deleted protected assignment"
+            # A teacher lock blocks keyboard transforms too.
+            row=client.get(url).json()
+            locked={**row["document"],"items":[{**i,"locked":True} for i in row["document"]["items"]]}
+            client.put(url,json={"expected_version":row["version"],"document":locked}).raise_for_status()
+            pupil.wait_for_function("""ident=>{
+                const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                return !!raw&&JSON.parse(raw).items.length===6&&JSON.parse(raw).items.every(i=>i.locked);
+            }""",arg=ident,timeout=30000)
+            pupil.keyboard.press("Control+a")
+            pupil.keyboard.press("Shift+ArrowRight")
+            pupil.keyboard.press("Alt+ArrowRight")
+            pupil.wait_for_timeout(1000)
+            assert read()["items"]==locked["items"],"Keyboard transformed locked assignment"
+            print("All six protected assignment kinds: pupil keyboard translation/rotation, peer convergence, deletion and lock denial passed.")
     finally:
         for ctx in contexts:ctx.close()
 

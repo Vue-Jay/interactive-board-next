@@ -6207,7 +6207,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.code) && selected.length) {
         e.preventDefault();
-        if (selectionLocked || rejectStudentStructuralEdit()) return;
+        // Placement is allowed for every unlocked lesson object, including
+        // teacher-built assignments. The commit guard still protects content.
+        if (!canEdit || selectionLocked || selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
         const step=e.shiftKey?10:1;
         const dx=e.code==="ArrowLeft"?-step:e.code==="ArrowRight"?step:0;
         const dy=e.code==="ArrowUp"?-step:e.code==="ArrowDown"?step:0;
@@ -6818,8 +6820,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const alignSelected = (mode: "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom") => {
-    if (rejectStudentStructuralEdit()) return;
-    if (selectionLocked) return;
+    if (!canEdit || selectionLocked ||
+        selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
     const chosen = itemsRef.current.filter((i) => selected.includes(i.id));
     const bounds = boundsOf(chosen);
     if (!bounds || chosen.length < 2) return;
@@ -6873,8 +6875,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const rotateSelected = (degrees: number) => {
-    if (rejectStudentStructuralEdit()) return;
-    if (!selected.length || selectionLocked) return;
+    if (!canEdit || !selected.length || selectionLocked ||
+        selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
     const chosen = itemsRef.current.filter((item) => selected.includes(item.id));
     const bounds = boundsOf(chosen);
     if (!bounds) return;
@@ -6906,7 +6908,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const resetRotationSelected = () => {
-    if (!selected.length || selectionLocked) return;
+    if (!canEdit || !selected.length || selectionLocked ||
+        selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
     commit(itemsRef.current.map((item) => selected.includes(item.id) ? { ...item, rotation: 0 } : item));
   };
 
