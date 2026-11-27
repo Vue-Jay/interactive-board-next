@@ -89,3 +89,7 @@ Runs 46018942268/46018942295 passed, including checkpointed text undo/redo/cance
 ### Expanded acceptance fixtures
 
 Corrected the atom fixture to the actual validated AtomModel shape and covered the intentionally teacher-only cover toggle. Added real ruler/set-square/protractor creation, movement, scale and deletion for teacher and pupil, plus a generated valid two-page PDF uploaded through the pupil approval flow with bidirectional page switching. These are new tests, not yet verified results.
+
+## Gesture-release revision race
+
+The detached editor correction passed both full workflows (46019654965 and 46019654920). Inspection found a further object-delay race: pointer-up queued a local save microtask before deferred peer revisions were applied by a zero-delay timer. Reconcile deferred revisions synchronously once the gesture is finalized, guard the save entry point, retain the queued snapshot if application remains deferred/rejected, and ignore stale notifications before deferring. Added a real held pupil drag with an independent teacher revision delivered through the actual socket, requiring the first durable write to use the new revision. New exact-head CI pending; no publication.

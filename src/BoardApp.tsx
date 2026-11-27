@@ -3336,6 +3336,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         queuedRemoteSnapshot.current=null;
       return;
     }
+    // A peer revision deferred by a gesture must be applied before a queued
+    // local write uses its expected version. Never race the pointer-up timer.
+    const pendingRevision=deferredRemote.current;
+    if(pendingRevision&&pendingRevision.version>(remoteVersion.current??-1)){
+      deferredRemote.current=null;
+      receiveRemote.current(pendingRevision);
+      if(pendingRevision.version>(remoteVersion.current??-1)){
+        queuedRemoteSnapshot.current=snapshot.current??data;
+        return;
+      }
+      data=snapshot.current??data;
+      knownFingerprint=undefined;
+    }
     let fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current) return;
@@ -3496,9 +3509,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const deferred = deferredRemote.current;
       deferredRemote.current = null;
       const needsRebase=!!deferred&&deferred.version>(remoteVersion.current??-1);
-      if (boardMounted.current && deferred) receiveRemote.current(deferred);
       const queued = queuedRemoteSnapshot.current;
       queuedRemoteSnapshot.current = null;
+      if (boardMounted.current && deferred) {
+        receiveRemote.current(deferred);
+        if(needsRebase&&deferred.version>(remoteVersion.current??-1)&&queued)
+          queuedRemoteSnapshot.current=snapshot.current??queued;
+      }
       // A competing server revision must be rebased BEFORE starting another
       // save. Sending a previously queued, unrebased document overwrites ink.
       // An own/stale notification can be deferred during a save too. It is
@@ -3964,7 +3981,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!remoteSaveInFlight.current && deferredRemote.current) {
       const delayed = deferredRemote.current;
       deferredRemote.current = null;
-      window.setTimeout(() => receiveRemote.current(delayed), 0);
+      // Pointer-up/cancel already finalized the gesture. Reconcile now,
+      // before any queued microtask can save with the old expected version.
+      receiveRemote.current(delayed);
     }
   };
   const cancelEraser=()=>{
@@ -5231,7 +5250,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!remoteSaveInFlight.current && deferredRemote.current) {
       const delayed = deferredRemote.current;
       deferredRemote.current = null;
-      window.setTimeout(() => receiveRemote.current(delayed), 0);
+      // Pointer-up/cancel already finalized the gesture. Reconcile now,
+      // before any queued microtask can save with the old expected version.
+      receiveRemote.current(delayed);
     }
   };
   // Switching tools invalidates every in-flight gesture and capture.
@@ -8460,19 +8481,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         pendingCommittedCursors.current.delete(id);
       }
     };
-    // Real ink may reconcile while drawing or erasing; other gesture geometry
-    // still depends on its initial snapshot and must wait until release.
-    if (gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode)) {
-      if (!deferredRemote.current || row.version > deferredRemote.current.version)
-        deferredRemote.current = row;
-      return;
-    }
-    // Most live notifications echo a revision that the RPC has already ACKed.
-    // Reject stale/own versions and defer in-flight saves BEFORE calculating a
-    // full-board fingerprint or reconstructing its entire ink collection.
+    // Stale/own echoes cannot occupy the deferred slot during a gesture.
     const preliminary = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, false);
     if (preliminary === "ignore"){publishCommittedCursors();return;}
-    if (preliminary === "defer") {
+    // Real ink may reconcile while drawing or erasing; other gesture geometry
+    // still depends on its initial snapshot and must wait until release.
+    const gestureDefers=gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode);
+    if (preliminary === "defer"||gestureDefers) {
       if (!deferredRemote.current || row.version > deferredRemote.current.version) deferredRemote.current = row;
       return;
     }

@@ -328,7 +328,7 @@ def check_shared_eraser_sync(browser):
     teacher,pupil=[ctx.new_page() for ctx in contexts]
     # Intercept the actual durable websocket path as well as legacy HTTP.
     # Never simulate loss by disabling the new protocol under test.
-    controls={page:{"hold":None,"hold_all":False,"held":[],"commits":[],"motion":[]} for page in (teacher,pupil)}
+    controls={page:{"hold":None,"hold_all":False,"held":[],"commits":[],"motion":[],"revisions":[]} for page in (teacher,pupil)}
     for page,control in controls.items():
         def route_ws(route,control=control):
             upstream=route.connect_to_server()
@@ -344,7 +344,12 @@ def check_shared_eraser_sync(browser):
                     if control["hold"] and any(i.get("id")==control["hold"] for i in changes.get("upsert",[])+changes.get("point_edits",[])):
                         control["held"].append((upstream,message));return
                 upstream.send(message)
+            def incoming(message):
+                event=json.loads(message)
+                if event.get("type")=="document_changed":control["revisions"].append(event["version"])
+                route.send(message)
             route.on_message(outgoing)
+            upstream.on_message(incoming)
         page.route_web_socket(re.compile(r"/api/v1/boards/[^/]+/events"),route_ws)
     try:
         login(teacher,"owner")
@@ -397,6 +402,43 @@ def check_shared_eraser_sync(browser):
         finally:
             same.close()
         live_drag(teacher,pupil,ruler)
+        # A peer revision arrives DURING a real object drag. On release the
+        # pupil must save against that revision, not provoke an avoidable 409.
+        pupil.locator('[data-interface-control="select"]:visible').first.click()
+        commit_start=len(controls[pupil]["commits"])
+        http_writes=[]
+        def record_write(route):
+            if route.request.method in ("PUT","PATCH"):
+                http_writes.append(route.request.post_data_json["expected_version"])
+            route.continue_()
+        pupil.route(pattern,record_write)
+        with httpx.Client(base_url=API,headers=headers("owner")) as api:
+            row=api.get(url).json()
+            old=next(i for i in row["document"]["items"] if i["id"]=="live-qa-shape")
+            target=pupil.locator(shape).bounding_box()
+            x=target["x"]+target["width"]/2;y=target["y"]+target["height"]/2
+            pupil.mouse.move(x,y);pupil.mouse.down()
+            try:
+                pupil.mouse.move(x+65,y+22,steps=9)
+                added={"id":"live-qa-during-drag","kind":"text","x":40,"y":30,"width":120,"height":50,"text":"Peer revision"}
+                response=api.patch(url,json={"expected_version":row["version"],"delta":{"items":{"upsert":[added]}}})
+                response.raise_for_status();peer_version=response.json()["version"]
+                for _ in range(60):
+                    if peer_version in controls[pupil]["revisions"]:break
+                    pupil.wait_for_timeout(100)
+                assert peer_version in controls[pupil]["revisions"],"Peer revision did not reach the held drag"
+                pupil.wait_for_timeout(250)
+            finally:pupil.mouse.up()
+            for _ in range(100):
+                current=api.get(url).json()["document"]["items"]
+                moved=next(i for i in current if i["id"]==old["id"])
+                if abs(moved["x"]-old["x"])>25 and any(i["id"]==added["id"] for i in current):break
+                pupil.wait_for_timeout(100)
+            else:raise AssertionError("Drag and independent peer insertion failed to converge")
+            versions=http_writes+[f["expected_version"] for f in controls[pupil]["commits"][commit_start:]]
+            assert versions and min(versions)>=peer_version,("Stale write after deferred revision",versions,peer_version)
+        pupil.unroute(pattern,record_write)
+        print("Held object drag reconciled peer revision before first durable write.")
         teacher.locator(words).dblclick()
         field=teacher.locator(words+" textarea")
         expect(field).to_be_visible()
