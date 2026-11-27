@@ -594,8 +594,9 @@ assert.equal(sockets[0].readyState,3);
 assert.equal(env.listeners.size,0);
 const handleDocumentVersions=[];
 const documentStatuses=[];
-const openedBoard=api.selfhostWatchDocument("board-1",()=>3,
-  doc=>handleDocumentVersions.push(doc.version),status=>documentStatuses.push(status));
+let appliedVersion=3;
+const openedBoard=api.selfhostWatchDocument("board-1",()=>appliedVersion,
+  doc=>{appliedVersion=doc.version;handleDocumentVersions.push(doc.version)},status=>documentStatuses.push(status));
 await new Promise(resolve=>setTimeout(resolve,0));
 const boardSocket=sockets.at(-1);
 boardSocket.open();
@@ -659,6 +660,33 @@ assert.deepEqual((await chainResults).map(x=>x.status),["fulfilled","rejected","
 commitChannel();
 openedBoard();
 await Promise.resolve();
+
+// A successful WebSocket handshake does not guarantee delivery or application.
+let recoveredVersion=8,rejectOnce=true,deliveryAttempts=0;
+const recovery=api.selfhostWatchDocument("board-1",()=>recoveredVersion,doc=>{
+  deliveryAttempts++;
+  if(rejectOnce){rejectOnce=false;return false;}
+  recoveredVersion=doc.version;
+},()=>{});
+await new Promise(resolve=>setTimeout(resolve,0));
+const recoverySocket=sockets.at(-1);
+recoverySocket.open();
+recoverySocket.emit({type:"ready",version:8});
+env.changeDocument(9);
+recoverySocket.emit({type:"document_changed",version:9,base_version:8,
+  delta:{items:{upsert:[{id:"pupil-stroke",kind:"pen",points:[{x:2,y:3}]}]}},
+  updated_at:"2026-11-26T00:00:00Z",updated_by:"student"});
+await waitFor(()=>recoveredVersion===9);
+assert.ok(deliveryAttempts>=2,"Rejected revision must be read again, not marked delivered");
+assert.ok(records.some(x=>x.path==="/api/v1/boards/board-1/document"&&x.query==="?ink_point_deltas=true"),
+  "Rejected delta must recover through a full document read");
+env.changeDocument(10);
+for(let i=0;i<160&&recoveredVersion!==10;i++)await new Promise(resolve=>setTimeout(resolve,50));
+assert.equal(recoveredVersion,10,"Quiet but online socket must recover a missed student revision");
+assert.equal(recoverySocket.readyState,1);
+recovery();
+await Promise.resolve();
+env.changeDocument(8);
 
 // Production board adapter receives cumulative pointer windows, not pilot packets.
 const adapterInk=[],adapterStatuses=[],adapterCursors=[];
