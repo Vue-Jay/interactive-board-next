@@ -52,9 +52,19 @@ assert.deepEqual(evidenceFixture[0].intervals[0].matches.map(m=>[m.left,m.right]
 const malaccaFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Sultanate of Malacca',1520,1535)]});
 assert.deepEqual(malaccaFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),[[1520,1528,'candidate'],[1529,1535,'rejected']]);
 assert.equal(malaccaFixture.records[0].geometryId,malaccaFixture.records[1].geometryId);
+// No single state boundary may be inferred from the archaeological influence
+// of Teotihuacan or the multiple independent Shan principalities.
+const shanFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Shan States',1529,1540)]});
+assert.deepEqual(shanFixture.records.map(r=>[r.role,r.sourceRole,r.geometryStatus]),
+ [['settlement','polity','candidate']]);
+assert.ok(shanFixture.records[0].nameRu.includes('Шанские княжества'));
+assert.ok(shanFixture.records[0].review.reasonRu.includes('1922'));
+assert.ok(shanFixture.records[0].review.sources.length>=2);
 const teotihuacanFixture=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Teotihuacan',1,700)]});
 assert.deepEqual(teotihuacanFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),
  [[1,549,'candidate'],[550,650,'candidate'],[651,700,'rejected']]);
+assert.ok(teotihuacanFixture.records.every(r=>r.role==='settlement'&&r.sourceRole==='polity'));
+assert.ok(teotihuacanFixture.records.every(r=>r.nameRu.includes('зона влияния')));
 assert.ok(teotihuacanFixture.records[1].review?.reasonRu?.includes('неопределённой'));
 assert.ok(teotihuacanFixture.records[2].review?.reasonRu?.includes('После 650'));
 assert.ok(teotihuacanFixture.records[2].review.sources.length>=2);
@@ -222,6 +232,15 @@ for(const [year,expected] of [
  const markers=historicalDatedGapCenters(year).filter(m=>/antilles|aruba|curacao|sint-maarten|bonaire|saba|statia/.test(m.id));
  assert.deepEqual(markers.map(m=>m.id).sort(),expected.map(id=>'historical-center-'+id).sort(), 'Caribbean year '+year);
  assert.ok(markers.every(m=>m.description.includes('Точка')&&m.sources.length>=1&&m.sources.every(x=>x.startsWith('https://'))));
+}
+for(const [year,expected] of [[-101,false],[-100,true],[-1,true],[1,true],[500,true],[600,true],[650,true],[651,true],[700,true],[701,false]]){
+ const site=historicalDatedGapCenters(year).filter(m=>m.id==='historical-center-teotihuacan-site-ancient');
+ assert.equal(site.length,expected?1:0,'Teotihuacan archaeological point in '+year);
+ if(site.length){
+  assert.ok(site[0].sources.some(u=>u.includes('whc.unesco.org')));
+  assert.ok(site[0].description.includes('не как достоверная'));
+  assert.equal(site[0].lat,19.69167);
+ }
 }
 assert.ok(historicalDatedGapCenters(2010).some(m=>m.title.includes('Кюрасао')));
 assert.ok(historicalDatedGapCenters(2010).some(m=>m.title.includes('Синт-Мартен')));

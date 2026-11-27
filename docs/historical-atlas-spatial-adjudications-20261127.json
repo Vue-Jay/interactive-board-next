@@ -3,24 +3,26 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "39 audit comparison cases explained; 1994 and 2000 missing archipelago membership made visible as dated locators; geometry unverified",
+  "status": "48 audit comparison differences classified; Teotihuacan state boundary replaced by archaeological point and thematic region; Shan principalities no longer one country",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 39,
+    "explainedComparisonCases": 48,
     "previouslyExplained": 5,
-    "newlyExplained": 34,
-    "remainingWithoutExplanation": 437,
+    "newlyExplained": 43,
+    "remainingWithoutExplanation": 428,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
     "nonpoliticalCollectives": 9,
-    "incompleteArchipelagoOutlines": 2
+    "incompleteArchipelagoOutlines": 2,
+    "teotihuacanArchaeologicalComparisons": 8,
+    "shanPolycentricComparisons": 1
   },
-  "warning": "The 39 explanations are source/comparability diagnostics and NOT verified borders. The 769 disputed territorial source component-years remain unresolved pending full build.",
+  "warning": "No newly verified polygon boundaries: 48 comparability classifications do NOT reduce the separate 769 historical territory source component-years.",
   "cases": [
     {
       "id": "2010:119",
@@ -497,6 +499,150 @@
       "sources": [
         "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
         "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1530:61",
+      "year": 1530,
+      "archiveName": "Shan states",
+      "effectiveCandidateName": "Shan States",
+      "archiveSha256": "984005809f085285a48318600e3a198274eb4679f5360ebfaead29da496e9f5b",
+      "candidateGeometryId": "f3c474efdab18b3266fd84330f3ae20d45234c024ed401e563a0901bd5638712",
+      "iou": 0.406679,
+      "classification": "polycentric-principalities-not-one-state",
+      "reasonRu": "Шанские княжества в 1530 году не составляли одного независимого государства. Исходный полигон объединяет множество раздельных княжеств; федерация британского управления относится к XX веку. Сводная область показана только тематически.",
+      "sources": [
+        "https://www.burmalibrary.org/docs21/UNDP-The_State_of_Local_Governance-Trends_in_Shan-en.pdf",
+        "https://www.cambridge.org/core/journals/modern-asian-studies/article/strategic-fluidity-expansion-by-kengtung-chiang-tung-into-siamcontrolled-lan-na-18691892/69A3FCAFB0BC04C2A325E0DBB62DD883"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "700:12",
+      "year": 700,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "bb66ebee15e57f5d43b0ca524dd9a230651bb821e7e002882b1981a25fd42a38",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "600:10",
+      "year": 600,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "e8d285de5d4257c55158979e866191d13464abc74e3082fb5f2065b357beec7a",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "500:8",
+      "year": 500,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "06f7512efec9151b91b5967e8bee3e2dacf8c623e8719de8c64a996bec5ec2c1",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "400:190",
+      "year": 400,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "3a3cf57e1d117e81b49b9344af49b73fec0674aa14e7d1d1f1d345d08f9ce1f7",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "300:183",
+      "year": 300,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "86e6a21cd7a26230184abc57ed042bd9264b569b76406f79ace8618d625b3297",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "200:185",
+      "year": 200,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "ef811868efee04b5ae7cfe23538091f1cfa75534ecfad14d754d9cc690b2d2c7",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "100:142",
+      "year": 100,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "d3dba3d4988e481d6438821b7fad847946f7d549c602ebc5a3b49c508358f6ef",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "-1:147",
+      "year": -1,
+      "archiveName": "Teotihuacan",
+      "effectiveCandidateName": "Teotihuacan",
+      "archiveSha256": "830fac0104ebafff7b576333cd5ab4a9bf4b6f732ddf828cec47797cf65047cb",
+      "candidateGeometryId": "50161549a70518aa1343ebaa1d8b3dc6e9df2bd1fe1cb317a3486ff87cbd9502",
+      "iou": 0.043349,
+      "classification": "archaeological-influence-not-verified-sovereign-frontier",
+      "reasonRu": "Теотиуакан был политическим центром, но обширное культурное влияние не подтверждает неизменную государственную границу. Полигон помещён в тематический слой, после 650 г. отвергнут, историческое место показано отдельной точкой ЮНЕСКО. Геометрия ещё не исторически подтверждена.",
+      "sources": [
+        "https://whc.unesco.org/en/list/414/",
+        "https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129"
       ],
       "geometryHistoricallyConfirmed": false
     },

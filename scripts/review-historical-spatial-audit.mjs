@@ -29,6 +29,8 @@ for(const r of current.cases){
   assert.equal(r.archiveName,"Netherlands Antilles");
   assert.ok([1994,2000].includes(r.year));
  }
+ if(r.classification==="archaeological-influence-not-verified-sovereign-frontier")assert.equal(r.archiveName,"Teotihuacan");
+ if(r.classification==="polycentric-principalities-not-one-state")assert.equal(r.archiveName,"Shan states");
  classes.set(r.classification,(classes.get(r.classification)??0)+1);
 }
 for(const f of mismatches)assert.ok(seen.has(f.id));
@@ -37,11 +39,13 @@ assert.equal(classes.get("nonlike-for-like-metropolitan-denmark-vs-danish-realm"
 assert.equal(classes.get("wartime-control-vs-recognized-sovereignty"),2);
 assert.equal(classes.get("noncomparable-archaeological-or-polycentric-aggregate"),9);
 assert.equal(classes.get("incomplete-archipelago-source-outline"),2);
-assert.equal(seen.size,39);assert.equal(current.counts.newlyExplained,34);
-assert.equal(current.counts.remainingWithoutExplanation,437);
+assert.equal(classes.get("archaeological-influence-not-verified-sovereign-frontier"),8);
+assert.equal(classes.get("polycentric-principalities-not-one-state"),1);
+assert.equal(seen.size,48);assert.equal(current.counts.newlyExplained,43);
+assert.equal(current.counts.remainingWithoutExplanation,428);
 assert.equal(current.counts.historicallyVerifiedGeometries,0);
 assert.equal(current.counts.territorialComponentYearsStillOpenExpected,769);
 const source=fs.readFileSync(new URL("scripts/audit-historical-unique-geometries.py",base),"utf8");
 assert.ok(source.includes("name_key(name) == name_key(r['name'])"));
 assert.ok(!source.includes("name_key(r['name']), name_key(r['sourceName'])"));
-console.log("Atlas spatial comparison: 13 false historical name matches corrected, 39 mismatches explained, 437 awaiting review; geometry unverified.");
+console.log("Atlas spatial comparison: 13 false historical name matches corrected, 48 mismatches explained, 428 awaiting review; geometry unverified.");

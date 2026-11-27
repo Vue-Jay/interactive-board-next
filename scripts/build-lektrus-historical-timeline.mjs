@@ -732,6 +732,18 @@ function editorialSegments(base,derived=[]){
   // poleis is not ONE sovereign state with a single historical boundary.
   // Keep the imported footprint accessible through the optional thematic
   // settlement layer, never as a merged country in the political atlas.
+  if(base.role==='polity'&&/^shan states$/i.test(base.sourceName)){
+   // The 1530 source covers several shan saopha principalities, not a
+   // single sovereign Shan nation. In 1922 a colonial federation emerged,
+   // but that later administrative structure cannot be backdated to 1530.
+   r={...r,role:'settlement',sourceRole:'polity',
+    name:'Shan principalities (unverified regional aggregate)',
+    nameRu:'Шанские княжества (сводный ареал без единой границы)',
+    nameStatus:'reviewed'};
+   note('The Shan region was composed of separate principalities with changing Burmese, Chinese and local relationships. The Federated Shan States administrative structure dates to 1922. This imported outline cannot be read as a single independent polity in 1530; retain it only as a thematic regional distribution.',
+    ['https://www.burmalibrary.org/docs21/UNDP-The_State_of_Local_Governance-Trends_in_Shan-en.pdf','https://www.cambridge.org/core/journals/modern-asian-studies/article/strategic-fluidity-expansion-by-kengtung-chiang-tung-into-siamcontrolled-lan-na-18691892/69A3FCAFB0BC04C2A325E0DBB62DD883'],
+    'Шанские княжества были отдельными политическими образованиями с различными отношениями зависимости и союза. Федерация шанских государств создана в 1922 г., не в 1530-м. Исходный контур не означает существования одной независимой страны; он сохранён как тематический приблизительный ареал.');
+  }
   if(base.role==='polity'&&/^greek city.states$/i.test(base.sourceName)){
    r={...r,role:'settlement',sourceRole:'polity',
     name:'Greek poleis (non-unified aggregate; outline unverified)',
@@ -770,6 +782,14 @@ function editorialSegments(base,derived=[]){
    note('Constantinople fell in 1453, Morea in 1460 and Trebizond in 1461. Remaining source components cannot be identified as a surviving Byzantine empire; after 1461 the unidentified remnant is rejected for drawing and retained for separate attribution.',['https://www.ime.gr/chronos/10/en/p/pb9/pb9c.html'],'Константинополь пал в 1453 году, Морея — в 1460, Трапезунд — в 1461. Оставшиеся компоненты источника не представляют сохранившуюся Византийскую империю; с 1462 года неопознанный остаток исключён из отрисовки, исходник сохранён для атрибуции.');
   }
   if(base.role==='polity'&&base.sourceName==='Teotihuacan'){
+   // A state capital is not a verified frontier. Teotihuacan held real
+   // political power, but the source's vast unchanged polygon includes
+   // archaeological influence as well as possible control. Never paint it
+   // as a surveyed sovereign territory. Preserve it as optional context.
+   r={...r,role:'settlement',sourceRole:'polity',
+    name:'Teotihuacan (city and influence zone; outline unverified)',
+    nameRu:'Теотиуакан (город и зона влияния; граница не установлена)',
+    nameStatus:'reviewed'};
    const evidence=[
     'https://www.metmuseum.org/toah/ht/06/cam.html',
     'https://www.cambridge.org/core/books/abs/ancient-teotihuacan/interesting-times-teotihuacan-comes-apart-and-a-new-story-begins-550-ce-and-after/21338750E61C3AE3BCE97A8B4BB269D6',

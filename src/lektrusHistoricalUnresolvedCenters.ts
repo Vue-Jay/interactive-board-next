@@ -201,6 +201,11 @@ const datedGapTransitions=[
    group:'Нидерландские Антилы — преемники 2010 года',title:'Синт-Эстатиус — особый муниципалитет Нидерландов',
    description:'С 10 октября 2010 года Синт-Эстатиус входит в Нидерланды как особый муниципалитет, отдельно от Синт-Мартена. Точка не является историческим контуром острова.',
    sources:['https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom','https://assets.publishing.service.gov.uk/media/68aee36c960e2d135b4c8e76/Netherlands_Toponymic_Factfile.pdf']},
+  {id:'teotihuacan-site-ancient',from:-100,to:700,lon:-98.84167,lat:19.69167,
+   group:'Теотиуакан — город и недоказанные политические границы',
+   title:'Теотиуакан — засвидетельствованный город, не граница государства',
+   description:'Точка отмечает археологический город Теотиуакан по координатам ЮНЕСКО. Это был центр настоящего государства, но площадь культурного влияния не совпадает с доказанным прямым управлением. Около 550–650 гг. центральная политическая система распалась; проживание на месте могло продолжаться. Импортированный большой полигон допускается только в тематическом слое, не как достоверная суверенная граница.',
+   sources:['https://whc.unesco.org/en/list/414/','https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129','https://www.sciencedirect.com/science/article/pii/S0278416519302119']},
 ] as const;
 
 export function historicalDatedGapCenters(year:number){
