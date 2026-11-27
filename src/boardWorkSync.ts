@@ -63,11 +63,11 @@ export function connectBoardWorkChannel(
       if (!publishSelf || !ready) return;
       const fingerprint = JSON.stringify(latest);
       if (fingerprint === lastFingerprint) return;
-      lastFingerprint = fingerprint;
-      channel.sendEvent({
+      if(channel.sendEvent({
         type: "work_state", selected_ids: latest.selectedIds.slice(0, 100),
         editing_id: latest.editingId,
-      });
+      }))lastFingerprint=fingerprint;
+      else if(!stopped&&ready)publishTimer=setTimeout(sendState,500);
     };
     const sendTransform = () => {
       clearTimeout(transformTimer); transformTimer = undefined;
@@ -79,10 +79,15 @@ export function connectBoardWorkChannel(
         items.push(entry.pose);pendingTransforms.delete(id);
         if(items.length===64)break;
       }
-      channel.sendEvent({
+      const sent=channel.sendEvent({
         type: "object_transform", client_id: clientId, seq: ++transformSeq,
         finished, items,
       });
+      if(!sent){
+        for(const pose of items)if(!pendingTransforms.has(pose.id))pendingTransforms.set(pose.id,{pose,finished});
+        if(!stopped&&ready)transformTimer=setTimeout(sendTransform,100);
+        return;
+      }
       lastTransformSent = Date.now();
       if(pendingTransforms.size)transformTimer=setTimeout(sendTransform,42);
     };
@@ -92,11 +97,15 @@ export function connectBoardWorkChannel(
       const next=queuedEdits.entries().next().value;
       if(!next)return;
       const [itemId,packets]=next;
-      const packet=packets.shift()!;
+      const packet=packets[0];
       // An editor operation must remain atomic. A queued graph point and its
       // segment references cannot be split across a 300-operation boundary.
-      channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,
-        ops:packet.ops,...(packet.baseVersion!==undefined?{base_version:packet.baseVersion}:{})});
+      if(!channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,
+        ops:packet.ops,...(packet.baseVersion!==undefined?{base_version:packet.baseVersion}:{})})){
+        if(!stopped&&ready)editTimer=setTimeout(flushEdits,100);
+        return;
+      }
+      packets.shift();
       lastEditSent=Date.now();
       if(!packets.length)queuedEdits.delete(itemId);
       if(queuedEdits.size)editTimer=setTimeout(flushEdits,34);

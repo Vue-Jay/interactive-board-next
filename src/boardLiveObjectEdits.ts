@@ -32,3 +32,16 @@ export function boardLiveContent(stored:Item,preview:Item|undefined):Item{
  return {...preview,x:stored.x,y:stored.y,width:stored.width,height:stored.height,rotation:stored.rotation,
   connectorStart:stored.connectorStart,connectorEnd:stored.connectorEnd};
 }
+
+/** Absolute draft packets include every unsaved field plus fields reverted
+ * since the previous preview. A lost packet or committed peer revision can
+ * therefore never leave the next preview dependent on a missing change. */
+export function boardModalDraftOps(stored:Item,previous:Item|undefined,next:Item,fields:readonly string[]):LiveEditorOp[]{
+ const allowed=new Set(fields);
+ const ops=new Map<string,LiveEditorOp>();
+ for(const op of [...boardDraftLiveOps(stored,next),...(previous?.id===stored.id?boardDraftLiveOps(previous,next):[])]){
+  const key=String(op.path[0]);
+  if(allowed.has(key))ops.set(key,op);
+ }
+ return [...ops.values()];
+}

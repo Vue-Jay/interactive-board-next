@@ -125,7 +125,7 @@ import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./b
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest, type AttachmentApprovalResult } from "./boardAttachmentApprovalSync";
 import { documentFingerprint as fingerprintDocument, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from "./lektrusLiveEditorMerge";
-import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
+import {boardObjectLiveOps,boardDraftLiveOps,boardModalDraftOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems, mergeDetachedBoardItem } from "./lektrusBoardThreeWayMerge";
@@ -7037,6 +7037,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(origin?.base.id!==next.id)return;
     // Existing component changes are committed live. Finalize only the title,
     // never restore old geometry or resurrect an existing deleted object.
+    if(!create&&!origin.existing&&!itemsRef.current.some(item=>item.id===next.id))return;
     saveDetachedEditor(origin.base,next,create,["text"]);
   };
   const isMotionGraph=(id:string|undefined)=>[
@@ -7722,6 +7723,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const lastModalLiveDraft=useRef<Item|null>(null);
+  const lastModalLiveBase=useRef<Item|null>(null);
+  const lastModalLiveFields=useRef<string[]>([]);
+  const lastModalLiveStatus=useRef<RealtimeStatus|null>(null);
   useEffect(()=>{
     if(!canEdit)return;
     let id:string|null=null,patch:Partial<Item>|null=null;
@@ -7741,17 +7745,37 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(previous&&(!latest||previous.id!==latest.id)){
       const stored=getCurrentItemIndex(itemsRef.current).get(previous.id);
       if(stored){
-        const rollback=boardDraftLiveOps(previous,stored);
+        const rollback=boardDraftLiveOps(previous,stored).filter(op=>lastModalLiveFields.current.includes(String(op.path[0])));
         if(rollback.length)workChannel.current?.publishEdit(stored.id,rollback);
       }
-      lastModalLiveDraft.current=null;
+      lastModalLiveDraft.current=null;lastModalLiveBase.current=null;lastModalLiveFields.current=[];
     }
     if(!latest||!patch||latest.locked)return;
+    const fields=Object.keys(patch);
     const next=mergeModalPatch(latest,patch);
-    const ops=boardDraftLiveOps(previous?.id===latest.id?previous:latest,next);
-    if(ops.length)workChannel.current?.publishEdit(latest.id,ops);
-    lastModalLiveDraft.current=next;
-  },[canEdit,canCreateAssignments,formulaEditorId,formulaDraft,tableEditorId,tableDraft,checklistEditorId,checklistDraft,quizEditorId,quizDraft,flashcardEditorId,flashcardDraft]);
+    const prior=previous?.id===latest.id?previous:undefined;
+    const base=lastModalLiveBase.current;
+    const changed=!prior||boardDraftLiveOps(prior,next).some(op=>fields.includes(String(op.path[0])));
+    const rebased=!base||base.id!==latest.id||boardDraftLiveOps(base,latest).some(op=>fields.includes(String(op.path[0])));
+    const reconnected=realtimeStatus==="online"&&lastModalLiveStatus.current!=="online";
+    const ops=boardModalDraftOps(latest,prior,next,fields);
+    if(ops.length&&(changed||rebased||reconnected))workChannel.current?.publishEdit(latest.id,ops);
+    lastModalLiveDraft.current=next;lastModalLiveBase.current=latest;
+    lastModalLiveFields.current=fields;lastModalLiveStatus.current=realtimeStatus;
+    // Active unsaved drafts should not disappear after the receiver's 15 s
+    // expiry, or after a packet lost to a revision race. Small snapshots
+    // refresh at a modest rate; large drafts still save durably on completion.
+    const refresh=boardModalDraftOps(latest,undefined,next,fields);
+    if(!refresh.length||JSON.stringify(refresh).length>16000||!boardRealtimeAwake)return;
+    const timer=setInterval(()=>{
+      if(document.hidden||!boardMounted.current)return;
+      const stored=itemsRef.current.find(item=>item.id===latest.id);
+      if(!stored||stored.locked)return;
+      const retry=boardModalDraftOps(stored,undefined,mergeModalPatch(stored,patch),fields);
+      if(retry.length&&JSON.stringify(retry).length<=16000)workChannel.current?.publishEdit(stored.id,retry);
+    },5000);
+    return ()=>clearInterval(timer);
+  },[canEdit,canCreateAssignments,items,realtimeStatus,boardRealtimeAwake,formulaEditorId,formulaDraft,tableEditorId,tableDraft,checklistEditorId,checklistDraft,quizEditorId,quizDraft,flashcardEditorId,flashcardDraft]);
 
   // An educational task is a draft until Save, not a half-built board object.
   const cancelStudyEditor=(kind:"checklist"|"quiz"|"flashcard")=>{
@@ -9605,11 +9629,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {atomEditorItem&&<LektrusAtomEditor key={atomEditorItem.id} item={atomEditorItem}
           onCancel={()=>setAtomEditorItem(null)}
           onClose={next=>{
-            if(detachedEditorOrigin.current?.existing&&saveDetachedEditor(atomEditorItem,next,false,["text","scienceAtomModel"]))setNotice("Модель атома сохранена");
+            if(detachedEditorOrigin.current?.existing&&saveDetachedEditor(atomEditorItem,next,false,["text","scienceAtomModel","graphFigureId","graphPurpose","graphAxisMode","graphPoints","graphSegments","graphCircles","graphGrid"]))setNotice("Модель атома сохранена");
             setAtomEditorItem(null);
           }}
           onSave={next=>{
-            if(saveDetachedEditor(atomEditorItem,next,true,["text","scienceAtomModel"]))setNotice("Модель атома сохранена");
+            if(saveDetachedEditor(atomEditorItem,next,true,["text","scienceAtomModel","graphFigureId","graphPurpose","graphAxisMode","graphPoints","graphSegments","graphCircles","graphGrid"]))setNotice("Модель атома сохранена");
             setAtomEditorItem(null);
           }}/>}
         {periodicEditorItem&&<LektrusPeriodicTableEditor key={periodicEditorItem.id}
@@ -10901,9 +10925,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     setSelected([item.id]);
                     openFormulaEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "table") {
-                    setSelected([item.id]);
-                    setTableEditorId(item.id);
-                    setTableDraft({ rows: item.tableRows ?? 3, cols: item.tableCols ?? 3, cells: [...(item.tableCells ?? [])], header: item.tableHeader !== false, fontSize: item.fontSize ?? 13, align: item.tableAlign ?? "left", stripe: item.tableStripe === true, compact: item.tableCompact === true });
+                    openTableEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "checklist") {
                     setSelected([item.id]);
                     openChecklistEditor(item);

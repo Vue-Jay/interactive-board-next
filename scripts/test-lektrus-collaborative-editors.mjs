@@ -256,3 +256,35 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
   assert.match(app,/mutation\.baseVersion!==undefined&&mutation\.baseVersion!==\(remoteVersion\.current\?\?0\)/);
  }finally{connection.close()}
 }
+
+{
+ const compiled=ts.transpileModule(read("src/boardLiveObjectEdits.ts"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ const live={};new Function("exports","require",compiled.outputText)(live,()=>exports);
+ const base={id:"table",kind:"table",x:1,y:2,width:100,height:50,text:"",tableCells:["old","B"],tableHeader:true};
+ const draft={...base,tableCells:["edited","B"],tableHeader:false};
+ const peer={...base,x:99};
+ const next={...peer,tableCells:["edited","second"],tableHeader:false};
+ const ops=live.boardModalDraftOps(peer,draft,next,["tableCells","tableHeader"]);
+ assert.deepEqual(applyEditorOps(peer,ops),next,"New revision receives every unsaved field, not only latest input");
+ assert.deepEqual(applyEditorOps(next,ops),next,"Repeating draft is idempotent");
+ const reset={...next,tableHeader:true};
+ assert.deepEqual(applyEditorOps(next,live.boardModalDraftOps(peer,next,reset,["tableCells","tableHeader"])),reset,"Reverted fields reset preview");
+}
+{
+ const work={};let status,failures=2;const frames=[];
+ const channel=Object.assign(()=>{},{sendEvent:frame=>{
+  if(failures>0){failures--;return false;}
+  frames.push(frame);return true;
+ }});
+ const mock={isSelfhostBackendEnabled:()=>true,selfhostSubscribeBoard:(_b,_r,onStatus)=>{status=onStatus;return channel;}};
+ const compiled=ts.transpileModule(ws,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ new Function("exports","require",compiled.outputText)(work,name=>name==="./selfhostApi"?mock:{});
+ const connection=work.connectBoardWorkChannel("board",{userId:"me",name:"Me",role:"owner"},()=>{},()=>{},true,undefined,undefined,()=>8);
+ try{
+  status("online");
+  connection.publishEdit("item",[{path:["text"],kind:"set",value:"new"}]);
+  await new Promise(resolve=>setTimeout(resolve,650));
+  assert.equal(frames.filter(f=>f.type==="editor_mutation").length,1,"Failed transport send retries whole edit packet");
+  assert.equal(frames.filter(f=>f.type==="work_state").length,1,"Failed transport send retries work state");
+ }finally{connection.close()}
+}

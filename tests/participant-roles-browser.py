@@ -1227,6 +1227,140 @@ def check_undo_reconnect_sync(browser):
             pupil.wait_for_timeout(1000)
             assert read()["items"]==locked["items"],"Keyboard transformed locked assignment"
             print("All six protected assignment kinds: pupil keyboard translation/rotation, peer convergence, deletion and lock denial passed.")
+
+            def replace_items(items):
+                row=client.get(url).json()
+                client.put(url,json={"expected_version":row["version"],"document":{**row["document"],"items":items}}).raise_for_status()
+                for page in (teacher,pupil):
+                    page.wait_for_function("""({ident,ids})=>{
+                        const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                        return !!raw&&JSON.stringify(JSON.parse(raw).items.map(i=>i.id))===JSON.stringify(ids);
+                    }""",arg={"ident":ident,"ids":[i["id"] for i in items]},timeout=30000)
+            def select_all(page):
+                page.locator('[data-interface-control="select"]:visible').first.click()
+                page.keyboard.press("Control+a")
+            def peer_move(obj):
+                select_all(pupil)
+                pupil.keyboard.press("Shift+ArrowRight")
+                changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"]-10)<0.01 for i in d["items"]),"Peer transform did not save")
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                return next(i for i in changed["items"] if i["id"]==obj["id"])
+            def open_existing(obj,dialog):
+                teacher.locator('[data-interface-control="select"]:visible').first.click()
+                teacher.locator(f'.board-object[data-object="{obj["id"]}"]').dblclick()
+                expect(teacher.locator(dialog)).to_be_visible(timeout=15000)
+                return teacher.locator(dialog)
+
+            # Real chart/fraction/periodic/atom editors must preserve geometry
+            # changed by the pupil while a detached draft is still open.
+            subject_cases=[
+                ("chart",{"kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}]},
+                 ".lektrus-data-chart-dialog",'input[placeholder="Название диаграммы"]',".primary"),
+                ("fraction",{"kind":"fraction","fractionMode":"circle","fractionNumerator":1,"fractionDenominator":4},
+                 ".lektrus-fraction-dialog",'.lektrus-fraction-fields label:first-child input',".primary"),
+                ("periodic",{"kind":"graph","graphFigureId":"chem-periodic","sciencePeriodicHighlights":[8],"sciencePeriodicLayout":"school","sciencePeriodicShowNames":True},
+                 ".lektrus-periodic-dialog",'.lektrus-periodic-panel label:first-child input',".primary"),
+                ("atom",{"kind":"graph","graphFigureId":"chem-atom","scienceAtomModel":{"atomicNumber":8,"massNumber":16,"charge":0,"view":"shells"}},
+                 ".lektrus-atom-dialog",'.lektrus-atom-controls label:first-child input',".primary"),
+            ]
+            for name,fields,dialog,field,save in subject_cases:
+                obj={"id":"qa-detached-"+name,"x":220,"y":160,"width":520,"height":360,"text":"Initial "+name,"createdBy":author,**fields}
+                replace_items([obj])
+                editor=open_existing(obj,dialog)
+                editor.locator(field).fill("Edited "+name)
+                moved=peer_move(obj)
+                editor.locator(save).click()
+                expect(editor).to_have_count(0,timeout=15000)
+                changed=wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i["text"]=="Edited "+name and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),name+" stale editor overwrote peer geometry")
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                print(name+" real modal + pupil transform passed")
+                replace_items([])
+
+            # Save on an open chart after a co-teacher deletes it: do not
+            # reinterpret the absent existing object as a new draft.
+            chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],
+                   "x":220,"y":160,"width":520,"height":360,"text":"Delete race","createdBy":author}
+            replace_items([chart])
+            editor=open_existing(chart,".lektrus-data-chart-dialog")
+            editor.locator('input[placeholder="Название диаграммы"]').fill("Must not reappear")
+            row=client.get(url).json()
+            with httpx.Client(base_url=API,headers=headers("colleague")) as other:
+                other.patch(url,json={"expected_version":row["version"],"delta":{"items":{"remove":[chart["id"]]}}}).raise_for_status()
+            both(chart["id"],False)
+            editor.locator(".primary").click()
+            teacher.wait_for_timeout(1000)
+            assert not any(i["id"]==chart["id"] for i in read()["items"]),"Deleted chart resurrected on Save"
+            print("Detached subject editor save-after-delete denied in real browser.")
+
+            # Real teacher-side creation, peer display, student answers and
+            # teacher deletion, rather than just sending a JSON fixture.
+            for shortcut,kind in (("f","frame"),("b","table"),("x","formula"),("k","checklist"),
+                                  ("g","quiz"),("j","flashcard"),("u","cover"),("l","linkmedia"),("c","connector"),("y","graph")):
+                replace_items([])
+                teacher.locator('[data-interface-control="select"]:visible').first.click()
+                teacher.keyboard.press(shortcut)
+                expect(teacher.locator("section.board")).to_have_class(re.compile(r"\bboard-tool-"+kind+r"\b"))
+                box=teacher.locator("section.board").bounding_box()
+                x=box["x"]+box["width"]*.58;y=box["y"]+box["height"]*.48
+                if kind=="connector":
+                    teacher.mouse.move(x-100,y);teacher.mouse.down();teacher.mouse.move(x+100,y+40,steps=12);teacher.mouse.up()
+                else:teacher.mouse.click(x,y)
+                if kind=="frame":
+                    field=teacher.locator('textarea[aria-label="Текст объекта"]');expect(field).to_be_visible();field.fill("QA frame");field.press("Control+Enter")
+                elif kind=="table":
+                    dialog=teacher.locator(".table-editor-modal");expect(dialog).to_be_visible()
+                    dialog.locator(".table-editor-grid textarea").first.fill("First live cell")
+                    row=wait_api(teacher,lambda d:any(i["kind"]=="table" for i in d["items"]),"Table creation not saved")
+                    table=next(i for i in row["items"] if i["kind"]=="table")
+                    target=pupil.locator(f'.board-object[data-object="{table["id"]}"]')
+                    expect(target).to_contain_text("First live cell",timeout=15000)
+                    peer_move(table)
+                    dialog.locator(".table-editor-grid textarea").nth(1).fill("Second live cell")
+                    expect(target).to_contain_text("First live cell",timeout=15000)
+                    expect(target).to_contain_text("Second live cell",timeout=15000)
+                    dialog.locator(".table-editor-footer .primary").click()
+                elif kind=="formula":
+                    teacher.locator("#formula-source").fill("x^2+1")
+                    teacher.locator(".formula-editor-footer .primary").click()
+                elif kind=="checklist":
+                    dialog=teacher.locator(".checklist-editor-modal");dialog.locator(".checklist-title-input input").fill("QA checklist")
+                    dialog.locator('.checklist-editor-row input[placeholder="Пункт 1"]').fill("QA task")
+                    dialog.locator(".checklist-editor-footer .primary").click()
+                elif kind=="quiz":
+                    dialog=teacher.locator(".quiz-editor-modal");dialog.locator('textarea[placeholder="Введите вопрос…"]').fill("QA quiz")
+                    dialog.locator('input[placeholder="Вариант A"]').fill("A");dialog.locator('input[placeholder="Вариант B"]').fill("B")
+                    dialog.locator(".quiz-editor-footer .primary").click()
+                elif kind=="flashcard":
+                    dialog=teacher.locator(".flashcard-editor-modal");dialog.locator("textarea").nth(0).fill("QA front");dialog.locator("textarea").nth(1).fill("QA back")
+                    dialog.locator(".flashcard-editor-footer .primary").click()
+                elif kind=="linkmedia":
+                    teacher.locator(".link-media-dialog input").first.fill("https://example.test/video")
+                    teacher.locator(".link-media-dialog input").nth(1).fill("QA link")
+                    teacher.locator(".link-media-dialog .boards-create").click()
+                elif kind=="graph":
+                    teacher.locator(".lektrus-graph-footer .primary").click()
+                row=wait_api(teacher,lambda d:any(i["kind"]==kind for i in d["items"]),kind+" UI creation not saved")
+                obj=next(i for i in row["items"] if i["kind"]==kind)
+                selector=f'.board-object[data-object="{obj["id"]}"]'
+                expect(pupil.locator(selector)).to_be_visible(timeout=15000)
+                if kind in ("checklist","quiz","flashcard","cover"):
+                    control,field,value={
+                        "checklist":(".checklist-box","checklistDone",[True]),
+                        "quiz":(".quiz-option","quizSelected",0),
+                        "flashcard":(".flashcard-flip-button","flashcardFlipped",True),
+                        "cover":(".cover-toggle","coverOpen",True)
+                    }[kind]
+                    pupil.locator(selector+" "+control).first.click()
+                    wait_api(pupil,lambda d:any(i["id"]==obj["id"] and i.get(field)==value for i in d["items"]),kind+" student response did not synchronize")
+                    teacher.wait_for_function("""({ident,id,field,value})=>{
+                        const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                        const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                        return !!item&&JSON.stringify(item[field])===JSON.stringify(value);
+                    }""",arg={"ident":ident,"id":obj["id"],"field":field,"value":value},timeout=15000)
+                select_all(teacher);teacher.keyboard.press("Delete")
+                wait_api(teacher,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" UI deletion not saved")
+                expect(pupil.locator(selector)).to_have_count(0,timeout=15000)
+                print(kind+" real UI create/peer display/student response where applicable/delete passed.")
     finally:
         for ctx in contexts:ctx.close()
 
