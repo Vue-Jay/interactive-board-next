@@ -102,8 +102,10 @@ assert.match(dockCss,/\.lectris-quick-properties\.is-ink-properties\s*\{/);
 assert.match(editor,/viewBox="0 0 48 32"/);
 assert.match(app,/className=\{`app \$\{presentation \? "presentation-mode" : ""\}/);
 const receive=app.slice(app.indexOf("  receiveRemote.current = row => {"));
-assert.match(receive,/if \(gesture\.current&&\["drag","resize","rotate","connector","connector-end","hand-smart","erase"\]\.includes\(gesture\.current\.mode\)\)\s*\{/,
+assert.match(receive,/const gestureDefers=gesture\.current&&\["drag","resize","rotate","connector","connector-end","hand-smart","erase"\]\.includes\(gesture\.current\.mode\);/,
  "Only mutations using a captured gesture snapshot defer remote documents");
+assert.match(receive,/if \(preliminary === "ignore"\)\{publishCommittedCursors\(\);return;\}[\s\S]*?if \(preliminary === "defer"\|\|gestureDefers\)/,
+ "Discard stale revisions before considering gesture or save deferral");
 assert.match(app,/if\(g\.mode!=="pan"&&g\.mode!=="marquee"&&g\.mode!=="lasso"\)display\(g\.restore \?\? g\.before\)/,
  "Canceling a navigation or selection gesture never restores an obsolete document");
 assert.match(receive,/peerRemovedDurableInk\(/,"Peer erasure must interrupt an active durable stroke");

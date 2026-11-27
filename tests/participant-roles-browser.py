@@ -1289,7 +1289,13 @@ def check_undo_reconnect_sync(browser):
                 return next(i for i in changed["items"] if i["id"]==obj["id"])
             def open_existing(obj,dialog):
                 teacher.locator('[data-interface-control="select"]:visible').first.click()
-                teacher.locator(f'.board-object[data-object="{obj["id"]}"]').dblclick(position={"x":12,"y":12})
+                # Embedded subject widgets deliberately stop double-click propagation.
+                # Select the object using the board keyboard, then use its public settings control.
+                if obj["kind"]=="graph":
+                    teacher.keyboard.press("Control+a")
+                    teacher.get_by_role("button",name="Настроить учебный объект",exact=True).click()
+                else:
+                    teacher.locator(f'.board-object[data-object="{obj["id"]}"]').dblclick(position={"x":12,"y":12})
                 expect(teacher.locator(dialog)).to_be_visible(timeout=15000)
                 return teacher.locator(dialog)
 
@@ -1419,13 +1425,15 @@ def check_undo_reconnect_sync(browser):
                     for page in (actor,receiver):expect(page.locator(selector)).to_be_visible(timeout=15000)
                     target=actor.locator(selector+" .geometry-instrument-body")
                     box=target.bounding_box()
+                    before=receiver.locator(selector).bounding_box()
                     x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
                     actor.mouse.move(x,y);actor.mouse.down()
                     try:
                         actor.mouse.move(x+70,y+30,steps=8)
                         receiver.wait_for_function("""({selector,x,y})=>{
-                            const e=document.querySelector(selector);return e&&Math.hypot(parseFloat(e.style.left)-x,parseFloat(e.style.top)-y)>20;
-                        }""",arg={"selector":selector,"x":obj["x"],"y":obj["y"]},timeout=5000)
+                            const e=document.querySelector(selector);if(!e)return false;
+                            const b=e.getBoundingClientRect();return Math.hypot(b.x-x,b.y-y)>20;
+                        }""",arg={"selector":selector,"x":before["x"],"y":before["y"]},timeout=5000)
                     finally:actor.mouse.up()
                     moved=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"])>20 for i in d["items"]),kind+" move not saved")
                     for page in (actor,receiver):geometry_synced(page,moved["items"])
