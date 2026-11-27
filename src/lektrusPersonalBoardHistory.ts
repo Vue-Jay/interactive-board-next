@@ -6,7 +6,7 @@ import type {Item} from "./boardModel";
  * unlocked object and erase shared ink, but Undo must never roll back a
  * separate participant's later changes.
  */
-export type PersonalBoardEdit={before:Item[];after:Item[]};
+export type PersonalBoardEdit={before:Item[];after:Item[];beforeOrder?:string[];afterOrder?:string[]};
 const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
 
 export function personalBoardEdit(before:readonly Item[],after:readonly Item[]):PersonalBoardEdit|null{
@@ -15,10 +15,14 @@ export function personalBoardEdit(before:readonly Item[],after:readonly Item[]):
  const touched=new Set<string>();
  for(const [id,item] of old)if(!same(item,next.get(id)))touched.add(id);
  for(const [id,item] of next)if(!same(item,old.get(id)))touched.add(id);
- if(!touched.size)return null;
+ const beforeOrder=before.filter(item=>next.has(item.id)).map(item=>item.id);
+ const afterOrder=after.filter(item=>old.has(item.id)).map(item=>item.id);
+ const reordered=!same(beforeOrder,afterOrder);
+ if(!touched.size&&!reordered)return null;
  return {
   before:before.filter(item=>touched.has(item.id)),
   after:after.filter(item=>touched.has(item.id)),
+  ...(reordered?{beforeOrder,afterOrder}:{}),
  };
 }
 
@@ -61,7 +65,6 @@ export function applyPersonalBoardEdit(
   }
   if(changed)changes.set(id,next as unknown as Item);
  }
- if(!changes.size)return {items:current as Item[],changed:false,conflicts};
  const result:Item[]=[];
  for(const item of current){
   if(!changes.has(item.id)){result.push(item);continue;}
@@ -72,7 +75,24 @@ export function applyPersonalBoardEdit(
  // of any surviving collaborator object.
  for(const item of desired)if(changes.get(item.id)===item&&!currentById.has(item.id))
   result.push(item);
- return {items:result,changed:true,conflicts};
+ const expectedOrder=direction==="undo"?edit.afterOrder:edit.beforeOrder;
+ const desiredOrder=direction==="undo"?edit.beforeOrder:edit.afterOrder;
+ let reordered=false;
+ if(expectedOrder&&desiredOrder){
+  const byId=new Map(result.map(item=>[item.id,item]));
+  const shared=new Set(expectedOrder.filter(id=>byId.has(id)));
+  const expectedSurvivors=expectedOrder.filter(id=>shared.has(id));
+  const targetSurvivors=desiredOrder.filter(id=>shared.has(id));
+  const liveOrder=result.filter(item=>shared.has(item.id)).map(item=>item.id);
+  if(!same(liveOrder,expectedSurvivors))conflicts++;
+  else if(!same(liveOrder,targetSurvivors)){
+   let index=0;
+   for(let i=0;i<result.length;i++)if(shared.has(result[i].id))result[i]=byId.get(targetSurvivors[index++])!;
+   reordered=true;
+  }
+ }
+ const changed=changes.size>0||reordered;
+ return {items:changed?result:current as Item[],changed,conflicts};
 }
 
 /** A newly restored shared stroke is a new write by the undoing participant.
@@ -90,6 +110,6 @@ export function reattributeRestoredSharedInk(
   restored.set(item.id,owned);return owned;
  });
  if(!restored.size)return {items,edit};
- return {items:next,edit:{before:edit.before.map(item=>restored.get(item.id)??item),
+ return {items:next,edit:{...edit,before:edit.before.map(item=>restored.get(item.id)??item),
                          after:edit.after.map(item=>restored.get(item.id)??item)}};
 }

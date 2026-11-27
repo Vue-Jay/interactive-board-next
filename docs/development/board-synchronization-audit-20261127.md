@@ -22,3 +22,7 @@ Source findings addressed in the follow-up: a rejected or malformed socket delta
 ## Nested editor conflict follow-up
 
 Added regression cases for partially overlapping concurrent geometry point additions and reference rebasing, stale ID-based previews after deletion, and oversized/deep preview operations falling back atomically to durable revisions. The new checks cover nested atlas, physics, circuit, optics, chemistry and sticker collections at the merge-helper level; they do not constitute full physical-device or end-to-end coverage.
+
+## Isolated full-audit branch: history and conflict handling
+
+Collaborative teacher/owner/editor undo now uses the same per-participant operation history as pupils rather than a snapshot stack reset by each incoming revision. Added layer-order-only history, peer-order conflict protection, removal of fully superseded actions from history, and replay of only the actually applied fields after partial conflicts. Explicit eraser/transform baselines are used to avoid missing undo actions after a concurrent checkpoint. Pending validation in the isolated branch; do not merge or deploy until the complete audit gate is satisfied.

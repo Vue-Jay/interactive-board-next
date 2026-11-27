@@ -58,10 +58,10 @@ assert.match(board,/const personalHistory=useRef/);
 assert.match(board,/personalBoardEdit\(current,normalized\)/);
 assert.match(board,/applyPersonalBoardEdit\(itemsRef\.current,stack\.entries\[step\]/);
 assert.match(board,/if\(isStudent&&!isBoardOwner\)/);
-assert.match(board,/disabled=\{isStudent&&!isBoardOwner\?!personalUndoAvailable\(\):index\.current===0\}/);
-assert.match(board,/disabled=\{isStudent&&!isBoardOwner\?!personalRedoAvailable\(\):index\.current===history\.current\.length-1\}/);
-assert.match(board,/disabled=\{isStudent&&!isBoardOwner\?!personalUndoAvailable\(\):index\.current === 0\}/);
-assert.match(board,/disabled=\{isStudent&&!isBoardOwner\?!personalRedoAvailable\(\):index\.current === history\.current\.length - 1\}/);
+assert.match(board,/disabled=\{usePersonalUndo\?!personalUndoAvailable\(\):index\.current===0\}/);
+assert.match(board,/disabled=\{usePersonalUndo\?!personalRedoAvailable\(\):index\.current===history\.current\.length-1\}/);
+assert.match(board,/disabled=\{usePersonalUndo\?!personalUndoAvailable\(\):index\.current === 0\}/);
+assert.match(board,/disabled=\{usePersonalUndo\?!personalRedoAvailable\(\):index\.current === history\.current\.length - 1\}/);
 for(const socket of ["selfhostWatchDocument","subscribeBoardDocument","subscribeBoardPresence","connectBoardCursorChannel","connectBoardViewControl","connectBoardWorkChannel","connectAttachmentApprovalChannel","subscribeBoardComments"])
  assert.ok(board.includes(socket),"Board socket must be explicitly controlled: "+socket);
 assert.match(board,/const \[boardRealtimeAwake,setBoardRealtimeAwake\]=useState\(true\)/);
@@ -134,3 +134,32 @@ console.log("10-minute wall-clock idle, foreground wake, unique participant colo
  const again=applyPersonalBoardEdit(redo.items,restored.edit,"undo");
  assert.equal(again.items.find(i=>i.id===shared.id).createdBy,"pupil");
 }
+
+// Layer-only actions have their own undo step. Preserve the slots occupied by
+// unrelated peer additions, and do not overwrite a conflicting peer reorder.
+{
+ const a=object("a"),b=object("b"),c=object("c"),newPeer=object("new-peer");
+ const op=choose([a,b,c],[c,a,b]);
+ const undo=applyPersonalBoardEdit([c,newPeer,a,b],op,"undo");
+ assert.deepEqual(undo.items,[a,newPeer,b,c]);
+ assert.deepEqual(applyPersonalBoardEdit(undo.items,op,"redo").items,[c,newPeer,a,b]);
+ const conflict=applyPersonalBoardEdit([b,a,c,newPeer],op,"undo");
+ assert.equal(conflict.changed,false);
+ assert.ok(conflict.conflicts);
+}
+// A partial inverse records only the applied fields, so a future redo never
+// overwrites the field that belonged to another participant.
+{
+ const before=object("move"),after={...before,x:20,y:30},latest={...after,x:80};
+ const undo=applyPersonalBoardEdit([latest],choose([before],[after]),"undo");
+ assert.deepEqual(undo.items,[{...latest,y:0}]);
+ const actual=choose(undo.items,[latest]);
+ const redo=applyPersonalBoardEdit([{...undo.items[0],x:0}],actual,"redo");
+ assert.deepEqual(redo.items,[{...latest,x:0}]);
+}
+assert.match(board,/const usePersonalUndo=documentSyncEnabled/);
+assert.match(board,/if\(usePersonalUndo&&!isLabSimulation\)/);
+assert.match(board,/if\(usePersonalUndo\)\{\s*const stack=personalHistory.current/);
+assert.match(board,/stack.entries.splice\(step,1\)/);
+assert.match(board,/const actual=direction<0\?personalBoardEdit\(restored.items,before\)/);
+assert.match(board,/const baseline = options\?\.previousItems\?\?options\?\.objectBaseline/);

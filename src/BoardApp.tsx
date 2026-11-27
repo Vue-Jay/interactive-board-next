@@ -3089,6 +3089,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
   const index = useRef(0);
   // The pupil's own operations survive incoming collaborator snapshots.
+  // Every participant on a shared board needs a local action history that
+  // survives server revisions; snapshot history remains for offline/demo.
+  const usePersonalUndo=documentSyncEnabled||(isStudent&&!isBoardOwner);
   const personalHistory=useRef<{entries:PersonalBoardEdit[];cursor:number}>({entries:[],cursor:0});
   const personalUndoAvailable=()=>personalHistory.current.cursor>0;
   const personalRedoAvailable=()=>personalHistory.current.cursor<personalHistory.current.entries.length;
@@ -3986,6 +3989,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     display(allItems);
     history.current = [allItems];
     index.current = 0;
+    personalHistory.current={entries:[],cursor:0};
     snapshot.current = data;
     setSaveBlocked(false);
     if (!fromRemote) flushSave();
@@ -4089,13 +4093,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
-    const baseline = history.current[index.current];
+    const baseline = options?.previousItems??options?.objectBaseline??history.current[index.current];
     if (baseline?.length === normalized.length &&
         normalized.every((item, pos) => item === baseline[pos] ||
           JSON.stringify(item) === JSON.stringify(baseline[pos])))
       return;
     const isLabSimulation=options?.labSimulation===true;
-    if(isStudent&&!isBoardOwner&&!isLabSimulation){
+    if(usePersonalUndo&&!isLabSimulation){
       const own=personalBoardEdit(current,normalized);
       if(own){
         const stack=personalHistory.current;
@@ -4269,23 +4273,33 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const undo = (direction: number) => {
     if (gesture.current || !canEdit || boardResumePendingRef.current) return;
-    if(isStudent&&!isBoardOwner){
+    if(usePersonalUndo){
       const stack=personalHistory.current;
       const step=direction<0?stack.cursor-1:stack.cursor;
       if(step<0||step>=stack.entries.length)return;
+      const before=itemsRef.current;
       const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo");
       if(!outcome.changed){
+        // A superseded action cannot block every earlier undo or later redo.
+        stack.entries.splice(step,1);
+        if(direction<0)stack.cursor=step;
         setNotice("Это действие уже изменено другим участником. Чужие правки не затронуты.");
         return;
       }
-      const restored=reattributeRestoredSharedInk(itemsRef.current,outcome.items,stack.entries[step],authUser.id);
+      const restored=isStudent&&!isBoardOwner
+        ?reattributeRestoredSharedInk(before,outcome.items,stack.entries[step],authUser.id)
+        :{items:outcome.items,edit:stack.entries[step]};
       if(blockedBoardItemRemovals(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
          blockedBoardImageCrops(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
          blockedStudentObjectEdits(itemsRef.current,restored.items,authUser.id).length){
         setNotice("Отмена не может изменить защищённую работу другого участника.");
         return;
       }
-      stack.entries[step]=restored.edit;
+      // Redo/undo must contain only the fields that actually changed now;
+      // a partially conflicted inverse must not later replay a peer edit.
+      const actual=direction<0?personalBoardEdit(restored.items,before):personalBoardEdit(before,restored.items);
+      if(!actual)return;
+      stack.entries[step]=actual;
       stack.cursor=direction<0?step:step+1;
       display(restored.items);
       if(snapshot.current&&!saveBlocked){
@@ -4517,9 +4531,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           respond(`Серверная история недоступна офлайн. В локальной истории отмены ${localSteps} шагов. Последний шаг: добавлено ${added}, изменено ${changed}, удалено ${removed}; сейчас на доске ${current.length} элементов.`);
         }
       }else if(command.kind==="undo"||command.kind==="redo"){
-        const before=index.current;
+        const before=usePersonalUndo?personalHistory.current.cursor:index.current;
         undo(command.kind==="undo"?-1:1);
-        respond(index.current===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
+        respond((usePersonalUndo?personalHistory.current.cursor:index.current)===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
       }else if(command.kind==="pick-media"){
         const input=mediaInput.current;
         if(!input)respond("Не удалось открыть выбор файла. Используйте кнопку загрузки фото или PDF на панели инструментов.");
@@ -8993,8 +9007,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
-                {canEdit&&<><button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
-                <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button></>}
+                {canEdit&&<><button type="button" disabled={usePersonalUndo?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={usePersonalUndo?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button></>}
               </div>
               <div className="topbar-menu-section">
                 {canEdit&&!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
@@ -9147,8 +9161,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
         {canEdit&&!presentation&&!objectEditorOpen&&<div className="mobile-undo-redo" role="group" aria-label="История изменений" onPointerDown={e=>e.stopPropagation()}>
           {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Гость · ученик":"Режим ученика"}</div>}
-          <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить" title={isStudent&&!isBoardOwner?"Отменить своё действие · Ctrl+Z":"Отменить · Ctrl+Z"}><Icon name="undo" size={19}/></button>
-          <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить" title={isStudent&&!isBoardOwner?"Повторить своё действие · Ctrl+Y":"Повторить · Ctrl+Y"}><Icon name="redo" size={19}/></button>
+          <button type="button" disabled={usePersonalUndo?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить" title={isStudent&&!isBoardOwner?"Отменить своё действие · Ctrl+Z":"Отменить · Ctrl+Z"}><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={usePersonalUndo?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить" title={isStudent&&!isBoardOwner?"Повторить своё действие · Ctrl+Y":"Повторить · Ctrl+Y"}><Icon name="redo" size={19}/></button>
         </div>}
         {presentation && (
           <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>
