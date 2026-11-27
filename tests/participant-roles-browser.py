@@ -329,7 +329,7 @@ def check_shared_eraser_sync(browser):
     teacher,pupil=[ctx.new_page() for ctx in contexts]
     # Intercept the actual durable websocket path as well as legacy HTTP.
     # Never simulate loss by disabling the new protocol under test.
-    controls={page:{"hold":None,"hold_all":False,"held":[],"commits":[],"motion":[],"revisions":[]} for page in (teacher,pupil)}
+    controls={page:{"hold":None,"hold_all":False,"held":[],"commits":[],"motion":[],"revisions":[],"impair":False,"delayed":[],"dropped":0,"motion_seen":0,"revision_seen":0} for page in (teacher,pupil)}
     for page,control in controls.items():
         def route_ws(route,control=control):
             upstream=route.connect_to_server()
@@ -348,6 +348,16 @@ def check_shared_eraser_sync(browser):
             def incoming(message):
                 event=json.loads(message)
                 if event.get("type")=="document_changed":control["revisions"].append(event["version"])
+                if control["impair"] and event.get("type") in ("ink_motion","document_changed"):
+                    key="motion_seen" if event["type"]=="ink_motion" else "revision_seen"
+                    control[key]+=1
+                    # Discard a deterministic subset of live frames and
+                    # revision notices, delay the rest by 120 ms. Never
+                    # discard authoritative commit acknowledgements.
+                    divisor=5 if key=="motion_seen" else 4
+                    if control[key]%divisor==0:
+                        control["dropped"]+=1;return
+                    control["delayed"].append((time.monotonic()+.12,route,message));return
                 route.send(message)
             route.on_message(outgoing)
             upstream.on_message(incoming)
@@ -715,6 +725,88 @@ def check_shared_eraser_sync(browser):
                         try: route.abort()
                         except Exception: pass
                     writer.unroute(pattern,delay_write)
+
+            # Sustained real two-UI collaboration under controlled incoming
+            # packet impairment. Sample from before pointer dispatch through
+            # the receiver's actual canvas raster, not transport completion.
+            row=read()
+            doc={**row["document"],"items":[],"ink":[]}
+            client.put(url,json={"expected_version":row["version"],"document":doc}).raise_for_status()
+            for page in (teacher,pupil):
+                page.wait_for_function("""ident=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    return !!raw&&JSON.parse(raw).items.length===0;
+                }""",arg=ident,timeout=20000)
+            def pump_impairment(force=False):
+                now=time.monotonic()
+                for state in controls.values():
+                    pending=state["delayed"];state["delayed"]=[]
+                    for due,route,message in pending:
+                        if force or due<=now:route.send(message)
+                        else:state["delayed"].append((due,route,message))
+            samples=[];expected_ids=set()
+            for state in controls.values():state["impair"]=True
+            started=time.monotonic()
+            try:
+                for round_index in range(12):
+                    for side,(writer,receiver,kind) in enumerate(((teacher,pupil,"pen"),(pupil,teacher,"marker"))):
+                        writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
+                        box=writer.locator("section.board").bounding_box()
+                        x=box["x"]+box["width"]*(.30+.28*side)
+                        y=box["y"]+box["height"]*(.18+.052*round_index)
+                        point=writer.evaluate("""({x,y})=>{
+                            const w=document.querySelector('.world'),r=w.getBoundingClientRect();
+                            const s=new DOMMatrix(getComputedStyle(w).transform).a;
+                            return {x:(x-r.left)/s,y:(y-r.top)/s};
+                        }""",{"x":x+50,"y":y})
+                        assert ink_pixels(receiver,[point])==[False],("Test location already painted",round_index,side)
+                        writer.mouse.move(x,y)
+                        pointer_start=time.monotonic()
+                        writer.mouse.down()
+                        try:
+                            writer.mouse.move(x+100,y,steps=10)
+                            deadline=pointer_start+5
+                            while time.monotonic()<deadline:
+                                pump_impairment()
+                                if ink_pixels(receiver,[point])==[True]:break
+                                writer.wait_for_timeout(15)
+                            else:raise AssertionError(("Sustained peer raster deadline exceeded",round_index,side))
+                            samples.append(round((time.monotonic()-pointer_start)*1000,1))
+                        finally:writer.mouse.up()
+                        deadline=time.monotonic()+12
+                        while time.monotonic()<deadline:
+                            pump_impairment()
+                            saved=inks(read())
+                            added=[i for i in saved if i["id"] not in expected_ids and i["kind"]==kind and i.get("width",0)>70]
+                            if added:break
+                            writer.wait_for_timeout(50)
+                        else:raise AssertionError(("Sustained stroke not durably saved",round_index,side))
+                        assert len(added)==1,("Duplicate sustained stroke",round_index,side)
+                        expected_ids.add(added[0]["id"])
+                    # Maintain traffic across a full minute, not only a burst.
+                    while time.monotonic()<started+(round_index+1)*5:
+                        pump_impairment()
+                        teacher.wait_for_timeout(50)
+            finally:
+                for state in controls.values():state["impair"]=False
+                pump_impairment(True)
+            assert len(samples)==24 and len(expected_ids)==24
+            assert {i["id"] for i in inks(read())}==expected_ids
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,ids})=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    if(!raw)return false;
+                    const doc=JSON.parse(raw),items=doc.items.filter(i=>i.kind==="pen"||i.kind==="marker");
+                    return items.length===ids.length&&ids.every(id=>items.some(i=>i.id===id));
+                }""",arg={"ident":ident,"ids":list(expected_ids)},timeout=30000)
+            drops=sum(s["dropped"] for s in controls.values())
+            assert drops>0,"Impairment was never exercised"
+            ordered=sorted(samples)
+            print("Sustained real UI input-dispatch-to-peer-raster (ms):",json.dumps({
+                "seconds":round(time.monotonic()-started,2),"strokes":len(samples),"drops":drops,
+                "injected_delay_ms":120,"median":round((ordered[11]+ordered[12])/2,1),
+                "p95":ordered[22],"max":ordered[-1],"samples":samples
+            }))
     finally:
         for ctx in contexts: ctx.close()
     print("Durable ink: visible before release; concurrent eraser defeats delayed extensions in both directions.")
@@ -1575,7 +1667,10 @@ def check_undo_reconnect_sync(browser):
             teacher.get_by_role("button",name="Предыдущая страница PDF",exact=True).click()
             wait_api(teacher,lambda d:any(i["id"]==pdf["id"] and i.get("pdfPage")==1 for i in d["items"]),"Teacher PDF page change not saved")
             expect(pupil.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("1",timeout=30000)
-            print("Real two-page PDF upload, durable teacher approval and bidirectional pagination passed.")
+            moved_pdf=peer_move(pdf)
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(pdf["id"],False)
+            print("Real two-page PDF upload, durable teacher approval, bidirectional pagination, movement and deletion passed.")
 
             # Change only the wall-clock read, not Chromium timers. Installing
             # a fake timer scheduler after the board mounted can invalidate
