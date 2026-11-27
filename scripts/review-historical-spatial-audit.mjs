@@ -5,7 +5,7 @@ const fetchJson=p=>JSON.parse(fs.readFileSync(new URL(p,base),"utf8"));
 const data=fetchJson("docs/historical-atlas-spatial-findings-20261124.json");
 const current=fetchJson("docs/historical-atlas-spatial-adjudications-20261127.json");
 const old=fetchJson("docs/historical-atlas-spatial-adjudications-20261126.json");
-const norm=x=>x.normalize("NFKC").toLocaleLowerCase("en").trim().replace(/\\s+/g," ");
+const norm=x=>x.normalize("NFKC").toLocaleLowerCase("en").trim().replace(/\s+/g," ");
 assert.equal(data.findings.length,476);
 assert.equal(old.counts.totalComparabilityCasesExplained,5);
 const byId=new Map(data.findings.map(f=>[f.id,f]));
