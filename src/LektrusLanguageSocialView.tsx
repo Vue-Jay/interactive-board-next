@@ -1,3 +1,5 @@
+import {practiceKey,type SchoolPracticeBinding,type SchoolPractice} from "./schoolPractice";
+import {useSchoolPractice} from "./useSchoolPractice";
 import {useEffect,useMemo,useRef,useState,type KeyboardEvent as ReactKeyboardEvent,type PointerEvent as ReactPointerEvent,type SyntheticEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LanguageSocialDiagram,StateNode} from "./lektrusLanguageSocialModel";
@@ -10,21 +12,25 @@ type WordGesture={
 };
 type WordPreview={id:string;left:number;top:number;width:number};
 
-function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-builder"}>}){
+function SentenceBoard({d,practice}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-builder"}>;practice?:SchoolPracticeBinding}){
  const key=d.parts.map(p=>p.id+"="+p.text).join("|");
  const initial=useMemo(()=>initialScramble(d.parts),[key]);
- const [order,setOrder]=useState<string[]>(initial);
- const [checked,setChecked]=useState(false);
+ const configuration=practiceKey(d.parts);
+ const {value:{order,checked},update,editable}=useSchoolPractice<Extract<SchoolPractice,{kind:"sentence"}>>(
+  {kind:"sentence",key:configuration,order:initial,checked:false},practice);
+ const setOrder=(next:string[]|((previous:string[])=>string[]))=>update(previous=>({...previous,order:typeof next==="function"?next(previous.order):next,checked:false}));
+ const setChecked=(value:boolean)=>update(previous=>previous.checked===value?previous:{...previous,checked:value});
+ const actions=useRef({setOrder,setChecked});actions.current={setOrder,setChecked};
  const [preview,setPreview]=useState<WordPreview|null>(null);
  const partsRef=useRef<HTMLDivElement|null>(null);
  const gestureRef=useRef<WordGesture|null>(null);
  const dropSlotRef=useRef<number|null>(null);
  useEffect(()=>{
-  gestureRef.current=null;dropSlotRef.current=null;setOrder(initial);setChecked(false);setPreview(null);
+  gestureRef.current=null;dropSlotRef.current=null;setPreview(null);
  },[initial]);
  const dictionary=new Map(d.parts.map(p=>[p.id,p]));
  const correct=d.parts.every((p,i)=>order[i]===p.id);
- const reset=()=>{gestureRef.current=null;dropSlotRef.current=null;setPreview(null);setOrder([...initial]);setChecked(false)};
+ const reset=()=>{gestureRef.current=null;dropSlotRef.current=null;setPreview(null);update({kind:"sentence",key:configuration,order:[...initial],checked:false})};
  const stop=(event:SyntheticEvent)=>event.stopPropagation();
  const pattern=sentencePatternById(d.patternId);
 
@@ -43,7 +49,6 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
     .filter(element=>element.dataset.sentenceWord!==gesture.id);
    dropSlotRef.current=sentenceWordDropSlot(event.clientX,event.clientY,
     siblings.map(element=>element.getBoundingClientRect()));
-   setChecked(false);
   };
   const finish=(event:PointerEvent)=>{
    const gesture=gestureRef.current;
@@ -52,7 +57,7 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
    const slot=dropSlotRef.current;
    dropSlotRef.current=null;
    if(event.type==="pointerup"&&gesture.active&&slot!==null)
-    setOrder(moveSentenceWord(gesture.origin,gesture.id,slot));
+    actions.current.setOrder(moveSentenceWord(gesture.origin,gesture.id,slot));
    setPreview(null);
   };
   window.addEventListener("pointermove",move,{capture:true,passive:false});
@@ -65,7 +70,7 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   };
  },[]);
  const beginDrag=(event:ReactPointerEvent<HTMLButtonElement>,id:string)=>{
-  if(event.pointerType==="mouse"&&event.button!==0)return;
+  if(!editable||event.pointerType==="mouse"&&event.button!==0)return;
   event.preventDefault();event.stopPropagation();
   if(gestureRef.current)return;
   const rect=event.currentTarget.getBoundingClientRect();
@@ -94,7 +99,6 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   // can dispatch lostpointercapture before pointerup. Keep the DOM stable
   // until release, then apply the insertion exactly once.
   dropSlotRef.current=slot;
-  setChecked(false);
  };
  const endDrag=(event:ReactPointerEvent<HTMLButtonElement>,cancel=false)=>{
   const gesture=gestureRef.current;
@@ -119,10 +123,9 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   const at=order.indexOf(id);
   const next=event.key==="ArrowLeft"?at-1:event.key==="ArrowRight"?at+1:
    event.key==="Home"?0:event.key==="End"?order.length-1:at;
-  if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key)||at<0)return;
+  if(!editable||!["ArrowLeft","ArrowRight","Home","End"].includes(event.key)||at<0)return;
   event.preventDefault();event.stopPropagation();
   setOrder(current=>moveSentenceWord(current,id,next));
-  setChecked(false);
  };
  return <>
   <div className="lektrus-sentence-on-board" role="group" aria-label={d.title} data-board-interactive="true"
@@ -132,7 +135,7 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
    {d.showHint&&pattern&&<p className="lektrus-sentence-tip">{pattern.label}: {pattern.tip}</p>}
    <div ref={partsRef} className="lektrus-sentence-parts"
     aria-label="Соберите предложение, перетаскивая слова в правильном порядке">
-    {order.map((id,i)=><button type="button" key={id} data-sentence-word={id}
+    {order.map((id,i)=><button type="button" key={id} data-sentence-word={id} disabled={!editable}
      draggable={false} className={preview?.id===id?"is-dragging":""}
      aria-label={`Слово ${dictionary.get(id)?.text??"?"}, позиция ${i+1}. Перетащите или используйте стрелки для перемещения.`}
      title={`Позиция ${i+1}. Перетащите слово или используйте стрелки.`}
@@ -149,8 +152,8 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
      preview?"Переместите слово на нужное место и отпустите.":"Перетаскивайте слова, чтобы собрать предложение. Можно использовать стрелки клавиатуры."}
    </div>
    <div className="lektrus-sentence-actions">
-    <button type="button" onClick={reset}>Заново</button>
-    <button type="button" onClick={()=>setChecked(true)}>Проверить</button>
+    <button type="button" disabled={!editable} onClick={reset}>Заново</button>
+    <button type="button" disabled={!editable} onClick={()=>setChecked(true)}>Проверить</button>
    </div>
    {d.showKey&&<div className="lektrus-sentence-key">
     <small>Ответ преподавателя:</small> {d.parts.map(p=>p.text).join(" ")}
@@ -220,6 +223,6 @@ function CivicsView({d}:{d:Extract<LanguageSocialDiagram,{kind:"state-structure"
   </text>
  </svg>;
 }
-export default function LektrusLanguageSocialView({diagram}:{diagram:LanguageSocialDiagram}){
- return diagram.kind==="sentence-builder"?<SentenceBoard d={diagram}/>:<CivicsView d={diagram}/>;
+export default function LektrusLanguageSocialView({diagram,practice}:{diagram:LanguageSocialDiagram;practice?:SchoolPracticeBinding}){
+ return diagram.kind==="sentence-builder"?<SentenceBoard d={diagram} practice={practice}/>:<CivicsView d={diagram}/>;
 }

@@ -124,8 +124,8 @@ export function restrictStudentDiagramChange(
  }
  // Morphology/phonetics currently store the teacher's source word and
  // annotations, not separate student answer fields. Treat them as read-only
- // until independent pupil-response storage exists. Orthography answers and
- // foreign-language sentence ordering already use local per-user state.
+ // until independent pupil-response storage exists. Shared orthography,
+ // geography and sentence practice use the separate schoolPractice field.
  return null;
 }
 

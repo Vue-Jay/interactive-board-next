@@ -1,3 +1,4 @@
+import {validSchoolPractice} from "./schoolPractice";
 /** Self-contained persisted circuit validation.
  * Keep this module import-free for whiteboard persistence and ink tests. */
 /** Validate persisted mechanics without importing any rendering modules. */
@@ -592,6 +593,7 @@ export type Item = {
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
   schoolDiagram?: import("./lektrusSchoolDiagramModel").SchoolDiagram;
+  schoolPractice?: import("./schoolPractice").SchoolPractice;
   graphRotationX?: number;
   graphRotationY?: number;
   graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
@@ -691,7 +693,7 @@ const persistedGraphKeys = [
   "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
   "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions","scienceReactionDomain","scienceReactionSteps","subjectBoardEntries",
-  "scienceReagents","scienceEnvironment","scienceLabBench","schoolDiagram","subjectBoardStandalone",
+  "scienceReagents","scienceEnvironment","scienceLabBench","schoolDiagram","subjectBoardStandalone","schoolPractice",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
   "graphType","graphExpression","graphConnectPoints",
@@ -1303,6 +1305,8 @@ export function parseDocument(raw: string): DocumentData {
             validPhaseState(v)))
           throw new Error("Повреждено состояние химического стола");
       }
+      if(i.schoolPractice!=null&&!validSchoolPractice(i.schoolPractice))
+        throw new Error("Повреждено состояние учебного упражнения");
       if(i.subjectBoardStandalone!=null&&typeof i.subjectBoardStandalone!=="boolean")
         throw new Error("Повреждён тип химического учебного объекта");
       if(i.subjectBoardEntries!=null&&(!Array.isArray(i.subjectBoardEntries)||i.subjectBoardEntries.length>48||

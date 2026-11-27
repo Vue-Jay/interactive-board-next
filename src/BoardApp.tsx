@@ -1,3 +1,4 @@
+import {practiceFitsDiagram,type SchoolPractice} from "./schoolPractice";
 import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
 import {pwaInstall,usePwaInstall} from "./pwaInstall";
 import UserAvatar from "./UserAvatar";
@@ -1120,7 +1121,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPlaneZoom, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, studentMode=false, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPlaneZoom, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onSchoolPracticeChange, studentMode=false, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1138,6 +1139,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
+  onSchoolPracticeChange?: (practice:SchoolPractice)=>void;
   studentMode?:boolean;
   onLabBenchChange?: (bench:LabBench,simulationOnly?:boolean)=>void;
   onMatchingSize?: (width:number,height:number)=>void;
@@ -1192,7 +1194,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       onOpenEditor={onOpenEditor} onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
-    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} studentMode={studentMode} onMatchingSize={onMatchingSize}/></div>;
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} studentMode={studentMode} onMatchingSize={onMatchingSize} practice={{value:item.schoolPractice&&practiceFitsDiagram(item.schoolPractice,item.schoolDiagram)?item.schoolPractice:undefined,onChange:onSchoolPracticeChange}}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item} onBenchChange={onLabBenchChange} onOpenEditor={onOpenEditor}/>
@@ -10883,6 +10885,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                       commit(itemsRef.current.map(candidate=>candidate.id===latest.id?changed:candidate) ,{publishLiveEdits:false});
                       workChannel.current?.publishEdit(latest.id,editorDiff(latest,changed));
                     }:undefined}
+                  onSchoolPracticeChange={canEdit&&!item.locked&&!presentation?(practice)=>{
+                    const before=itemsRef.current.find(candidate=>candidate.id===item.id);
+                    if(!before||before.locked||!practiceFitsDiagram(practice,before.schoolDiagram))return;
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,schoolPractice:practice}:candidate),{immediatePaint:true});
+                  }:undefined}
                   onSchoolDiagramChange={canEdit&&!item.locked&&isSchoolDiagramId(item.graphFigureId)?(diagram)=>{
                     const before=itemsRef.current.find(candidate=>candidate.id===item.id);
                     if(!before)return;

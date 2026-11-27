@@ -1,3 +1,5 @@
+import {practiceKey,practiceOrder,type SchoolPracticeBinding,type SchoolPractice} from "./schoolPractice";
+import {useSchoolPractice} from "./useSchoolPractice";
 import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {geoMatchingPreferredWidth} from "./lektrusGeoMatchingLayout";
 import {atlasCountryFlagUrl} from "./lektrusAtlasCountrySymbols";
@@ -48,8 +50,8 @@ const stopInteractive=(e:React.SyntheticEvent)=>{
  }
 };
 
-function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
- onMatchingSize?:(width:number,height:number)=>void}){
+function Matching({diagram:d,onMatchingSize,practice}:{diagram:GeoTrainingDiagram;
+ onMatchingSize?:(width:number,height:number)=>void;practice?:SchoolPracticeBinding}){
  const gameRef=useRef<HTMLDivElement|null>(null);
  const preferredWidth=geoMatchingPreferredWidth(d);
  const sizeCallback=useRef(onMatchingSize);
@@ -69,36 +71,25 @@ function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
  },[preferredWidth,!!onMatchingSize]);
  // Realtime and document saves may reconstruct the same country array.
  // Reset practice only when its actual content changes, not its reference.
- const codesKey=d.countryCodes.join("|");
- const [rightOrder,setRightOrder]=useState(()=>shuffled(d.countryCodes));
- const [selected,setSelected]=useState<{side:"left"|"right";code:string}|null>(null);
- const [matched,setMatched]=useState<string[]>([]);
- const [wrong,setWrong]=useState(0);
- const [feedback,setFeedback]=useState("");
- useEffect(()=>{
-  setRightOrder(shuffled(d.countryCodes));setSelected(null);
-  setMatched([]);setWrong(0);setFeedback("");
- },[codesKey,d.relation,d.reverse]);
- const restart=()=>{setRightOrder(shuffled(d.countryCodes));setSelected(null);setMatched([]);setWrong(0);setFeedback("")};
- const choose=(side:"left"|"right",code:string)=>{
-  if(matched.includes(code))return;
-  if(!selected||selected.side===side){
-   setSelected({side,code});setFeedback("");return;
-  }
-  if(selected.code===code){
-   setMatched(prev=>[...prev,code]);setFeedback("Верно! Пара найдена.");
-  }else{
-   setWrong(v=>v+1);setFeedback("Пока не совпало. Попробуйте ещё раз.");
-  }
-  setSelected(null);
- };
+ const key=practiceKey([d.countryCodes,d.relation,d.reverse,d.exercise]);
+ const initial={kind:"geo-matching" as const,key,order:practiceOrder(d.countryCodes,key),selected:null,matched:[],wrong:0,feedback:"" as const};
+ const {value,update,editable}=useSchoolPractice<Extract<SchoolPractice,{kind:"geo-matching"}>>(initial,practice);
+ const {order:rightOrder,selected,matched,wrong}=value;
+ const feedback=value.feedback==="correct"?"Верно! Пара найдена.":value.feedback==="wrong"?"Пока не совпало. Попробуйте ещё раз.":"";
+ const restart=()=>update({...initial,order:shuffled(d.countryCodes)});
+ const choose=(side:"left"|"right",code:string)=>update(prev=>{
+  if(prev.matched.includes(code))return prev;
+  if(!prev.selected||prev.selected.side===side)return {...prev,selected:{side,code},feedback:""};
+  if(prev.selected.code===code)return {...prev,matched:[...prev.matched,code],selected:null,feedback:"correct"};
+  return {...prev,wrong:Math.min(100000,prev.wrong+1),selected:null,feedback:"wrong"};
+ });
  const done=matched.length===d.countryCodes.length;
  const [leftName,rightName]=sideLabels(d);
  const button=(code:string,side:"left"|"right")=>{
   const country=getGeoCountry(code);
   if(!country)return null;
   const solved=matched.includes(code),active=selected?.side===side&&selected.code===code;
-  return <button key={code} type="button" disabled={solved}
+  return <button key={code} type="button" disabled={solved||!editable}
    className={"lektrus-geo-match-item"+(solved?" is-correct":"")+(active?" is-selected":"")}
    aria-pressed={active} aria-label={side==="left"?leftName+" "+(d.countryCodes.indexOf(code)+1):rightName+" "+(rightOrder.indexOf(code)+1)}
    onClick={()=>choose(side,code)}>
@@ -111,7 +102,7 @@ function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
   onClick={stopInteractive} onDoubleClick={stopInteractive}>
   <header className="lektrus-geo-game-header">
    <div><strong>{d.title}</strong><small>{geoRelationNames[d.relation]} · {d.reverse?"Обратный порядок":"Обычный порядок"}</small></div>
-   <button type="button" className="lektrus-geo-reset" onClick={restart}>↻ Заново</button>
+   <button type="button" className="lektrus-geo-reset" disabled={!editable} onClick={restart}>↻ Заново</button>
   </header>
   <div className="lektrus-geo-game-progress">
    <span>Найдено пар: <b>{matched.length} / {d.countryCodes.length}</b></span>
@@ -130,27 +121,26 @@ function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
   </p>
  </div>;
 }
-function Flashcards({diagram:d}:{diagram:GeoTrainingDiagram}){
- const codesKey=d.countryCodes.join("|");
- const [order,setOrder]=useState(()=>shuffled(d.countryCodes));
- const [index,setIndex]=useState(0),[revealed,setRevealed]=useState(false);
- const [known,setKnown]=useState<string[]>([]);
- useEffect(()=>{setOrder(shuffled(d.countryCodes));setIndex(0);setRevealed(false);setKnown([])},
-  [codesKey,d.relation,d.reverse]);
- const country=getGeoCountry(order[Math.min(index,order.length-1)]??"");
+function Flashcards({diagram:d,practice}:{diagram:GeoTrainingDiagram;practice?:SchoolPracticeBinding}){
+ const key=practiceKey([d.countryCodes,d.relation,d.reverse,d.exercise]);
+ const initial={kind:"geo-cards" as const,key,order:practiceOrder(d.countryCodes,key),index:0,revealed:false,known:[]};
+ const {value,update,editable}=useSchoolPractice<Extract<SchoolPractice,{kind:"geo-cards"}>>(initial,practice);
+ const {order,index,revealed,known}=value;
+ const country=getGeoCountry(order[index]??"");
  const [frontName,backName]=sideLabels(d);
- const go=(next:number)=>{setIndex(next);setRevealed(false)};
- const restart=()=>{setOrder(shuffled(d.countryCodes));setIndex(0);setRevealed(false);setKnown([])};
- const rate=(yes:boolean)=>{
-  if(!country)return;
-  setKnown(prev=>yes?[...new Set([...prev,country.code])]:prev.filter(c=>c!==country.code));
-  if(index<order.length-1)go(index+1);else setRevealed(true);
- };
+ const go=(next:number)=>update(prev=>({...prev,index:next,revealed:false}));
+ const restart=()=>update({...initial,order:shuffled(d.countryCodes)});
+ const flip=()=>update(prev=>({...prev,revealed:!prev.revealed}));
+ const rate=(yes:boolean)=>update(prev=>{
+  if(!country)return prev;
+  return {...prev,known:yes?[...new Set([...prev.known,country.code])]:prev.known.filter(c=>c!==country.code),
+   index:Math.min(prev.index+1,prev.order.length-1),revealed:prev.index===prev.order.length-1};
+ });
  return <div className="lektrus-geo-game lektrus-geo-cards" onPointerDown={stopInteractive}
   onPointerUp={stopInteractive} onClick={stopInteractive} onDoubleClick={stopInteractive}>
   <header className="lektrus-geo-game-header">
    <div><strong>{d.title}</strong><small>{geoRelationNames[d.relation]} · {frontName} → {backName}</small></div>
-   <button type="button" className="lektrus-geo-reset" onClick={restart}>↻ Заново</button>
+   <button type="button" className="lektrus-geo-reset" disabled={!editable} onClick={restart}>↻ Заново</button>
   </header>
   <div className="lektrus-geo-game-progress">
    <span>Карточка <b>{index+1} / {order.length}</b></span>
@@ -158,7 +148,7 @@ function Flashcards({diagram:d}:{diagram:GeoTrainingDiagram}){
   </div>
   {country&&<button type="button" className={"lektrus-geo-flashcard"+(revealed?" is-flipped":"")}
    aria-label={revealed?"Скрыть ответ":"Показать ответ"}
-   onClick={()=>setRevealed(v=>!v)}>
+   disabled={!editable} onClick={flip}>
    <small>{revealed?backName:frontName}</small>
    <div className="lektrus-geo-flashcard-content">{token(country,d,revealed?"right":"left")}</div>
    {revealed&&country.note&&d.relation==="country-capital"&&
@@ -166,22 +156,22 @@ function Flashcards({diagram:d}:{diagram:GeoTrainingDiagram}){
    <span className="lektrus-geo-card-help">{revealed?"Нажмите, чтобы скрыть ответ":"Нажмите, чтобы перевернуть карточку"}</span>
   </button>}
   <div className="lektrus-geo-card-actions">
-   <button type="button" disabled={index===0} onClick={()=>go(index-1)}>‹ Назад</button>
-   <button type="button" onClick={()=>setRevealed(v=>!v)}>{revealed?"Скрыть":"Ответ"}</button>
-   <button type="button" disabled={index===order.length-1} onClick={()=>go(index+1)}>Далее ›</button>
+   <button type="button" disabled={!editable||index===0} onClick={()=>go(index-1)}>‹ Назад</button>
+   <button type="button" disabled={!editable} onClick={flip}>{revealed?"Скрыть":"Ответ"}</button>
+   <button type="button" disabled={!editable||index===order.length-1} onClick={()=>go(index+1)}>Далее ›</button>
   </div>
   <div className="lektrus-geo-rating">
-   <button type="button" disabled={!revealed} onClick={()=>rate(false)}>↻ Повторить</button>
-   <button type="button" disabled={!revealed} onClick={()=>rate(true)}>✓ Знаю</button>
+   <button type="button" disabled={!editable||!revealed} onClick={()=>rate(false)}>↻ Повторить</button>
+   <button type="button" disabled={!editable||!revealed} onClick={()=>rate(true)}>✓ Знаю</button>
   </div>
-  <p className="lektrus-geo-message" role="status">Ответы скрыты до переворота. Оценка «Знаю» сохраняется только на время этого прохождения.</p>
+  <p className="lektrus-geo-message" role="status">Ответы скрыты до переворота. Оценка «Знаю» сохраняется в текущем прохождении.</p>
  </div>;
 }
-export default function LektrusGeographyTrainingView({diagram,onMatchingSize}:{diagram:GeoTrainingDiagram;
- onMatchingSize?:(width:number,height:number)=>void}){
+export default function LektrusGeographyTrainingView({diagram,onMatchingSize,practice}:{diagram:GeoTrainingDiagram;
+ onMatchingSize?:(width:number,height:number)=>void;practice?:SchoolPracticeBinding}){
  if(diagram.countryCodes.length<2)return <div className="lektrus-geo-game lektrus-geo-empty-preview" role="status">
   <strong>{diagram.title}</strong>
   <p>Задание пока пустое. Выберите страны вручную или сгенерируйте набор в редакторе.</p>
  </div>;
- return diagram.exercise==="matching"?<Matching diagram={diagram} onMatchingSize={onMatchingSize}/>:<Flashcards diagram={diagram}/>;
+ return diagram.exercise==="matching"?<Matching diagram={diagram} onMatchingSize={onMatchingSize} practice={practice}/>:<Flashcards diagram={diagram} practice={practice}/>;
 }

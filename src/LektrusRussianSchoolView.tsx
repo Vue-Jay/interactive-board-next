@@ -1,7 +1,9 @@
-import {useEffect,useState,type SyntheticEvent} from "react";
+import {practiceKey,type SchoolPracticeBinding,type SchoolPractice} from "./schoolPractice";
+import {useSchoolPractice} from "./useSchoolPractice";
+import {type SyntheticEvent} from "react";
 import type {RussianSchoolDiagram} from "./lektrusRussianSchoolModel";
 import {posNames,totalSounds,traitGroupNames} from "./lektrusRussianSchoolModel";
-type Props={diagram:RussianSchoolDiagram;onChange?:(next:RussianSchoolDiagram)=>void;studentMode?:boolean};
+type Props={diagram:RussianSchoolDiagram;onChange?:(next:RussianSchoolDiagram)=>void;studentMode?:boolean;practice?:SchoolPracticeBinding};
 function MorphologyGraphic({d}:{d:Extract<RussianSchoolDiagram,{kind:"morphology"}>}){
  const sections=["permanent","variable","syntax"] as const;
  return <svg viewBox="0 0 900 500" role="img" aria-label={d.title} className="lektrus-school-svg">
@@ -70,21 +72,16 @@ function PhoneticsGraphic({d}:{d:Extract<RussianSchoolDiagram,{kind:"phonetics"}
   </text>
  </svg>;
 }
-function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography"}>}){
- const [index,setIndex]=useState(0);
- const [picked,setPicked]=useState<number|null>(null);
- const [checked,setChecked]=useState(false);
- // Preserve the active question when classmates or the teacher update a different
- // question. Reset only if this particular question or its answers changed.
- const questionIds=d.questions.map(q=>q.id).join("|");
- useEffect(()=>setIndex(current=>Math.min(current,Math.max(0,d.questions.length-1))),[questionIds,d.questions.length]);
- const question=d.questions[Math.min(index,d.questions.length-1)];
- const signature=question?[question.id,question.prompt,...question.options,question.correct].join("\u0000"):"";
- useEffect(()=>{setPicked(null);setChecked(false)},[signature]);
+function OrthographyBoard({d,practice}:{d:Extract<RussianSchoolDiagram,{kind:"orthography"}>;practice?:SchoolPracticeBinding}){
+ const key=practiceKey(d.questions);
+ const {value:{index,picked,checked},update,editable}=useSchoolPractice<Extract<SchoolPractice,{kind:"orthography"}>>({kind:"orthography",key,index:0,picked:null,checked:false},practice);
+ const question=d.questions[index];
+ const setPicked=(picked:number|null)=>update(prev=>({...prev,picked,checked:false}));
+ const setChecked=(checked:boolean)=>update(prev=>({...prev,checked}));
  const ok=checked&&question!==undefined&&picked===question.correct;
  const ready=!!question&&question.prompt!=="□"&&
   question.options.length>=2&&question.options.every(option=>option.trim().length>0);
- const next=(i:number)=>{setIndex(i);setPicked(null);setChecked(false)};
+ const next=(i:number)=>update(prev=>({...prev,index:i,picked:null,checked:false}));
  const stop=(e:SyntheticEvent)=>e.stopPropagation();
  if(!ready)return <div className="lektrus-orthography-board" role="status"
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
@@ -104,7 +101,7 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
    <span className="lektrus-orthography-gap">{picked===null?"□":question.options[picked]}</span>
    {question.prompt.split("□")[1]}</div>
   <div className="lektrus-orthography-answers" aria-label="Варианты ответа">
-   {question.options.map((option,i)=><button key={i} type="button" disabled={checked}
+   {question.options.map((option,i)=><button key={i} type="button" disabled={!editable||checked}
     aria-pressed={picked===i} className={picked===i?"selected":""}
     onClick={()=>setPicked(i)}>{option}</button>)}
   </div>
@@ -113,17 +110,17 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
    {d.showExplanation&&ok&&question.explanation&&<small>{question.explanation}</small>}
   </div>:<div className="lektrus-orthography-feedback neutral">Выберите ответ, затем нажмите «Проверить».</div>}
   <div className="lektrus-orthography-nav">
-   <button type="button" disabled={index===0} onClick={()=>next(index-1)}>← Назад</button>
-   {checked&&!ok?<button type="button" onClick={()=>{setPicked(null);setChecked(false)}}>Повторить</button>:
-    <button type="button" disabled={picked===null||checked} onClick={()=>setChecked(true)}>Проверить</button>}
-   <button type="button" disabled={index===d.questions.length-1}
+   <button type="button" disabled={!editable||index===0} onClick={()=>next(index-1)}>← Назад</button>
+   {checked&&!ok?<button type="button" disabled={!editable} onClick={()=>setPicked(null)}>Повторить</button>:
+    <button type="button" disabled={!editable||picked===null||checked} onClick={()=>setChecked(true)}>Проверить</button>}
+   <button type="button" disabled={!editable||index===d.questions.length-1}
     onClick={()=>next(index+1)}>Дальше →</button>
   </div>
  </div>;
 }
 const stopInline=(e:React.SyntheticEvent)=>e.stopPropagation();
-export default function LektrusRussianSchoolView({diagram,onChange,studentMode=false}:Props){
- if(diagram.kind==="orthography")return <OrthographyBoard d={diagram}/>;
+export default function LektrusRussianSchoolView({diagram,onChange,studentMode=false,practice}:Props){
+ if(diagram.kind==="orthography")return <OrthographyBoard d={diagram} practice={practice}/>;
  // The inline word/phonetic annotations belong to the teacher. Pupil
  // responses need separate answer state, not mutations of this source.
  const inline=onChange&&!studentMode&&<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",

@@ -1,3 +1,4 @@
+import {practiceFitsDiagram} from "./schoolPractice";
 import {isInkItem,type Item} from "./boardModel";
 import {STUDENT_BLOCKED_CREATE_TOOLS} from "./lektrusBoardRolePreview";
 
@@ -118,6 +119,7 @@ export function blockedStudentObjectEdits(before:readonly Item[],after:readonly 
     if(old.graphFigureId==="chem-periodic")for(const field of ["sciencePeriodicHighlights","sciencePeriodicLayout"])allowed.add(field);
     if(old.graphFigureId?.startsWith("physics-"))for(const field of ["graphPoints","scienceMechanics","scienceOptics","scienceCircuit"])allowed.add(field);
    }
+   if(old.kind==="graph"&&old.schoolDiagram&&(item.schoolPractice===undefined||practiceFitsDiagram(item.schoolPractice,old.schoolDiagram)))allowed.add("schoolPractice");
    if(old.kind==="graph"&&old.graphFigureId==="chem-experiment-free"&&old.scienceLabBench){
     allowed.add("scienceLabBench");
     if(item.scienceReagents===undefined)allowed.add("scienceReagents");
