@@ -226,3 +226,5 @@ Source audit identified a delayed-response race beyond the UI guard: a queued pu
 ## Shared vocabulary and orthography; CI scope repair
 
 Exact c2b2e69 server and build workflows passed; Verify failed the two-workflow routing assertion due to added participant-role test trigger. Restored prior scope, retaining private asset directory and manual role suite. New candidate adds shared standalone vocabulary and spelling responses, backward-compatible optional state, bounded model/server validation, atomic source-aware rebase, teacher source protection and real dual-session browser assertions. Preview without change callback remains local. Exact-head tests pending. Historical baseline 18/20; full subject gate, current CI and physical hardware evidence remain open. No main merge/deployment.
+
+Workflow validation follow-up: job-level env cannot depend on runner.temp; use a fixed private directory on each disposable runner. GitHub reported a failed workflow with no jobs on 857a8d9 (run 46050387145). Annotation access unavailable; exact new-head CI required.

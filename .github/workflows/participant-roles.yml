@@ -46,7 +46,7 @@ jobs:
       LEKTRUS_ALLOWED_ORIGINS: http://127.0.0.1:5173
       LEKTRUS_JWT_SECRET: CI-only-not-for-production-random-string-1234567890
       LEKTRUS_APPLY_SCHEMA: 'true'
-      LEKTRUS_ASSETS_DIR: ${{ runner.temp }}/lektrus-private-assets
+      LEKTRUS_ASSETS_DIR: /tmp/lektrus-participant-roles-assets
       VITE_LEKTRUS_BACKEND: selfhost
       VITE_LEKTRUS_API_ORIGIN: http://127.0.0.1:8000
     steps:
