@@ -751,12 +751,12 @@ def check_shared_eraser_sync(browser):
             for state in controls.values():state["impair"]=True
             started=time.monotonic()
             try:
-                for round_index in range(12):
+                for round_index in range(24):
                     for side,(writer,receiver,kind) in enumerate(((teacher,pupil,"pen"),(pupil,teacher,"marker"))):
                         writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
                         box=writer.locator("section.board").bounding_box()
                         x=box["x"]+box["width"]*(.30+.28*side)
-                        y=box["y"]+box["height"]*(.18+.052*round_index)
+                        y=box["y"]+box["height"]*(.16+.027*round_index)
                         point=writer.evaluate("""({x,y})=>{
                             const w=document.querySelector('.world'),r=w.getBoundingClientRect();
                             const s=new DOMMatrix(getComputedStyle(w).transform).a;
@@ -767,12 +767,9 @@ def check_shared_eraser_sync(browser):
                         pointer_start=time.monotonic()
                         writer.mouse.down()
                         try:
-                            # Interleave the proxy relay with individual pointer
-                            # inputs; a single blocking multi-step call starves
-                            # this synchronous test router for its entire duration.
-                            for step in range(1,11):
-                                writer.mouse.move(x+step*10,y)
-                                pump_impairment()
+                            # Measure a single extension event to the chosen
+                            # pixel rather than ten serial automation round trips.
+                            writer.mouse.move(x+100,y)
                             dispatched=time.monotonic()
                             dispatch_samples.append(round((dispatched-pointer_start)*1000,1))
                             deadline=pointer_start+5
@@ -795,14 +792,15 @@ def check_shared_eraser_sync(browser):
                         else:raise AssertionError(("Sustained stroke not durably saved",round_index,side))
                         assert len(added)==1,("Duplicate sustained stroke",round_index,side)
                         expected_ids.add(added[0]["id"])
-                    # Maintain traffic across a full minute, not only a burst.
-                    while time.monotonic()<started+(round_index+1)*5:
+                    # Maintain impaired collaboration over five real minutes.
+                    while time.monotonic()<started+(round_index+1)*12.5:
                         pump_impairment()
                         teacher.wait_for_timeout(50)
             finally:
                 for state in controls.values():state["impair"]=False
                 pump_impairment(True)
-            assert len(samples)==24 and len(expected_ids)==24
+            assert len(samples)==48 and len(expected_ids)==48
+            assert time.monotonic()-started>=300
             assert {i["id"] for i in inks(read())}==expected_ids
             for page in (teacher,pupil):
                 page.wait_for_function("""({ident,ids})=>{
@@ -816,10 +814,10 @@ def check_shared_eraser_sync(browser):
             ordered=sorted(samples)
             print("Sustained real UI input-dispatch-to-peer-raster (ms):",json.dumps({
                 "seconds":round(time.monotonic()-started,2),"strokes":len(samples),"drops":drops,
-                "injected_delay_ms":120,"median":round((ordered[11]+ordered[12])/2,1),
-                "p95":ordered[22],"max":ordered[-1],"samples":samples,
-                "dispatch_median_ms":round(sorted(dispatch_samples)[12],1),
-                "post_dispatch_median_ms":round(sorted(post_dispatch_samples)[12],1),
+                "injected_delay_ms":120,"median":round((ordered[23]+ordered[24])/2,1),
+                "p95":ordered[45],"max":ordered[-1],"samples":samples,
+                "dispatch_median_ms":round((sorted(dispatch_samples)[23]+sorted(dispatch_samples)[24])/2,1),
+                "post_dispatch_median_ms":round((sorted(post_dispatch_samples)[23]+sorted(post_dispatch_samples)[24])/2,1),
                 "proxy_extra_delay_p95_ms":round(sorted(relay_lateness)[int((len(relay_lateness)-1)*.95)],1)
             }))
     finally:

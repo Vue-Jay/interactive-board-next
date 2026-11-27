@@ -40,6 +40,17 @@ function samePoints(a:Point[],b:Point[]):boolean{
   return a===b||a.length===b.length&&a.every((p,i)=>p.x===b[i].x&&p.y===b[i].y);
 }
 const round=(n:number)=>Math.round(n*100)/100;
+// Only drawing gestures grow the same permanent ID. Compare world points,
+// not the moving bounding box used by the normalized ink representation.
+function savedContainsDrawingPrefix(saved:MotionShape|undefined,preview:MotionShape|null):boolean{
+ if(!saved||!preview||saved.kind==="sticky"||preview.kind==="sticky"||saved.kind!==preview.kind||
+    saved.id!==preview.id||saved.color!==preview.color||saved.weight!==preview.weight||
+    (saved.rotation??0)!==(preview.rotation??0)||!!saved.hidden!==!!preview.hidden||
+    !!saved.locked!==!!preview.locked||saved.groupId!==preview.groupId||
+    saved.createdBy!==preview.createdBy||saved.points.length<=preview.points.length)return false;
+ return preview.points.every((p,i)=>round(p.x+preview.x)===round(saved.points[i].x+saved.x)&&
+   round(p.y+preview.y)===round(saved.points[i].y+saved.y));
+}
 function compact(old:MotionShape|undefined,next:MotionShape):MotionShape|Tail{
   if(!old||old.kind==="sticky"||next.kind==="sticky"||old.kind!==next.kind||
       old.color!==next.color||old.weight!==next.weight||old.rotation!==next.rotation||old.hidden!==next.hidden||
@@ -180,7 +191,8 @@ export function createInkMotionLedger(){
             if(entry.base>=nextVersion)continue;
             const old=authoritative.get(id),now=next.get(id);
             const oldShape=old?shape(old):undefined,newShape=now?shape(now):undefined;
-            if(entry.value&&same(entry.value,newShape)||!entry.value&&old&&!now){
+            if(entry.value&&same(entry.value,newShape)||!entry.value&&old&&!now||
+              entry.gesture===id&&savedContainsDrawingPrefix(newShape,entry.value)){
               peer.pending.delete(id);changed=true;continue;
             }
             // A competing authoritative deletion/edit wins over every
@@ -230,7 +242,8 @@ export function createInkMotionLedger(){
         }else peer.wire.delete(change.id);
         if(change.seq<=peer.ack)continue;
         const saved=authoritative.get(change.id);
-        if(value&&saved&&same(value,shape(saved))){
+        if(value&&saved&&(same(value,shape(saved))||
+          event.base_version<version&&event.gesture===change.id&&savedContainsDrawingPrefix(shape(saved),value))){
           if(peer.pending.delete(change.id))changed=true;
           continue;
         }

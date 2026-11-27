@@ -179,3 +179,30 @@ console.log("Permanent raster: changed world-coordinate tail only; marker joins,
 const instrument=read("GeometryInstruments.tsx");
 assert.match(instrument,/if\(g\.mode==="move"\)\{[\s\S]*?onUpdate\(item\.id,\{x:next\.x,y:next\.y\}\)/,
  "Instrument translation must not overwrite a concurrent remote angle");
+
+// A late short drawing frame must never shrink an already saved longer stroke,
+// even if its motion watermark was lost. Eraser gestures are not prefixes.
+{
+ const motion={};
+ new Function("exports",ts.transpileModule(read("boardInkMotion.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(motion);
+ const short={id:"stroke",kind:"pen",text:"",createdBy:"peer",x:10,y:10,width:20,height:10,color:"#000",weight:3,points:[{x:0,y:0},{x:20,y:10}]};
+ const long={...short,x:0,width:50,points:[{x:10,y:0},{x:30,y:10},{x:50,y:5}]};
+ const newer={...long,width:60,points:[...long.points,{x:60,y:5}]};
+ const frame=(seq,base,stroke,gesture="stroke")=>({type:"ink_motion",client_id:"peer-tab",user_id:"peer",name:"Peer",role:"editor",sent_at:0,gesture,base_version:base,seq,x:0,y:0,changes:[{id:"stroke",index:0,seq,value:stroke}]});
+ const ledger=motion.createInkMotionLedger();
+ ledger.reconcile([],1);
+ ledger.receive(frame(1,1,short));
+ assert.equal(ledger.project([])[0].points.length,2);
+ ledger.reconcile([long],2,"peer");
+ assert.deepEqual(ledger.project([long]),[long],"Longer saved drawing supersedes an older pending prefix without an ACK");
+ ledger.receive(frame(2,1,short));
+ assert.deepEqual(ledger.project([long]),[long],"Delayed motion cannot visibly shorten saved ink");
+ ledger.receive(frame(3,2,newer));
+ assert.equal(ledger.project([long])[0].points.length,4,"New drawing samples still render immediately");
+ const eraser=motion.createInkMotionLedger();
+ eraser.reconcile([long],2,"peer");
+ eraser.receive(frame(4,1,short,"erase:gesture"));
+ assert.equal(eraser.project([long])[0].points.length,2,"A competing eraser is not mistaken for an old drawing prefix");
+}
