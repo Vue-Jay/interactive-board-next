@@ -43,6 +43,9 @@ export function connectAttachmentApprovalChannel(
    if(queue.size)retry=setTimeout(flush,160);
   };
   let snapshotAbort:AbortController|undefined;
+  let snapshotRetry:ReturnType<typeof setTimeout>|undefined;
+  let snapshotFailures=0;
+  const stopRecovery=()=>{clearTimeout(snapshotRetry);snapshotRetry=undefined;snapshotAbort?.abort();snapshotFailures=0;};
   const resolved=new Set<string>();
   const handle=(event:SelfhostLiveEvent)=>{
    if(event.type==="attachment_request"){
@@ -64,19 +67,31 @@ export function connectAttachmentApprovalChannel(
    }
   };
   const recover=()=>{
+   clearTimeout(snapshotRetry);snapshotRetry=undefined;
+   if(stopped||!ready)return;
    snapshotAbort?.abort();
    const controller=new AbortController();snapshotAbort=controller;
    void selfhostListAttachmentApprovals(boardId,controller.signal).then(snapshot=>{
-    if(stopped||controller.signal.aborted)return;
+    if(stopped||!ready||controller.signal.aborted)return;
+    snapshotFailures=0;
     // Apply decisions first so an older pending snapshot cannot reopen one.
     for(const result of snapshot.results)handle(result);
     for(const request of snapshot.requests)handle(request);
-   }).catch(()=>{/* legacy servers and a transient network loss retain retries */});
+   }).catch((error:unknown)=>{
+    if(stopped||!ready||controller.signal.aborted)return;
+    const status=typeof error==="object"&&error!==null&&"status" in error?Number(error.status):0;
+    // Do not poll legacy endpoints or retry permanent permission/client errors.
+    if(status>=400&&status<500&&status!==408&&status!==425&&status!==429)return;
+    // A healthy socket does not imply a healthy HTTP request. A pending
+    // approval can outlive its sender, so recover the ledger independently.
+    const delay=Math.min(500*2**Math.min(snapshotFailures++,6),30000);
+    snapshotRetry=setTimeout(recover,delay);
+   });
   };
   const channel=selfhostSubscribeBoard(boardId,()=>{},status=>{
    ready=status==="online";
    if(ready){flush();recover();}
-   else{clearTimeout(retry);retry=undefined;snapshotAbort?.abort();}
+   else{clearTimeout(retry);retry=undefined;stopRecovery();}
   },handle);
   const send=(type:"attachment_request"|"attachment_result",payload:Record<string,unknown>)=>{
    if(stopped)return;
@@ -95,7 +110,7 @@ export function connectAttachmentApprovalChannel(
    result:p=>send("attachment_result",{
     request_id:p.requestId,target_user_id:p.studentId,approved:p.approved,name:p.name,
    }),
-   close:()=>{stopped=true;clearTimeout(retry);snapshotAbort?.abort();queue.clear();channel()},
+   close:()=>{stopped=true;clearTimeout(retry);stopRecovery();queue.clear();channel()},
   };
  }
  if(!isRemoteBackendEnabled())return{request:()=>{},result:()=>{},close:()=>{}};

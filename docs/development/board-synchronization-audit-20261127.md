@@ -93,3 +93,35 @@ Corrected the atom fixture to the actual validated AtomModel shape and covered t
 ## Gesture-release revision race
 
 The detached editor correction passed both full workflows (46019654965 and 46019654920). Inspection found a further object-delay race: pointer-up queued a local save microtask before deferred peer revisions were applied by a zero-delay timer. Reconcile deferred revisions synchronously once the gesture is finalized, guard the save entry point, retain the queued snapshot if application remains deferred/rejected, and ignore stale notifications before deferring. Added a real held pupil drag with an independent teacher revision delivered through the actual socket, requiring the first durable write to use the new revision. New exact-head CI pending; no publication.
+
+
+## Attachment ledger recovery and measurable release gate
+
+An online socket previously made only one HTTP ledger read after reconnect. If that read failed while the original uploader was absent, pending durable requests could remain invisible until another reconnect. The isolated candidate retries transient ledger reads with capped exponential backoff, cancels on offline/close, and does not poll permanent 4xx or legacy endpoints. Added regressions for transient failure without reconnect, offline timer cancellation, and legacy endpoint handling. Pending exact-head CI.
+
+Progress is measured by 20 equally counted acceptance checkpoints, not percentage of source lines or a guarantee of defect-free behavior. Historical passes must be revalidated by the exact-head CI gate. An incomplete or unverified checkpoint counts as open.
+
+| # | Acceptance checkpoint | Status at base 04250d2 |
+|---|---|---|
+| 1 | Shared object and tool source-path inventory | evidenced |
+| 2 | Model inverse and conflict regressions for all 20 native kinds | evidenced |
+| 3 | Server role and authorization matrix | evidenced |
+| 4 | Real server socket object revision matrix | evidenced |
+| 5 | Real dual-session pen and marker before durable ACK | evidenced |
+| 6 | Both eraser modes and concurrent delayed stroke extension | evidenced |
+| 7 | Core text/shape/sticky bidirectional creation/deletion and live motion | evidenced |
+| 8 | Text checkpoint history, peer edit and Escape cancellation | evidenced |
+| 9 | Personal undo/redo for teacher and pupil | evidenced |
+| 10 | Real offline catch-up and reload | evidenced |
+| 11 | Attachment approval, image reload/lost-result and ledger recovery | open: new retry regression |
+| 12 | PostgreSQL concurrent attachment decisions and authorization | evidenced |
+| 13 | Six protected assignment families keyboard transform and lock/delete denial | evidenced |
+| 14 | 30 real sockets for 60 seconds, transport round measurement | evidenced |
+| 15 | Every allowed native kind via actual UI creation/edit/transform/delete, including PDF and instruments | open |
+| 16 | Real subject editor concurrent edits, responses and gesture variants | open |
+| 17 | Long unstable network lesson and background resume both below and above 10 minutes | open |
+| 18 | Physical Android phone/tablet and cross-device interaction | open |
+| 19 | End-to-end pointer-to-peer-pixel latency and convergence under sustained UI collaboration | open |
+| 20 | Exact candidate head frontend and server workflows complete | open |
+
+Baseline: 13/20 evidenced (65%), 7/20 open (35%). Never merge on percentage alone; all checkpoints must pass. No publication.

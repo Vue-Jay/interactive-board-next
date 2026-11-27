@@ -7,17 +7,18 @@ const board=read("src/BoardApp.tsx");
 const exports={};
 let status,receive,fail=true,closed=false;
 let snapshot={requests:[],results:[]};
+let snapshotError=null,snapshotCalls=0;
 const attempted=[],delivered=[];
 const transport=Object.assign(()=>{closed=true},{sendEvent:frame=>{
  attempted.push(frame);if(fail)return false;delivered.push(frame);return true;
 }});
-const mock={isSelfhostBackendEnabled:()=>true,selfhostListAttachmentApprovals:async()=>snapshot,selfhostSubscribeBoard:(_id,_version,onStatus,onEvent)=>{
+const mock={isSelfhostBackendEnabled:()=>true,selfhostListAttachmentApprovals:async()=>{snapshotCalls++;if(snapshotError){const e=snapshotError;snapshotError=null;throw e;}return snapshot;},selfhostSubscribeBoard:(_id,_version,onStatus,onEvent)=>{
  status=onStatus;receive=onEvent;return transport;
 }};
 const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
 new Function("exports","require",compiled.outputText)(exports,name=>name==="./selfhostApi"?mock:{});
-const results=[];
-const channel=exports.connectAttachmentApprovalChannel("board",{userId:"student",name:"Student"},()=>{},r=>results.push(r));
+const results=[],requests=[];
+const channel=exports.connectAttachmentApprovalChannel("board",{userId:"student",name:"Student"},r=>requests.push(r),r=>results.push(r));
 const request={requestId:"req",studentId:"student",studentName:"Student",assetId:"asset",name:"file.png",mime:"image/png",kind:"image",width:100,height:100,sentAt:1};
 try{
  for(let i=0;i<50;i++)channel.request(request);
@@ -46,6 +47,28 @@ try{
  assert.equal(results.length,2);
  assert.equal(results[1].durable,true);
  assert.equal(results[1].requestId,"old");
+ assert.equal(requests.length,0,"Old pending snapshot must not reopen a resolved request");
+ // The socket stays online and the original uploader is no longer present.
+ // A transient HTTP failure must not strand its persisted request.
+ snapshot={requests:[{type:"attachment_request",request_id:"recover-me",user_id:"student",asset_id:"asset",durable:true}],results:[]};
+ snapshotError=Object.assign(new Error("temporary failure"),{status:503});
+ const callsBefore=snapshotCalls;
+ status("offline");status("online");
+ await new Promise(resolve=>setTimeout(resolve,650));
+ assert.equal(snapshotCalls,callsBefore+2,"Ledger read must retry without a socket reconnect");
+ assert.equal(requests.at(-1)?.requestId,"recover-me");
+ snapshotError=Object.assign(new Error("temporary failure"),{status:503});
+ status("offline");status("online");
+ await new Promise(resolve=>setTimeout(resolve,0));
+ status("offline");
+ const offlineCalls=snapshotCalls;
+ await new Promise(resolve=>setTimeout(resolve,650));
+ assert.equal(snapshotCalls,offlineCalls,"Offline must cancel scheduled ledger retries");
+ snapshotError=Object.assign(new Error("legacy endpoint"),{status:404});
+ status("online");
+ const legacyCalls=snapshotCalls;
+ await new Promise(resolve=>setTimeout(resolve,650));
+ assert.equal(snapshotCalls,legacyCalls,"Legacy endpoint must not be polled");
 }finally{channel.close()}
 assert.equal(closed,true);
 assert.match(board,/id:"approved-media-"\+request.requestId/);
