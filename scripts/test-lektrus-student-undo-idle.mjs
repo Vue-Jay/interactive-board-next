@@ -211,10 +211,11 @@ for(const kind of ["sticky","text","shape","pen","marker","image","pdf","frame",
 // Round-trip through the real board parser, not a synthetic identical object.
 const model={};
 new Function("exports",ts.transpileModule(fs.readFileSync("src/boardModel.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(model);
-const canonical=item=>({...item,...model.parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[item]})).items[0]});
+const roundTrip=item=>model.parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[item]})).items[0];
+const canonical=item=>({...item,...roundTrip(item)});
 {
  const ink={...model.stroke("roundtrip-ink","pen",[{x:0,y:0},{x:100,y:4}],"#123456",2),createdBy:"teacher"};
- const roundtrip=canonical(ink);
+ const roundtrip=roundTrip(ink);
  assert.notEqual(JSON.stringify(ink),JSON.stringify(roundtrip),"Parser changes key order");
  const operation=choose([],[ink]);
  const undo=applyPersonalBoardEdit([roundtrip,peer],operation,"undo",canonical);
@@ -224,13 +225,26 @@ const canonical=item=>({...item,...model.parseDocument(JSON.stringify({version:1
  const edited={...roundtrip,points:roundtrip.points.map((p,i)=>i===0?{...p,x:p.x+1}:p)};
  assert.equal(applyPersonalBoardEdit([edited,peer],operation,"undo",canonical).changed,false,"Peer geometry changes still prevent deletion");
 }
-for(const kind of ["text","sticky","shape","frame","table","checklist","quiz","flashcard","cover","comment"]){
- const original={...object("canonical-"+kind),kind};
- const normalized=canonical(original);
+const fixtures={
+ table:{tableRows:1,tableCols:1,tableCells:["cell"]},
+ checklist:{checklistItems:["task"],checklistDone:[false]},
+ quiz:{quizOptions:["A","B"],quizCorrect:0},
+ fraction:{fractionNumerator:1,fractionDenominator:2},
+ connector:{connectorStart:{x:0,y:0},connectorEnd:{x:100,y:40}},
+ image:{assetId:"photo",name:"photo.png",mime:"image/png"},
+ pdf:{assetId:"pdf",name:"file.pdf",mime:"application/pdf"},
+ instrument:{instrumentType:"ruler",instrumentScale:1},
+ linkmedia:{mediaUrl:"https://example.test/video"},
+ pen:{points:[{x:0,y:0},{x:10,y:1}],weight:2,color:"#123456"},
+ marker:{points:[{x:0,y:0},{x:10,y:1}],weight:12,color:"#123456"},
+};
+for(const kind of ["text","sticky","shape","frame","table","checklist","quiz","flashcard","cover","comment","fraction","connector","image","pdf","instrument","linkmedia","graph","formula","pen","marker"]){
+ const original={...object("canonical-"+kind),kind,...fixtures[kind]};
+ const normalized=roundTrip(original);
  const operation=choose([],[original]);
  assert.deepEqual(applyPersonalBoardEdit([normalized,peer],operation,"undo",canonical).items,[peer],kind+" server defaults do not block undo");
  const moved={...original,x:24};
- const undo=applyPersonalBoardEdit([canonical(moved),peer],choose([original],[moved]),"undo",canonical);
+ const undo=applyPersonalBoardEdit([roundTrip(moved),peer],choose([original],[moved]),"undo",canonical);
  assert.equal(undo.items[0].x,original.x);
  assert.equal(undo.items[1],peer);
 }
