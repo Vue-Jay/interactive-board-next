@@ -1460,13 +1460,19 @@ for(const row of historicalFlagModule.historicalDatedNationalFlags.filter(row=>r
  assert.equal(historicalFlagModule.historicallyAttestedNationalFlag(row),false,"Red Ensign was not adopted as Canada's national flag");
 assert.equal(historicalFlagModule.findHistoricalCountryFlag("CA",1964),undefined);
 assert.ok(historicalFlagModule.findHistoricalCountryFlag("CA",1966));
-for(const [code,year] of [["US",1959],["US",1960],["CA",1960],["CA",1965],
+for(const row of historicalFlagModule.historicalDatedNationalFlags.filter(row=>row.code==="US"&&row.from<1912))
+ assert.equal(historicalFlagModule.historicallyAttestedNationalFlag(row),false,"US federal authorities did not standardize a unique star arrangement before 1912");
+assert.equal(historicalFlagModule.findHistoricalCountryFlag("US",1908),undefined);
+assert.ok(historicalFlagModule.findHistoricalCountryFlag("US",1913));
+for(const [code,year] of [["US",1777],["US",1795],["US",1818],["US",1877],["US",1911],["US",1912],
+ ["ES",1981],["IT",1946],["IN",1947],["CY",1960],
+ ["US",1959],["US",1960],["CA",1960],["CA",1965],
  ["CN",1949],["RO",1989],["BY",1995],["MK",1995],["BA",1998],
  ["GE",2004],["FR",1974],["FR",1975],["FR",1976]]){
  const review=historicalFlagModule.findHistoricalFlagReview(code,year);
  assert.ok(review&&review.note&&review.sourceUrl.startsWith("https://"),code+" "+year);
 }
-for(const [code,year] of [["US",1961],["CA",1966],["MK",1996],["BA",1999],
+for(const [code,year] of [["US",1913],["US",1961],["CA",1966],["MK",1996],["BA",1999],
  ["GE",2005],["RO",1990],["FR",1977]]){
  assert.equal(historicalFlagModule.findHistoricalFlagReview(code,year),undefined);
 }
@@ -1481,7 +1487,9 @@ const knownCountryLabels={
  CN:["China","Китай"],RO:["Romania","Румыния"],
  BY:["Belarus","Беларусь"],MK:["North Macedonia","Северная Македония"],
  BA:["Bosnia and Herzegovina","Босния и Герцеговина"],
- GE:["Georgia","Грузия"],FR:["France","Франция"]
+ GE:["Georgia","Грузия"],FR:["France","Франция"],
+ ES:["Spain","Испания"],IT:["Italy","Италия"],
+ IN:["India","Индия"],CY:["Cyprus","Кипр"]
 };
 new Function("exports","require",ts.transpileModule(countrySymbolsRaw,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
@@ -1494,6 +1502,10 @@ new Function("exports","require",ts.transpileModule(countrySymbolsRaw,{compilerO
  throw new Error("Unexpected country-symbol import: "+name);
 });
 for(const [code,raw,year] of [
+ ["US","United States",1777],["US","United States",1800],
+ ["US","United States",1911],["US","United States",1912],
+ ["ES","Spain",1981],["IT","Italy",1946],
+ ["IN","India",1947],["CY","Cyprus",1960],
  ["US","United States",1959],["US","United States",1960],
  ["CA","Canada",1960],["CA","Canada",1965],
  ["CN","People's Republic of China",1949],
@@ -1510,5 +1522,11 @@ for(const [code,raw,year] of [
 assert.equal(countrySymbolModule.atlasCountrySymbol({
  geometry:{type:"Polygon",coordinates:[]},properties:{NAME:"Canada",ISO_A2:"CA"}
 },"Canada",1966,true).kind,"historic");
+assert.equal(countrySymbolModule.atlasCountrySymbol({
+ geometry:{type:"Polygon",coordinates:[]},properties:{NAME:"United States",ISO_A2:"US"}
+},"United States",1913,true).kind,"historic");
+assert.equal(countrySymbolModule.atlasCountrySymbol({
+ geometry:{type:"Polygon",coordinates:[]},properties:{NAME:"Italy",ISO_A2:"IT"}
+},"Italy",1947,true).kind,"historic");
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");

@@ -251,6 +251,24 @@ export type HistoricalFlagReview={
  code:string;from:number;to:number;label:string;note:string;sourceUrl:string;
 };
 const historicalFlagReviews:readonly HistoricalFlagReview[]=[
+ {code:"US",from:1777,to:1911,label:"Исторический флаг: единый рисунок звёзд не установлен",
+  note:"Число звёзд и полос определялось законом, но расположение звёзд и пропорции в течение этого периода не были единообразно установлены на федеральном уровне. Конкретную современную прорисовку нельзя выдавать за единственный официальный рисунок. С 1818 года новые звёзды появлялись 4 июля, не 1 января.",
+  sourceUrl:"https://history.house.gov/Collection/Detail/15032411627"},
+ {code:"US",from:1912,to:1912,label:"Смена флага и стандартизация рисунка в течение года",
+  note:"48-звёздный флаг вступил в силу 4 июля 1912 года. Президентский указ июня 1912 года определил единую схему звёзд для федеральных учреждений. До 4 июля продолжал действовать 46-звёздный вариант.",
+  sourceUrl:"https://www.si.edu/spotlight/flag-day/flag-facts"},
+ {code:"ES",from:1981,to:1981,label:"Смена государственной геральдики в течение года",
+  note:"Испанский красно-жёлто-красный флаг сохранился, но новый герб установлен законом 5 октября 1981 года, а официальный графический образец опубликован 19 декабря. В начале 1981 года использовался прежний герб.",
+  sourceUrl:"https://www.boe.es/eli/es/rd/1981/12/18/2964"},
+ {code:"IT",from:1946,to:1946,label:"Переход от королевства к республике",
+  note:"2 июня 1946 года состоялся референдум о монархии и республике; 19 июня установлен временный рисунок республиканского триколора без савойского герба. На протяжении 1946 года символика изменялась.",
+  sourceUrl:"https://www.quirinale.it/it/pagine/simboli-repubblica-tricolore"},
+ {code:"IN",from:1947,to:1947,label:"Независимость и утверждение национального флага",
+  note:"Флаг был принят Учредительным собранием 22 июля 1947 года, а флагом независимого Доминиона Индия стал 15 августа 1947 года. Нельзя показывать его в качестве символа независимой страны с 1 января.",
+  sourceUrl:"https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=1749614&lang=1&reg=3"},
+ {code:"CY",from:1960,to:1960,label:"Возникновение республики в течение года",
+  note:"Республика Кипр получила независимость 16 августа 1960 года и тогда же установила государственный флаг. До этой даты остров имел британскую колониальную администрацию.",
+  sourceUrl:"https://www.gov.cy/presidency/en/about/state-symbols/"},
  {code:"CA",from:1868,to:1964,label:"Нет отдельного официального национального флага",
   note:"Канадский красный энсин употреблялся как исторический национальный символ, но до 15 февраля 1965 года не был официально принят национальным флагом. Это не означает отсутствия других официально используемых флагов.",
   sourceUrl:"https://www.canada.ca/en/canadian-heritage/services/flag-canada-history.html"},
@@ -303,6 +321,7 @@ export function historicallyAttestedStateFlag(row:HistoricalInsignia):boolean{
 export function historicallyAttestedNationalFlag(row:HistoricalInsignia):boolean{
  return row.kind==="flag"&&!row.reconstruction&&!!row.code&&
   !(row.code==="CA"&&row.from<1965)&&
+  !(row.code==="US"&&row.from<1912)&&
  !(row.code==="FR"&&row.from<1790)&&
  !(row.code==="ES"&&row.from<1843);
 }
