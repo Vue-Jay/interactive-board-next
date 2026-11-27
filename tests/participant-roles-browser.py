@@ -1565,6 +1565,40 @@ def check_undo_reconnect_sync(browser):
             print("Physical motion graph real point edit and peer geometry converged.")
             replace_items([])
 
+            # Foreign-language order was formerly local-only. Now keyboard,
+            # drag and check/reset must converge on the teacher and student.
+            sentence={"id":"qa-shared-sentence","kind":"graph","graphFigureId":"language-sentence-builder","graphPurpose":"geometry","graphAxisMode":"none","x":220,"y":160,"width":620,"height":340,"text":"QA sentence","createdBy":author,
+                      "schoolDiagram":{"kind":"sentence-builder","title":"QA sentence","instructions":"Arrange the words","parts":[{"id":"word-a","text":"I"},{"id":"word-b","text":"read"},{"id":"word-c","text":"books"}],"showKey":False,"showHint":False,"patternId":""}}
+            replace_items([sentence])
+            def word_order(page):
+                return page.locator("[data-sentence-word]").evaluate_all("els=>els.map(e=>e.dataset.sentenceWord)")
+            def expect_order(page,order):
+                page.wait_for_function("order=>JSON.stringify(Array.from(document.querySelectorAll('[data-sentence-word]'),e=>e.dataset.sentenceWord))===JSON.stringify(order)",arg=order,timeout=15000)
+            expect(pupil.locator("[data-sentence-word]").first).to_be_visible()
+            initial=word_order(pupil)
+            pupil.locator("[data-sentence-word]").first.press("End")
+            arranged=initial[1:]+initial[:1]
+            wait_api(pupil,lambda d:any(i["id"]==sentence["id"] and i.get("schoolDiagram",{}).get("answerOrder")==arranged for i in d["items"]),"Student word order not saved")
+            expect_order(teacher,arranged);expect_order(pupil,arranged)
+            pupil.get_by_role("button",name="Проверить",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==sentence["id"] and i.get("schoolDiagram",{}).get("answerChecked") is True for i in d["items"]),"Student word check not saved")
+            expect(teacher.locator(".lektrus-sentence-status")).to_contain_text(re.compile("Правильно|Есть неточности"),timeout=15000)
+            # Try forging both the source text and an invalid duplicate order.
+            row=client.get(url).json()
+            for mutation in ("source","duplicates"):
+                forged=json.loads(json.dumps(row["document"]))
+                d=forged["items"][0]["schoolDiagram"]
+                if mutation=="source":d["parts"][0]["text"]="forged"
+                else:d["answerOrder"]=["word-a","word-a","word-c"]
+                with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                    rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                    assert rejected.status_code==403,(mutation,rejected.status_code,rejected.text)
+            teacher.get_by_role("button",name="Заново",exact=True).click()
+            expect_order(pupil,initial)
+            wait_api(teacher,lambda d:any(i["id"]==sentence["id"] and i.get("schoolDiagram",{}).get("answerOrder")==initial and i["schoolDiagram"].get("answerChecked") is False for i in d["items"]),"Sentence reset not saved")
+            print("Shared sentence keyboard order, check, reset and forged student structure denied.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],

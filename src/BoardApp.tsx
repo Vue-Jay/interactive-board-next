@@ -9735,7 +9735,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {...saved,schoolDiagram:{...saved.schoolDiagram,
                 contourMarks:next.schoolDiagram.contourMarks,contourStrokes:next.schoolDiagram.contourStrokes,
                 contourLegend:next.schoolDiagram.contourLegend,paintedCountries:next.schoolDiagram.paintedCountries}}:next;
-            const merged=detachedEditorResult(schoolEditorItem,updated,true,["text","schoolDiagram"]);
+            let merged=detachedEditorResult(schoolEditorItem,updated,true,["text","schoolDiagram"]);
+            if(merged?.schoolDiagram?.kind==="sentence-builder"&&saved?.schoolDiagram?.kind==="sentence-builder"&&
+               JSON.stringify(merged.schoolDiagram.parts)!==JSON.stringify(saved.schoolDiagram.parts)){
+              merged={...merged,schoolDiagram:{...merged.schoolDiagram,answerOrder:undefined,answerChecked:undefined}};
+            }
             if(merged){
               const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(merged),saved);
               const current=itemsRef.current;
@@ -11150,9 +11154,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     }:undefined}
                   onSchoolDiagramChange={canEdit&&!item.locked&&isSchoolDiagramId(item.graphFigureId)?(diagram)=>{
                     const before=itemsRef.current.find(candidate=>candidate.id===item.id);
-                    if(!before)return;
-                    const allowed=isStudent?restrictStudentDiagramChange(before.schoolDiagram,diagram):diagram;
-                    if(!allowed)return;
+                    if(!before||before.locked||before.graphFigureId!==item.graphFigureId||!before.schoolDiagram)return;
+                    const base=item.schoolDiagram;
+                    if(!base||base.kind!==diagram.kind||before.schoolDiagram.kind!==diagram.kind)return;
+                    // A response from a stale sentence must never change a new teacher assignment.
+                    if(diagram.kind==="sentence-builder"&&before.schoolDiagram.kind==="sentence-builder"&&
+                       JSON.stringify(diagram.parts)!==JSON.stringify(before.schoolDiagram.parts))return;
+                    const merged=mergeEditedValue(base,diagram,before.schoolDiagram);
+                    const allowed=isStudent?restrictStudentDiagramChange(before.schoolDiagram,merged):merged;
+                    if(!allowed||!isSchoolDiagram(allowed))return;
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?
                       {...candidate,schoolDiagram:allowed}:candidate));
                   }:undefined}

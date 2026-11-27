@@ -7,7 +7,7 @@ export type StateNode={id:string;text:string;column:0|1|2|3;row:0|1|2|3|4;kind:"
 export type StateEdge={id:string;from:string;to:string;kind:"part"|"subordinate"|"interacts"};
 export type LanguageSocialDiagram=
  |{kind:"sentence-builder";title:string;instructions:string;parts:SentencePart[];
-   showKey:boolean;showHint:boolean;patternId:string}
+   showKey:boolean;showHint:boolean;patternId:string;answerOrder?:string[];answerChecked?:boolean}
  |{kind:"state-structure";title:string;subtitle:string;nodes:StateNode[];
    edges:StateEdge[];showRelationships:boolean;showLabels:boolean;templateId:string};
 export const languageSocialIds:LanguageSocialId[]=["ru-sentence-builder","language-sentence-builder","civics-structure","literature-analysis"];
@@ -169,7 +169,10 @@ export function validateLanguageSocialDiagram(value:unknown):value is LanguageSo
    d.parts.length<2||d.parts.length>24)return false;
   const parts=d.parts as SentencePart[];
   return parts.every(w=>w&&good(w.id,64)&&good(w.text,65))&&
-   new Set(parts.map(p=>p.id)).size===parts.length;
+   new Set(parts.map(p=>p.id)).size===parts.length&&
+   (d.answerOrder===undefined||Array.isArray(d.answerOrder)&&d.answerOrder.length===parts.length&&
+    new Set(d.answerOrder).size===parts.length&&d.answerOrder.every(id=>typeof id==="string"&&parts.some(p=>p.id===id)))&&
+   (d.answerChecked===undefined||typeof d.answerChecked==="boolean");
  }
  if(d.kind==="state-structure"){
   if(!good(d.subtitle,160,true)||!good(d.templateId,40,true)||

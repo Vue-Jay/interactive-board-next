@@ -122,10 +122,17 @@ export function restrictStudentDiagramChange(
   if(typeof next.digits!=="string"||!pattern.test(next.digits))return null;
   return {...current,digits:next.digits};
  }
+ if(current.kind==="sentence-builder"&&next.kind==="sentence-builder"){
+  if(JSON.stringify(current.parts)!==JSON.stringify(next.parts))return null;
+  const order=next.answerOrder;
+  if(!Array.isArray(order)||order.length!==current.parts.length||new Set(order).size!==order.length||
+    order.some(id=>!current.parts.some(p=>p.id===id))||typeof next.answerChecked!=="boolean")return null;
+  return {...current,answerOrder:[...order],answerChecked:next.answerChecked};
+ }
  // Morphology/phonetics currently store the teacher's source word and
  // annotations, not separate student answer fields. Treat them as read-only
- // until independent pupil-response storage exists. Orthography answers and
- // foreign-language sentence ordering already use local per-user state.
+ // until independent pupil-response storage exists. Orthography answers
+ // still use local per-user state; sentence ordering is shared on the board.
  return null;
 }
 

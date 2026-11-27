@@ -68,6 +68,9 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
  const [error,setError]=useState("");
  const [contourSettingsOpen,setContourSettingsOpen]=useState(false);
  const set=(data:SchoolDiagram)=>{
+  if(data.kind==="sentence-builder"&&draft.kind==="sentence-builder"&&JSON.stringify(data.parts)!==JSON.stringify(draft.parts)){
+   data={...data,answerOrder:undefined,answerChecked:undefined};
+  }
   setDraft(data);setError("");
   if(existing&&isContour&&onLiveChange)onLiveChange(draft,data);
  };

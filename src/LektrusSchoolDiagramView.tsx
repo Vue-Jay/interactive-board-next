@@ -189,7 +189,7 @@ export default function LektrusSchoolDiagramView({diagram,onChange,editorMode,us
   case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
   case "geo-training":return <LektrusGeographyTrainingView diagram={diagram} onMatchingSize={onMatchingSize}/>;
   case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram} onChange={onChange} studentMode={studentMode}/>;
-  case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram}/>;
+  case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram} onChange={onChange}/>;
   case "atlas":return <LektrusMapAtlas diagram={diagram} onChange={onChange} editorMode={editorMode} userId={userId}/>;
  }
 }
