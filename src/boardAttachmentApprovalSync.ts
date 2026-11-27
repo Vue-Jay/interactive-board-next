@@ -21,13 +21,24 @@ export function connectAttachmentApprovalChannel(
 ):AttachmentApprovalChannel{
  if(isSelfhostBackendEnabled()){
   let ready=false,stopped=false;
-  const queue:Array<{type:"attachment_request"|"attachment_result";payload:Record<string,unknown>}>= [];
+  let retry:ReturnType<typeof setTimeout>|undefined;
+  type Queued={type:"attachment_request"|"attachment_result";payload:Record<string,unknown>};
+  // A periodic student retry is the same logical request, not another queue
+  // entry. Keep unsuccessful transport writes until a subsequent flush.
+  const queue=new Map<string,Queued>();
+  const flush=()=>{
+   clearTimeout(retry);retry=undefined;
+   if(stopped||!ready)return;
+   for(const [key,next] of queue){
+    if(!channel.sendEvent({type:next.type,...next.payload})){
+     retry=setTimeout(flush,500);return;
+    }
+    queue.delete(key);
+   }
+  };
   const channel=selfhostSubscribeBoard(boardId,()=>{},status=>{
    ready=status==="online";
-   if(ready)while(queue.length){
-    const next=queue.shift()!;
-    channel.sendEvent({type:next.type,...next.payload});
-   }
+   if(ready)flush();else{clearTimeout(retry);retry=undefined;}
   },event=>{
    if(event.type==="attachment_request"){
     onRequest({
@@ -44,8 +55,12 @@ export function connectAttachmentApprovalChannel(
   });
   const send=(type:"attachment_request"|"attachment_result",payload:Record<string,unknown>)=>{
    if(stopped)return;
-   if(!ready){queue.push({type,payload});if(queue.length>20)queue.shift();return}
-   channel.sendEvent({type,...payload});
+   const key=type+":"+String(payload.request_id);
+   queue.set(key,{type,payload});
+   // The per-request application retry remains the authoritative recovery
+   // path when this bounded transport queue is full.
+   while(queue.size>200){const oldest=queue.keys().next().value;if(oldest===undefined)break;queue.delete(oldest)}
+   if(ready)flush();
   };
   return{
    request:p=>send("attachment_request",{
@@ -55,7 +70,7 @@ export function connectAttachmentApprovalChannel(
    result:p=>send("attachment_result",{
     request_id:p.requestId,target_user_id:p.studentId,approved:p.approved,name:p.name,
    }),
-   close:()=>{stopped=true;queue.length=0;channel()},
+   close:()=>{stopped=true;clearTimeout(retry);queue.clear();channel()},
   };
  }
  if(!isRemoteBackendEnabled())return{request:()=>{},result:()=>{},close:()=>{}};

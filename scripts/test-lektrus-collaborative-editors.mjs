@@ -225,3 +225,34 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
  assert.deepEqual(editorDiff({deep:a,text:"old"},{deep:b,text:"new"}),[],
   "A deep partial edit must fall back to the complete durable revision");
 }
+
+
+// Execute the self-hosted work-channel batching logic with a controlled socket.
+{
+ const work={};
+ let status,receive,revision=7;
+ const frames=[],received=[];
+ const channel=Object.assign(()=>{}, {sendEvent:frame=>{frames.push(frame);return true}});
+ const mock={isSelfhostBackendEnabled:()=>true,selfhostSubscribeBoard:(_board,_revision,onStatus,onEvent)=>{
+  status=onStatus;receive=onEvent;return channel;
+ }};
+ const compiled=ts.transpileModule(ws,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ new Function("exports","require",compiled.outputText)(work,name=>name==="./selfhostApi"?mock:{});
+ const connection=work.connectBoardWorkChannel("board",{userId:"me",name:"Me",role:"owner"},()=>{},()=>{},true,m=>received.push(m),undefined,()=>revision);
+ try{
+  status("online");
+  const ops=(n,start)=>Array.from({length:n},(_,i)=>({path:["tableCells",start+i],kind:"set",value:"cell-"+i}));
+  connection.publishEdit("table",ops(1,0));
+  connection.publishEdit("table",ops(180,1));
+  connection.publishEdit("table",ops(150,181));
+  revision=8;
+  connection.publishEdit("table",ops(2,400));
+  await new Promise(resolve=>setTimeout(resolve,220));
+  const edits=frames.filter(f=>f.type==="editor_mutation");
+  assert.deepEqual(edits.map(f=>[f.base_version,f.ops.length]),[[7,1],[7,180],[7,150],[8,2]],
+   "Complete editor packets must never be split at 300 operations or combined across revisions");
+  receive({type:"editor_mutation",id:"peer:1",item_id:"table",client_id:"peer",user_id:"other",base_version:7,ops:ops(1,0)});
+  assert.equal(received[0].baseVersion,7);
+  assert.match(app,/mutation\.baseVersion!==undefined&&mutation\.baseVersion!==\(remoteVersion\.current\?\?0\)/);
+ }finally{connection.close()}
+}

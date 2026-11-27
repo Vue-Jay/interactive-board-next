@@ -4,7 +4,7 @@ import type {LiveEditorOp} from "./lektrusLiveEditorMerge";
 import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
 export type BoardEditorMutation={
  id:string;itemId:string;userId:string;clientId:string;
- sentAt:number;ops:LiveEditorOp[];
+ sentAt:number;ops:LiveEditorOp[];baseVersion?:number;
 };
 
 export type BoardObjectPose = {
@@ -40,6 +40,7 @@ export function connectBoardWorkChannel(
   publishSelf = true,
   onEdit?: (mutation:BoardEditorMutation)=>void,
   onTransform?: (mutation:BoardTransformMutation)=>void,
+  getVersion?:()=>number,
 ): BoardWorkChannel {
   if (isSelfhostBackendEnabled()) {
     let stopped = false, ready = false;
@@ -48,7 +49,8 @@ export function connectBoardWorkChannel(
     let publishTimer: ReturnType<typeof setTimeout> | undefined;
     let transformTimer: ReturnType<typeof setTimeout> | undefined;
     let editTimer:ReturnType<typeof setTimeout>|undefined;
-    const queuedEdits=new Map<string,LiveEditorOp[]>();
+    type EditPacket={ops:LiveEditorOp[];baseVersion?:number};
+    const queuedEdits=new Map<string,EditPacket[]>();
     let lastEditSent=0;
     const pendingTransforms = new Map<string,{pose:BoardObjectPose;finished:boolean}>();
     let lastTransformSent = 0, editSequence = 0, transformSeq = 0;
@@ -89,14 +91,14 @@ export function connectBoardWorkChannel(
       if(stopped||!ready){queuedEdits.clear();return;}
       const next=queuedEdits.entries().next().value;
       if(!next)return;
-      const [itemId,ops]=next;
-      const batch=ops.slice(0,300);
-      // Preserve the ordered mutations (append/remove are not interchangeable).
-      // If transport rejects an oversized batch, the committed snapshot still
-      // delivers the actual object without replaying a stale preview.
-      channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,ops:batch});
+      const [itemId,packets]=next;
+      const packet=packets.shift()!;
+      // An editor operation must remain atomic. A queued graph point and its
+      // segment references cannot be split across a 300-operation boundary.
+      channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,
+        ops:packet.ops,...(packet.baseVersion!==undefined?{base_version:packet.baseVersion}:{})});
       lastEditSent=Date.now();
-      if(ops.length>batch.length)queuedEdits.set(itemId,ops.slice(batch.length));else queuedEdits.delete(itemId);
+      if(!packets.length)queuedEdits.delete(itemId);
       if(queuedEdits.size)editTimer=setTimeout(flushEdits,34);
     };
     channel = selfhostSubscribeBoard(boardId, () => {}, status => {
@@ -130,6 +132,7 @@ export function connectBoardWorkChannel(
           id: event.id, itemId: event.item_id, userId: event.user_id,
           clientId: event.client_id, sentAt: event.sent_at || Date.now(),
           ops: event.ops as unknown as LiveEditorOp[],
+          ...(Number.isSafeInteger(event.base_version)&&event.base_version!>=0?{baseVersion:event.base_version}:{}),
         });
         return;
       }
@@ -180,15 +183,23 @@ export function connectBoardWorkChannel(
       publishEdit: (itemId, ops) => {
         if (stopped || !publishSelf || !itemId || !ops.length || ops.length > 300) return;
         if(!ready)return;
-        // Laboratory deltas carry a generation assertion. Combining two
-        // assertions in a single message would make its validator reject both.
-        // Keep each already-bounded lab operation packet intact.
+        if(JSON.stringify(ops).length>110000)return;
+        const candidateVersion=getVersion?.();
+        const baseVersion=Number.isSafeInteger(candidateVersion)&&candidateVersion!>=0?candidateVersion:undefined;
+        // Laboratory generation assertions must not be coalesced.
         if(ops.some(op=>op.path[0]==="scienceLabBench")){
-          channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,ops});
+          channel.sendEvent({type:"editor_mutation",id:clientId+":"+(++editSequence),item_id:itemId,client_id:clientId,ops,
+            ...(baseVersion!==undefined?{base_version:baseVersion}:{})});
           return;
         }
-        const queue=[...(queuedEdits.get(itemId)??[]),...ops];
-        if(queue.length>1200||queuedEdits.size>64){queuedEdits.clear();return;}
+        const queue=queuedEdits.get(itemId)??[];
+        const last=queue.at(-1);
+        const merged=last&&last.baseVersion===baseVersion&&last.ops.length+ops.length<=300?[...last.ops,...ops]:null;
+        if(merged&&JSON.stringify(merged).length<=110000)last!.ops=merged;
+        else queue.push({ops:[...ops],baseVersion});
+        if(queue.reduce((n,p)=>n+p.ops.length,0)>1200||queuedEdits.size>=64&&!queuedEdits.has(itemId)){
+          queuedEdits.delete(itemId);return;
+        }
         queuedEdits.set(itemId,queue);
         if(!editTimer){
           const delay=34-(Date.now()-lastEditSent);
@@ -383,7 +394,7 @@ export function connectBoardWorkChannel(
             onEdit?.({
               id:raw.id,itemId:raw.itemId,userId:raw.userId??"",
               clientId:raw.clientId,sentAt:Number(raw.sentAt)||Date.now(),
-              ops:raw.ops
+              ops:raw.ops,...(Number.isSafeInteger(raw.baseVersion)&&raw.baseVersion!>=0?{baseVersion:raw.baseVersion}:{})
             });
             return;
           }
@@ -463,7 +474,7 @@ export function connectBoardWorkChannel(
       !itemId||!ops.length||ops.length>300)return;
     const mutation:BoardEditorMutation={
       id:clientId+":"+(++editSequence),itemId,userId:me.userId,clientId,
-      sentAt:Date.now(),ops
+      sentAt:Date.now(),ops,...(getVersion?{baseVersion:getVersion()}:{})
     };
     const payload=JSON.stringify({
       topic,event:"broadcast",payload:{type:"broadcast",event:"editor_mutation",payload:mutation},

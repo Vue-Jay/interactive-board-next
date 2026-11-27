@@ -73,10 +73,20 @@ jobs:
           cache: npm
       - name: Install frontend dependencies for real dual-session browser integration
         run: npm ci --no-audit --no-fund
+      - name: Install the existing Playwright acceptance environment
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.64.1
+          python -m playwright install --with-deps chromium
       - name: Integration tests against disposable PostgreSQL
         env:
           LEKTRUS_RUN_BROWSER_SYNC: '1'
         run: python -m pytest -q -rP server/test_document_delta.py server/test_api.py server/test_assets.py server/test_invitations.py server/test_registration.py server/test_admin.py server/test_comments.py server/test_education.py server/test_pilot_objects.py server/test_pilot_operations.py server/test_live_frames.py server/test_realtime_permissions.py server/test_ws_e2e.py server/test_guest_history_visits.py server/test_participant_roles.py server/test_board_presence_policy.py server/test_native_realtime_events.py server/test_native_mobile_api.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-board-sync-browser-evidence
+          path: artifacts/participant-roles
+          if-no-files-found: ignore
       - name: Build minimal production image
         run: docker build -f server/Dockerfile -t lektrus-selfhost-api:ci server
       - name: Boot actual API container and test private disk permissions

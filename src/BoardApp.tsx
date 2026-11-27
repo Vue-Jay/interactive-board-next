@@ -122,7 +122,7 @@ import { DURABLE_INK_SYNC_MS, hasDurableInk, peerRemovedDurableInk, removeDurabl
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./boardObjectMotion";
-import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
+import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest, type AttachmentApprovalResult } from "./boardAttachmentApprovalSync";
 import { documentFingerprint as fingerprintDocument, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from "./lektrusLiveEditorMerge";
 import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
@@ -2206,33 +2206,61 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const attachmentApprovalRef=useRef<AttachmentApprovalChannel|null>(null);
   const [attachmentRequests,setAttachmentRequests]=useState<AttachmentApprovalRequest[]>([]);
-  const [pendingAttachmentRequests,setPendingAttachmentRequests]=useState<AttachmentApprovalRequest[]>([]);
+  const attachmentPendingKey="lektrus.attachment.pending."+boardSummary.id+"."+authUser.id;
+  const attachmentDecisionKey="lektrus.attachment.decisions."+boardSummary.id+"."+authUser.id;
+  const [pendingAttachmentRequests,setPendingAttachmentRequests]=useState<AttachmentApprovalRequest[]>(()=>{
+    try{
+      const rows=JSON.parse(localStorage.getItem(attachmentPendingKey)??"[]");
+      return Array.isArray(rows)?rows.filter((r:AttachmentApprovalRequest)=>r&&typeof r.requestId==="string"&&r.studentId===authUser.id&&
+        typeof r.assetId==="string"&&Number.isFinite(r.sentAt)&&Date.now()-r.sentAt<86400000).slice(-100):[];
+    }catch{return []}
+  });
+  const pendingAttachmentRef=useRef(new Map(pendingAttachmentRequests.map(r=>[r.requestId,r])));
+  const [attachmentDecisions]=useState(()=>{
+    try{
+      const rows=JSON.parse(localStorage.getItem(attachmentDecisionKey)??"[]");
+      return new Map<string,AttachmentApprovalResult>(Array.isArray(rows)?rows.slice(-200):[]);
+    }catch{return new Map<string,AttachmentApprovalResult>()}
+  });
+  const pendingApprovals=useRef(new Map<string,AttachmentApprovalRequest>());
   const [attachmentRequestIndex,setAttachmentRequestIndex]=useState(0);
   useEffect(()=>{setAttachmentRequestIndex(index=>Math.max(0,Math.min(index,attachmentRequests.length-1)))},[attachmentRequests.length]);
-  const pendingAttachmentTimers=useRef(new Map<string,ReturnType<typeof setInterval>>());
   const pendingAttachmentStarted=useRef(new Map<string,number>());
+  const updatePendingAttachments=()=>{
+    const rows=[...pendingAttachmentRef.current.values()];
+    setPendingAttachmentRequests(rows);
+    try{localStorage.setItem(attachmentPendingKey,JSON.stringify(rows))}catch{}
+  };
   const sendAttachmentRequest=(request:AttachmentApprovalRequest)=>{
-    attachmentApprovalRef.current?.request(request);
-    setPendingAttachmentRequests(current=>current.some(x=>x.requestId===request.requestId)?current:[...current,request]);
-    const old=pendingAttachmentTimers.current.get(request.requestId);if(old)clearInterval(old);
+    pendingAttachmentRef.current.set(request.requestId,request);
     pendingAttachmentStarted.current.set(request.requestId,Date.now());
-    const timer=setInterval(()=>{
-      const started=pendingAttachmentStarted.current.get(request.requestId)??Date.now();
-      if(Date.now()-started>10*60*1000){
-        clearInterval(timer);
-        pendingAttachmentTimers.current.delete(request.requestId);
-        pendingAttachmentStarted.current.delete(request.requestId);
-        return;
-      }
-      attachmentApprovalRef.current?.request(request);
-    },4000);
-    pendingAttachmentTimers.current.set(request.requestId,timer);
+    updatePendingAttachments();
+    attachmentApprovalRef.current?.request(request);
   };
   const cancelPendingAttachmentRequest=(requestId:string)=>{
-    const timer=pendingAttachmentTimers.current.get(requestId);if(timer)clearInterval(timer);
-    pendingAttachmentTimers.current.delete(requestId);
     pendingAttachmentStarted.current.delete(requestId);
-    setPendingAttachmentRequests(current=>current.filter(x=>x.requestId!==requestId));
+    if(pendingAttachmentRef.current.delete(requestId))updatePendingAttachments();
+  };
+  const attachmentExists=(data:DocumentData|null,request:AttachmentApprovalRequest)=>
+    !!data&&data.items.some(item=>(item.kind==="image"||item.kind==="pdf")&&item.assetId===request.assetId);
+  const rememberAttachmentDecision=(request:AttachmentApprovalRequest,approved:boolean)=>{
+    const result={requestId:request.requestId,studentId:request.studentId,approved,name:request.name};
+    attachmentDecisions.set(request.requestId,result);
+    while(attachmentDecisions.size>200){const oldest=attachmentDecisions.keys().next().value;if(oldest===undefined)break;attachmentDecisions.delete(oldest)}
+    try{localStorage.setItem(attachmentDecisionKey,JSON.stringify([...attachmentDecisions]))}catch{}
+    attachmentApprovalRef.current?.result(result);
+  };
+  const confirmAttachmentDecisions=(data:DocumentData)=>{
+    // A lost result cannot leave an already visible, committed upload pending.
+    for(const request of pendingAttachmentRef.current.values())
+      if(attachmentExists(data,request))cancelPendingAttachmentRequest(request.requestId);
+    for(const request of pendingApprovals.current.values()){
+      if(!attachmentExists(data,request))continue;
+      pendingApprovals.current.delete(request.requestId);
+      rememberAttachmentDecision(request,true);
+      setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+      setNotice(`Вложение «${request.name}» одобрено и добавлено на доску`);
+    }
   };
 
   const [boardAiOpen,setBoardAiOpen]=useState(false);
@@ -3320,6 +3348,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             acknowledgedDocument.current=fingerprint;
             acknowledgedSharedContent.current=fingerprint;
             acknowledgedBoardData.current=accepted;
+            confirmAttachmentDecisions(accepted);
             if(inkMotionLedger.reconcile(accepted.items,version,authUser.id))setInkMotionRevision(n=>n+1);
             inkMotionSender.current?.ack(accepted.items,version);
             lastAttempt.current={version,fingerprint};
@@ -3379,6 +3408,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Reusing this hash avoids a second full document traversal per save.
       acknowledgedSharedContent.current = fingerprint;
       acknowledgedBoardData.current = data;
+      confirmAttachmentDecisions(data);
       if(inkMotionLedger.reconcile(data.items,result.version,authUser.id))setInkMotionRevision(n=>n+1);
       inkMotionSender.current?.ack(data.items,result.version);
       // A newer local edit may already be queued. Never clear its pending flag
@@ -4589,6 +4619,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       {userId:authUser.id,name:authUser.name},
       request=>{
         if(isStudent)return;
+        const decided=attachmentDecisions.get(request.requestId);
+        if(decided&&decided.studentId===request.studentId){attachmentApprovalRef.current?.result(decided);return;}
+        if(attachmentExists(acknowledgedBoardData.current,request)){rememberAttachmentDecision(request,true);return;}
+        if(pendingApprovals.current.has(request.requestId))return;
         setAttachmentRequests(current=>current.some(x=>x.requestId===request.requestId)?current:[...current,request]);
         setNotice(`Новое вложение от ${request.studentName}`);
       },
@@ -4599,12 +4633,22 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       },
     );
     attachmentApprovalRef.current=channel;
+    if(acknowledgedBoardData.current)confirmAttachmentDecisions(acknowledgedBoardData.current);
+    // Channel teardown after a long background interval must not discard
+    // pending uploads. Resume their delivery as soon as this board wakes.
+    const replayPending=(restart=false)=>{
+      const now=Date.now();
+      for(const request of pendingAttachmentRef.current.values()){
+        if(restart||!pendingAttachmentStarted.current.has(request.requestId))pendingAttachmentStarted.current.set(request.requestId,now);
+        if(now-(pendingAttachmentStarted.current.get(request.requestId)??now)<=10*60*1000)channel.request(request);
+      }
+    };
+    replayPending(true);
+    const timer=setInterval(()=>replayPending(),4000);
     return()=>{
+      clearInterval(timer);
       channel.close();
       if(attachmentApprovalRef.current===channel)attachmentApprovalRef.current=null;
-      for(const timer of pendingAttachmentTimers.current.values())clearInterval(timer);
-      pendingAttachmentTimers.current.clear();
-      pendingAttachmentStarted.current.clear();
     };
   },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode,boardRealtimeAwake]);
 
@@ -4686,24 +4730,37 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   useEffect(()=>{if(demoMode||!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit,demoMode]);
 
   const approveAttachmentRequest=(request:AttachmentApprovalRequest)=>{
-    if(isStudent)return;
+    if(isStudent||!canEdit||boardResumePendingRef.current)return;
+    if(attachmentExists(acknowledgedBoardData.current,request)){
+      rememberAttachmentDecision(request,true);
+      setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+      return;
+    }
+    if(itemsRef.current.some(item=>item.assetId===request.assetId)){
+      pendingApprovals.current.set(request.requestId,request);
+      flushSave();return;
+    }
     const rect=board.current?.getBoundingClientRect();
     const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});
     const item:Item={
-      id:createId(),kind:request.kind,x:center.x-request.width/2,y:center.y-request.height/2,
+      id:"approved-media-"+request.requestId,kind:request.kind,x:center.x-request.width/2,y:center.y-request.height/2,
       width:request.width,height:request.height,text:"",assetId:request.assetId,name:request.name,mime:request.mime,
       ...(request.kind==="image"?{imageSourceAspect:request.width/request.height}:{}),
     };
+    pendingApprovals.current.set(request.requestId,request);
     commit([...itemsRef.current,item]);
+    if(!itemsRef.current.some(candidate=>candidate.id===item.id)){
+      pendingApprovals.current.delete(request.requestId);return;
+    }
     setSelected([item.id]);setTool("select");
-    setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
-    attachmentApprovalRef.current?.result({requestId:request.requestId,studentId:request.studentId,approved:true,name:request.name});
-    setNotice(`Вложение «${request.name}» одобрено и добавлено на доску`);
+    if(!documentSyncEnabled)confirmAttachmentDecisions(currentDocument());
+    else setNotice("Вложение сохраняется на сервере…");
   };
   const rejectAttachmentRequest=(request:AttachmentApprovalRequest)=>{
-    if(isStudent)return;
+    if(isStudent||!canEdit)return;
+    if(pendingApprovals.current.has(request.requestId)){setNotice("Вложение уже сохраняется на сервере");return;}
     setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
-    attachmentApprovalRef.current?.result({requestId:request.requestId,studentId:request.studentId,approved:false,name:request.name});
+    rememberAttachmentDecision(request,false);
     setNotice(`Вложение «${request.name}» отклонено`);
   };
   const openAttachmentRequest=async(request:AttachmentApprovalRequest)=>{
@@ -8225,6 +8282,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     acknowledgedDocument.current = incomingFingerprint;
     acknowledgedSharedContent.current = incomingFingerprint;
     acknowledgedBoardData.current = data;
+    confirmAttachmentDecisions(data);
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
     remoteSaveFailures.current = 0;
@@ -8309,6 +8367,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         acknowledgedBoardData.current = data;
+        confirmAttachmentDecisions(data);
         return;
       }
       // Rebase the pre-erase undo snapshot as well as the visible model.
@@ -8344,6 +8403,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = remoteFingerprint;
         acknowledgedSharedContent.current = remoteFingerprint;
         acknowledgedBoardData.current = remote;
+        confirmAttachmentDecisions(remote);
         pendingRemote.current = null;
         setRemoteConflict(null);
         setConflictLocalBackup(null);
@@ -8585,6 +8645,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }),
       !adminHidden,
       (mutation)=>{
+        // Versioned previews cannot overwrite a newer committed object or
+        // apply to a stale base. Legacy unversioned packets remain visual-only.
+        if(mutation.baseVersion!==undefined&&mutation.baseVersion!==(remoteVersion.current??0))return;
         const stored=getCurrentItemIndex(itemsRef.current).get(mutation.itemId);
         const liveLab=stored?.graphFigureId==="chem-experiment-free"&&!!stored.scienceLabBench;
         if(!stored||stored.locked||isInkItem(stored))return;
@@ -8658,6 +8721,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           return applied?next:current;
         });
       },
+      ()=>remoteVersion.current??0,
     );
     workChannel.current = channel;
     return () => {
@@ -9043,7 +9107,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               if (!files.length) return;
               try {
                 for (let i = 0; i < files.length; i++) await addMediaFile(files[i], undefined, i * 24);
-                setNotice(files.length === 1 ? "Файл добавлен на доску" : `Добавлено файлов: ${files.length}`);
+                setNotice(isStudent?(files.length===1?"Вложение отправлено на согласование":`Отправлено на согласование: ${files.length}`):(files.length === 1 ? "Файл добавлен на доску" : `Добавлено файлов: ${files.length}`));
               } catch (error) {
                 setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
               }

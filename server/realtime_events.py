@@ -249,8 +249,12 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
     if kind == "editor_mutation":
         if role not in ("owner", "editor"):
             raise InvalidLiveEvent("read_only")
-        if set(frame) != {"type", "id", "item_id", "client_id", "ops"}:
+        required = {"type", "id", "item_id", "client_id", "ops"}
+        if not required.issubset(frame) or set(frame) - required - {"base_version"}:
             raise InvalidLiveEvent("invalid_editor_mutation_fields")
+        base_version = frame.get("base_version")
+        if "base_version" in frame and (type(base_version) is not int or not 0 <= base_version <= 9007199254740991):
+            raise InvalidLiveEvent("invalid_editor_base_version")
         mutation_id, item_id, client_id, ops = (
             frame["id"], frame["item_id"], frame["client_id"], frame["ops"]
         )
@@ -293,7 +297,8 @@ def validate_live_event(frame: Any, *, role: str, user_id: str,
             raise InvalidLiveEvent("invalid_editor_value")
         return {"type": kind, **identity, "id": mutation_id,
                 "item_id": item_id, "client_id": client_id,
-                "ops": validated_ops, "sent_at": int(time.time() * 1000)}
+                "ops": validated_ops, **({"base_version": base_version} if base_version is not None else {}),
+                "sent_at": int(time.time() * 1000)}
 
     if kind == "object_transform":
         if role not in ("owner", "editor"):

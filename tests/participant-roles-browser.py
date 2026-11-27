@@ -3,6 +3,9 @@ import asyncio
 import json
 from functools import lru_cache
 import os
+import sys
+import struct
+import zlib
 import re
 from pathlib import Path
 from uuid import uuid4
@@ -11,8 +14,8 @@ import bcrypt
 import httpx
 from playwright.sync_api import sync_playwright, expect
 
-BASE="http://127.0.0.1:5173"
-API="http://127.0.0.1:8000"
+BASE=os.getenv("LEKTRUS_QA_BASE","http://127.0.0.1:5173")
+API=os.getenv("LEKTRUS_QA_API","http://127.0.0.1:8000")
 PASSWORD="Roles-test-password-123"
 OUT=Path("artifacts/participant-roles"); OUT.mkdir(parents=True,exist_ok=True)
 
@@ -1010,8 +1013,139 @@ def check_billing_and_finance(browser):
     finally:
         for ctx in contexts:ctx.close()
 
+def check_undo_reconnect_sync(browser):
+    """Two actual accounts, personal inverse history, network loss and durable convergence."""
+    ident=setup_board()
+    url=f"/api/v1/boards/{ident}/document"
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
+    teacher,pupil=[ctx.new_page() for ctx in contexts]
+    pupil_sockets=[]
+    drop_results={"enabled":False,"count":0}
+    def pupil_socket(route):
+        upstream=route.connect_to_server()
+        pupil_sockets.append((route,upstream))
+        def incoming(message):
+            event=json.loads(message)
+            if drop_results["enabled"] and event.get("type")=="attachment_result":
+                drop_results["count"]+=1
+                return
+            route.send(message)
+        upstream.on_message(incoming)
+    pupil.route_web_socket(re.compile(r"/api/v1/boards/[^/]+/events"),pupil_socket)
+    try:
+        login(teacher,"owner")
+        login(pupil,"learner")
+        assert_board(teacher,ident,True,True)
+        assert_board(pupil,ident,False,False)
+        with httpx.Client(base_url=API,headers=headers("owner")) as client:
+            def read():
+                r=client.get(url);r.raise_for_status()
+                return r.json()["document"]
+            def ids(doc):
+                return {i["id"] for i in doc["items"] if i["kind"] in ("pen","marker")}
+            def wait_api(page,predicate,label):
+                for _ in range(120):
+                    doc=read()
+                    if predicate(doc):return doc
+                    page.wait_for_timeout(100)
+                raise AssertionError(label)
+            def stored(page,stroke_id,present=True):
+                page.wait_for_function("""({ident,id,present})=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    return !!raw&&JSON.parse(raw).items.some(i=>i.id===id)===present;
+                }""",arg={"ident":ident,"id":stroke_id,"present":present},timeout=30000)
+            def draw(page,kind,fraction):
+                before=ids(read())
+                page.locator(f'[data-interface-control="{kind}"]:visible').first.click()
+                box=page.locator("section.board").bounding_box()
+                x=box["x"]+box["width"]*.70
+                y=box["y"]+box["height"]*fraction
+                page.mouse.move(x,y);page.mouse.down()
+                page.mouse.move(x+110,y+8,steps=12);page.mouse.up()
+                doc=wait_api(page,lambda d:any(i["kind"]==kind and i["id"] not in before and i.get("width",0)>70 for i in d["items"]),f"{kind} not persisted")
+                return next(i["id"] for i in doc["items"] if i["kind"]==kind and i["id"] not in before)
+            def both(stroke_id,present=True):
+                for page in (teacher,pupil):stored(page,stroke_id,present)
+            first=draw(teacher,"pen",.58);both(first)
+            second=draw(pupil,"marker",.74);both(second)
+            for actor,mine,peer in ((teacher,first,second),(pupil,second,first)):
+                undo=actor.locator(".mobile-undo-redo").get_by_role("button",name="Отменить",exact=True)
+                redo=actor.locator(".mobile-undo-redo").get_by_role("button",name="Повторить",exact=True)
+                expect(undo).to_be_enabled(timeout=10000);undo.click()
+                wait_api(actor,lambda d:mine not in ids(d) and peer in ids(d),"Undo reverted peer work")
+                both(mine,False);both(peer)
+                expect(redo).to_be_enabled(timeout=10000);redo.click()
+                wait_api(actor,lambda d:{mine,peer}<=ids(d),"Redo did not converge")
+                both(mine);both(peer)
+            # Actual browser offline state and transport close, not synthetic
+            # revision injection. A missed server update must arrive on wake.
+            pupil.context.set_offline(True)
+            for route,upstream in list(pupil_sockets):
+                for socket in (route,upstream):
+                    try:socket.close(code=4000,reason="QA network loss")
+                    except Exception:pass
+            pupil.wait_for_function("navigator.onLine===false")
+            third=draw(teacher,"marker",.40)
+            stored(teacher,third)
+            pupil.context.set_offline(False)
+            pupil.wait_for_function("navigator.onLine===true")
+            both(third)
+            pupil.reload()
+            expect(pupil.locator("section.board")).to_be_visible(timeout=90000)
+            for stroke in (first,second,third):stored(pupil,stroke)
+            assert {first,second,third}<=ids(read())
+            print("Real dual-session undo/redo for both roles, network loss and reload passed.")
+
+            # A real uploaded file must survive loss of the approval message
+            # without duplicate board objects, and a pending request survives
+            # the pupil's page reload.
+            def chunk(tag,data):
+                return struct.pack(">I",len(data))+tag+data+struct.pack(">I",zlib.crc32(tag+data)&0xffffffff)
+            png=b"\x89PNG\r\n\x1a\n"+chunk(b"IHDR",struct.pack(">IIBBBBB",24,16,8,2,0,0,0))+chunk(b"IDAT",zlib.compress((b"\0"+b"\x15\x66\xbb"*24)*16))+chunk(b"IEND",b"")
+            def upload(name):
+                pupil.locator('input[aria-label="Добавить фото или PDF"]').set_input_files({"name":name,"mimeType":"image/png","buffer":png})
+                expect(pupil.locator(".student-media-pending")).to_be_visible(timeout=30000)
+                expect(teacher.locator(".teacher-media-request-head")).to_contain_text(name,timeout=30000)
+            upload("sync-approval.png")
+            assert not any(i["kind"]=="image" for i in read()["items"])
+            pupil.reload()
+            expect(pupil.locator("section.board")).to_be_visible(timeout=90000)
+            expect(pupil.locator(".student-media-pending")).to_be_visible(timeout=30000)
+            drop_results["enabled"]=True
+            teacher.locator(".teacher-media-request-actions button.approve").click()
+            added=wait_api(teacher,lambda d:any(i["kind"]=="image" and i.get("name")=="sync-approval.png" for i in d["items"]),"Approved image never committed")
+            item=next(i for i in added["items"] if i["kind"]=="image" and i.get("name")=="sync-approval.png")
+            both(item["id"])
+            expect(pupil.locator(".student-media-pending")).to_have_count(0,timeout=30000)
+            pupil.wait_for_timeout(4500)
+            assert sum(i.get("assetId")==item["assetId"] for i in read()["items"])==1
+            expect(teacher.locator(".teacher-media-request-head")).to_have_count(0,timeout=10000)
+            # A rejected upload has no board object to acknowledge it. The
+            # teacher must replay the decision after the result is lost/reload.
+            upload("sync-rejection.png")
+            teacher.locator(".teacher-media-request-actions button.reject").click()
+            expect(teacher.locator(".teacher-media-request-head")).to_have_count(0,timeout=10000)
+            expect(pupil.locator(".student-media-pending")).to_be_visible()
+            teacher.reload()
+            expect(teacher.locator("section.board")).to_be_visible(timeout=90000)
+            drop_results["enabled"]=False
+            expect(pupil.locator(".student-media-pending")).to_have_count(0,timeout=30000)
+            assert not any(i.get("name")=="sync-rejection.png" for i in read()["items"])
+            print("Real attachment request reload, lost approval, duplicate protection and rejected-result replay passed.")
+    finally:
+        for ctx in contexts:ctx.close()
+
 def main():
     asyncio.run(seed())
+    if "--sync-only" in sys.argv:
+        with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True)
+            try:
+                check_shared_eraser_sync(browser)
+                check_undo_reconnect_sync(browser)
+            finally:
+                browser.close()
+        return
     ident=setup_board()
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
@@ -1084,6 +1218,7 @@ def main():
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
         check_shared_eraser_sync(browser)
+        check_undo_reconnect_sync(browser)
         check_guest_and_registration(browser,ident)
         check_maintenance(browser,ident)
         check_billing_and_finance(browser)

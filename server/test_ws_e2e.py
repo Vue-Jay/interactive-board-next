@@ -5,6 +5,8 @@ from contextlib import AsyncExitStack
 import gc
 import json
 import os
+import signal
+import sys
 from pathlib import Path
 from time import perf_counter
 from uuid import UUID, uuid4
@@ -25,7 +27,7 @@ from test_api import TEACHER, STUDENT, PASSWORD
 
 @pytest.mark.asyncio
 async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
-    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru,http://127.0.0.1:18764")
+    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru,http://127.0.0.1:5173")
     _login_attempts.clear()
     conn=await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
@@ -316,31 +318,48 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     pass
             assert blocked.value.status_code==403
 
-            # Two independent full application sessions on a disposable API.
-            # Node/Chrome are enabled only by the integration CI job.
+            # Reuse the existing Playwright acceptance harness with genuine
+            # UI login, separate browser contexts, and the running disposable API.
             if os.getenv("LEKTRUS_RUN_BROWSER_SYNC") == "1":
-                async with app.state.pool.acquire() as db:
-                    await db.execute("UPDATE board_members SET participant_role='student' WHERE board_id=$1 AND user_id=$2",UUID(native),STUDENT)
-                current=(await http.get(url,headers=owner)).json()
-                seed={"version":1,"title":"Native","subject":"","view":{"x":0,"y":0,"zoom":1},
-                      "items":[{"id":"qa-sticky","kind":"sticky","x":300,"y":240,"width":200,"height":120,"text":"Shared note","color":"#fff2df","createdBy":str(TEACHER)}]}
-                saved=await http.put(url,headers=owner,json={"expected_version":current["version"],"document":seed})
-                assert saved.status_code==200,saved.text
                 root=Path(__file__).resolve().parents[1]
-                browser=await asyncio.create_subprocess_exec(
-                    "node","scripts/test-lektrus-two-session-browser.mjs",cwd=root,
-                    env={**os.environ,"LEKTRUS_QA_BOARD":native,
-                         "LEKTRUS_QA_OWNER":json.dumps(owner_session),
-                         "LEKTRUS_QA_STUDENT":json.dumps(student_session)},
-                    stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
-                try:
-                    output,_=await asyncio.wait_for(browser.communicate(),timeout=220)
-                except asyncio.TimeoutError:
-                    browser.kill()
-                    await browser.wait()
-                    raise
-                assert browser.returncode==0,output.decode("utf-8",errors="replace")
-                print(output.decode("utf-8",errors="replace"))
+                artifacts=root/"artifacts"/"participant-roles"
+                artifacts.mkdir(parents=True,exist_ok=True)
+                env={**os.environ,"VITE_LEKTRUS_BACKEND":"selfhost",
+                     "VITE_LEKTRUS_API_ORIGIN":"http://127.0.0.1:18762",
+                     "LEKTRUS_QA_BASE":"http://127.0.0.1:5173",
+                     "LEKTRUS_QA_API":"http://127.0.0.1:18762"}
+                with (artifacts/"sync-vite.log").open("wb") as log:
+                    vite=await asyncio.create_subprocess_exec(
+                        "npm","run","dev","--","--host","127.0.0.1","--port","5173","--strictPort",
+                        cwd=root,env=env,stdout=log,stderr=asyncio.subprocess.STDOUT,start_new_session=True)
+                    try:
+                        for _ in range(120):
+                            if vite.returncode is not None:
+                                raise AssertionError("Vite exited before browser tests")
+                            try:
+                                probe=await http.get("http://127.0.0.1:5173/app",timeout=2)
+                                if probe.status_code==200:break
+                            except httpx.HTTPError:pass
+                            await asyncio.sleep(.5)
+                        else:raise AssertionError("Vite did not start")
+                        browser=await asyncio.create_subprocess_exec(
+                            sys.executable,"tests/participant-roles-browser.py","--sync-only",cwd=root,env=env,
+                            stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT,start_new_session=True)
+                        try:
+                            output,_=await asyncio.wait_for(browser.communicate(),timeout=420)
+                        except asyncio.TimeoutError:
+                            os.killpg(browser.pid,signal.SIGKILL)
+                            await browser.wait()
+                            raise
+                        assert browser.returncode==0,output.decode("utf-8",errors="replace")
+                        print(output.decode("utf-8",errors="replace"))
+                    finally:
+                        if vite.returncode is None:
+                            os.killpg(vite.pid,signal.SIGTERM)
+                            try:await asyncio.wait_for(vite.wait(),timeout=5)
+                            except asyncio.TimeoutError:
+                                os.killpg(vite.pid,signal.SIGKILL)
+                                await vite.wait()
 
             uri="ws://127.0.0.1:18762/api/v1/boards/"+board+"/events"
             async with websockets.connect(uri,origin="https://lektrus.ru") as ws_owner:
