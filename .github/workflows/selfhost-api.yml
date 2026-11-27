@@ -52,7 +52,7 @@ jobs:
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       DATABASE_URL: postgresql://lektrus:test-password-only@127.0.0.1:5432/lektrus
-      LEKTRUS_ALLOWED_ORIGINS: https://lektrus.example
+      LEKTRUS_ALLOWED_ORIGINS: https://lektrus.example,http://127.0.0.1:5173
       LEKTRUS_JWT_SECRET: CI-only-not-for-production-random-string-1234567890
     steps:
       - uses: actions/checkout@v4

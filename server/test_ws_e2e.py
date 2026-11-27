@@ -321,6 +321,18 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
             # Reuse the existing Playwright acceptance harness with genuine
             # UI login, separate browser contexts, and the running disposable API.
             if os.getenv("LEKTRUS_RUN_BROWSER_SYNC") == "1":
+                # CORSMiddleware captures configured origins when the API module
+                # is imported. A late monkeypatch alone cannot open browser access.
+                browser_origin="http://127.0.0.1:5173"
+                preflight=await http.options("/api/v1/auth/login",headers={
+                    "Origin":browser_origin,"Access-Control-Request-Method":"POST",
+                    "Access-Control-Request-Headers":"content-type",
+                })
+                assert preflight.status_code==200,preflight.text
+                assert preflight.headers.get("access-control-allow-origin")==browser_origin
+                health=await http.get("/api/v1/health",headers={"Origin":browser_origin})
+                assert health.status_code==200 and health.json()["ok"],health.text
+                assert health.headers.get("access-control-allow-origin")==browser_origin
                 root=Path(__file__).resolve().parents[1]
                 artifacts=root/"artifacts"/"participant-roles"
                 artifacts.mkdir(parents=True,exist_ok=True)

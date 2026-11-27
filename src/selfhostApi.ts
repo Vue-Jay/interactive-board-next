@@ -939,6 +939,10 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
     }
   }
   result??=await selfhostRequest<{version:number}>(path,{method:"PUT",body:fullBody??JSON.stringify({expected_version:expectedVersion,document:next})});
+  // A successful write advances exactly one revision. Never associate a local
+  // snapshot with an impossible ACK or replay a write whose outcome is unknown.
+  if(!result||!Number.isSafeInteger(result.version)||result.version!==expectedVersion+1)
+    throw new SelfhostHttpError(409,"Некорректное подтверждение сохранения. Сверяем версию доски.");
   rememberDocument(boardId,userId,result.version,next);
   if(inkCursor&&!sentOverSocket)selfhostBoardSockets.get(boardId)?.sendCursor(inkCursor);
   return result;
