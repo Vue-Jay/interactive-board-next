@@ -209,3 +209,8 @@ Candidate bec2ddb failed four workflows. The browser reproduced the missing cent
 ## Shared geography practice
 
 Matching and question cards now publish a coherent answer state (selection, matched countries, errors, order, card index, reveal and mastery) while preserving teacher-defined source. Legacy exercises open with a common deterministic order; restart publishes a new order. Model and server reject invalid permutations, foreign country IDs and malformed response state. Stale responses are rejected when the assignment changes. Added authenticated two-browser pairing/reset/card/forged-answer regression. Updated the isolated, unpublished migration 204. Candidate CI not confirmed; physical hardware gate remains open. No main merge or deployment.
+
+
+## Shared geography CI repair
+
+Exact ce01c94 failed the server workflow during migration 204 (duplicated SQL fragments broke the numeric regex literals), touch source checks (obsolete static toolbar lists), and role source checks (obsolete pre-merge restriction call). Reconstructed the migration as exactly two function definitions, retained the geography permutation/subset validation and current document allowlist, made missing place-value digits fail closed, and updated source checks to cover the live role-filtered toolbar and merged assignment validation. Exact candidate CI still required; historical verified baseline 18/20 (90%), current candidate 17/20 (85%) until the exact-head and subject gates pass. Physical hardware unavailable. No main merge or deployment.

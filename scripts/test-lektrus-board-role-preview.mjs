@@ -252,8 +252,8 @@ assert.doesNotMatch(approvedView,/onChange\s*\(/,
  "foreign flashcard interactions must not save over a teacher's cards");
 assert.match(russianView,/const \[picked,setPicked\]=useState/,
  "spelling puzzle answers remain local to the learner");
-assert.match(app,/restrictStudentDiagramChange\(before.schoolDiagram,diagram\)/,
- "students cannot rewrite a teacher's assignment");
+assert.match(app,/const merged=mergeEditedValue\(base,diagram,before.schoolDiagram\);\s*const allowed=isStudent\?restrictStudentDiagramChange\(before.schoolDiagram,merged\):merged;\s*if\(!allowed\|\|!isSchoolDiagram\(allowed\)\)return;/,
+ "student edits are merged against the current assignment, restricted and validated before commit");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,
  "only actual board owner can change the subject");
 assert.match(app,/if\(!canCreateAssignments\)\{setNotice\("Создавать задания может только преподаватель/,
