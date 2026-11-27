@@ -90,28 +90,26 @@ assert.deepEqual(papalRevolutionary.map(r=>[r.from,r.to,r.role]),[
 assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
 
  
- // Four modern island countries: 1994/2000/2010 archive anchors, named
- // sub-islands, and fixed original source identities. Small islets omitted
- // by Natural Earth are NOT automatically declared geodetically complete.
+ // Independent recent island geometry fixes must be tied to the frozen
+ // 1994, 2000 and 2010 archive rows, not a nearby country with the same name.
+ const frozenModernReview=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-spatial-findings-20261124.json',import.meta.url),'utf8'));
  assert.equal(modernIslandGeography.entries.length,4);
+ assert.equal(modernIslandGeography.source.sha256,independentIslands.source.sha256);
  for(const d of modernIslandGeography.entries){
   assert.deepEqual(d.snapshots.map(x=>x.year),[1994,2000,2010]);
   assert.ok(d.sourceUrl.startsWith('https://'));
   assert.ok(d.landmarks.length>=2&&d.parts>=2);
+  assert.equal(sha256(JSON.stringify(d.geometry)),d.geometrySha256);
+  for(const snap of d.snapshots){
+   const raw=frozenModernReview.findings.find(x=>x.id===snap.id);
+   assert.ok(raw, 'Missing frozen archive id '+snap.id);
+   assert.equal(raw.archiveName,d.name);
+   assert.equal(raw.archiveSha256,snap.archiveSha256);
+   assert.equal(raw.candidates.length,1);
+   assert.equal(raw.candidates[0].geometryId,d.originalGeometryId);
+  }
   for(const [name,lon,lat] of d.landmarks)
    assert.ok(capitalInsideCountry([lon,lat],d.geometry),d.iso+' lacks '+name);
-  const originals=new Map([[d.originalGeometryId,square(0,0)]]);
-  // Isolate this country but retain the exact policy's pinned geometry data.
-  const selected={...modernIslandGeography,entries:[d]};
-  const fixture={...d,geometry:d.geometry};
-  const fake={id:'old-'+d.iso,name:d.name,geometryId:d.originalGeometryId,
-   role:'polity',geometryStatus:'candidate',sourceIndex:12345,from:1989,to:2024};
-  const rows=[fake];
-  // In the narrow test, expose the policy's four entries to meet the safety
-  // invariant. Three non-target sentinels use already-correct geometry.
-  const fixtureData={...modernIslandGeography,entries:[
-   d,...modernIslandGeography.entries.filter(e=>e.iso!==d.iso)]};
-  // The complete-policy test below covers all four in one operation.
  }
  const modernSyntheticRecords=modernIslandGeography.entries.map((d,i)=>({
   id:'island-fixture-'+i,entityId:'state-'+d.iso,name:d.name,geometryId:d.originalGeometryId,
@@ -119,9 +117,15 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  }));
  const modernOriginals=new Map(modernIslandGeography.entries.map(d=>[d.originalGeometryId,
   {type:'MultiPolygon',coordinates:[d.geometry.type==='Polygon'?d.geometry.coordinates:d.geometry.coordinates[0]]}]));
+ // A small island absent from the 1:10m atlas but present in the source
+ // must not disappear merely because the coastlines were refreshed.
+ const malteseModern=modernIslandGeography.entries.find(d=>d.iso==='MLT');
+ const simulatedComino=[[[14.334,36.006],[14.338,36.006],[14.338,36.009],[14.334,36.009],[14.334,36.006]]];
+ modernOriginals.get(malteseModern.originalGeometryId).coordinates.push(simulatedComino);
  const modernTallies=applyReviewedModernIslandGeographies(modernSyntheticRecords,modernOriginals);
  assert.equal(modernTallies.length,4);
  assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT']);
+ assert.equal(modernTallies.find(x=>x.iso==='MLT').retainedLegacyIslets,1,'Tiny legacy island silently lost');
  for(const d of modernIslandGeography.entries){
   const newer=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1994&&r.to===2024);
   const earlier=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1990&&r.to===1993);
@@ -135,7 +139,8 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
   for(const [name,lon,lat] of d.landmarks)
    assert.ok(capitalInsideCountry([lon,lat],geom),d.iso+' missing '+name+' in new record');
  }
-
+ assert.equal(modernOriginals.get(modernSyntheticRecords.find(r=>r.name==='Malta'&&r.from===1994).geometryId).coordinates.length,3);
+ 
 // Year-gated source splits preserve raw geometric identity and never invent
  // a surveyed border during administrative/territorial transitions.
  for(const [name,from,to,markers] of [

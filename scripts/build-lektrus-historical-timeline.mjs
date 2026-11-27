@@ -2626,6 +2626,7 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
   assert.equal(d.snapshots.length,3);
   const raw=geometries.get(d.originalGeometryId);
   assert.ok(raw,'Pinned original coastlines unavailable: '+d.iso);
+  assert.equal(sha256(JSON.stringify(d.geometry)),d.geometrySha256,'Pinned Natural Earth island geometry changed: '+d.iso);
   const main=polys(d.geometry);assert.equal(main.length,d.parts);
   validateGeometry(d.geometry);
   for(const [name,lon,lat] of d.landmarks)

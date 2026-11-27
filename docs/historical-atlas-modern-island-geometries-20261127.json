@@ -546,7 +546,8 @@
             ]
           ]
         ]
-      }
+      },
+      "geometrySha256": "541275e3df97f52a0cd0ecd48152dfe219574ffaef0caaeef29d0a4a193a48f4"
     },
     {
       "iso": "VCT",
@@ -962,7 +963,8 @@
             ]
           ]
         ]
-      }
+      },
+      "geometrySha256": "63a56e4f4e1a19670bbc510472d79ce593b91645a89eaf0d8243e5413612ab41"
     },
     {
       "iso": "GRD",
@@ -1275,7 +1277,8 @@
             ]
           ]
         ]
-      }
+      },
+      "geometrySha256": "d71bfe62e5a3c411e06cc75032b7a615f1c500c52263e725441c3451b91c1fac"
     },
     {
       "iso": "MLT",
@@ -1552,7 +1555,8 @@
             ]
           ]
         ]
-      }
+      },
+      "geometrySha256": "4afd9acc8ed9b161377d88a9904c810d0fa534a8284e810d36857a42405dc874"
     }
   ]
 }
