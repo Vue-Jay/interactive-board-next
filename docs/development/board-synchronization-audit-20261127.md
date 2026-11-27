@@ -14,3 +14,7 @@ Scope: shared board editing, authenticated realtime and persisted revisions. Nav
 | Recovery | revision notice + incremental/full GET + periodic version probe | retry after loss, conflict rebase; timeout only background |
 
 Tests in the PR: real WebSocket teacher/student commits for object kinds; SQL/HTTP permission checks; browser UI create/delete in both directions for core objects; existing real-browser ink, eraser, drag, text, role and touch tests. No production content was accessed. Remaining: exhaustive interactive UI variations, physical devices, and long unstable-network lessons.
+
+## Recovery follow-up
+
+Source findings addressed in the follow-up: a rejected or malformed socket delta must force a full authenticated snapshot before further socket deltas; committed cursor hints must remain available until the corresponding document is accepted; access denial must not mark an unreceived revision as delivered. Regression cases added to the mocked selfhost client suite. Physical-device, exhaustive editor variants and long-session network tests remain open until actually executed.

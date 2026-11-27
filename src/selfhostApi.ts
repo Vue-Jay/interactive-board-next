@@ -1695,8 +1695,11 @@ export function selfhostWatchDocument(
   const committedCursors=new Map<string,{version:number;cursor:SelfhostCommittedCursor}>();
   const attachCursors=(row:SelfhostDocument):SelfhostDocument=>{
     const cursors:SelfhostCommittedCursor[]=[];
-    for(const [id,entry] of committedCursors){if(entry.version<=row.version){cursors.push(entry.cursor);committedCursors.delete(id)}}
+    for(const entry of committedCursors.values()){if(entry.version<=row.version)cursors.push(entry.cursor)}
     return cursors.length?{...row,ink_cursors:cursors}:row;
+  };
+  const acknowledgeCursors=(version:number)=>{
+    for(const [id,entry] of committedCursors)if(entry.version<=version)committedCursors.delete(id);
   };
   const schedule=()=>{
     if(controller.signal.aborted||accessDenied||reading||timer!==undefined||
@@ -1717,6 +1720,7 @@ export function selfhostWatchDocument(
         }
       }
       if(row.version>delivered)selfhostLogBoardSync(boardId,{event:currentVersion()>=row.version?"revision_applied":"revision_deferred",version:row.version,transport:"http"});
+      acknowledgeCursors(row.version);
       forceFullRead=false;
       delivered=Math.max(delivered,row.version);
       failures=row.version<target?Math.min(failures+1,5):0;
@@ -1724,7 +1728,9 @@ export function selfhostWatchDocument(
     }catch(error){
       if(controller.signal.aborted)return;
       if(error instanceof SelfhostHttpError&&[401,403,404].includes(error.status)){
-        delivered=target;
+        // Permission failure is not delivery. On a successful reconnect,
+        // immediately retry the still-unapplied revision.
+        forceFullRead=true;
         accessDenied=true;
         onStatus("offline");
         return;
@@ -1761,7 +1767,7 @@ export function selfhostWatchDocument(
         }
       }catch(error){
         if(error instanceof SelfhostHttpError&&[401,403,404].includes(error.status)){
-          accessDenied=true;onStatus("offline");
+          forceFullRead=true;accessDenied=true;onStatus("offline");
         }
       }finally{schedulePoll()}
     },typeof document!=="undefined"&&document.hidden?15000:status==="online"?5000:2500);
@@ -1769,7 +1775,7 @@ export function selfhostWatchDocument(
   const socket=selfhostSubscribeBoard(boardId,(version,patch)=>{
     target=Math.max(target,version);
     if(patch?.ink_cursor&&version>Math.max(currentVersion(),delivered))committedCursors.set(patch.ink_cursor.user_id,{version,cursor:patch.ink_cursor});
-    if(!controller.signal.aborted&&!accessDenied&&patch&&version>Math.max(currentVersion(),delivered)){
+    if(!controller.signal.aborted&&!accessDenied&&!forceFullRead&&patch&&version>Math.max(currentVersion(),delivered)){
       const userId=loadSession()?.user.id;
       const base=documentBase;
       if(base&&base.boardId===boardId&&base.userId===userId&&base.version===patch.base_version){
@@ -1783,21 +1789,27 @@ export function selfhostWatchDocument(
             forceFullRead=true;
           }else{
             selfhostLogBoardSync(boardId,{event:currentVersion()>=version?"revision_applied":"revision_deferred",version,transport:"socket"});
+            acknowledgeCursors(version);
             delivered=version;
             failures=0;
             forceFullRead=false;
           }
-        }catch{/* A missed or invalid patch falls back to the versioned read. */}
+        }catch{
+          // Do not build later patches on a revision the client could not apply.
+          forceFullRead=true;
+          selfhostLogBoardSync(boardId,{event:"revision_rejected",version,transport:"socket"});
+        }
       }
     }
     schedule();
     schedulePoll();
   },next=>{
     const wasOnline=status==="online";
+    const wasDenied=accessDenied;
     if(next!==status)selfhostLogBoardSync(boardId,{event:next==="online"?"socket_online":next==="offline"?"socket_offline":"socket_reconnecting"});
     status=next;
     if(next==="online")accessDenied=false;
-    if(!wasOnline&&next==="online"){
+    if((!wasOnline||wasDenied)&&next==="online"){
       failures=0;
       clearTimeout(timer);timer=undefined;
       schedule();
