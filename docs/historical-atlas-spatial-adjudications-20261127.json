@@ -3,17 +3,17 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "61 archive name/geometry comparisons historically classified, 415 pending; late Golden Horde is not drawn as a unified state",
+  "status": "95 archive comparison cases historically classified; 34 additional treaty/status/scope corrections marked; source border geometries remain candidates",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 61,
+    "explainedComparisonCases": 95,
     "previouslyExplained": 5,
-    "newlyExplained": 56,
-    "remainingWithoutExplanation": 415,
+    "newlyExplained": 90,
+    "remainingWithoutExplanation": 381,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
@@ -25,9 +25,10 @@
     "personalUnionsNotCountries": 1,
     "dividedDaiViet": 6,
     "macDynastyIdentified": 1,
-    "lateHordeSuccessorConfusion": 2
+    "lateHordeSuccessorConfusion": 2,
+    "datedScopeDiscrepancies": 34
   },
-  "warning": "No historical borders proved by the 61 classifications; 769 distinct territorial component-years remain open pending a rebuilt verified spatial audit.",
+  "warning": "95 classification explanations are not verified borders: 769 separate territorial component-years still require reconstruction and a full build.",
   "cases": [
     {
       "id": "2010:119",
@@ -236,6 +237,22 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1938:126",
+      "year": 1938,
+      "archiveName": "Czechoslovakia",
+      "effectiveCandidateName": "Czechoslovakia",
+      "archiveSha256": "f2565926fed1b197227b7fe126934a43ed75b8fce007e38be72a7d21a415d813",
+      "candidateGeometryId": "24e199a7aa9d60a55b71f68e7517c1ab035b4514d523e3c60be664b5bcfb5118",
+      "iou": 0.71564,
+      "classification": "1938-munich-intra-year-border-transition",
+      "reasonRu": "Мюнхенское соглашение изменило территорию Чехословакии в течение 1938 года: единый годовой полигон не может описывать обе фазы.",
+      "sources": [
+        "https://encyclopedia.ushmm.org/content/en/article/czechoslovakia",
+        "https://history.state.gov/milestones/1937-1945/munich"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1938:139",
       "year": 1938,
       "archiveName": "Denmark",
@@ -252,6 +269,70 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1938:229",
+      "year": 1938,
+      "archiveName": "New Hebrides",
+      "effectiveCandidateName": "New Hebrides",
+      "archiveSha256": "f2565926fed1b197227b7fe126934a43ed75b8fce007e38be72a7d21a415d813",
+      "candidateGeometryId": "ba8ca89164d4c274de8e2a5d079ebb95dc4b613712881dd061a89a7b4fb5fed4",
+      "iou": 0.328684,
+      "classification": "anglo-french-condominium-not-independent",
+      "reasonRu": "В 1938 году Новые Гебриды были совместной колониальной администрацией Франции и Британии, а не независимой страной.",
+      "sources": [
+        "https://cdn.nationalarchives.gov.uk/documents/migrated-archives-5-guidance.pdf",
+        "https://natlib.govt.nz/records/22188976"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1938:40",
+      "year": 1938,
+      "archiveName": "Estonia",
+      "effectiveCandidateName": "Estonia",
+      "archiveSha256": "f2565926fed1b197227b7fe126934a43ed75b8fce007e38be72a7d21a415d813",
+      "candidateGeometryId": "986a4c23bf484cebdb525c5ed47ffce0bf739d67faa281f85879e889c54f7bdf",
+      "iou": 0.731081,
+      "classification": "1920-tartu-treaty-eastern-border-not-retrojected",
+      "reasonRu": "Историческая восточная граница Эстонии 1920–1938 годов по Тартускому договору включала Печорский край и земли за Нарвой; исходный контур не прошёл координатную проверку.",
+      "sources": [
+        "https://vm.ee/en/tartu-peace",
+        "https://www.vm.ee/en/news/tartu-peace-treaty-2-february-1920"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1930:151",
+      "year": 1930,
+      "archiveName": "Estonia",
+      "effectiveCandidateName": "Estonia",
+      "archiveSha256": "5666e451125ceb0193532338bfecf6f403e1a4d7ff62f54fd560cafb0b0b1b61",
+      "candidateGeometryId": "38ef6570ffacd24d6e907d86ba3fe725bacc3cd2b4450f9b8302b8f5a399dd4b",
+      "iou": 0.725926,
+      "classification": "1920-tartu-treaty-eastern-border-not-retrojected",
+      "reasonRu": "Историческая восточная граница Эстонии 1920–1938 годов по Тартускому договору включала Печорский край и земли за Нарвой; исходный контур не прошёл координатную проверку.",
+      "sources": [
+        "https://vm.ee/en/tartu-peace",
+        "https://www.vm.ee/en/news/tartu-peace-treaty-2-february-1920"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1930:157",
+      "year": 1930,
+      "archiveName": "Paraguay",
+      "effectiveCandidateName": "Paraguay",
+      "archiveSha256": "5666e451125ceb0193532338bfecf6f403e1a4d7ff62f54fd560cafb0b0b1b61",
+      "candidateGeometryId": "34833dca014dbec8306cb483c45503b0a35a9e600d8781e8cc6e52dfe8173d38",
+      "iou": 0.374235,
+      "classification": "unsettled-chaco-frontier-before-1938",
+      "reasonRu": "Граница Чако с Боливией оставалась спорной до договора 1938 года; ранний картографический контур не доказывает линию прямого управления.",
+      "sources": [
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay",
+        "https://history.state.gov/historicaldocuments/frus1932v05/d8"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1930:18",
       "year": 1930,
       "archiveName": "Denmark",
@@ -264,6 +345,22 @@
       "sources": [
         "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
         "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1930:191",
+      "year": 1930,
+      "archiveName": "Bolivia",
+      "effectiveCandidateName": "Bolivia",
+      "archiveSha256": "5666e451125ceb0193532338bfecf6f403e1a4d7ff62f54fd560cafb0b0b1b61",
+      "candidateGeometryId": "cfc04e7dc89e3553fe2a7b405b931ed7192e250932cc40c2344485bba4d5994a",
+      "iou": 0.787542,
+      "classification": "bolivian-pacific-coast-and-chaco-dated-disputes",
+      "reasonRu": "Контроль Боливии над Тихоокеанским берегом изменился в 1879 году, договор с Чили подписан в 1904 году; граница Чако согласована в 1938 году.",
+      "sources": [
+        "https://api.icj-cij.org/sites/default/files/case-related/153/153-20181001-SUM-01-00-EN.pdf",
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay"
       ],
       "geometryHistoricallyConfirmed": false
     },
@@ -316,6 +413,54 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1920:28",
+      "year": 1920,
+      "archiveName": "Bolivia",
+      "effectiveCandidateName": "Bolivia",
+      "archiveSha256": "fce1c97dc6a6095594cbb7eb896ccd5ce8b2d72254e73a24148c0a4ea200849f",
+      "candidateGeometryId": "dda635ea2902bf6bfa6c2678debdd429ccc8b6a0a3ccb295feef5f1ce1ac0b07",
+      "iou": 0.787464,
+      "classification": "bolivian-pacific-coast-and-chaco-dated-disputes",
+      "reasonRu": "Контроль Боливии над Тихоокеанским берегом изменился в 1879 году, договор с Чили подписан в 1904 году; граница Чако согласована в 1938 году.",
+      "sources": [
+        "https://api.icj-cij.org/sites/default/files/case-related/153/153-20181001-SUM-01-00-EN.pdf",
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1920:34",
+      "year": 1920,
+      "archiveName": "Paraguay",
+      "effectiveCandidateName": "Paraguay",
+      "archiveSha256": "fce1c97dc6a6095594cbb7eb896ccd5ce8b2d72254e73a24148c0a4ea200849f",
+      "candidateGeometryId": "34833dca014dbec8306cb483c45503b0a35a9e600d8781e8cc6e52dfe8173d38",
+      "iou": 0.374235,
+      "classification": "unsettled-chaco-frontier-before-1938",
+      "reasonRu": "Граница Чако с Боливией оставалась спорной до договора 1938 года; ранний картографический контур не доказывает линию прямого управления.",
+      "sources": [
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay",
+        "https://history.state.gov/historicaldocuments/frus1932v05/d8"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1920:40",
+      "year": 1920,
+      "archiveName": "Estonia",
+      "effectiveCandidateName": "Estonia",
+      "archiveSha256": "fce1c97dc6a6095594cbb7eb896ccd5ce8b2d72254e73a24148c0a4ea200849f",
+      "candidateGeometryId": "38ef6570ffacd24d6e907d86ba3fe725bacc3cd2b4450f9b8302b8f5a399dd4b",
+      "iou": 0.737662,
+      "classification": "1920-tartu-treaty-eastern-border-not-retrojected",
+      "reasonRu": "Историческая восточная граница Эстонии 1920–1938 годов по Тартускому договору включала Печорский край и земли за Нарвой; исходный контур не прошёл координатную проверку.",
+      "sources": [
+        "https://vm.ee/en/tartu-peace",
+        "https://www.vm.ee/en/news/tartu-peace-treaty-2-february-1920"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1914:121",
       "year": 1914,
       "archiveName": "Netherlands Antilles",
@@ -344,6 +489,70 @@
       "sources": [
         "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
         "https://cas.au.dk/en/danish-history/modules/module-6-from-absolutist-composite-state-to-nation-state-1814-1914/translate-to-english-1-det-danske-rige"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1914:21",
+      "year": 1914,
+      "archiveName": "Bolivia",
+      "effectiveCandidateName": "Bolivia",
+      "archiveSha256": "a99425f9486e2243835fdc75ad7d82e6ddf3c72fcef87a63429f3313d830cf19",
+      "candidateGeometryId": "dda635ea2902bf6bfa6c2678debdd429ccc8b6a0a3ccb295feef5f1ce1ac0b07",
+      "iou": 0.785446,
+      "classification": "bolivian-pacific-coast-and-chaco-dated-disputes",
+      "reasonRu": "Контроль Боливии над Тихоокеанским берегом изменился в 1879 году, договор с Чили подписан в 1904 году; граница Чако согласована в 1938 году.",
+      "sources": [
+        "https://api.icj-cij.org/sites/default/files/case-related/153/153-20181001-SUM-01-00-EN.pdf",
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1914:27",
+      "year": 1914,
+      "archiveName": "Paraguay",
+      "effectiveCandidateName": "Paraguay",
+      "archiveSha256": "a99425f9486e2243835fdc75ad7d82e6ddf3c72fcef87a63429f3313d830cf19",
+      "candidateGeometryId": "34833dca014dbec8306cb483c45503b0a35a9e600d8781e8cc6e52dfe8173d38",
+      "iou": 0.374235,
+      "classification": "unsettled-chaco-frontier-before-1938",
+      "reasonRu": "Граница Чако с Боливией оставалась спорной до договора 1938 года; ранний картографический контур не доказывает линию прямого управления.",
+      "sources": [
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay",
+        "https://history.state.gov/historicaldocuments/frus1932v05/d8"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:112",
+      "year": 1900,
+      "archiveName": "Paraguay",
+      "effectiveCandidateName": "Paraguay",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "34833dca014dbec8306cb483c45503b0a35a9e600d8781e8cc6e52dfe8173d38",
+      "iou": 0.553458,
+      "classification": "unsettled-chaco-frontier-before-1938",
+      "reasonRu": "Граница Чако с Боливией оставалась спорной до договора 1938 года; ранний картографический контур не доказывает линию прямого управления.",
+      "sources": [
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay",
+        "https://history.state.gov/historicaldocuments/frus1932v05/d8"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:113",
+      "year": 1900,
+      "archiveName": "Bolivia",
+      "effectiveCandidateName": "Bolivia",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "749fbf0da307d76c34adf5d2b41f2261cf43d7b6dd126c629fe5bc86cf521069",
+      "iou": 0.766426,
+      "classification": "bolivian-pacific-coast-and-chaco-dated-disputes",
+      "reasonRu": "Контроль Боливии над Тихоокеанским берегом изменился в 1879 году, договор с Чили подписан в 1904 году; граница Чако согласована в 1938 году.",
+      "sources": [
+        "https://api.icj-cij.org/sites/default/files/case-related/153/153-20181001-SUM-01-00-EN.pdf",
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay"
       ],
       "geometryHistoricallyConfirmed": false
     },
@@ -380,6 +589,70 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1900:203",
+      "year": 1900,
+      "archiveName": "Rattanakosin Kingdom",
+      "effectiveCandidateName": "Rattanakosin Kingdom",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "cfa972abdcb31fb929da992c0dada4d557e23eee8076277d6ee701147946cfeb",
+      "iou": 0.670499,
+      "classification": "siam-tributary-claims-versus-direct-borders",
+      "reasonRu": "Прямое сиамское управление и зависимые даннические государства не имели общей фиксированной границы; колониальные договоры меняли эти отношения.",
+      "sources": [
+        "https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:32",
+      "year": 1900,
+      "archiveName": "Greenland",
+      "effectiveCandidateName": "Greenland",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "3a82fcf0d0c1684f3cc275b3fb5ddddc74b27c8c58f99904e23a117989b11949",
+      "iou": 0.036876,
+      "classification": "coastal-colonial-footprint-versus-entire-island",
+      "reasonRu": "Небольшой колониальный прибрежный контур не равен юридическому титулу на весь остров. Суд подтвердил датский титул в 1933 году; карта 1878–1900 годов не доказала границы.",
+      "sources": [
+        "https://law.justia.com/cases/foreign/international/1933-pcij-series-a-b-no-53.html",
+        "https://www.danishmuseum.org/exhibition/greenland-2/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:107",
+      "year": 1880,
+      "archiveName": "Paraguay",
+      "effectiveCandidateName": "Paraguay",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "34833dca014dbec8306cb483c45503b0a35a9e600d8781e8cc6e52dfe8173d38",
+      "iou": 0.553458,
+      "classification": "unsettled-chaco-frontier-before-1938",
+      "reasonRu": "Граница Чако с Боливией оставалась спорной до договора 1938 года; ранний картографический контур не доказывает линию прямого управления.",
+      "sources": [
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay",
+        "https://history.state.gov/historicaldocuments/frus1932v05/d8"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:108",
+      "year": 1880,
+      "archiveName": "Bolivia",
+      "effectiveCandidateName": "Bolivia",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "219dde4141a12e5e2dd3a07a815d0077ea1c81260d68decf9772dc719d0c5eef",
+      "iou": 0.766463,
+      "classification": "bolivian-pacific-coast-and-chaco-dated-disputes",
+      "reasonRu": "Контроль Боливии над Тихоокеанским берегом изменился в 1879 году, договор с Чили подписан в 1904 году; граница Чако согласована в 1938 году.",
+      "sources": [
+        "https://api.icj-cij.org/sites/default/files/case-related/153/153-20181001-SUM-01-00-EN.pdf",
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1880:111",
       "year": 1880,
       "archiveName": "Denmark",
@@ -412,6 +685,22 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1880:225",
+      "year": 1880,
+      "archiveName": "Rattanakosin Kingdom",
+      "effectiveCandidateName": "Rattanakosin Kingdom",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "549bb3f90ad8841965184f53279626fb08087ded6a43d28dc44980e94b395df1",
+      "iou": 0.558619,
+      "classification": "siam-tributary-claims-versus-direct-borders",
+      "reasonRu": "Прямое сиамское управление и зависимые даннические государства не имели общей фиксированной границы; колониальные договоры меняли эти отношения.",
+      "sources": [
+        "https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1880:226",
       "year": 1880,
       "archiveName": "French Indochina",
@@ -424,6 +713,38 @@
       "sources": [
         "https://mjp.univ-perp.fr/constit/vn1862.htm",
         "https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:32",
+      "year": 1880,
+      "archiveName": "Greenland",
+      "effectiveCandidateName": "Greenland",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "fe249d782d1c794c1a1be47c16d8d3c2d94a4c64add1d108c26b148c0c3da616",
+      "iou": 0.036696,
+      "classification": "coastal-colonial-footprint-versus-entire-island",
+      "reasonRu": "Небольшой колониальный прибрежный контур не равен юридическому титулу на весь остров. Суд подтвердил датский титул в 1933 году; карта 1878–1900 годов не доказала границы.",
+      "sources": [
+        "https://law.justia.com/cases/foreign/international/1933-pcij-series-a-b-no-53.html",
+        "https://www.danishmuseum.org/exhibition/greenland-2/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:104",
+      "year": 1878,
+      "archiveName": "Paraguay",
+      "effectiveCandidateName": "Paraguay",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "34833dca014dbec8306cb483c45503b0a35a9e600d8781e8cc6e52dfe8173d38",
+      "iou": 0.553458,
+      "classification": "unsettled-chaco-frontier-before-1938",
+      "reasonRu": "Граница Чако с Боливией оставалась спорной до договора 1938 года; ранний картографический контур не доказывает линию прямого управления.",
+      "sources": [
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay",
+        "https://history.state.gov/historicaldocuments/frus1932v05/d8"
       ],
       "geometryHistoricallyConfirmed": false
     },
@@ -460,6 +781,22 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1878:221",
+      "year": 1878,
+      "archiveName": "Rattanakosin Kingdom",
+      "effectiveCandidateName": "Rattanakosin Kingdom",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "549bb3f90ad8841965184f53279626fb08087ded6a43d28dc44980e94b395df1",
+      "iou": 0.558619,
+      "classification": "siam-tributary-claims-versus-direct-borders",
+      "reasonRu": "Прямое сиамское управление и зависимые даннические государства не имели общей фиксированной границы; колониальные договоры меняли эти отношения.",
+      "sources": [
+        "https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1878:222",
       "year": 1878,
       "archiveName": "French Indochina",
@@ -472,6 +809,38 @@
       "sources": [
         "https://mjp.univ-perp.fr/constit/vn1862.htm",
         "https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:233",
+      "year": 1878,
+      "archiveName": "Bolivia",
+      "effectiveCandidateName": "Bolivia",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "f9cd9ead96ea79ba7a94cc9745e390e80a662cf94f78df5b4d42fd7a4c2195f5",
+      "iou": 0.776585,
+      "classification": "bolivian-pacific-coast-and-chaco-dated-disputes",
+      "reasonRu": "Контроль Боливии над Тихоокеанским берегом изменился в 1879 году, договор с Чили подписан в 1904 году; граница Чако согласована в 1938 году.",
+      "sources": [
+        "https://api.icj-cij.org/sites/default/files/case-related/153/153-20181001-SUM-01-00-EN.pdf",
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:31",
+      "year": 1878,
+      "archiveName": "Greenland",
+      "effectiveCandidateName": "Greenland",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "fe249d782d1c794c1a1be47c16d8d3c2d94a4c64add1d108c26b148c0c3da616",
+      "iou": 0.036696,
+      "classification": "coastal-colonial-footprint-versus-entire-island",
+      "reasonRu": "Небольшой колониальный прибрежный контур не равен юридическому титулу на весь остров. Суд подтвердил датский титул в 1933 году; карта 1878–1900 годов не доказала границы.",
+      "sources": [
+        "https://law.justia.com/cases/foreign/international/1933-pcij-series-a-b-no-53.html",
+        "https://www.danishmuseum.org/exhibition/greenland-2/"
       ],
       "geometryHistoricallyConfirmed": false
     },
@@ -508,6 +877,38 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1815:430",
+      "year": 1815,
+      "archiveName": "Rattanakosin Kingdom",
+      "effectiveCandidateName": "Rattanakosin Kingdom",
+      "archiveSha256": "fb654f734583f550904cfa45f361e395c1a488c4960050da2632cb2ac7d1cd1e",
+      "candidateGeometryId": "8f26990902c937f823a5aeb15da8cf59f3e717794db6ea7e313e55b8a88a63d9",
+      "iou": 0.374899,
+      "classification": "siam-tributary-claims-versus-direct-borders",
+      "reasonRu": "Прямое сиамское управление и зависимые даннические государства не имели общей фиксированной границы; колониальные договоры меняли эти отношения.",
+      "sources": [
+        "https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1815:84",
+      "year": 1815,
+      "archiveName": "Paraguay",
+      "effectiveCandidateName": "Paraguay",
+      "archiveSha256": "fb654f734583f550904cfa45f361e395c1a488c4960050da2632cb2ac7d1cd1e",
+      "candidateGeometryId": "91c281c23f265efda7d345abae41ef2623e7c75886a6c6174265a1ff5d511bcb",
+      "iou": 0.326363,
+      "classification": "unsettled-chaco-frontier-before-1938",
+      "reasonRu": "Граница Чако с Боливией оставалась спорной до договора 1938 года; ранний картографический контур не доказывает линию прямого управления.",
+      "sources": [
+        "https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay",
+        "https://history.state.gov/historicaldocuments/frus1932v05/d8"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1800:48",
       "year": 1800,
       "archiveName": "Đại Việt",
@@ -525,6 +926,38 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1800:608",
+      "year": 1800,
+      "archiveName": "Denmark-Norway",
+      "effectiveCandidateName": "Denmark-Norway",
+      "archiveSha256": "51fcb6b1f1c361956a3fc24a9c646844ff88754842aa113780428fb4abcd5f2c",
+      "candidateGeometryId": "6411ee761ceac680bbd932b3251b1a2c219daba7a9ae46d2bede5caf991cd7ff",
+      "iou": 0.150392,
+      "classification": "compound-danish-norwegian-monarchy-scope",
+      "reasonRu": "Два королевства и североатлантические зависимости образовывали составную монархию. Европейскую территорию нельзя напрямую сопоставлять со всей системой владений.",
+      "sources": [
+        "https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/",
+        "https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1800:623",
+      "year": 1800,
+      "archiveName": "Rattanakosin Kingdom",
+      "effectiveCandidateName": "Rattanakosin Kingdom",
+      "archiveSha256": "51fcb6b1f1c361956a3fc24a9c646844ff88754842aa113780428fb4abcd5f2c",
+      "candidateGeometryId": "8f26990902c937f823a5aeb15da8cf59f3e717794db6ea7e313e55b8a88a63d9",
+      "iou": 0.374899,
+      "classification": "siam-tributary-claims-versus-direct-borders",
+      "reasonRu": "Прямое сиамское управление и зависимые даннические государства не имели общей фиксированной границы; колониальные договоры меняли эти отношения.",
+      "sources": [
+        "https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1783:46",
       "year": 1783,
       "archiveName": "Đại Việt",
@@ -538,6 +971,54 @@
         "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
         "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
         "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1783:621",
+      "year": 1783,
+      "archiveName": "Denmark-Norway",
+      "effectiveCandidateName": "Denmark-Norway",
+      "archiveSha256": "7cfa92418a8628dffa41e386394b86fb6f93310e449d8261990f6903160c1060",
+      "candidateGeometryId": "6411ee761ceac680bbd932b3251b1a2c219daba7a9ae46d2bede5caf991cd7ff",
+      "iou": 0.157384,
+      "classification": "compound-danish-norwegian-monarchy-scope",
+      "reasonRu": "Два королевства и североатлантические зависимости образовывали составную монархию. Европейскую территорию нельзя напрямую сопоставлять со всей системой владений.",
+      "sources": [
+        "https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/",
+        "https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1783:637",
+      "year": 1783,
+      "archiveName": "Rattanakosin Kingdom",
+      "effectiveCandidateName": "Rattanakosin Kingdom",
+      "archiveSha256": "7cfa92418a8628dffa41e386394b86fb6f93310e449d8261990f6903160c1060",
+      "candidateGeometryId": "a2259d782d84d29fc08e277aab7045a5d728e453ba9e43f04e7fbae48dfe706f",
+      "iou": 0.400743,
+      "classification": "siam-tributary-claims-versus-direct-borders",
+      "reasonRu": "Прямое сиамское управление и зависимые даннические государства не имели общей фиксированной границы; колониальные договоры меняли эти отношения.",
+      "sources": [
+        "https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1715:747",
+      "year": 1715,
+      "archiveName": "Denmark-Norway",
+      "effectiveCandidateName": "Denmark-Norway",
+      "archiveSha256": "fdf5097dd21c30c9d7bfb1d5c2c2a11a5a39c397e6910116d7173580619f5b5a",
+      "candidateGeometryId": "10f11708dac8d98cb23bcdaf7cc6da0367335d0f26a00b5aeea35f1457755c26",
+      "iou": 0.545234,
+      "classification": "compound-danish-norwegian-monarchy-scope",
+      "reasonRu": "Два королевства и североатлантические зависимости образовывали составную монархию. Европейскую территорию нельзя напрямую сопоставлять со всей системой владений.",
+      "sources": [
+        "https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/",
+        "https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm"
       ],
       "geometryHistoricallyConfirmed": false
     },
@@ -576,6 +1057,22 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1700:768",
+      "year": 1700,
+      "archiveName": "Denmark-Norway",
+      "effectiveCandidateName": "Denmark-Norway",
+      "archiveSha256": "eb73d6b00e98205fb2082de050c35e4d698224b17849628d82584610186b88a4",
+      "candidateGeometryId": "ba9dbeeebbf39a83b8eb302a672b498ad93662199654f95261824e9bafe2c931",
+      "iou": 0.536202,
+      "classification": "compound-danish-norwegian-monarchy-scope",
+      "reasonRu": "Два королевства и североатлантические зависимости образовывали составную монархию. Европейскую территорию нельзя напрямую сопоставлять со всей системой владений.",
+      "sources": [
+        "https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/",
+        "https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1650:56",
       "year": 1650,
       "archiveName": "Đại Việt",
@@ -589,6 +1086,22 @@
         "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
         "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
         "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1650:753",
+      "year": 1650,
+      "archiveName": "Denmark-Norway",
+      "effectiveCandidateName": "Denmark-Norway",
+      "archiveSha256": "e691a3b5bab4ca7a0629daffaf8cd31731ee76ad390b19dffc1c267b139de4e2",
+      "candidateGeometryId": "f0f933f942ef77dcf24b286b4263b13a97e3c2abe7b7924514fa21ac7b7d0d99",
+      "iou": 0.551739,
+      "classification": "compound-danish-norwegian-monarchy-scope",
+      "reasonRu": "Два королевства и североатлантические зависимости образовывали составную монархию. Европейскую территорию нельзя напрямую сопоставлять со всей системой владений.",
+      "sources": [
+        "https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/",
+        "https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm"
       ],
       "geometryHistoricallyConfirmed": false
     },
@@ -610,6 +1123,22 @@
       "geometryHistoricallyConfirmed": false
     },
     {
+      "id": "1600:852",
+      "year": 1600,
+      "archiveName": "Denmark-Norway",
+      "effectiveCandidateName": "Denmark-Norway",
+      "archiveSha256": "7285c07eeedfda9048de5354ea1744d327b07614085e9696c5802bb54c86849c",
+      "candidateGeometryId": "b05910a8dfd4f690058d39fe0089440132d4419b376d643ebd1799c650b35236",
+      "iou": 0.5355,
+      "classification": "compound-danish-norwegian-monarchy-scope",
+      "reasonRu": "Два королевства и североатлантические зависимости образовывали составную монархию. Европейскую территорию нельзя напрямую сопоставлять со всей системой владений.",
+      "sources": [
+        "https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/",
+        "https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
       "id": "1530:22",
       "year": 1530,
       "archiveName": "Đại Việt",
@@ -623,6 +1152,22 @@
         "https://dash.harvard.edu/server/api/core/bitstreams/ab2dc14a-a010-4983-8f73-269b3decf81f/content",
         "https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf",
         "https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1530:475",
+      "year": 1530,
+      "archiveName": "Denmark-Norway",
+      "effectiveCandidateName": "Denmark-Norway",
+      "archiveSha256": "984005809f085285a48318600e3a198274eb4679f5360ebfaead29da496e9f5b",
+      "candidateGeometryId": "7dabc5a3babc91ec0616e424de2690dc03a788f3ec3ac9df0dc3deec277b4d53",
+      "iou": 0.609744,
+      "classification": "compound-danish-norwegian-monarchy-scope",
+      "reasonRu": "Два королевства и североатлантические зависимости образовывали составную монархию. Европейскую территорию нельзя напрямую сопоставлять со всей системой владений.",
+      "sources": [
+        "https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/",
+        "https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm"
       ],
       "geometryHistoricallyConfirmed": false
     },

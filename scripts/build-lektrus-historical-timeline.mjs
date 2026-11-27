@@ -617,6 +617,13 @@ function editorialSegments(base,derived=[]){
  for(const [name,qid,year] of reviewedNames)if(base.sourceName===name&&base.sourceWikidata===qid)cut(year);
  if(base.sourceName==='First Hellenic Republic'&&base.sourceWikidata==='Q528546'){cut(1832);cut(1924);cut(1935)}
  if(base.sourceName==='Denmark-Norway'&&base.sourceWikidata==='Q62651')cut(1814);
+ if(base.role==='polity'&&base.sourceName==='Greenland')for(const y of [1721,1901,1917,1933])cut(y);
+ if(base.role==='polity'&&base.sourceName==='Estonia')for(const y of [1920,1940])cut(y);
+ if(base.role==='polity'&&['Paraguay','Bolivia'].includes(base.sourceName))for(const y of [1879,1904,1938,1939])cut(y);
+ if(base.role==='polity'&&base.sourceName==='Czechoslovakia')for(const y of [1938,1939])cut(y);
+ if(base.role==='polity'&&base.sourceName==='New Hebrides')cut(1906);
+ if(base.role==='polity'&&base.sourceName==='Rattanakosin Kingdom')for(const y of [1893,1907,1909])cut(y);
+
  if(base.sourceName==='United Arab Republic'&&base.sourceWikidata==='Q170468')cut(1971);
  if(base.sourceName==='New France'&&base.sourceWikidata==='Q170604')cut(1763);
  if(base.sourceName==='(Dutch Republic)'||base.components.includes('Portuguese Ceylon')){cut(1638);cut(1659);cut(1796)}
@@ -651,6 +658,70 @@ function editorialSegments(base,derived=[]){
   const reasons=[],reasonsRu=[],sources=new Set();
   const note=(reason,urls,ru)=>{reasons.push(reason);if(ru)reasonsRu.push(ru);for(const url of urls)sources.add(url)};
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
+  // Historical legal scope warnings. Keep the immutable source polygon:
+  // these independent treaties are not digital cadastral boundary datasets.
+  if(base.role==='polity'&&base.sourceName==='Greenland'&&from>=1721&&to<=1900){
+   r={...r,name:'Greenland (partial Danish colonial coastal source outline)',
+    nameRu:'Гренландия (частичный прибрежный колониальный контур)',nameStatus:'reviewed'};
+   note('A small coastal source polygon cannot represent the geographical extent of all Greenland. The 1933 Permanent Court ruling upheld the Danish title; the outline cannot decide historic sovereignty for regions it omits.',
+    ['https://law.justia.com/cases/foreign/international/1933-pcij-series-a-b-no-53.html','https://www.danishmuseum.org/exhibition/greenland-2/'],
+    'Исходник отображает небольшой участок побережья, а не границу всего острова; это не отменяет датских притязаний. Постоянная палата международного правосудия в 1933 году признала датский титул.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Denmark-Norway'&&from<1814){
+   r={...r,name:'Denmark–Norway (composite realm, source extent unverified)',
+    nameRu:'Дания — Норвегия (составная монархия, контур не проверен)',nameStatus:'reviewed'};
+   note('The composite monarchy had two kingdoms and North Atlantic dependencies; do not treat a map of metropolitan Scandinavia as like-for-like with all possessions. The 1814 Treaty of Kiel separated Norway while Denmark retained Greenland, Iceland and the Faroe Islands.',
+    ['https://www.regjeringen.no/en/the-government/previous-governments/historiske-artikler/offices/the-establishing-of-the-norwegian-state/id410040/','https://www.worldcourts.com/pcij/eng/decisions/1933.04.05_greenland.htm'],
+    'Составная монархия двух королевств включала североатлантические владения. Кильский мир 1814 года отделил Норвегию; Гренландия, Исландия и Фареры остались у Дании. Контуры требуют сопоставимого охвата.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Estonia'&&from>=1920&&to<1940){
+   r={...r,name:'Estonia (1920 Tartu treaty border; unverified map polygon)',
+    nameRu:'Эстония (граница Тартуского мира, исходный контур не подтверждён)',nameStatus:'reviewed'};
+   note('The 1920 eastern treaty boundary included Petseri County and territory east of Narva. The later modern border cannot silently replace its 1920–1938 extent.',
+    ['https://vm.ee/en/tartu-peace','https://www.vm.ee/en/news/tartu-peace-treaty-2-february-1920'],
+    'Тартуский мир 2 февраля 1920 года установил границу с Печорским краем и землями за Нарвой. Современный контур не доказывает границы 1920–1938 годов.');
+  }
+  if(base.role==='polity'&&['Paraguay','Bolivia'].includes(base.sourceName)&&from<1939){
+   const py=base.sourceName==='Paraguay';
+   const chaco='https://www2.mre.gov.py/cndl/index.php/institucional/memoria-final-de-la-cndl/tratado-de-paz-amistad-entre-las-republicas-de-bolivia-y-paraguay';
+   const pacific='https://api.icj-cij.org/sites/default/files/case-related/153/153-20181001-SUM-01-00-EN.pdf';
+   if(from<1938){
+    const coast=from<1879?'Pacific coast before the Chilean invasion':from<1904?'coast under Chilean occupation, prior to 1904 treaty':'post-1904 coastline';
+    r={...r,name:py?'Paraguay (Chaco border disputed before 1938)':'Bolivia ('+coast+'; Chaco border disputed)',
+     nameRu:py?'Парагвай (спорная граница Чако до 1938 года)':from<1879?'Боливия (до оккупации берега; Чако спорный)':from<1904?'Боливия (побережье занято Чили; Чако спорный)':'Боливия (после договора 1904 года; Чако спорный)',
+     nameStatus:'reviewed'};
+    note('The Bolivia–Paraguay Chaco frontier was not agreed until the 1938 treaty/arbitration. Bolivia lost de facto control of its Pacific coast in the 1879 war and concluded a peace treaty with Chile in 1904. The imported area is not a verified historical frontier.',
+     [chaco,'https://history.state.gov/historicaldocuments/frus1932v05/d8',pacific],
+     'Граница Чако до договора 21 июля 1938 года была предметом спора Боливии и Парагвая; у Боливии также менялись контроль и правовой статус побережья после 1879 года и договора 1904 года.');
+   }else if(from===1938){
+    r={...r,name:py?'Paraguay (Chaco treaty transition 1938)':'Bolivia (Chaco treaty transition 1938)',
+     nameRu:py?'Парагвай (договор Чако, переходный 1938 год)':'Боливия (договор Чако, переходный 1938 год)',nameStatus:'reviewed'};
+    note('The July 1938 treaty and subsequent arbitral ruling determined the Chaco border. A single imported calendar-year polygon is not a surveyed pre/post-treaty demarcation.',
+     [chaco,'https://history.state.gov/historicaldocuments/frus1938v05/d148'],
+     'Договор 21 июля 1938 года и последующий арбитраж завершили спор о Чако; единый годовой контур не показывает дату смены фактического контроля.');
+   }
+  }
+  if(base.role==='polity'&&base.sourceName==='New Hebrides'&&from>=1906&&to<1980){
+   r={...r,name:'New Hebrides (Anglo-French Condominium)',
+    nameRu:'Новые Гебриды (англо-французский кондоминиум, не независимое государство)',nameStatus:'reviewed'};
+   note('Joint British-French governance under the 1906 convention, reinforced by the 1914 protocol ratified in 1922, not an independent sovereign country in 1938.',
+    ['https://cdn.nationalarchives.gov.uk/documents/migrated-archives-5-guidance.pdf','https://natlib.govt.nz/records/22188976'],
+    'С 1906 года англо-французский кондоминиум, дополненный протоколом 1914 года, ратифицированным в 1922 году. В 1938 году это было совместное колониальное управление, а не независимое государство.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Czechoslovakia'&&from===1938){
+   r={...r,name:'Czechoslovakia (1938 Munich border transition)',
+    nameRu:'Чехословакия (Мюнхенский кризис 1938 года; граница переходная)',nameStatus:'reviewed'};
+   note('The September 1938 Munich Agreement and subsequent territorial cessions changed national boundaries during the calendar year; one year-wide source outline cannot prove a single fixed frontier.',
+    ['https://encyclopedia.ushmm.org/content/en/article/czechoslovakia','https://history.state.gov/milestones/1937-1945/munich'],
+    'Мюнхенское соглашение сентября 1938 года изменило границы Чехословакии; годовой полигон не является проверенной линией до и после изменений.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Rattanakosin Kingdom'&&to<=1900){
+   r={...r,name:'Siam (Rattanakosin, tributary frontiers uncertain)',
+    nameRu:'Сиам (Раттанакосин; границы даннических владений спорные)',nameStatus:'reviewed'};
+   note('Direct Siamese administration, suzerainty and tributary relations were not identical sovereign boundaries. French expansion in 1893, later French treaties in 1907 and British treaty in 1909 redefined parts of the region; the source map is not cadastral proof.',
+    ['https://www.dur.ac.uk/media/durham-university/research-/research-centres/ibru-centre-for-borders-research/maps-and-databases/publications-database/Boundary--Territory-Briefings-%28Vol.-2-no.-6%29.pdf','https://tile.loc.gov/storage-services/master/frd/frdcstdy/th/thailandcountrys00lepo/thailandcountrys00lepo.pdf'],
+    'Даннические связи и прямое управление Сиама не образовывали одну достоверную границу; договоры с Францией и Британией изменяли статус зависимых владений. Точный контур не восстановлен.');
+  }
   if(base.sourceIndex===9759&&from>=1791){r={...r,sourceMemberOf:base.memberOf,memberOf:[]};note('The surviving source components were duplicated in metropolitan France or under British occupation after the 1793 conquest. The historic French claim did not establish French administration until restoration in 1816–17.',[INDIA_OCCUPATION,INDIA_HISTORY],'Сохранившиеся компоненты дублировались в записи метрополии либо находились под британской оккупацией после захвата 1793 г. Французские притязания не означали французского управления до фактического возвращения в 1816–1817 гг.');}
   if(FRENCH_INDIA_GROUPS.includes(base.sourceIndex)){r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='French India')};if(!r.components.length)r={...r,geometryStatus:'rejected'};note('Remove the obsolete India component label: the source composite either already includes the settlements in its metropolitan record or represents the period of British occupation. Comoro island claims are independently unresolved.',[INDIA_OCCUPATION,INDIA_HISTORY,comoroTraditionalRegions],'Устранена устаревшая ссылка на Индию: поселения уже включены в запись метрополии либо находились под британской оккупацией. Притязания на Коморские острова рассматриваются отдельно.');}
   if(base.sourceIndex===12755&&from>=1940){r={...r,sourceComponents:base.components,components:r.components.filter(n=>n!=='Netherlands'),nameRu:'Нидерландские владения (метрополия оккупирована)'};note('The German invasion in May 1940 led to occupation of the metropolis and the Dutch government in exile. The colonial aggregate does not establish continued Dutch effective control in Europe.',[DUTCH_1940],'После немецкого вторжения в мае 1940 г. метрополия находилась под оккупацией, нидерландское правительство — в изгнании. Колониальный контур не означает сохранения фактического контроля в Европе.');}

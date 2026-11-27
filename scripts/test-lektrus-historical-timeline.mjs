@@ -54,6 +54,25 @@ assert.deepEqual(malaccaFixture.records.map(r=>[r.from,r.to,r.geometryStatus]),[
 assert.equal(malaccaFixture.records[0].geometryId,malaccaFixture.records[1].geometryId);
 // No single state boundary may be inferred from the archaeological influence
 // of Teotihuacan or the multiple independent Shan principalities.
+// Treaty-year labels may change; an immutable raw geometry must not.
+for(const [name,from,to,segments,ru,wikidata] of [
+ ['Greenland',1878,1902,[[1878,1900],[1901,1902]],'небольшой',''],
+ ['Denmark-Norway',1530,1815,[[1530,1813],[1814,1815]],'королевств','Q62651'],
+ ['Estonia',1919,1941,[[1919,1919],[1920,1939],[1940,1941]],'Тартуский',''],
+ ['Paraguay',1930,1940,[[1930,1937],[1938,1938],[1939,1940]],'Чако',''],
+ ['Bolivia',1878,1940,[[1878,1878],[1879,1903],[1904,1937],[1938,1938],[1939,1940]],'Чако',''],
+ ['Czechoslovakia',1937,1939,[[1937,1937],[1938,1938],[1939,1939]],'Мюнхенское',''],
+ ['New Hebrides',1905,1908,[[1905,1905],[1906,1908]],'кондоминиум',''],
+ ['Rattanakosin Kingdom',1892,1900,[[1892,1892],[1893,1900]],'даннические','']
+]){
+ const original=square();
+ const items=normalizeHistoricalSource({type:'FeatureCollection',features:[feature(name,from,to,original,wikidata)]}).records;
+ assert.deepEqual(items.map(x=>[x.from,x.to]),segments,'Dated legal change '+name);
+ assert.ok(items.every(x=>x.geometryId===sha256(JSON.stringify(original))),'Source polygon mutated '+name);
+ const reviewed=items.filter(x=>x.nameStatus==='reviewed');
+ assert.ok(reviewed.length&&reviewed.some(x=>x.review?.reasonRu?.includes(ru)),name);
+ assert.ok(reviewed.every(x=>x.review?.sources.length>=2&&x.geometryStatus==='candidate'),name);
+}
 // Late source names must not extend the unified Golden Horde across its
 // successor khanates or beyond the 1502 defeat of the Great Horde.
 for(const [year,role,status] of [[1450,'polity','candidate'],[1466,'settlement','candidate'],[1492,'settlement','candidate'],[1500,'settlement','candidate'],[1501,'settlement','candidate'],[1502,'polity','rejected'],[1530,'polity','rejected']]){
