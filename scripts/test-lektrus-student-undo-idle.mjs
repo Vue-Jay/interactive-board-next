@@ -195,3 +195,14 @@ for(const kind of ["sticky","text","shape","pen","marker","image","pdf","frame",
  const redo=applyPersonalBoardEdit(undo.items,op,"redo");
  assert.deepEqual(redo.items,[{...moved,text:"peer-edit"},peer],kind+" redo preserves peer field");
 }
+
+// Historical stickers may omit stickerInk before the first local stroke.
+{
+ const blank={...object("legacy-sticker"),kind:"sticky"};
+ const a={id:"my-first",points:[{x:1,y:2}]},b={id:"peer-first",points:[{x:5,y:6}]};
+ const op=choose([blank],[{...blank,stickerInk:[a]}]);
+ const undo=applyPersonalBoardEdit([{...blank,stickerInk:[a,b]}],op,"undo");
+ assert.deepEqual(undo.items,[{...blank,stickerInk:[b]}]);
+ assert.deepEqual(applyPersonalBoardEdit(undo.items,op,"redo").items,[{...blank,stickerInk:[b,a]}]);
+ assert.deepEqual(applyPersonalBoardEdit([{...blank,stickerInk:[a]}],op,"undo").items,[blank]);
+}

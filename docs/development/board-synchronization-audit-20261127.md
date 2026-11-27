@@ -28,3 +28,17 @@ Added regression cases for partially overlapping concurrent geometry point addit
 Collaborative teacher/owner/editor undo now uses the same per-participant operation history as pupils rather than a snapshot stack reset by each incoming revision. Added layer-order-only history, peer-order conflict protection, removal of fully superseded actions from history, and replay of only the actually applied fields after partial conflicts. Explicit eraser/transform baselines are used to avoid missing undo actions after a concurrent checkpoint. Pending validation in the isolated branch; do not merge or deploy until the complete audit gate is satisfied.
 
 Nested personal undo additionally distinguishes independent changes inside JSON records and stable-ID collections (sticker strokes, contour marks, physics/optics/circuit and lab elements). Concurrent positional-array edits remain conservative to avoid overwriting ambiguous peer geometry. The history regression suite exercises all 20 board item kinds for independent field undo/redo, plus nested peer additions and field edits. These tests are model-level, not evidence of all tool gestures or device behavior.
+
+### Audit release gate (do not merge until all rows have evidence)
+
+| Area | Current evidence / remaining gate |
+|---|---|
+| Native object inventory | 20 kinds enumerated in model, durable server socket and merge regression suites; require real two-session UI create/edit/transform/delete for every allowed kind and role. |
+| Nested editors | Model-level regression for stable IDs, geometry reference rebase, partial inverse and historical missing sticker ink; require real subject-editor UI coverage for concurrent work. |
+| Undo/redo | New isolated-branch regressions for all object kinds, layer ordering, partial peer conflicts and nested records; require two-session browser undo/redo and deletion cases. |
+| Roles | Existing server permission matrix and guest/observer coverage; require two-session UI permission/attachment acceptance, including denied operations. |
+| Network lifecycle | Existing mocked loss/reconnect, version probing, rejected patch and idle tests; require long-lived real session with dropped/slow traffic, socket reconnect, refresh and background <10 min / >=10 min. |
+| Device interaction | Existing Chromium touch/pointer tests and native emulator workflows; require physical phone/tablet gesture and cross-device convergence evidence. |
+| Performance and publication | Require measured latency, dropped revisions, reconnect convergence under sustained collaboration; do not publish or merge until all gate rows are evidenced. |
+
+No physical-device, exhaustive UI or production publication claims are made in this branch.

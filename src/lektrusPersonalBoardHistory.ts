@@ -26,13 +26,15 @@ function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResu
    const next=inverseValue(expected[key],desired[key],live[key]);
    conflicts+=next.conflicts;
    if(!next.changed)continue;
-   if(Object.hasOwn(desired,key))result[key]=next.value;else delete result[key];
+   if(next.value!==undefined||Object.hasOwn(desired,key))result[key]=next.value;else delete result[key];
    changed=true;
   }
   return {value:changed?result:live,changed,conflicts};
  }
- if(idList(expected)&&idList(desired)&&idList(live)){
-  const old=new Map(expected.map(x=>[x.id,x])),target=new Map(desired.map(x=>[x.id,x]));
+ const expectedList=expected===undefined?[]:expected;
+ const desiredList=desired===undefined?[]:desired;
+ if(idList(expectedList)&&idList(desiredList)&&idList(live)){
+  const old=new Map(expectedList.map(x=>[x.id,x])),target=new Map(desiredList.map(x=>[x.id,x]));
   const result=new Map(live.map(x=>[x.id,x]));
   let changed=false,conflicts=0;
   for(const id of new Set([...old.keys(),...target.keys()])){
@@ -44,9 +46,9 @@ function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResu
   }
   // Stable IDs permit independent additions/deletions. Preserve live slots;
   // never impose an obsolete array order on a collaborator's new element.
-  const shared=new Set(expected.filter(x=>target.has(x.id)&&result.has(x.id)).map(x=>x.id));
-  const oldOrder=expected.filter(x=>shared.has(x.id)).map(x=>x.id);
-  const nextOrder=desired.filter(x=>shared.has(x.id)).map(x=>x.id);
+  const shared=new Set(expectedList.filter(x=>target.has(x.id)&&result.has(x.id)).map(x=>x.id));
+  const oldOrder=expectedList.filter(x=>shared.has(x.id)).map(x=>x.id);
+  const nextOrder=desiredList.filter(x=>shared.has(x.id)).map(x=>x.id);
   const items=[...result.values()];
   if(!same(oldOrder,nextOrder)){
    const liveOrder=items.filter(x=>shared.has(x.id)).map(x=>x.id);
@@ -57,7 +59,7 @@ function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResu
     changed=true;
    }
   }
-  return {value:changed?items:live,changed,conflicts};
+  return {value:changed?(desired===undefined&&!items.length?undefined:items):live,changed,conflicts};
  }
  // Positional arrays (including pen geometry and non-ID graph vertices)
  // cannot safely be merged when another participant changed their structure.
@@ -116,7 +118,7 @@ export function applyPersonalBoardEdit(
    const inverse=inverseValue(was[field],to[field],next[field]);
    conflicts+=inverse.conflicts;
    if(!inverse.changed)continue;
-   if(Object.hasOwn(to,field))next[field]=inverse.value;
+   if(inverse.value!==undefined||Object.hasOwn(to,field))next[field]=inverse.value;
    else delete next[field];
    changed=true;
   }
