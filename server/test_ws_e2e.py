@@ -338,6 +338,24 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch,tmp_pat
                 await asyncio.sleep(1.7)
                 await resumed.send(json.dumps({"type":"ping"}))
                 assert json.loads(await asyncio.wait_for(resumed.recv(),3))["type"]=="pong"
+            # The current client negotiates a background-only lease, unlike
+            # legacy inactivity leases above. Foreground age must never expire
+            # a session, and resuming before the deadline cancels it.
+            async with websockets.connect(native_uri,origin="https://lektrus.ru") as foreground:
+                await foreground.send(json.dumps({"type":"auth","token":owner_session["access_token"],
+                    "presence":True,"visible":True,"idle_age_ms":0,"background_idle":True,"background":False}))
+                ready=json.loads(await asyncio.wait_for(foreground.recv(),3))
+                assert ready["idle_lease"] is True and ready["background_idle"] is True
+                assert json.loads(await asyncio.wait_for(foreground.recv(),3))["type"]=="presence_state"
+                await foreground.send(json.dumps({"type":"activity","idle_age_ms":598500,"background":True}))
+                await foreground.send(json.dumps({"type":"activity","idle_age_ms":0,"background":False}))
+                await asyncio.sleep(1.7)
+                await foreground.send(json.dumps({"type":"ping"}))
+                assert json.loads(await asyncio.wait_for(foreground.recv(),3))["type"]=="pong"
+                await foreground.send(json.dumps({"type":"activity","idle_age_ms":598500,"background":True}))
+                with pytest.raises(ConnectionClosed) as expired_background:
+                    await asyncio.wait_for(foreground.recv(),4)
+                assert expired_background.value.code==4410
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass

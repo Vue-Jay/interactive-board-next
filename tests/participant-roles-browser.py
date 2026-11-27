@@ -1147,6 +1147,27 @@ def check_undo_reconnect_sync(browser):
             assert {first,second,third}<=ids(read())
             print("Real dual-session undo/redo for both roles, network loss and reload passed.")
 
+            # Multiple separate outages in the same live lesson, alternating
+            # authors after every recovery. No reload or reconnect button is used.
+            outage_strokes=[]
+            for index in range(3):
+                pupil.context.set_offline(True)
+                for route,upstream in list(pupil_sockets):
+                    for socket in (route,upstream):
+                        try:socket.close(code=4000,reason="QA repeated outage")
+                        except Exception:pass
+                pupil.wait_for_function("navigator.onLine===false")
+                missed=draw(teacher,"pen",.31+index*.08)
+                stored(teacher,missed)
+                pupil.context.set_offline(False)
+                pupil.wait_for_function("navigator.onLine===true")
+                both(missed)
+                recovered=draw(pupil,"marker",.51+index*.08)
+                both(recovered)
+                outage_strokes.extend((missed,recovered))
+                assert set(outage_strokes)<=ids(read()),"Repeated outage lost an earlier durable stroke"
+            print("Three repeated real transport outages and bidirectional post-reconnect writes converged.")
+
             # Text is durably checkpointed while the textarea is focused.
             # A pupil revision during that session must not destroy the
             # teacher's personal text undo action or cancel the editor.
@@ -1505,6 +1526,60 @@ def check_undo_reconnect_sync(browser):
             wait_api(teacher,lambda d:any(i["id"]==pdf["id"] and i.get("pdfPage")==1 for i in d["items"]),"Teacher PDF page change not saved")
             expect(pupil.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("1",timeout=30000)
             print("Real two-page PDF upload, durable teacher approval and bidirectional pagination passed.")
+
+            # Accelerate only the pupil browser clock and simulate visibility
+            # events; the API, PostgreSQL, socket and actual UI are not mocked.
+            # This is not a physical Android suspend or ten wall-clock minutes.
+            replace_items([])
+            pupil.clock.install()
+            def visibility(hidden):
+                pupil.evaluate("""hidden=>{
+                    Object.defineProperty(document,"hidden",{configurable:true,get:()=>hidden});
+                    Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>hidden?"hidden":"visible"});
+                    document.dispatchEvent(new Event("visibilitychange"));
+                }""",hidden)
+            indicator=pupil.locator(".lektrus-board-idle-indicator")
+            try:
+                expect(indicator).to_have_count(0,timeout=15000)
+                pupil.wait_for_timeout(500)
+                initial_sockets=len(pupil_sockets)
+                assert initial_sockets>0
+                visibility(True)
+                # Advance wall time but not timers: like an OS suspending a
+                # WebView for just under ten minutes.
+                pupil.clock.set_system_time(int(time.time()*1000)+590000)
+                visibility(False)
+                pupil.clock.set_system_time(int(time.time()*1000))
+                expect(indicator).to_have_count(0,timeout=10000)
+                assert len(pupil_sockets)==initial_sockets,"Short background visit unnecessarily replaced the board socket"
+                first_after_short=draw(pupil,"pen",.65)
+                both(first_after_short)
+                assert len(pupil_sockets)==initial_sockets,"First input after short background visit reconnected the socket"
+                print("Browser background below 10 minutes: same socket, immediate first stroke, both copies converged.")
+
+                visibility(True)
+                pupil.clock.fast_forward(601000)
+                expect(indicator).to_contain_text("Соединение приостановлено",timeout=15000)
+                asleep_sockets=len(pupil_sockets)
+                missed=draw(teacher,"marker",.37)
+                stored(teacher,missed)
+                assert not pupil.evaluate("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    return !!raw&&JSON.parse(raw).items.some(i=>i.id===id);
+                }""",{"ident":ident,"id":missed}),"Suspended board unexpectedly received a durable revision"
+                assert len(pupil_sockets)==asleep_sockets,"Suspended board opened a new socket"
+                visibility(False)
+                pupil.clock.set_system_time(int(time.time()*1000))
+                # No click or reload: foreground alone must recover the missed revision.
+                expect(indicator).to_have_count(0,timeout=30000)
+                both(missed)
+                first_after_long=draw(pupil,"pen",.77)
+                both(first_after_long)
+                assert len(pupil_sockets)>asleep_sockets,"Expired background lease did not establish a fresh socket"
+                print("Browser background above 10 minutes: suspended, missed revision recovered on foreground, first new stroke converged.")
+            finally:
+                pupil.evaluate("""()=>{delete document.hidden;delete document.visibilityState;}""")
+                pupil.clock.set_system_time(int(time.time()*1000))
     finally:
         for ctx in contexts:ctx.close()
 
