@@ -1,5 +1,5 @@
 import {isInkItem,type Item} from "./boardModel";
-import {STUDENT_PROTECTED_OBJECT_KINDS} from "./lektrusBoardRolePreview";
+import {STUDENT_BLOCKED_CREATE_TOOLS} from "./lektrusBoardRolePreview";
 
 /**
  * Authors belong to an item ID, not to the most recent editor. In particular,
@@ -51,7 +51,7 @@ export function canRemoveBoardItem(
  if(isBoardOwner||isInkItem(item))return true;
  if(!isStudent)return true;
  return !!actorId&&item.createdBy===actorId&&!item.locked&&
-  !(STUDENT_PROTECTED_OBJECT_KINDS as readonly string[]).includes(item.kind);
+  !(STUDENT_BLOCKED_CREATE_TOOLS as readonly string[]).includes(item.kind);
 }
 
 /** Guard the model mutation, not only the toolbar/keyboard handler: tools

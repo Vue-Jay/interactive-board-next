@@ -104,7 +104,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostExportBoardSync, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -3282,6 +3282,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         fingerprint === acknowledgedSharedContent.current) return;
     remoteSaveInFlight.current = true;
     const inkGesture=lastInkGesture.current;
+    const startedAt=Date.now();
     const inkCursor=lastInkCursor.current?.gesture===inkGesture?lastInkCursor.current?.cursor:undefined;
     let retryAfterFailure=false;
     try {
@@ -3325,7 +3326,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           const initial=data;
           const stream=inkGesture?selfhostStartInkPipeline(
             boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture,inkCursor,
-            version=>acknowledge(initial,version)):null;
+            version=>acknowledge(initial,version),
+            isStudent&&!isBoardOwner?acknowledgedBoardData.current as unknown as Record<string,unknown>??undefined:undefined):null;
           if(stream&&inkGesture){
             inkPipeline.current={gesture:inkGesture,offer:next=>{
               if(!boardMounted.current||lastInkGesture.current!==inkGesture||pendingRemote.current||
@@ -3337,7 +3339,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             }};
           }
           const saved=stream?await stream.done:await selfhostSaveDocument(
-            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture??undefined,inkCursor
+            boardSummary.id,expectedVersion,payload as unknown as Record<string,unknown>,inkGesture??undefined,inkCursor,
+            isStudent&&!isBoardOwner?acknowledgedBoardData.current as unknown as Record<string,unknown>??undefined:undefined
           );
           result={conflict:false,version:saved.version};
         }catch(error){
@@ -3396,11 +3399,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         remoteRetryTimer.current = null;
       }
       setSaveStatus("Сохранено на сервере");
+      if(selfhostMode&&!inkGesture)selfhostLogBoardSync(boardSummary.id,{event:"save_ack",version:result.version,elapsed_ms:Date.now()-startedAt,count:data.items.length});
       // The thumbnail is decorative metadata, not an autosave prerequisite.
       // It can finish even if the editor unmounts when returning to the dashboard.
       if(!selfhostMode)scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
     } catch (error) {
       retryAfterFailure=true;
+      if(selfhostMode)selfhostLogBoardSync(boardSummary.id,{event:"save_error",version:remoteVersion.current??0,status:error instanceof SelfhostHttpError?error.status:0,elapsed_ms:Date.now()-startedAt});
       const message=error instanceof Error?error.message:String(error);
       saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
       if(error instanceof SelfhostHttpError&&error.code==="plan_limit"){
@@ -3441,7 +3446,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         if(!retryAfterFailure)void pushRemoteSnapshot(snapshot.current??queued);
       }
     }
-  }, [boardSummary.id, authUser.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance]);
+  }, [boardSummary.id, authUser.id, canEdit, layoutEditing, documentSyncEnabled, selfhostMode, adminMaintenance,isStudent,isBoardOwner]);
 
   const flushSave = useCallback(() => {
     if (!canEdit || layoutEditing || demoMode) return;
@@ -3637,6 +3642,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       window.removeEventListener("focus",visibility);window.removeEventListener("pageshow",visibility);
     };
   },[boardRealtimeAwake,boardSummary.id,demoMode,layoutEditing,flushSave,selfhostMode]);
+  const exportSyncJournal=async()=>{
+    if(!showAdminControls||!selfhostMode||demoMode||layoutEditing)return;
+    try{
+      const journal=await selfhostExportBoardSync(boardSummary.id);
+      const saved=await saveExport(new Blob([JSON.stringify(journal,null,2)],{type:"application/json"}),"lektrus-sync-"+boardSummary.id+"-"+new Date().toISOString().slice(0,10)+".json");
+      if(saved)setNotice("Журнал синхронизации выгружен");
+    }catch{setNotice("Не удалось выгрузить журнал синхронизации");}
+  };
   const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
   const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
   const openDiscussions=async(focusId:string|null=null)=>{
@@ -4121,6 +4134,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(snapshot.current && !saveBlocked){
       snapshot.current=packDocumentInk({...snapshot.current,
         subject:lectrisBoardOrganization.subject,items:normalized});
+      if(selfhostMode&&documentSyncEnabled&&!isLabSimulation&&!options?.previousItems){
+        const before=getCurrentItemIndex(current),after=getCurrentItemIndex(normalized);
+        const added=normalized.filter(item=>!before.has(item.id)&&!isInkItem(item)).length;
+        const removed=current.filter(item=>!after.has(item.id)&&!isInkItem(item)).length;
+        const changed=normalized.filter(item=>!isInkItem(item)&&before.has(item.id)&&before.get(item.id)!==item&&JSON.stringify(before.get(item.id))!==JSON.stringify(item)).length;
+        if(added||removed||changed){
+          selfhostLogBoardSync(boardSummary.id,{event:"object_change",version:remoteVersion.current??0,added,changed,removed,count:normalized.length});
+          // A completed object operation must not wait for a React render,
+          // background animation frame, or a later gesture to be persisted.
+          queueMicrotask(()=>{if(boardMounted.current)flushSave()});
+        }
+      }
     }
   };
   // Paint the actual document item, not a second canvas that expires.
@@ -8217,7 +8242,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     // Real ink may reconcile while drawing or erasing; other gesture geometry
     // still depends on its initial snapshot and must wait until release.
-    if (gesture.current&&gesture.current.mode!=="draw") {
+    if (gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode)) {
       if (!deferredRemote.current || row.version > deferredRemote.current.version)
         deferredRemote.current = row;
       return;
@@ -8316,6 +8341,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       applyServerDocument(row, data, remoteFingerprint);
     } catch {
+      if(selfhostMode)selfhostLogBoardSync(boardSummary.id,{event:"revision_rejected",version:row.version});
       setNotice("Не удалось прочитать новую серверную версию. Повторяем синхронизацию.");
       return false;
     }
@@ -8958,6 +8984,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               </div>
               {showAdminControls && <div className="topbar-menu-section">
                 <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>
+                {selfhostMode&&!demoMode&&!layoutEditing&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportSyncJournal()}}><Icon name="download" size={16}/><span>Выгрузить журнал синхронизации</span></button>}
               </div>}
               <div className="topbar-menu-section">
                 <button className="topbar-menu-danger" disabled={leavingBoard} onClick={()=>void saveBeforeLeaving(true)}><Icon name="close" size={16}/><span>{demoMode?"Закрыть демо":"Выйти из аккаунта"}</span></button>

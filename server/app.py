@@ -34,6 +34,7 @@ from billing import MESSAGES, limit_detail, make_billing_router
 from finance import make_finance_router
 from fastapi.responses import JSONResponse
 from board_history import ensure_baseline, record_revision, make_history_router, ink_history_group
+from board_sync_journal import write_sync_events, SyncJournalBatch, read_sync_events
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
 from telegram_editor import telegram_enabled, run_telegram_editor, make_telegram_router
@@ -969,7 +970,7 @@ async def persist_normalized_items(conn, board_id, previous, base, document, del
     )
 
 
-async def persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
+async def _persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
                            user, version_only: bool, document: dict | None = None,
                            delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None):
     # Full saves remain supported for older clients and initial/recovery saves.
@@ -1128,6 +1129,47 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
             "updated_at": revision["updated_at"].isoformat(), "updated_by": str(user["id"])}
 
 
+async def persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
+                           user, version_only: bool, document: dict | None = None,
+                           delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None):
+    started = time.monotonic()
+    transport = "socket" if isinstance(request, WebSocket) else "http"
+    try:
+        result = await _persist_document(board_id, expected_version, request, user, version_only,
+                                        document, delta, ink_gesture, ink_cursor)
+    except HTTPException as exc:
+        if exc.status_code in (403,409,413,422,429):
+            await write_sync_events(request.app.state.pool, board_id, user["id"], "server",
+                [{"event":"save_error","expected_version":expected_version,"status":exc.status_code,
+                  "transport":transport,"elapsed_ms":round((time.monotonic()-started)*1000)}])
+        raise
+    if not ink_gesture:
+        await write_sync_events(request.app.state.pool, board_id, user["id"], "server",
+            [{"event":"save_ack","expected_version":expected_version,"version":result["version"],
+              "transport":transport,"elapsed_ms":round((time.monotonic()-started)*1000)}])
+    return result
+
+
+@app.post("/api/v1/boards/{board_id}/sync-journal")
+async def post_board_sync_journal(board_id: UUID, data: SyncJournalBatch, request: Request,
+                                 user=Depends(current_user)):
+    async with request.app.state.pool.acquire() as conn:
+        await board_access(conn, board_id, user["id"])
+    await write_sync_events(request.app.state.pool, board_id, user["id"], "client",
+                            [event.model_dump(exclude_none=True) for event in data.events])
+    return {"ok": True}
+
+
+@app.get("/api/v1/boards/{board_id}/sync-journal")
+async def get_board_sync_journal(board_id: UUID, request: Request, user=Depends(current_user)):
+    if not user["is_admin"]:
+        error(403, "Журнал доступен только администратору.")
+    async with request.app.state.pool.acquire() as conn:
+        await board_access(conn, board_id, user["id"])
+        rows=await read_sync_events(conn,board_id)
+    return {"board_id":str(board_id),"retention_days":7,"events":rows}
+
+
 @app.put("/api/v1/boards/{board_id}/document")
 async def save_document(board_id: UUID, data: SaveDocumentInput, request: Request,
                         version_only: bool = False, ink_gesture: str | None = Query(None,max_length=128), user=Depends(current_user)):
@@ -1161,6 +1203,10 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         document_patches = initial.get("document_patches", False)
         ink_point_deltas = initial.get("ink_point_deltas", False)
         durable_ink_commits = initial.get("durable_ink_commits", False)
+        durable_object_commits = initial.get("durable_object_commits", False)
+        if type(durable_object_commits) is not bool or (durable_object_commits and not durable_ink_commits):
+            await websocket.close(code=4401)
+            return
         ink_commit_chain = initial.get("ink_commit_chain", False)
         ink_motion = initial.get("ink_motion", False)
         idle_age = initial.get("idle_age_ms")
@@ -1223,6 +1269,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
         await websocket.send_json({"type": "ready", "version": current_version,
                                    **({"compact_ink": True} if compact_ink else {}),
                                    **({"durable_ink_commits": True} if durable_ink_commits else {}),
+                                   **({"durable_object_commits": True} if durable_object_commits else {}),
                                    **({"ink_commit_chain": True} if durable_ink_commits and ink_commit_chain else {}),
                                    **({"ink_motion": True} if ink_motion and durable_ink_commits else {}),
                                    **({"idle_lease": True} if idle_enabled else {}),
@@ -1255,8 +1302,13 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 if set(message) - {"type","request_id","expected_version","delta","ink_gesture","cursor","after_request_id"}:
                     error(422, "Некорректный запрос.")
                 version, delta, gesture = message.get("expected_version"), message.get("delta"), message.get("ink_gesture")
-                if type(version) is not int or not 1 <= version <= 2**63-1 or not isinstance(delta,dict) or not isinstance(gesture,str) or not 1 <= len(gesture) <= 128:
+                if type(version) is not int or not 1 <= version <= 2**63-1 or not isinstance(delta,dict):
                     error(422, "Некорректные изменения.")
+                if gesture is None:
+                    if not durable_object_commits or "after_request_id" in message or "cursor" in message:
+                        error(422, "Некорректное изменение объекта.")
+                elif not isinstance(gesture,str) or not 1 <= len(gesture) <= 128:
+                    error(422, "Некорректный идентификатор штриха.")
                 if "after_request_id" in message:
                     predecessor = message["after_request_id"]
                     # A peer can fill a missing predicted version after
@@ -1282,7 +1334,7 @@ async def board_events(websocket: WebSocket, board_id: UUID):
                 # Reuse its permission fields; no second session query.
                 saved = await persist_document(board_id, version, websocket, refreshed_user, True,
                     delta=delta, ink_gesture=gesture, ink_cursor=cursor)
-                last_ink_commit = (request_id, saved["version"])
+                last_ink_commit = (request_id, saved["version"]) if gesture is not None else None
                 await websocket.send_json({"type":"ink_commit_ack","request_id":request_id,"version":saved["version"]})
             except HTTPException as exc:
                 last_ink_commit = None

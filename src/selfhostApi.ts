@@ -69,7 +69,7 @@ export type SelfhostLiveEvent=
   | {type:"event_error";reason:string};
 export type SelfhostCommittedCursor=Extract<SelfhostLiveEvent,{type:"cursor"}>;
 export type InkCommitCursor={x:number;y:number;client_id:string};
-type InkCommitRequest={expected_version:number;delta:DocumentDelta;ink_gesture:string;cursor?:InkCommitCursor;after_request_id?:string};
+type InkCommitRequest={expected_version:number;delta:DocumentDelta;ink_gesture?:string;cursor?:InkCommitCursor;after_request_id?:string};
 type InkCommitPromise=Promise<{version:number}>&{requestId:string};
 const MAX_INK_IN_FLIGHT=3;
 export type SelfhostBoardChannel=(()=>void)&{
@@ -559,6 +559,40 @@ function normalizedField(key:string,value:unknown):unknown{
   const parsed=JSON.parse(JSON.stringify({[key]:value}));
   return Object.hasOwn(parsed,key)?parsed[key]:undefined;
 }
+// The editor's validator supplies defaults and drops obsolete fields. Never
+// interpret those normalizations as user edits to someone else's object.
+// Keep the exact stored fields and overlay only fields changed since the
+// locally acknowledged canonical model. Legacy packed ink is expanded once.
+export function projectStudentDocument(raw:JsonObject,baseline:JsonObject,next:JsonObject):JsonObject|null{
+  if(raw.version!==1||baseline.version!==1||next.version!==1)return null;
+  const original=Array.isArray(raw.items)?[...raw.items]:null;
+  if(!original)return null;
+  if(Array.isArray(raw.ink)&&raw.ink.length){
+    let offset=0;
+    for(const entry of raw.ink){
+      if(!jsonObject(entry)||!Number.isInteger(entry.after)||!jsonObject(entry.stroke))return null;
+      original.splice(Number(entry.after)+offset++,0,entry.stroke);
+    }
+  }
+  const stored=itemMap(original),before=itemMap(baseline.items),after=itemMap(next.items);
+  if(!stored||!before||!after||stored.size!==before.size||[...before.keys()].some(id=>!stored.has(id)))return null;
+  const output:JsonObject={...raw,items:[...after].map(([id,item])=>{
+    const old=before.get(id),wire=stored.get(id);
+    if(!old||!wire)return item;
+    const edited={...wire};
+    for(const key of new Set([...Object.keys(old),...Object.keys(item)])){
+      if(equalJson(old[key],item[key]))continue;
+      const value=normalizedField(key,item[key]);
+      if(value===undefined)delete edited[key];else edited[key]=value;
+    }
+    return edited;
+  })};
+  delete output.ink;
+  // Title, subject, background and unknown metadata remain server-owned.
+  if(next.view!==undefined)output.view=next.view;
+  if(next.preview!==undefined)output.preview=next.preview;
+  return output;
+}
 // For small edits on large native boards, reuse detached ACKed objects and
 // serialize only changed values. The conservative lower bound on full JSON
 // size guarantees that the PATCH is smaller without building the full body.
@@ -801,13 +835,14 @@ function inkPipelineDelta(base:JsonObject,next:JsonObject,delta:DocumentDelta,ge
   return true;
 }
 export function selfhostStartInkPipeline(boardId:string,expectedVersion:number,document:JsonObject,inkGesture:string,
-  cursor:InkCommitCursor|undefined,onAck:(version:number)=>void):SelfhostInkPipeline|null{
+  cursor:InkCommitCursor|undefined,onAck:(version:number)=>void,studentBase?:JsonObject):SelfhostInkPipeline|null{
   const userId=loadSession()?.user.id;
   const base=documentBase;
   const socket=selfhostBoardSockets.get(boardId);
   if(!userId||!base||base.userId!==userId||base.boardId!==boardId||base.version!==expectedVersion||
       expectedVersion<1||!deltaSupported||!pointDeltasSupported||!socket?.canPipelineInk())return null;
   let planned=base.document,version=expectedVersion,committed=expectedVersion;
+  let canonical=studentBase;
   let pending=0,previousId:string|undefined,failed:Error|undefined,closed=false;
   let resolveDone!:(value:{version:number})=>void,rejectDone!:(error:Error)=>void;
   const done=new Promise<{version:number}>((resolve,reject)=>{resolveDone=resolve;rejectDone=reject});
@@ -818,7 +853,9 @@ export function selfhostStartInkPipeline(boardId:string,expectedVersion:number,d
   };
   const offer:SelfhostInkPipeline["offer"]=(raw,position,ack)=>{
     if(closed||failed||pending>=MAX_INK_IN_FLIGHT)return false;
-    const prepared=prepareSmallDocumentDelta(planned,raw,version,inkGesture);
+    const wire=canonical?projectStudentDocument(planned,canonical,raw):raw;
+    if(!wire)return false;
+    const prepared=prepareSmallDocumentDelta(planned,wire,version,inkGesture);
     if(!prepared)return false;
     const request=JSON.parse(prepared.body) as {expected_version:number;delta:DocumentDelta};
     if(!inkPipelineDelta(planned,prepared.next,request.delta,inkGesture))return false;
@@ -827,6 +864,7 @@ export function selfhostStartInkPipeline(boardId:string,expectedVersion:number,d
       ...(previousId?{after_request_id:previousId}:{}),...(position?{cursor:position}:{})});
     if(!sent)return false;
     previousId=sent.requestId;planned=prepared.next;version=target;pending++;
+    if(canonical)canonical=raw;
     void sent.then(result=>{
       if(result.version!==target||failed)throw failed??new SelfhostHttpError(409,"Нарушена последовательность версий штриха.");
       committed=result.version;
@@ -847,9 +885,19 @@ export function selfhostStartInkPipeline(boardId:string,expectedVersion:number,d
   return {offer,done};
 }
 
-export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string,inkCursor?:InkCommitCursor){
+export async function selfhostSaveDocument(boardId:string,expectedVersion:number,document:JsonObject,inkGesture?:string,inkCursor?:InkCommitCursor,studentBase?:JsonObject){
   const userId=loadSession()?.user.id;
-  const base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
+  let base=documentBase?.boardId===boardId&&documentBase.userId===userId&&documentBase.version===expectedVersion?documentBase:null;
+  if(studentBase&&expectedVersion>0&&!base){
+    const row=await selfhostReadDocument(boardId,undefined,false);
+    if(row.version!==expectedVersion||!row.document)throw new SelfhostHttpError(409,"Версия доски изменилась.");
+    base=documentBase;
+  }
+  if(studentBase&&base){
+    const projected=projectStudentDocument(base.document,studentBase,document);
+    if(!projected)throw new SelfhostHttpError(409,"Сверяем исходные объекты доски.");
+    document=projected;
+  }
   const prepared=base&&deltaSupported&&expectedVersion>0?prepareSmallDocumentDelta(base.document,document,expectedVersion,pointDeltasSupported?inkGesture:undefined):null;
   const fullBody=prepared?null:JSON.stringify({expected_version:expectedVersion,document});
   // The fast path owns a detached snapshot, too. Changed fields are normalized
@@ -864,13 +912,13 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
     if(prepared||delta){
       const body=prepared?.body??JSON.stringify({expected_version:expectedVersion,delta});
       const bytes=new TextEncoder().encode(body).byteLength;
-      if(prepared||(bytes<MAX_DELTA_BYTES&&(inkGesture||(fullBody&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength))))){
+      if(prepared||(bytes<MAX_DELTA_BYTES&&(inkGesture||!!delta?.items||(fullBody&&(bytes<fullBody.length||bytes<new TextEncoder().encode(fullBody).byteLength))))){
         try{
           // Never replay an ambiguous websocket write as HTTP. A lost ACK
           // takes the normal version-conflict recovery path.
-          const ws=inkGesture?selfhostBoardSockets.get(boardId)?.commitInk({
-            ...JSON.parse(body),ink_gesture:inkGesture,...(inkCursor?{cursor:inkCursor}:{})
-          }):null;
+          const ws=selfhostBoardSockets.get(boardId)?.commitInk({
+            ...JSON.parse(body),...(inkGesture?{ink_gesture:inkGesture}:{}),...(inkCursor?{cursor:inkCursor}:{})
+          });
           sentOverSocket=!!ws;
           result=ws?await ws:await selfhostRequest<{version:number}>(path,{method:"PATCH",body});
         }
@@ -1074,7 +1122,7 @@ function connectSelfhostBoard(
   let activityTimer:ReturnType<typeof setTimeout>|undefined;
   let ready=false;
   let compactInk=false;
-  let durableInkCommits=false,inkCommitChain=false,inkMotion=false,commitSequence=0;
+  let durableInkCommits=false,durableObjectCommits=false,inkCommitChain=false,inkMotion=false,commitSequence=0;
   let lastInkRequestId:string|undefined;
   const pendingCommits=new Map<string,{resolve:(value:{version:number})=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
   let lastCursorSent=0;
@@ -1115,7 +1163,7 @@ function connectSelfhostBoard(
   const canPipelineInk=()=>canCommitInk()&&inkCommitChain;
   const canSendInkMotion=()=>ready&&inkMotion&&socket?.readyState===WebSocket.OPEN;
   const commitInk=(request:InkCommitRequest):InkCommitPromise|null=>{
-    if(!canCommitInk())return null;
+    if(!canCommitInk()||(!request.ink_gesture&&!durableObjectCommits))return null;
     if(request.after_request_id!==undefined){
       if(!canPipelineInk()||request.after_request_id!==lastInkRequestId||pendingCommits.size>=MAX_INK_IN_FLIGHT)return null;
     }else if(pendingCommits.size)return null;
@@ -1217,7 +1265,7 @@ function connectSelfhostBoard(
   };
   const closeSocket=()=>{
     ready=false;idleLease=false;backgroundIdle=false;lastReportedActivity=undefined;
-    compactInk=false;durableInkCommits=false;inkCommitChain=false;inkMotion=false;lastInkRequestId=undefined;
+    compactInk=false;durableInkCommits=false;durableObjectCommits=false;inkCommitChain=false;inkMotion=false;lastInkRequestId=undefined;
     for(const entry of pendingCommits.values()){
       clearTimeout(entry.timer);entry.reject(new SelfhostHttpError(409,"Соединение прервано. Сверяем версию доски."));
     }
@@ -1276,7 +1324,7 @@ function connectSelfhostBoard(
         if(!active())return;
         try{
           ws.send(JSON.stringify({
-            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,ink_commit_chain:true,ink_motion:true,
+            type:"auth",token:session.access_token,compact_ink:true,document_patches:true,ink_point_deltas:true,durable_ink_commits:true,durable_object_commits:true,ink_commit_chain:true,ink_motion:true,
             ...(presence?{presence:true,visible:presence.visible}:{}),
             ...(presence?.idle&&activity?{idle_age_ms:Math.floor(boardIdleAge(activity())),background_idle:true,background:activity()!==null}:{}),
           }));
@@ -1304,6 +1352,7 @@ function connectSelfhostBoard(
           if(message?.type==="ready"&&!ready){
             compactInk=message.compact_ink===true;
             durableInkCommits=message.durable_ink_commits===true;
+            durableObjectCommits=message.durable_object_commits===true;
             inkCommitChain=message.ink_commit_chain===true;
             inkMotion=message.ink_motion===true;
             idleLease=message.idle_lease===true;
@@ -1588,6 +1637,47 @@ export function selfhostSubscribeBoard(
 }
 
 /** Download only the latest announced revision and retry failed reads. */
+
+// Technical telemetry only: never include object text, images, tokens, or raw errors.
+// Batch on a slow independent timer so drawing never waits for journal writes.
+type SyncJournalEvent={event:string;version?:number;expected_version?:number;status?:number;elapsed_ms?:number;count?:number;added?:number;changed?:number;removed?:number;transport?:"socket"|"http"};
+const syncJournalQueues=new Map<string,{userId:string;rows:SyncJournalEvent[];timer?:ReturnType<typeof setTimeout>;sending:boolean}>();
+export function selfhostLogBoardSync(boardId:string,event:SyncJournalEvent){
+  const userId=loadSession()?.user.id;
+  if(!userId)return;
+  let queue=syncJournalQueues.get(boardId);
+  if(!queue||queue.userId!==userId){
+    if(queue?.timer!==undefined)clearTimeout(queue.timer);
+    queue={userId,rows:[],sending:false};
+    syncJournalQueues.set(boardId,queue);
+  }
+  queue.rows.push(event);
+  if(queue.rows.length>120)queue.rows.splice(0,queue.rows.length-120);
+  const state=queue;
+  const schedule=()=>{
+    if(state.timer!==undefined||state.sending)return;
+    state.timer=setTimeout(async()=>{
+      state.timer=undefined;
+      if(syncJournalQueues.get(boardId)!==state||loadSession()?.user.id!==state.userId){
+        if(syncJournalQueues.get(boardId)===state)syncJournalQueues.delete(boardId);
+        return;
+      }
+      state.sending=true;
+      const rows=state.rows.splice(0,40);
+      try{await selfhostRequest("/api/v1/boards/"+encodeURIComponent(boardId)+"/sync-journal",{method:"POST",body:JSON.stringify({events:rows})})}
+      catch(error){
+        if(!(error instanceof SelfhostHttpError)||![401,403,404,422].includes(error.status))state.rows=[...rows,...state.rows].slice(-120);
+      }finally{
+        state.sending=false;
+        if(state.rows.length)schedule();else if(syncJournalQueues.get(boardId)===state)syncJournalQueues.delete(boardId);
+      }
+    },15000);
+    (state.timer as unknown as {unref?:()=>void})?.unref?.();
+  };
+  schedule();
+}
+export const selfhostExportBoardSync=(boardId:string)=>selfhostRequest<unknown>("/api/v1/boards/"+encodeURIComponent(boardId)+"/sync-journal");
+
 export function selfhostWatchDocument(
   boardId:string,currentVersion:()=>number,onDocument:(row:SelfhostDocument)=>unknown,
   onStatus:(status:SelfhostRealtimeStatus)=>void,
@@ -1621,10 +1711,12 @@ export function selfhostWatchDocument(
       if(controller.signal.aborted)return;
       if(row.version>Math.max(currentVersion(),delivered)){
         if(!row.document||onDocument(attachCursors(row))===false){
+          selfhostLogBoardSync(boardId,{event:"revision_rejected",version:row.version,transport:"http"});
           forceFullRead=true;
           throw new Error("Board revision was not applied");
         }
       }
+      if(row.version>delivered)selfhostLogBoardSync(boardId,{event:currentVersion()>=row.version?"revision_applied":"revision_deferred",version:row.version,transport:"http"});
       forceFullRead=false;
       delivered=Math.max(delivered,row.version);
       failures=row.version<target?Math.min(failures+1,5):0;
@@ -1687,8 +1779,10 @@ export function selfhostWatchDocument(
             updated_at:patch.updated_at,updated_by:patch.updated_by};
           rememberDocument(boardId,userId,version,next);
           if(onDocument(attachCursors(row))===false){
+            selfhostLogBoardSync(boardId,{event:"revision_rejected",version,transport:"socket"});
             forceFullRead=true;
           }else{
+            selfhostLogBoardSync(boardId,{event:currentVersion()>=version?"revision_applied":"revision_deferred",version,transport:"socket"});
             delivered=version;
             failures=0;
             forceFullRead=false;
@@ -1700,6 +1794,7 @@ export function selfhostWatchDocument(
     schedulePoll();
   },next=>{
     const wasOnline=status==="online";
+    if(next!==status)selfhostLogBoardSync(boardId,{event:next==="online"?"socket_online":next==="offline"?"socket_offline":"socket_reconnecting"});
     status=next;
     if(next==="online")accessDenied=false;
     if(!wasOnline&&next==="online"){
