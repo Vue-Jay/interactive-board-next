@@ -87,6 +87,7 @@ import ViewerInkLayer from "./ViewerInkLayer";
 import {createInkMotionLedger,createInkMotionSender,INK_MOTION_CHECKPOINT_MS} from "./boardInkMotion";
 import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
 import { placeImageCrop } from "./imageCropGeometry";
+import {resolvePdfAction,nextPdfPage} from "./boardPdfActions";
 import { detectImageContentCropFromElement, fitImageFrameAspect } from "./imageAutoCrop";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
@@ -4920,18 +4921,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch (error) { setNotice(error instanceof Error ? error.message : "Не удалось сохранить исходный файл"); }
   };
 
-  const setPdfPage = (item: Item, page: number) => {
-    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount) return;
-    const nextPage = Math.max(1, Math.min(pdfPageCount, Math.round(Number.isFinite(page) ? page : 1)));
+  const setPdfPage = (rendered: Item, page: number) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(!item||!pdfPageCount)return;
+    const nextPage = nextPdfPage(item,page,pdfPageCount);
     if (nextPage === (item.pdfPage ?? 1)) return nextPage;
     commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, pdfPage: nextPage } : candidate));
     setNotice(`PDF · страница ${nextPage}`);
     return nextPage;
   };
 
-  const changePdfPage = (item: Item, delta: number) => setPdfPage(item, (item.pdfPage ?? 1) + delta);
-  const duplicateNextPdfPage = (item: Item) => {
-    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount || (item.pdfPage??1)>=pdfPageCount) return;
+  const changePdfPage = (rendered: Item, delta: number) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(item)setPdfPage(item,(item.pdfPage??1)+delta);
+  };
+  const duplicateNextPdfPage = (rendered: Item) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(!item||!pdfPageCount||(item.pdfPage??1)>=pdfPageCount)return;
     const copy: Item = {
       ...deepItem(item),
       id: createId(),
@@ -4946,8 +4952,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice(`Добавлена страница PDF ${copy.pdfPage} рядом`);
   };
 
-  const spreadPdfPages = (item: Item, count: 3 | 5) => {
-    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount) return;
+  const spreadPdfPages = (rendered: Item, count: 3 | 5) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(!item||!pdfPageCount)return;
     const gap = 28, cols = count <= 3 ? count : 3;
     const copies: Item[] = [];
     for (let n = 1; n < count && (item.pdfPage??1)+n<=pdfPageCount; n++) {

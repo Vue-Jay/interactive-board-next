@@ -401,7 +401,7 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch,tmp_pat
                             sys.executable,"tests/participant-roles-browser.py","--sync-only",cwd=root,env=env,
                             stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT,start_new_session=True)
                         try:
-                            output,_=await asyncio.wait_for(browser.communicate(),timeout=780)
+                            output,_=await asyncio.wait_for(browser.communicate(),timeout=900)
                         except asyncio.TimeoutError:
                             os.killpg(browser.pid,signal.SIGKILL)
                             await browser.wait()

@@ -300,3 +300,21 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
   assert.equal(frames.filter(f=>f.type==="work_state").length,1,"Failed transport send retries work state");
  }finally{connection.close()}
 }
+
+// Stale toolbar props cannot clone deleted, locked or replaced PDF assets.
+{
+ const pdf={};
+ new Function("exports",ts.transpileModule(read("src/boardPdfActions.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(pdf);
+ const item={id:"pdf",kind:"pdf",assetId:"asset",pdfPage:1,x:0,y:0};
+ const latest={...item,pdfPage:3,x:25};
+ assert.equal(pdf.resolvePdfAction([latest],item,true,8),latest);
+ assert.equal(pdf.nextPdfPage(latest,latest.pdfPage+1,8),4);
+ assert.equal(pdf.resolvePdfAction([],item,true,8),undefined);
+ assert.equal(pdf.resolvePdfAction([{...latest,locked:true}],item,true,8),undefined);
+ assert.equal(pdf.resolvePdfAction([{...latest,assetId:"replacement"}],item,true,8),undefined);
+ assert.equal(pdf.resolvePdfAction([latest],item,false,8),undefined);
+ assert.equal(pdf.resolvePdfAction([latest],item,true,null),undefined);
+ assert.equal(pdf.resolvePdfAction([latest],item,true,0),undefined);
+}

@@ -812,6 +812,9 @@ def check_shared_eraser_sync(browser):
             drops=sum(s["dropped"] for s in controls.values())
             assert drops>0,"Impairment was never exercised"
             ordered=sorted(samples)
+            # A controlled-network acceptance budget, including the artificial
+            # router and automation. It is not a physical-device latency SLA.
+            assert ordered[45]<1000 and ordered[-1]<1500,("Impaired peer raster tail regression",ordered[45],ordered[-1])
             print("Sustained real UI input-dispatch-to-peer-raster (ms):",json.dumps({
                 "seconds":round(time.monotonic()-started,2),"strokes":len(samples),"drops":drops,
                 "injected_delay_ms":120,"median":round((ordered[23]+ordered[24])/2,1),
@@ -1747,6 +1750,17 @@ def check_undo_reconnect_sync(browser):
                             const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
                             return !!raw&&JSON.parse(raw).items.some(i=>i.id===id&&Math.abs(i.instrumentScale-scale)<0.001);
                         }""",arg={"ident":ident,"id":obj["id"],"scale":expected_scale},timeout=15000)
+                    # Rotate through the actual instrument-specific control, then reset.
+                    rotation=actor.locator(selector+' button[aria-label="Повернуть инструмент"]')
+                    rect=rotation.bounding_box();x=rect["x"]+rect["width"]/2;y=rect["y"]+rect["height"]/2
+                    actor.mouse.move(x,y);actor.mouse.down()
+                    try:actor.mouse.move(x+60,y+30,steps=6)
+                    finally:actor.mouse.up()
+                    rotated=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i.get("rotation",0))>5 for i in d["items"]),kind+" instrument rotation not saved")
+                    for page in (actor,receiver):geometry_synced(page,rotated["items"])
+                    actor.locator(selector+' button[aria-label="Сбросить угол"]').click()
+                    reset=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i.get("rotation",0))<.01 for i in d["items"]),kind+" instrument reset not saved")
+                    for page in (actor,receiver):geometry_synced(page,reset["items"])
                     actor.locator(selector+' button[aria-label="Убрать инструмент"]').click()
                     wait_api(actor,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" instrument deletion not saved")
                     expect(receiver.locator(selector)).to_have_count(0,timeout=15000)
@@ -1788,8 +1802,15 @@ def check_undo_reconnect_sync(browser):
             expect(pupil.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("1",timeout=30000)
             moved_pdf=peer_move(pdf)
             peer_resize_rotate(moved_pdf)
+            select_all(teacher)
+            teacher.get_by_role("button",name="Добавить следующую страницу PDF рядом",exact=True).click()
+            copies=wait_api(teacher,lambda d:len([i for i in d["items"] if i["kind"]=="pdf"])==2,"PDF page copy not saved")
+            copy=next(i for i in copies["items"] if i["id"]!=pdf["id"])
+            assert copy["assetId"]==pdf["assetId"] and copy["pdfPage"]==2
+            both(copy["id"])
+            for page in (teacher,pupil):geometry_synced(page,copies["items"])
             select_all(teacher);teacher.keyboard.press("Delete")
-            both(pdf["id"],False)
+            both(pdf["id"],False);both(copy["id"],False)
             print("Real two-page PDF upload, durable teacher approval, bidirectional pagination, movement and deletion passed.")
 
             # Change only the wall-clock read, not Chromium timers. Installing
@@ -1856,6 +1877,62 @@ def check_undo_reconnect_sync(browser):
             finally:
                 pupil.evaluate("""()=>{delete document.hidden;delete document.visibilityState;
                     Date.now=window.__qaRealNow;delete window.__qaRealNow;delete window.__qaClockOffset;}""")
+
+            # Real authenticated Chromium touch events through the landscape
+            # phone/tablet board iframe, not JS calls to React handlers.
+            replace_items([])
+            touch_contexts=[]
+            try:
+                mobile_pages=[]
+                for source,size,can_author in ((pupil,{"width":844,"height":390},False),(teacher,{"width":1024,"height":768},True)):
+                    mobile=browser.new_context(storage_state=source.context.storage_state(),viewport=size,has_touch=True,is_mobile=True,service_workers="block")
+                    touch_contexts.append(mobile)
+                    phone=mobile.new_page()
+                    scope=assert_board(phone,ident,can_author,can_author,embedded=True)
+                    assert_role_toolbar(scope,True,can_author,touch=True)
+                    mobile_pages.append((mobile,phone,scope))
+                def touch_draw(entry,kind,vertical):
+                    mobile,page,scope=entry
+                    scope.locator(f'[data-interface-control="{kind}"]:visible').first.tap()
+                    box=scope.locator("section.board").bounding_box()
+                    x=box["x"]+box["width"]*.52;y=box["y"]+box["height"]*vertical
+                    before=ids(read())
+                    cdp=mobile.new_cdp_session(page)
+                    def event(kind,points):
+                        cdp.send("Input.dispatchTouchEvent",{"type":kind,"touchPoints":points})
+                    event("touchStart",[{"x":x,"y":y}])
+                    try:
+                        for n in range(1,9):event("touchMove",[{"x":x+n*8,"y":y+3}])
+                        saved=wait_api(page,lambda d:any(i["id"] not in before and i["kind"]==kind and i.get("width",0)>25 for i in d["items"]),"Touch ink not saved while held")
+                        stroke=next(i for i in saved["items"] if i["id"] not in before and i["kind"]==kind)
+                    finally:
+                        event("touchEnd",[]);cdp.detach()
+                    for _,peer,peer_scope in mobile_pages:
+                        peer_scope.locator("section.board").evaluate("""(el,{ident,id})=>new Promise((resolve,reject)=>{
+                            const deadline=Date.now()+15000;
+                            const check=()=>{const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                                if(raw&&JSON.parse(raw).items.some(i=>i.id===id)){resolve(true);return}
+                                if(Date.now()>deadline){reject(Error("Touch peer did not receive stroke"));return}
+                                setTimeout(check,100)};check()
+                        })""",{"ident":ident,"id":stroke["id"]})
+                    both(stroke["id"])
+                    return stroke["id"]
+                a=touch_draw(mobile_pages[0],"pen",.43)
+                b=touch_draw(mobile_pages[1],"marker",.63)
+                desktop_id=draw(teacher,"pen",.79)
+                for _,peer,scope in mobile_pages:
+                    scope.locator("section.board").evaluate("""(el,{ident,ids})=>new Promise((resolve,reject)=>{
+                        const deadline=Date.now()+15000;const check=()=>{
+                            const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                            if(raw&&ids.every(id=>JSON.parse(raw).items.some(i=>i.id===id))){resolve(true);return}
+                            if(Date.now()>deadline){reject(Error("Cross device revision missing"));return}
+                            setTimeout(check,100)};check()
+                    })""",{"ident":ident,"ids":[a,b,desktop_id]})
+                both(desktop_id)
+                assert {a,b,desktop_id}<=ids(read())
+                print("Phone and tablet emulated touch ink before release, desktop and both mobile copies converged.")
+            finally:
+                for mobile in touch_contexts:mobile.close()
     finally:
         for ctx in contexts:ctx.close()
 
