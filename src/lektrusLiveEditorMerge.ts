@@ -54,6 +54,36 @@ function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):u
 export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  if(same(base,edit))return latest;
  if(same(edit,latest))return latest;
+ // A queued pupil response can reach the three-way merge *after* a teacher
+ // has replaced the exercise. Reject stale response fields at this boundary,
+ // not only in the UI callback (which may run before the peer revision).
+ if(record(base)&&record(edit)&&record(latest)&&
+    base.kind===edit.kind&&base.kind===latest.kind&&
+    (base.kind==="sentence-builder"||base.kind==="geo-training")){
+  const source=base.kind==="sentence-builder"?["parts"]:["exercise","relation","reverse","countryCodes"];
+  const answers=base.kind==="sentence-builder"?["answerOrder","answerChecked"]:["practice"];
+  const changed=(a:Record<string,unknown>,b:Record<string,unknown>,fields:string[])=>fields.some(f=>!same(a[f],b[f]));
+  const localSource=changed(base,edit,source),remoteSource=changed(base,latest,source);
+  const result:Record<string,unknown>={...latest};
+  const copy=(from:Record<string,unknown>,field:string)=>{
+   if(from[field]===undefined)delete result[field];else result[field]=from[field];
+  };
+  for(const field of new Set([...Object.keys(base),...Object.keys(edit)])){
+   if(source.includes(field)||answers.includes(field)||same(base[field],edit[field]))continue;
+   if(!(field in edit))delete result[field];
+   else result[field]=mergeEditedValue(base[field],edit[field],latest[field],field);
+  }
+  if(localSource){
+   for(const field of source)copy(edit,field);
+   // A newly authored assignment starts unanswered. If a peer already
+   // published the identical new source, its answers are still legitimate.
+   if(changed(edit,latest,source))for(const field of answers)delete result[field];
+  }else if(!remoteSource&&changed(base,edit,answers)){
+   // Keep answerOrder and answerChecked together (including a reset).
+   for(const field of answers)copy(edit,field);
+  }
+  return result as T;
+ }
  if(same(base,latest))return edit;
  // Permutations are atomic. Index merging can create duplicate words.
  if(key==="answerOrder"||key==="practice")return edit;

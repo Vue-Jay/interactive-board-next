@@ -318,3 +318,26 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
  assert.equal(pdf.resolvePdfAction([latest],item,true,null),undefined);
  assert.equal(pdf.resolvePdfAction([latest],item,true,0),undefined);
 }
+
+// Durable rebase of a queued answer must not attach it to a new assignment.
+{
+ const base={kind:"sentence-builder",title:"Sentence",parts:[{id:"a",text:"I"},{id:"b",text:"read"}],answerOrder:["a","b"],answerChecked:true};
+ const local={...base,answerOrder:["b","a"],answerChecked:false};
+ const replacement={kind:"sentence-builder",title:"New",parts:[{id:"a",text:"We"},{id:"b",text:"write"}]};
+ assert.deepEqual(mergeEditedValue(base,local,replacement),replacement,"Stale sentence answer cannot cross source changes");
+ assert.deepEqual(mergeEditedValue(base,replacement,local),replacement,"Teacher source replacement clears concurrent old answers");
+ const check={...base,answerChecked:false};
+ const reorder={...base,answerOrder:["b","a"]};
+ assert.deepEqual(mergeEditedValue(base,check,reorder),check,"Check state and order are an atomic pair");
+ const whole={id:"graph",x:1,schoolDiagram:base};
+ assert.deepEqual(mergeEditedValue(whole,{...whole,schoolDiagram:local},{...whole,x:99,schoolDiagram:replacement}),
+  {...whole,x:99,schoolDiagram:replacement},"Board rebase preserves peer placement and replacement source");
+ const practice={order:["RU","FR"],matched:["FR"],wrong:0,index:0,revealed:false,known:[],selected:null,feedback:"correct"};
+ const geo={kind:"geo-training",title:"Geo",exercise:"matching",relation:"country-capital",reverse:false,countryCodes:["FR","RU"]};
+ const answered={...geo,practice};
+ for(const newer of [{...geo,reverse:true},{...geo,relation:"flag-country"},{...geo,exercise:"cards"},{...geo,countryCodes:["DE","RU"]}]){
+  assert.deepEqual(mergeEditedValue(geo,answered,newer),newer,"Old geography answers never cross replacement assignment");
+  assert.deepEqual(mergeEditedValue(geo,newer,answered),newer,"New geography source clears concurrent old response");
+ }
+ assert.deepEqual(mergeEditedValue(geo,answered,{...geo,title:"Renamed"}),{...answered,title:"Renamed"},"Unrelated rename does not erase responses");
+}
