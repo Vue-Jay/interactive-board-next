@@ -1628,6 +1628,39 @@ def check_undo_reconnect_sync(browser):
             print("Shared geography matching selection/pair/reset and card reveal/rating converged; forged answer denied.")
             replace_items([])
 
+            # Standalone vocabulary and spelling must also converge.
+            vocab={"id":"qa-vocabulary","kind":"graph","graphFigureId":"language-flashcards","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA vocabulary","createdBy":author,
+                   "schoolDiagram":{"kind":"flashcards","title":"QA vocabulary","cards":[{"id":"one","term":"Hello","translation":"Привет","transcription":""},{"id":"two","term":"Book","translation":"Книга","transcription":""}],"showTranslation":False,"showTranscription":False,"direction":"foreign-first"}}
+            replace_items([vocab])
+            pupil.get_by_role("button",name="Перевернуть карточку",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==vocab["id"] and i.get("schoolDiagram",{}).get("response")=={"index":0,"revealed":True} for i in d["items"]),"Vocabulary response not saved")
+            expect(teacher.locator(".lektrus-flashcard-word")).to_have_text("Привет",timeout=15000)
+            teacher.get_by_role("button",name="Следующая карточка",exact=True).click()
+            expect(pupil.locator(".lektrus-flashcard-word")).to_have_text("Book",timeout=15000)
+            replace_items([])
+            spelling={"id":"qa-spelling","kind":"graph","graphFigureId":"ru-orthography","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA spelling","createdBy":author,
+                      "schoolDiagram":{"kind":"orthography","title":"QA spelling","questions":[{"id":"one","prompt":"л□с","options":["е","и"],"correct":0,"explanation":"Лес"},{"id":"two","prompt":"м□р","options":["и","е"],"correct":0,"explanation":""}],"showExplanation":True}}
+            replace_items([spelling])
+            pupil.locator(".lektrus-orthography-answers").get_by_role("button",name="е",exact=True).click()
+            expect(teacher.locator(".lektrus-orthography-gap")).to_have_text("е",timeout=15000)
+            pupil.get_by_role("button",name="Проверить",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==spelling["id"] and i.get("schoolDiagram",{}).get("response")=={"index":0,"picked":0,"checked":True} for i in d["items"]),"Orthography response not saved")
+            expect(teacher.locator(".lektrus-orthography-feedback")).to_contain_text("Верно!",timeout=15000)
+            row=client.get(url).json()
+            for mutation in ("source","index","picked"):
+                forged=json.loads(json.dumps(row["document"]))
+                diagram=forged["items"][0]["schoolDiagram"]
+                if mutation=="source":diagram["questions"][0]["correct"]=1
+                elif mutation=="index":diagram["response"]["index"]=9
+                else:diagram["response"]["picked"]=9
+                with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                    rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                    assert rejected.status_code==403,(mutation,rejected.status_code,rejected.text)
+            teacher.get_by_role("button",name="Дальше →",exact=True).click()
+            expect(pupil.locator(".lektrus-orthography-count")).to_have_text("Задание 2 из 2",timeout=15000)
+            print("Shared vocabulary and orthography responses, navigation and forged response denial passed.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],

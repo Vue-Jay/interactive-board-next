@@ -130,7 +130,7 @@ export function blockedStudentObjectEdits(before:readonly Item[],after:readonly 
   if(old.kind==="cover")allowed.add("coverOpen");
   if(old.kind==="graph"&&old.subjectBoardEntries&&item.subjectBoardEntries)allowed.add("subjectBoardEntries");
   if(old.kind==="graph"&&old.schoolDiagram&&item.schoolDiagram&&
-     ["syntax","place-value","atlas","sentence-builder","geo-training"].includes(old.schoolDiagram.kind))allowed.add("schoolDiagram");
+     ["syntax","place-value","atlas","sentence-builder","geo-training","flashcards","orthography"].includes(old.schoolDiagram.kind))allowed.add("schoolDiagram");
   const a=old as unknown as Record<string,unknown>,z=item as unknown as Record<string,unknown>;
   return [...new Set([...Object.keys(a),...Object.keys(z)])].some(key=>!allowed.has(key)&&!same(a[key],z[key]));
  });

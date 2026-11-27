@@ -341,3 +341,13 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
  }
  assert.deepEqual(mergeEditedValue(geo,answered,{...geo,title:"Renamed"}),{...answered,title:"Renamed"},"Unrelated rename does not erase responses");
 }
+
+for(const [base,source,response] of [
+ [{kind:"flashcards",cards:[{id:"a",term:"Hello"}],direction:"foreign-first"},{direction:"russian-first"},{index:0,revealed:true}],
+ [{kind:"orthography",questions:[{id:"a",prompt:"л□с",options:["е","и"]}]},{questions:[{id:"a",prompt:"м□р",options:["и","е"]}]},{index:0,picked:0,checked:true}]
+]){
+ const answered={...base,response},updated={...base,...source};
+ assert.deepEqual(mergeEditedValue(base,answered,updated),updated);
+ assert.deepEqual(mergeEditedValue(base,updated,answered),updated);
+ assert.deepEqual(mergeEditedValue(base,answered,{...base,title:"Rename"}),{...answered,title:"Rename"});
+}

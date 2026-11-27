@@ -246,12 +246,15 @@ assert.deepEqual(restrictStudentDiagramChange(sharedSentence,{...sharedSentence,
  {...sharedSentence,answerOrder:["b","a"],answerChecked:true});
 assert.equal(restrictStudentDiagramChange(sharedSentence,{...sharedSentence,answerOrder:["a","a"],answerChecked:true}),null);
 const approvedView=read("src/LektrusApprovedSchoolView.tsx");
-assert.match(approvedView,/const \[index,setIndex\]=useState\(0\),\[revealed,setRevealed\]=useState\(false\)/,
- "foreign vocabulary flashcards flip locally without overwriting teacher data");
-assert.doesNotMatch(approvedView,/onChange\s*\(/,
- "foreign flashcard interactions must not save over a teacher's cards");
-assert.match(russianView,/const \[picked,setPicked\]=useState/,
- "spelling puzzle answers remain local to the learner");
+assert.match(approvedView,/onChange\?\.\(\{\.\.\.d,response:next\}\)/,"Vocabulary publishes only its response");
+assert.match(russianView,/onChange\?\.\(\{\.\.\.d,response:next\}\)/,"Orthography publishes only its response");
+const vocab={kind:"flashcards",title:"Cards",direction:"foreign-first",cards:[{id:"a",term:"Hello",translation:"Привет",transcription:""}]};
+assert.deepEqual(restrictStudentDiagramChange(vocab,{...vocab,title:"forged",response:{index:0,revealed:true}}),{...vocab,response:{index:0,revealed:true}});
+assert.equal(restrictStudentDiagramChange(vocab,{...vocab,response:{index:1,revealed:true}}),null);
+const spelling={kind:"orthography",title:"Spell",questions:[{id:"a",prompt:"л□с",options:["е","и"],correct:0,explanation:""}]};
+assert.deepEqual(restrictStudentDiagramChange(spelling,{...spelling,title:"forged",response:{index:0,picked:0,checked:true}}),{...spelling,response:{index:0,picked:0,checked:true}});
+assert.equal(restrictStudentDiagramChange(spelling,{...spelling,response:{index:0,picked:null,checked:true}}),null);
+assert.equal(restrictStudentDiagramChange(spelling,{...spelling,response:{index:0,picked:2,checked:false}}),null);
 assert.match(app,/const merged=mergeEditedValue\(base,diagram,before.schoolDiagram\);\s*const allowed=isStudent\?restrictStudentDiagramChange\(before.schoolDiagram,merged\):merged;\s*if\(!allowed\|\|!isSchoolDiagram\(allowed\)\)return;/,
  "student edits are merged against the current assignment, restricted and validated before commit");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,

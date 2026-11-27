@@ -1,3 +1,14 @@
+function validFlashcardResponse(value:unknown,count:number):boolean{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const r=value as Record<string,unknown>;
+ return Object.keys(r).length===2&&typeof r.index==="number"&&Number.isInteger(r.index)&&r.index>=0&&r.index<count&&typeof r.revealed==="boolean";
+}
+function validOrthographyResponse(value:unknown,questions:readonly {options:readonly unknown[]}[]):boolean{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const r=value as Record<string,unknown>;
+ return Object.keys(r).length===3&&typeof r.index==="number"&&Number.isInteger(r.index)&&r.index>=0&&r.index<questions.length&&typeof r.checked==="boolean"&&
+ (r.picked===null?!r.checked:typeof r.picked==="number"&&Number.isInteger(r.picked)&&r.picked>=0&&r.picked<questions[r.index].options.length);
+}
 /** Self-contained persisted circuit validation.
  * Keep this module import-free for whiteboard persistence and ink tests. */
 /** Validate persisted mechanics without importing any rendering modules. */
@@ -308,7 +319,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    new Set((q.options as string[]).filter(o=>o.trim()).map(o=>o.trim())).size===q.options.filter(o=>typeof o==="string"&&o.trim()).length&&
    Number.isInteger(q.correct)&&(q.correct as number)>=0&&(q.correct as number)<q.options.length&&
    typeof q.explanation==="string"&&q.explanation.length<=250)&&
-   new Set(questions.map(q=>q.id)).size===questions.length;
+   new Set(questions.map(q=>q.id)).size===questions.length&&(d.response===undefined||validOrthographyResponse(d.response,questions as {options:unknown[]}[]));
  }
  if(d.kind==="morphemes"){
   if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
@@ -362,7 +373,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
   const cards=d.cards as Record<string,unknown>[];
   return cards.every(c=>c&&typeof c==="object"&&field(c.id,64)&&field(c.term,65)&&
    field(c.translation,80)&&typeof c.transcription==="string"&&c.transcription.length<=75)&&
-   new Set(cards.map(c=>c.id)).size===cards.length;
+   new Set(cards.map(c=>c.id)).size===cards.length&&(d.response===undefined||validFlashcardResponse(d.response,cards.length));
  }
  if(d.kind==="cell"){
   const types=["plant","animal"];

@@ -15,8 +15,6 @@ on:
       - 'src/lektrusBoardObjectAuth.ts'
       - 'src/lektrusBoardRolePreview.ts'
       - 'tests/production-browser-connectivity.py'
-      - 'tests/participant-roles-browser.py'
-      - '.github/workflows/participant-roles.yml'
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:

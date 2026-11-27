@@ -74,6 +74,28 @@ begin
     p_before->'countryCodes' @> jsonb_build_array(v_old->'code') and
     not (v_new->'matched' @> jsonb_build_array(v_old->'code')),false);
  end if;
+ if p_before->>'kind' in ('flashcards','orthography') then
+  if (p_before-'response')<>(p_after-'response') then return false; end if;
+  if p_before=p_after then return true; end if;
+  v_new:=p_after->'response';
+  if jsonb_typeof(v_new) is distinct from 'object' or
+     jsonb_typeof(v_new->'index') is distinct from 'number' or
+     (v_new->>'index') !~ '^[0-9]{1,2}$' then return false; end if;
+  v_index:=(v_new->>'index')::int;
+  if p_before->>'kind'='flashcards' then
+   return coalesce(jsonb_typeof(p_before->'cards')='array' and
+     v_index<jsonb_array_length(p_before->'cards') and
+     (v_new-array['index','revealed'])='{}'::jsonb and
+     jsonb_typeof(v_new->'revealed')='boolean',false);
+  end if;
+  if jsonb_typeof(p_before->'questions') is distinct from 'array' or
+     v_index>=jsonb_array_length(p_before->'questions') or
+     (v_new-array['index','picked','checked'])<>'{}'::jsonb or
+     not(v_new ? 'picked') or jsonb_typeof(v_new->'checked') is distinct from 'boolean' then return false; end if;
+  if v_new->'picked'='null'::jsonb then return v_new->'checked'='false'::jsonb; end if;
+  if jsonb_typeof(v_new->'picked') is distinct from 'number' or (v_new->>'picked') !~ '^[0-9]$' then return false; end if;
+  return coalesce((v_new->>'picked')::int<jsonb_array_length(p_before->'questions'->v_index->'options'),false);
+ end if;
  if p_before->>'kind'='place-value' then
   if (p_before-'digits')<>(p_after-'digits') or
      jsonb_typeof(p_after->'digits') is distinct from 'string' then return false; end if;
@@ -229,7 +251,7 @@ begin
    end if;
   end if;
   if v_kind='graph' and v_old ? 'schoolDiagram' and
-     v_old->'schoolDiagram'->>'kind' in ('syntax','place-value','sentence-builder','geo-training') and
+     v_old->'schoolDiagram'->>'kind' in ('syntax','place-value','sentence-builder','geo-training','flashcards','orthography') and
      v_new ? 'schoolDiagram' then
    if not lektrus_private.student_school_practice_allowed(
       v_old->'schoolDiagram',v_new->'schoolDiagram') then return false; end if;

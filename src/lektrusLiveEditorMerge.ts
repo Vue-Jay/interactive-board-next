@@ -59,9 +59,9 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  // not only in the UI callback (which may run before the peer revision).
  if(record(base)&&record(edit)&&record(latest)&&
     base.kind===edit.kind&&base.kind===latest.kind&&
-    (base.kind==="sentence-builder"||base.kind==="geo-training")){
-  const source=base.kind==="sentence-builder"?["parts"]:["exercise","relation","reverse","countryCodes"];
-  const answers=base.kind==="sentence-builder"?["answerOrder","answerChecked"]:["practice"];
+    ["sentence-builder","geo-training","flashcards","orthography"].includes(String(base.kind))){
+  const source=base.kind==="sentence-builder"?["parts"]:base.kind==="geo-training"?["exercise","relation","reverse","countryCodes"]:base.kind==="flashcards"?["cards","direction"]:["questions"];
+  const answers=base.kind==="sentence-builder"?["answerOrder","answerChecked"]:base.kind==="geo-training"?["practice"]:["response"];
   const changed=(a:Record<string,unknown>,b:Record<string,unknown>,fields:string[])=>fields.some(f=>!same(a[f],b[f]));
   const localSource=changed(base,edit,source),remoteSource=changed(base,latest,source);
   const result:Record<string,unknown>={...latest};
@@ -86,7 +86,7 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  }
  if(same(base,latest))return edit;
  // Permutations are atomic. Index merging can create duplicate words.
- if(key==="answerOrder"||key==="practice")return edit;
+ if(key==="answerOrder"||key==="practice"||key==="response")return edit;
  // Old stickers have no ink field. Concurrent first strokes must merge just
  // as two additions to an existing sticker, instead of replacing each other.
  if(key==="stickerInk"&&base==null&&Array.isArray(edit)&&Array.isArray(latest))
