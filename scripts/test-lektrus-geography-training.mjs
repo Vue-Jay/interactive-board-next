@@ -109,10 +109,10 @@ assert.equal((trainingView.match(/onPointerDown=\{stopInteractive\}/g)??[]).leng
 assert.equal((trainingView.match(/onPointerUp=\{stopInteractive\}/g)??[]).length,2);
 assert.doesNotMatch(trainingView,/onPointerDown=\{stop\}/,
  "Unconditional pointer suppression makes embedded exercises immovable");
-assert.equal((trainingView.match(/const codesKey=d\.countryCodes\.join\("\|"\);/g)??[]).length,2,
- "Both exercises must compare country contents instead of array identity");
-assert.equal((trainingView.match(/\[codesKey,d\.relation,d\.reverse\]/g)??[]).length,2,
- "Realtime refreshes must not erase the pupil's matching/card progress");
+assert.equal((trainingView.match(/const codesKey=d\.countryCodes\.join\("\|"\);/g)??[]).length,1,
+ "Both exercises share content-keyed response state");
+assert.match(trainingView,/\[codesKey,d\.relation,d\.reverse,d\.exercise,savedKey,shared\]/,
+ "Refresh restores a shared answer without resetting on array identity");
 assert.doesNotMatch(trainingView,/\[d\.countryCodes,d\.relation,d\.reverse\]/);
 
 assert.ok(app.includes("fitGeoMatchingItem(merged)")&&app.includes("onMatchingSize="),
@@ -236,3 +236,10 @@ assert.ok(datelineIslands&&datelineIslands.path.split("M").length===3,
  "paired islands across the dateline remain visible together");
 
 console.log("Geography practice: country catalogue, flags, capitals, real atlas silhouettes, dateline handling and both exercise modes verified.");
+
+const shared={...makeGeoTraining("matching"),countryCodes:["FR","RU"]};
+const practice={order:["RU","FR"],matched:["FR"],wrong:1,index:0,revealed:false,known:[],selected:null,feedback:"correct"};
+assert.ok(validGeoTraining({...shared,practice}));
+assert.ok(!validGeoTraining({...shared,practice:{...practice,order:["RU","RU"]}}));
+assert.ok(!validGeoTraining({...shared,practice:{...practice,matched:["US"]}}));
+assert.ok(!validGeoTraining({...shared,practice:{...practice,index:2}}));

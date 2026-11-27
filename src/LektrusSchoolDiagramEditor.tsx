@@ -71,6 +71,9 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
   if(data.kind==="sentence-builder"&&draft.kind==="sentence-builder"&&JSON.stringify(data.parts)!==JSON.stringify(draft.parts)){
    data={...data,answerOrder:undefined,answerChecked:undefined};
   }
+  if(data.kind==="geo-training"&&draft.kind==="geo-training"&&(data.exercise!==draft.exercise||data.relation!==draft.relation||data.reverse!==draft.reverse||JSON.stringify(data.countryCodes)!==JSON.stringify(draft.countryCodes))){
+   data={...data,practice:undefined};
+  }
   setDraft(data);setError("");
   if(existing&&isContour&&onLiveChange)onLiveChange(draft,data);
  };

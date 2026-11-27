@@ -129,6 +129,11 @@ export function restrictStudentDiagramChange(
     order.some(id=>!current.parts.some(p=>p.id===id))||typeof next.answerChecked!=="boolean")return null;
   return {...current,answerOrder:[...order],answerChecked:next.answerChecked};
  }
+ if(current.kind==="geo-training"&&next.kind==="geo-training"){
+  if(current.exercise!==next.exercise||current.relation!==next.relation||current.reverse!==next.reverse||
+     JSON.stringify(current.countryCodes)!==JSON.stringify(next.countryCodes)||!next.practice)return null;
+  return {...current,practice:next.practice}; // Full schema validated at commit and server.
+ }
  // Morphology/phonetics currently store the teacher's source word and
  // annotations, not separate student answer fields. Treat them as read-only
  // until independent pupil-response storage exists. Orthography answers

@@ -204,3 +204,8 @@ Found a subject workflow gap: standalone word-order exercise was intentionally l
 ## Shared sentence acceptance follow-up
 
 Candidate bec2ddb failed four workflows. The browser reproduced the missing central student-object allowlist for sentence answers; migration and editor changes alone were insufficient. Added allowlist, model validation and atomic permutation merging. Updated obsolete source assertions to test the new shared answer behavior and current geography auto-fit call. New CI required; historical verified baseline 18/20 (90%). Geography practice remains local; subject gate remains open. No main merge or deployment.
+
+
+## Shared geography practice
+
+Matching and question cards now publish a coherent answer state (selection, matched countries, errors, order, card index, reveal and mastery) while preserving teacher-defined source. Legacy exercises open with a common deterministic order; restart publishes a new order. Model and server reject invalid permutations, foreign country IDs and malformed response state. Stale responses are rejected when the assignment changes. Added authenticated two-browser pairing/reset/card/forged-answer regression. Updated the isolated, unpublished migration 204. Candidate CI not confirmed; physical hardware gate remains open. No main merge or deployment.

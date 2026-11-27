@@ -1599,6 +1599,35 @@ def check_undo_reconnect_sync(browser):
             print("Shared sentence keyboard order, check, reset and forged student structure denied.")
             replace_items([])
 
+            # Shared geography, capitals avoid external image dependencies.
+            geo={"id":"qa-shared-geo","kind":"graph","graphFigureId":"geo-matching","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":680,"height":320,"text":"QA geography","createdBy":author,
+                 "schoolDiagram":{"kind":"geo-training","title":"QA geography","exercise":"matching","relation":"country-capital","reverse":False,"countryCodes":["FR","RU"]}}
+            replace_items([geo])
+            expect(pupil.locator(".lektrus-geo-match-item").first).to_be_visible()
+            pupil.locator(".lektrus-geo-match-grid section").nth(0).get_by_role("button").first.click()
+            expect(teacher.locator(".lektrus-geo-match-grid section").nth(0).get_by_role("button").first).to_have_attribute("aria-pressed","true",timeout=15000)
+            pupil.locator(".lektrus-geo-match-grid section").nth(1).get_by_role("button").nth(1).click()
+            wait_api(pupil,lambda d:any(i["id"]==geo["id"] and i.get("schoolDiagram",{}).get("practice",{}).get("matched")==["FR"] for i in d["items"]),"Geography pair not saved")
+            expect(teacher.locator(".lektrus-geo-game-progress")).to_contain_text("1 / 2",timeout=15000)
+            teacher.get_by_role("button",name="↻ Заново",exact=True).click()
+            expect(pupil.locator(".lektrus-geo-game-progress")).to_contain_text("0 / 2",timeout=15000)
+            replace_items([])
+            geo={**geo,"id":"qa-shared-geo-cards","graphFigureId":"geo-question-cards","schoolDiagram":{**geo["schoolDiagram"],"exercise":"cards"}}
+            replace_items([geo])
+            pupil.get_by_role("button",name="Показать ответ",exact=True).click()
+            expect(teacher.get_by_role("button",name="Скрыть ответ",exact=True)).to_be_visible(timeout=15000)
+            pupil.get_by_role("button",name="✓ Знаю",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==geo["id"] and i.get("schoolDiagram",{}).get("practice",{}).get("known")==["RU"] for i in d["items"]),"Geography card rating not saved")
+            expect(teacher.locator(".lektrus-geo-game-progress")).to_contain_text("1 / 2",timeout=15000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["practice"]["known"]=["US"]
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            print("Shared geography matching selection/pair/reset and card reveal/rating converged; forged answer denied.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],

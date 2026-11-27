@@ -9740,6 +9740,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                JSON.stringify(merged.schoolDiagram.parts)!==JSON.stringify(saved.schoolDiagram.parts)){
               merged={...merged,schoolDiagram:{...merged.schoolDiagram,answerOrder:undefined,answerChecked:undefined}};
             }
+            if(merged?.schoolDiagram?.kind==="geo-training"&&saved?.schoolDiagram?.kind==="geo-training"){
+              const a=merged.schoolDiagram,b=saved.schoolDiagram;
+              if(a.exercise!==b.exercise||a.relation!==b.relation||a.reverse!==b.reverse||JSON.stringify(a.countryCodes)!==JSON.stringify(b.countryCodes))
+                merged={...merged,schoolDiagram:{...a,practice:undefined}};
+            }
             if(merged){
               const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(merged),saved);
               const current=itemsRef.current;
@@ -11160,6 +11165,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     // A response from a stale sentence must never change a new teacher assignment.
                     if(diagram.kind==="sentence-builder"&&before.schoolDiagram.kind==="sentence-builder"&&
                        JSON.stringify(diagram.parts)!==JSON.stringify(before.schoolDiagram.parts))return;
+                    if(diagram.kind==="geo-training"&&before.schoolDiagram.kind==="geo-training"&&
+                       (diagram.exercise!==before.schoolDiagram.exercise||diagram.relation!==before.schoolDiagram.relation||diagram.reverse!==before.schoolDiagram.reverse||
+                        JSON.stringify(diagram.countryCodes)!==JSON.stringify(before.schoolDiagram.countryCodes)))return;
                     const merged=mergeEditedValue(base,diagram,before.schoolDiagram);
                     const allowed=isStudent?restrictStudentDiagramChange(before.schoolDiagram,merged):merged;
                     if(!allowed||!isSchoolDiagram(allowed))return;
