@@ -1096,6 +1096,45 @@ def check_undo_reconnect_sync(browser):
             assert {first,second,third}<=ids(read())
             print("Real dual-session undo/redo for both roles, network loss and reload passed.")
 
+            # Text is durably checkpointed while the textarea is focused.
+            # A pupil revision during that session must not destroy the
+            # teacher's personal text undo action or cancel the editor.
+            row=client.get(url).json()
+            author=next(i["createdBy"] for i in row["document"]["items"] if i["id"]==first)
+            text_id="qa-checkpoint-text"
+            item={"id":text_id,"kind":"text","x":200,"y":160,"width":240,"height":90,
+                  "text":"Initial text","createdBy":author,"color":"#202124"}
+            client.put(url,json={"expected_version":row["version"],"document":{**row["document"],"items":[*row["document"]["items"],item]}}).raise_for_status()
+            selector=f'.board-object[data-object="{text_id}"]'
+            both(text_id)
+            teacher.locator('[data-interface-control="select"]:visible').first.click()
+            teacher.locator(selector).dblclick()
+            field=teacher.locator(selector+" textarea")
+            expect(field).to_be_visible(timeout=10000)
+            field.fill("Checkpointed text")
+            wait_api(teacher,lambda d:any(i["id"]==text_id and i["text"]=="Checkpointed text" for i in d["items"]),"Typing checkpoint not saved")
+            unrelated=draw(pupil,"pen",.84)
+            both(unrelated)
+            expect(field).to_have_value("Checkpointed text")
+            field.press("Control+Enter")
+            expect(field).to_have_count(0)
+            undo=teacher.locator(".mobile-undo-redo").get_by_role("button",name="Отменить",exact=True)
+            redo=teacher.locator(".mobile-undo-redo").get_by_role("button",name="Повторить",exact=True)
+            expect(undo).to_be_enabled();undo.click()
+            wait_api(teacher,lambda d:unrelated in ids(d) and any(i["id"]==text_id and i["text"]=="Initial text" for i in d["items"]),"Text checkpoint undo reverted wrong action")
+            expect(pupil.locator(selector)).to_contain_text("Initial text")
+            expect(redo).to_be_enabled();redo.click()
+            wait_api(teacher,lambda d:unrelated in ids(d) and any(i["id"]==text_id and i["text"]=="Checkpointed text" for i in d["items"]),"Text checkpoint redo failed")
+            expect(pupil.locator(selector)).to_contain_text("Checkpointed text")
+            teacher.locator(selector).dblclick()
+            expect(field).to_be_visible()
+            field.fill("Cancelled text")
+            wait_api(teacher,lambda d:any(i["id"]==text_id and i["text"]=="Cancelled text" for i in d["items"]),"Cancel scenario did not checkpoint")
+            field.press("Escape")
+            wait_api(teacher,lambda d:any(i["id"]==text_id and i["text"]=="Checkpointed text" for i in d["items"]),"Escape failed to revert checkpoint")
+            expect(pupil.locator(selector)).to_contain_text("Checkpointed text")
+            print("Real checkpointed text undo/redo/cancel after a peer revision passed.")
+
             # A real uploaded file must survive loss of the approval message
             # without duplicate board objects, and a pending request survives
             # the pupil's page reload.

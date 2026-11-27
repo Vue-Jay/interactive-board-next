@@ -250,3 +250,19 @@ for(const kind of ["text","sticky","shape","frame","table","checklist","quiz","f
 }
 assert.match(board,/\(isStudent&&!isBoardOwner&&blockedStudentObjectEdits\(itemsRef\.current,restored\.items,authUser\.id\)\.length\)/,
  "Teacher inverse operations must not use the student-only gate");
+
+// A text gesture must survive a checkpoint and an unrelated peer revision.
+{
+ const {beginTextEdit,updateTextEdit,rebaseTextEdit}=exports;
+ let session=updateTextEdit(beginTextEdit("text","old"),"typed");
+ session=rebaseTextEdit(session,"typed","typed","typed");
+ assert.deepEqual(session,{id:"text",before:"old",draft:"typed",changed:true});
+ // Peer overwrote an acknowledged edit: future typing must undo to peer.
+ session=rebaseTextEdit(session,"typed","peer","peer");
+ assert.deepEqual(session,{id:"text",before:"peer",draft:"peer",changed:false});
+ session=updateTextEdit(session,"new local");
+ session=rebaseTextEdit(session,"peer","second peer","new local");
+ assert.deepEqual(session,{id:"text",before:"second peer",draft:"new local",changed:true});
+ assert.match(board,/historyBaseline:undefined|\{historyBaseline\}/);
+ assert.match(board,/rebaseTextEdit\(session,previousText,remoteEdited.text,edited.text\)/);
+}

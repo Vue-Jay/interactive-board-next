@@ -129,7 +129,7 @@ import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveCon
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
 import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
-import {personalBoardEdit,applyPersonalBoardEdit, reattributeRestoredSharedInk,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
+import {personalBoardEdit,applyPersonalBoardEdit, reattributeRestoredSharedInk,beginTextEdit,updateTextEdit,rebaseTextEdit,type TextEditSession,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops, blockedStudentObjectEdits } from "./lektrusBoardObjectAuth";
 import { parseDocument, parseRealtimeDocument, type RealtimeItemCache, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
@@ -2975,6 +2975,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   );
   const [draft, setDraft] = useState("");
   const draftRef = useRef("");
+  const textEditSession=useRef<TextEditSession|null>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
   const [space, setSpace] = useState(false);
   const [path, setPath] = useState<Point[]>([]);
@@ -4010,6 +4011,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     end(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    textEditSession.current=null;
     setEditing(null);
     setSelected([]);
     setSpace(false);
@@ -4105,7 +4107,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];objectBaseline?:Item[];publishLiveEdits?:boolean}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];objectBaseline?:Item[];historyBaseline?:Item[];publishLiveEdits?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     if(!options?.previousItems){lastInkGesture.current=null;lastInkCursor.current=null;}
@@ -4127,14 +4129,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
-    const baseline = options?.previousItems??options?.objectBaseline??history.current[index.current];
-    if (baseline?.length === normalized.length &&
+    const baseline = options?.previousItems??options?.objectBaseline??(usePersonalUndo?current:history.current[index.current]);
+    const unchanged=baseline?.length === normalized.length &&
         normalized.every((item, pos) => item === baseline[pos] ||
-          JSON.stringify(item) === JSON.stringify(baseline[pos])))
-      return;
+          JSON.stringify(item) === JSON.stringify(baseline[pos]));
+    if(unchanged&&!options?.historyBaseline)return;
     const isLabSimulation=options?.labSimulation===true;
     if(usePersonalUndo&&!isLabSimulation){
-      const own=personalBoardEdit(current,normalized);
+      const own=options?.historyBaseline?personalBoardEdit(options.historyBaseline,normalized):personalBoardEdit(current,normalized);
+      if(unchanged&&!own)return;
       if(own){
         const stack=personalHistory.current;
         stack.entries=[...stack.entries.slice(0,stack.cursor),own].slice(-80);
@@ -4276,17 +4279,25 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       ...item,...fitted,imageSourceAspect:sourceAspect
     }:item));
   };
-  const finishEdit = () => {
+  const finishEdit = (cancel=false) => {
     if (!editing) return;
+    const session=textEditSession.current;
+    if(!session||session.id!==editing)return;
     const editedItem = itemsRef.current.find((item) => item.id === editing);
-    const nextText = editedItem?.kind === "frame"
-      ? draftRef.current.replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 120)
-      : draftRef.current;
-    commit(
-      itemsRef.current.map((item) =>
-        item.id === editing ? { ...item, text: nextText } : item,
-      ),
-    );
+    textEditSession.current=null;
+    if(!editedItem||editedItem.locked||!canEdit){setEditing(null);return;}
+    const value=cancel?session.before:draftRef.current;
+    const nextText = editedItem.kind === "frame"
+      ? value.replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 120)
+      : value;
+    const next=itemsRef.current.map(item=>item.id===editing?{...item,text:nextText}:item);
+    // A peer revision may already have folded our autosaved draft into
+    // itemsRef. Still record one inverse for the entire local typing action,
+    // using the latest geometry/metadata and the pre-action text only.
+    const historyBaseline=cancel||!session.changed?next:itemsRef.current.map(item=>
+      item.id===editing?{...item,text:session.before}:item);
+    if(cancel)workChannel.current?.publishEdit(editing,[{path:["text"],kind:"set",value:nextText}]);
+    commit(next,usePersonalUndo?{historyBaseline}:undefined);
     draftRef.current = nextText;
     setDraft(nextText);
     setEditing(null);
@@ -4301,9 +4312,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setSelected([item.id]);
     setTool("select");
     setSpace(false);
-    draftRef.current = item.text;
-    setDraft(item.text);
-    setEditing(item.id);
+    if(editing===item.id&&textEditSession.current?.id===item.id)return;
+    textEditSession.current=beginTextEdit(stored.id,stored.text);
+    draftRef.current = stored.text;
+    setDraft(stored.text);
+    setEditing(stored.id);
   };
   const undo = (direction: number) => {
     if (gesture.current || !canEdit || boardResumePendingRef.current) return;
@@ -5519,6 +5532,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       commit([...itemsRef.current, item]);
       setSelected([item.id]);
       setTool("select");
+      modalEditorBase.current=itemsRef.current.find(candidate=>candidate.id===item.id)??item;
       setTableEditorId(item.id);
       setTableDraft({ rows, cols, cells: [...cells], header: true, fontSize: 13, align: "left", stripe: false, compact: false });
       return;
@@ -8457,6 +8471,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           remoteFingerprint === acknowledgedSharedContent.current) {
         remoteVersion.current = row.version;
         acknowledgedDocument.current = remoteFingerprint;
+        acknowledgedBoardData.current=data;
+        confirmAttachmentDecisions(data);
         return;
       }
       if (decision === "conflict") {
@@ -8467,6 +8483,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         // Rebase every unsaved local change on the last ACKNOWLEDGED version,
         // not just the special editors. This preserves fresh ink, eraser
         // deletions and moves while accepting independent remote changes.
+        const previousAcknowledgedItems=acknowledgedBoardData.current?expandDocumentInk(acknowledgedBoardData.current):[];
+        // If a peer locked the object while we were typing, discard only the
+        // unsaved text rather than send a new write to that locked object.
+        if(editing){
+          const locked=expandDocumentInk(remote).find(item=>item.id===editing&&item.locked);
+          if(locked)local.items=local.items.map(item=>item.id===editing?{...item,text:locked.text}:item);
+        }
         const merged=mergeBoardDocumentEdits(acknowledgedBoardData.current,local,remote);
         const mergedItems=expandDocumentInk(merged);
         for(const item of expandDocumentInk(remote))
@@ -8488,8 +8511,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         setSelected(current=>current.filter(id=>mergedIds.has(id)));
         if(editing){
           const edited=mergedItems.find(item=>item.id===editing);
-          if(!edited)setEditing(null);
-          else{draftRef.current=edited.text;setDraft(edited.text);}
+          const remoteEdited=expandDocumentInk(remote).find(item=>item.id===editing);
+          if(!edited||!remoteEdited||remoteEdited.locked){
+            textEditSession.current=null;setEditing(null);
+          }else{
+            const session=textEditSession.current;
+            const previousText=previousAcknowledgedItems.find(item=>item.id===editing)?.text;
+            if(session?.id===editing)textEditSession.current=rebaseTextEdit(session,previousText,remoteEdited.text,edited.text);
+            draftRef.current=edited.text;setDraft(edited.text);
+          }
         }
         history.current=[eraserSession.current?.before??mergedItems];
         index.current=0;
@@ -11126,19 +11156,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                       placeholder="Введите текст…"
                       onChange={(e) => {
                         draftRef.current = e.target.value;
+                        if(textEditSession.current?.id===item.id)
+                          textEditSession.current=updateTextEdit(textEditSession.current,e.target.value);
                         setDraft(e.target.value);
                         workChannel.current?.publishEdit(item.id,[{path:["text"],kind:"set",value:e.target.value}]);
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onPointerUp={(e) => e.stopPropagation()}
                       onDoubleClick={(e) => e.stopPropagation()}
-                      onBlur={finishEdit}
+                      onBlur={()=>finishEdit()}
                       onKeyDown={(e) => {
                         e.stopPropagation();
                         if (e.nativeEvent.isComposing) return;
                         if (e.code === "Escape") {
                           e.preventDefault();
-                          setEditing(null);
+                          finishEdit(true);
                         } else if (item.kind === "frame" && e.code === "Enter") {
                           e.preventDefault();
                           finishEdit();

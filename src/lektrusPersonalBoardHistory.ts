@@ -187,3 +187,21 @@ export function reattributeRestoredSharedInk(
  return {items:next,edit:{...edit,before:edit.before.map(item=>restored.get(item.id)??item),
                          after:edit.after.map(item=>restored.get(item.id)??item)}};
 }
+
+/** Typing checkpoints can be persisted before the user leaves the editor.
+ * Track the local action separately from the mutable acknowledged board. */
+export type TextEditSession={id:string;before:string;draft:string;changed:boolean};
+export function beginTextEdit(id:string,text:string):TextEditSession{
+ return {id,before:text,draft:text,changed:false};
+}
+export function updateTextEdit(session:TextEditSession,text:string):TextEditSession{
+ return {...session,draft:text,changed:session.changed||text!==session.draft};
+}
+export function rebaseTextEdit(session:TextEditSession,acknowledged:string|undefined,remote:string,merged:string):TextEditSession{
+ // A genuinely new peer value either supersedes our already saved typing,
+ // or becomes the base under an outstanding local text change. An unrelated
+ // revision merely echoing our text checkpoint must not erase the undo step.
+ if(remote!==acknowledged&&remote!==session.draft)
+  return {...session,before:remote,draft:merged,changed:merged!==remote};
+ return {...session,draft:merged};
+}
