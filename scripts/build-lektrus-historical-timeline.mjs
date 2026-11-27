@@ -517,7 +517,21 @@ const FRENCH_CESSIONS='https://history.state.gov/milestones/1750-1775/treaty-of-
 const TANZANIA_UN='https://www.un.org/en/about-us/member-states/tanzania';
 // Dated names for unchanged source identities; rules are restricted to the
 // affected source name and Wikidata ID, not the modern spellings of neighbors.
+// Source-row names are NOT the historical authority: this maps the background
+// geometry for Tianjin, after the source's false KMT / Hongxian-year labels
+// receive explicit corrections in historicalTitleCorrections.
+export function tianjinReviewedSourceOwner(year){
+ if(year<=1899||year>=1903&&year<=1911)return 'Qing Dynasty';
+ if(year>=1912&&year<=1915||year>=1930&&year<=1936||year===1946)return 'Republic of China';
+ if(year===1916)return 'Empire of China'; // ROC restored March 22
+ if(year>=1917&&year<=1929)return 'Kuomintang'; // 1917–27 is Beiyang-era ROC, NOT KMT rule of Tianjin
+ if(year>=1938&&year<=1944)return 'Empire of Japan';
+ return null; // 1900–02, 1937 and 1945 require divided/transition-year treatment
+}
+
 export const historicalTitleCorrections=[
+ ["Empire of China","Q175379",1916,1916,"Republic of China (Hongxian monarchy until 22 March)","Китайская Республика (монархия Хунсянь до 22 марта)","https://mainuat.chiculture.org.hk/en/photo-story/2348","The Hongxian monarchy was abolished on 22 March 1916. The source outlines cannot present the imperial regime as government of China for all of 1916.","Монархию Юань Шикая упразднили 22 марта 1916 года. Годовая карта обозначает переход власти, не правление императора весь год."],
+ ["Kuomintang","Q31113",1917,1927,"Republic of China (Beiyang era; disputed source aggregate)","Китайская Республика (период Бэйян; спорный исходный агрегат)","https://pure.tudelft.nl/ws/files/142459867/9789463666503_WEB.pdf","The Kuomintang was a party and rival southern government, not the administration of Tianjin in 1917–1927. This broad source geometry is not a dated map of authority exercised by the Beiyang government throughout all of China.","Гоминьдан был партией и конкурентом Бэйянского правительства, но не городскими властями Тяньцзиня в 1917–1927 годах. Общий контур источника не доказывает единого контроля Бэйян над всей территорией Китая."],
  ["Samoa","Q683",1962,1996,"Western Samoa","Западное Самоа","https://history.state.gov/countries/samoa","The name Western Samoa remained until the act of July 1997.","До принятия закона в июле 1997 года независимое государство называлось Западное Самоа."],
  ["Independent State of Samoa","Q683",1962,1996,"Independent State of Western Samoa","Независимое Государство Западное Самоа","https://www.legislation.govt.nz/act/public/1961/0068/latest/whole.html","The independent state's constitutional name included Western Samoa until July 1997.","При независимости в 1962 году официальное название включало Западное Самоа."],
  ["Western Samoa","Q683",1997,2024,"Samoa","Самоа","https://history.state.gov/countries/samoa","The name changed from Western Samoa to Samoa in 1997.","Название Западное Самоа изменено на Самоа в июле 1997 года."],
@@ -1769,13 +1783,21 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
  assert.deepEqual(Object.fromEntries([...tianjinNames].map(n=>[n,tianjinCells.filter(c=>c.name===n).reduce((sum,c)=>sum+c.to-c.from+1,0)])),{'French Indochina':86,'British Colonial Empire':86,'United States of America':12,'German Empire':19,'Empire of Japan':40,'Russian Empire':34,'Kingdom of Belgium':36,'Kingdom of Italy':42,'Austria-Hungary':12});
  for(const c of tianjinCells)exclude(c.source,c.from,c.to,[c.part],tianjin);
  for(const [target,f] of features.entries())if(f.properties.Components&&f.properties.FromYear>=1860&&f.properties.ToYear<=1946){const parts=rawParts(f).flatMap((p,i)=>tianjinHashes.has(componentHash(p))?[i]:[]);if(parts.length)exclude(target,f.properties.FromYear,f.properties.ToYear,parts,tianjin);}
- // Do not use the inaccurate source's Kuomintang label for the Beiyang
- // period (1917–27), the wartime transition years, or the TPG (1900–02).
- const tianjinOwner=y=>y<=1899||y>=1903&&y<=1911?'Qing Dynasty':y>=1912&&y<=1915||y>=1930&&y<=1935||y===1946?'Republic of China':y>=1928&&y<=1929?'Kuomintang':y>=1938&&y<=1944?'Empire of Japan':null;
+ // 1916: Hongxian abolished 22 March; 1917–27: Beiyang ROC authority,
+// not the KMT party; 1936: Chinese municipal government before Japan took
+// Tianjin in July 1937. These are corrections of the surrounding background,
+// NOT polygons purporting to trace any foreign municipal concession.
+ const tianjinOwner=tianjinReviewedSourceOwner;
  const openRanges=new Map(),transferRanges=new Map();let tianjinResolved=0,tianjinPending=0;
  for(let year=1860;year<=1946;year++){
   const local=tianjinLocal.filter(c=>c.from<=year&&year<=c.to),cells=local.filter(c=>c.cell),owner=tianjinOwner(year),base=local.filter(c=>!c.cell&&c.name===owner);
   const targets=new Set(base.map(c=>c.source));if(owner)assert.equal(targets.size,1,`Tianjin regional owner ${year}`);
+  // Protect against attributing the city to any identically named later row.
+  if(year===1916||year>=1917&&year<=1927||year===1936){
+   const expected=year===1916?'Q175379':year<=1927?'Q31113':'Q148';
+   assert.equal(features[base[0].source].properties.Wikidata,expected,
+    `Incorrect dated Chinese source identity in Tianjin ${year}`);
+  }
   const target=base[0]?.source;let covered=base.map(c=>c.p);
   for(const c of cells){
    const competition=local.some(o=>!o.cell&&o.name!==owner&&intersectsBox(c.b,o.b)&&polygonClipping.intersection(c.p,o.p).length);
@@ -1793,7 +1815,10 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
    covered=polygonClipping.union(...covered,c.p);
   }
  }
- assert.equal(tianjinResolved,269);assert.equal(tianjinPending,98);
+ // Independently checked source components: 1916 (9), 1917–27 (11×5), 1936 (4).
+ // 68 original oversized foreign-concession component-years are now assigned
+ // to the documented surrounding Chinese state row rather than left unresolved.
+ assert.equal(tianjinResolved,337);assert.equal(tianjinPending,30);
  // The 1859 conquest of Saigon must not be confused with the later cession
  // of Cochinchina; this source has already painted most of the Mekong delta.
  const saigon=d('The French campaign began in 1858 and seized Saigon in 1859. The treaty of 5 June 1862 ceded the three eastern provinces and Poulo Condor; the three western provinces were annexed in June 1867, recognized by treaty in 1874. The identical source extent for 1859–1867 cannot substantiate French control of all these mainland areas before 1867.','Французская кампания началась в 1858 г., Сайгон был захвачен в 1859 г. По договору от 5 июня 1862 г. переданы три восточные провинции и Пуло-Кондор; три западные провинции аннексированы в июне 1867 г., уступка признана договором 1874 г. Одинаковый исходный контур 1859–1867 гг. не подтверждает контроль Франции над всей областью до 1867 г.',['https://mjp.univ-perp.fr/constit/vn1862.htm','https://archives-nationales-outre-mer.culture.gouv.fr/faire-une-recherche/indochine','https://www.musee-armee.fr/ExpoIndochine/pdf/MA_ExpoIndochine_Livretvisite.pdf']);

@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-27",
+  "sourceDataset": "Cliopatria 0.2.1, pinned SHA-256 fc6f0d1e4cc42f45da83522b3696db6f2cc85ec0d12259a85c89b31347b8fc0a",
+  "status": "source-polygon correction implemented; full rebuilt annual audit pending",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "scope": "Tianjin false oversized foreign concession polygons and regional state attribution",
+  "years": {
+    "1916": 9,
+    "1917": 5,
+    "1918": 5,
+    "1919": 5,
+    "1920": 5,
+    "1921": 5,
+    "1922": 5,
+    "1923": 5,
+    "1924": 5,
+    "1925": 5,
+    "1926": 5,
+    "1927": 5,
+    "1936": 4
+  },
+  "closedSourceComponentYears": 68,
+  "closedDistinctSourceRegionYears": 68,
+  "before": {
+    "regionalResolved": 269,
+    "tianjinPending": 98,
+    "totalTerritorialOpen": 859,
+    "openRegionYears": 780
+  },
+  "afterExpected": {
+    "regionalResolved": 337,
+    "tianjinPending": 30,
+    "totalTerritorialOpen": 791,
+    "openRegionYears": 712
+  },
+  "correctedBackgroundPolities": [
+    {
+      "years": "1916",
+      "raw": "Empire of China",
+      "sourceWikidata": "Q175379",
+      "mapped": "Republic of China (Hongxian transition)"
+    },
+    {
+      "years": "1917–1927",
+      "raw": "Kuomintang",
+      "sourceWikidata": "Q31113",
+      "mapped": "Republic of China (Beiyang-era disputed aggregate)"
+    },
+    {
+      "years": "1936",
+      "raw": "Republic of China",
+      "sourceWikidata": "Q148",
+      "mapped": "Republic of China"
+    }
+  ],
+  "explicitlyUnresolved": [
+    1900,
+    1901,
+    1902,
+    1937,
+    1945
+  ],
+  "notClaimed": "No historical surveyed concession cadastral boundaries, no date-specific 1937 or 1945 replacement; only false oversized source concession cells transferred to legitimate background row where unique and non-competing.",
+  "sources": [
+    "https://mainuat.chiculture.org.hk/en/photo-story/2348",
+    "https://pure.tudelft.nl/ws/files/142459867/9789463666503_WEB.pdf",
+    "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487",
+    "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3",
+    "https://journals.open.tudelft.nl/iphs/article/download/2751/2962/"
+  ]
+}

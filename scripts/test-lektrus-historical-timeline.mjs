@@ -4,7 +4,7 @@ import path from 'node:path';
 import polygonClipping from 'polygon-clipping';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
+import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,historicalTitleCorrections,tianjinReviewedSourceOwner,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalDatedGapCenters,tianjinConcessionChronology,tianjinConcessionStatus,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,historicalYearSourcesComparable,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
@@ -90,6 +90,22 @@ for(const rule of historicalTitleCorrections){
  for(const prev of history)assert.ok(prev[3]<rule[2]||rule[3]<prev[2],
   'Overlapping historical title intervals '+key);
  history.push(rule);allDatedNames.set(key,history);
+}
+// New Tianjin background owners have exact chronological and source-identity gates.
+for(const [year,source] of [[1916,'Empire of China'],[1917,'Kuomintang'],
+ [1923,'Kuomintang'],[1927,'Kuomintang'],[1928,'Kuomintang'],
+ [1936,'Republic of China'],[1937,null],[1945,null],
+ [1901,null],[1946,'Republic of China']]){
+ assert.equal(tianjinReviewedSourceOwner(year),source,'Tianjin background '+year);
+}
+for(const [name,qid,year,label] of [
+ ['Empire of China','Q175379',1916,'Republic of China (Hongxian monarchy until 22 March)'],
+ ['Kuomintang','Q31113',1917,'Republic of China (Beiyang era; disputed source aggregate)'],
+ ['Kuomintang','Q31113',1927,'Republic of China (Beiyang era; disputed source aggregate)']
+]){
+ const rule=historicalTitleCorrections.find(row=>row[0]===name&&row[1]===qid&&year>=row[2]&&year<=row[3]);
+ assert.equal(rule?.[4],label,'False China polity attribution '+year);
+ assert.ok(rule?.[6]?.startsWith('https://'));
 }
 assert.equal(historicalCorsicaLiberationCenters(1942).length,0);
 const corsica1943=historicalCorsicaLiberationCenters(1943);
@@ -525,7 +541,13 @@ if(outDir&&sourceFile){
       }
       if(year>=1860&&year<=1946){
         const unresolved=state.territorialIssues.filter(i=>i.group==='Тяньцзинь — концессия');
-        const cells=tianjinCells.filter(c=>c.from<=year&&year<=c.to),owner=year<=1899||year>=1903&&year<=1911?'Qing Dynasty':year>=1912&&year<=1915||year>=1930&&year<=1935||year===1946?'Republic of China':year>=1928&&year<=1929?'Kuomintang':year>=1938&&year<=1944?'Empire of Japan':null;
+        if(year===1916||year>=1917&&year<=1927||year===1936){
+         assert.equal(unresolved.length,0,'Wrong unresolved Chinese background '+year);
+         const expectedYearName=year===1916?'Republic of China (Hongxian monarchy until 22 March)':year<=1927?'Republic of China (Beiyang era; disputed source aggregate)':'Republic of China';
+         assert.ok(state.drawable.some(({record})=>record.name===expectedYearName),
+          'Missing corrected Chinese regional label '+year);
+        }
+        const cells=tianjinCells.filter(c=>c.from<=year&&year<=c.to),owner=tianjinReviewedSourceOwner(year);
         for(const c of cells){
           // A transferred component can belong to a regional owner, but never
           // to its original concession row or any unrelated aggregate.
@@ -947,8 +969,8 @@ if(outDir&&sourceFile){
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
   assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2201);assert.equal(externalRecordYears,477);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
-  assert.equal(tianjinClosed,269);assert.equal(tianjinOpen,98);
-  assert.equal(unresolvedSourceYears,859);assert.equal(unresolvedRegionYears,780);
+  assert.equal(tianjinClosed,337);assert.equal(tianjinOpen,30);
+  assert.equal(unresolvedSourceYears,791);assert.equal(unresolvedRegionYears,712);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
   assert.equal(sixthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),2);
   assert.equal(exactConflictPendingReviews.length,8);
