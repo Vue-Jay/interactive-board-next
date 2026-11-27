@@ -88,6 +88,31 @@ const papalRevolutionary=normalizeHistoricalSource({type:'FeatureCollection',fea
 assert.deepEqual(papalRevolutionary.map(r=>[r.from,r.to,r.role]),[
  [1789,1790,'polity'],[1791,1796,'polity'],[1797,1797,'settlement']]);
 assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
+
+ // Year-gated source splits preserve raw geometric identity and never invent
+ // a surveyed border during administrative/territorial transitions.
+ for(const [name,from,to,markers] of [
+  ['Montenegro',1877,1915,[1878,1880,1910,1912,1913,1914]],
+  ['Kingdom of Sardinia',1797,1816,[1798,1799,1800,1814,1815]],
+  ['Ottoman Empire',1877,1915,[1878,1881,1882,1898,1908,1912,1913,1914]]
+ ]){
+  const input=square();
+  const timeline=normalizeHistoricalSource({type:'FeatureCollection',features:[feature(name,from,to,input)]}).records;
+  assert.equal(timeline[0].from,from);assert.equal(timeline.at(-1).to,to);
+  for(let i=1;i<timeline.length;i++)assert.equal(timeline[i].from,timeline[i-1].to+1,name+' uncovered/overlapping year');
+  for(const y of markers){
+   const r=timeline.find(x=>x.from<=y&&y<=x.to);
+   assert.equal(r.from,y,name+'/'+y+' must be a separately documented transition');
+   assert.equal(r.role,'settlement',name+'/'+y+' cannot paint a fixed all-year state boundary');
+   assert.equal(r.sourceRole,'polity');assert.ok(r.review?.sources?.length>=3&&r.review?.reasonRu,name+'/'+y+' sources');
+  }
+  assert.ok(timeline.every(x=>x.geometryId===sha256(JSON.stringify(input))),name+' changed raw polygon');
+  assert.ok(timeline.every(x=>x.geometryStatus==='candidate'),name+' improperly accepted a boundary');
+ }
+ for(const [name,year,fragment] of [['Montenegro',1900,'до Балканских войн'],['Ottoman Empire',1900,'сюзеренитет']]){
+  const rs=normalizeHistoricalSource({type:'FeatureCollection',features:[feature(name,year,year)]}).records;
+  assert.equal(rs.length,1);assert.ok(rs[0].nameRu.includes(fragment));assert.equal(rs[0].role,'polity');
+ }
 // Papal sovereignty was interrupted several times. Never project a former
 // territorial outline as an uninterrupted state, nor synthesize successor borders.
 const papalNapoleonic=normalizeHistoricalSource({type:'FeatureCollection',features:[feature('Papal States',1797,1815)]}).records;

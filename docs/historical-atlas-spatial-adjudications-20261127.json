@@ -3,17 +3,17 @@
   "date": "2026-11-27",
   "branch": "fix/atlas-exhaustive-browser-audit-20261116",
   "sourceFindingFile": "docs/historical-atlas-spatial-findings-20261124.json",
-  "status": "98 of 476 historical comparison cases classified, three additional UK-vs-empire scope warnings; unchanged frozen source geometry; full annual rebuild/CI pending",
+  "status": "112 historically classified archived comparisons; 14 more dated Montenegro/Ottoman/Sardinia/Papal issues; original boundaries still candidates",
   "frozenBaselinePreserved": true,
   "counts": {
     "archivedNamedDisagreements": 476,
     "falseExactNameMatchesCorrected": 13,
     "noncomparableDanishRealm": 13,
     "noncomparableMilitaryControl": 2,
-    "explainedComparisonCases": 98,
+    "explainedComparisonCases": 112,
     "previouslyExplained": 5,
-    "newlyExplained": 93,
-    "remainingWithoutExplanation": 378,
+    "newlyExplained": 107,
+    "remainingWithoutExplanation": 364,
     "historicallyVerifiedGeometries": 0,
     "unverifiedArchiveGeometries": 476,
     "territorialComponentYearsStillOpenExpected": 769,
@@ -27,9 +27,10 @@
     "macDynastyIdentified": 1,
     "lateHordeSuccessorConfusion": 2,
     "datedScopeDiscrepancies": 34,
-    "ukColonialScopeComparisonCases": 3
+    "ukColonialScopeComparisonCases": 3,
+    "datedPoliticalStatusScopeReviews": 14
   },
-  "warning": "98 classifications explain historical status or comparison scope, not accepted borders; 378 archived spatial candidates and 769 distinct territorial component-years remain pending independent reconstruction.",
+  "warning": "Historical classification does not certify any original border; 364 comparisons without an explanation, 769 territorial component-years unchanged pending full independent rebuild.",
   "cases": [
     {
       "id": "2010:119",
@@ -1601,6 +1602,244 @@
       "sources": [
         "https://tile.loc.gov/storage-services/service/gdc/gdclccn/06/01/83/18/06018318/06018318.pdf",
         "https://www.nationalarchives.gov.uk/help-with-your-research/research-guides/colonies-dependencies-further-research"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1914:37",
+      "year": 1914,
+      "archiveName": "Montenegro",
+      "effectiveCandidateName": "Montenegro",
+      "archiveSha256": "a99425f9486e2243835fdc75ad7d82e6ddf3c72fcef87a63429f3313d830cf19",
+      "candidateGeometryId": "5177ff8c64888bf09f29320212bbf9b62d3e073deb21a0b9b8a714a15d3fb365",
+      "iou": 0.743346,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: post-1913 gains need dated boundaries. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://cds-ngo.me/en/great-powers-and-the-international-recognition-and-delimitation-of-montenegro-in-the-period-1878-1884/",
+        "https://pressto.amu.edu.pl/bp/article/view/1766"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1914:124",
+      "year": 1914,
+      "archiveName": "Ottoman Empire",
+      "effectiveCandidateName": "Ottoman Empire",
+      "archiveSha256": "a99425f9486e2243835fdc75ad7d82e6ddf3c72fcef87a63429f3313d830cf19",
+      "candidateGeometryId": "15bf55ae2f9fbdc4793494321a656e5cb4e6f991afc1e8e7abe77cdf33bacd7e",
+      "iou": 0.808938,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: 1914 formal annexations and control changes. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://assets.cambridge.org/97805218/80602/excerpt/9780521880602_excerpt.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/tu/turkeycountrystu00metz_0/turkeycountrystu00metz_0.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:119",
+      "year": 1900,
+      "archiveName": "Montenegro",
+      "effectiveCandidateName": "Montenegro",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "b7391d179d0e04c765d8f50722025ba547df4fffd8eec9b8474664643e097ddb",
+      "iou": 0.38877,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: pre-Balkan-Wars versus later territory. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://cds-ngo.me/en/great-powers-and-the-international-recognition-and-delimitation-of-montenegro-in-the-period-1878-1884/",
+        "https://pressto.amu.edu.pl/bp/article/view/1766"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1900:157",
+      "year": 1900,
+      "archiveName": "Ottoman Empire",
+      "effectiveCandidateName": "Ottoman Empire",
+      "archiveSha256": "9c9221c851eaba4948e11b2a0b078e89239231f8c74df0dc321750ae234f10b5",
+      "candidateGeometryId": "32f166ec2be1b40d6d1d390a187706f8a24ce44eaf1981a4d68a01804abf0a1b",
+      "iou": 0.537675,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: foreign occupation and nominal suzerainty versus direct rule. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://assets.cambridge.org/97805218/80602/excerpt/9780521880602_excerpt.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/tu/turkeycountrystu00metz_0/turkeycountrystu00metz_0.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:116",
+      "year": 1880,
+      "archiveName": "Montenegro",
+      "effectiveCandidateName": "Montenegro",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "7b892a9505f1374fff1ab29343e3af692e2622e0992a01f85bdcbc5505b59abf",
+      "iou": 0.266846,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: Ulcinj delayed handover. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://cds-ngo.me/en/great-powers-and-the-international-recognition-and-delimitation-of-montenegro-in-the-period-1878-1884/",
+        "https://pressto.amu.edu.pl/bp/article/view/1766"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1880:166",
+      "year": 1880,
+      "archiveName": "Ottoman Empire",
+      "effectiveCandidateName": "Ottoman Empire",
+      "archiveSha256": "4751e30d881d60d31479f5d016ff4d9c1df47e9bb18efaa3a5086601f68f76dc",
+      "candidateGeometryId": "2980319fac170e7fa9b504a3a17d369be7ed14982ae8d044969017dd336dbfd8",
+      "iou": 0.481638,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: Berlin settlement administration and dependent regions. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://assets.cambridge.org/97805218/80602/excerpt/9780521880602_excerpt.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/tu/turkeycountrystu00metz_0/turkeycountrystu00metz_0.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:112",
+      "year": 1878,
+      "archiveName": "Montenegro",
+      "effectiveCandidateName": "Montenegro",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "bdb11b2b67519dccadf8d65d56f29aee770e6ac718400f1bdc56402f1a599050",
+      "iou": 0.271076,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: Berlin treaty boundary and sovereignty transition. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://cds-ngo.me/en/great-powers-and-the-international-recognition-and-delimitation-of-montenegro-in-the-period-1878-1884/",
+        "https://pressto.amu.edu.pl/bp/article/view/1766"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1878:162",
+      "year": 1878,
+      "archiveName": "Ottoman Empire",
+      "effectiveCandidateName": "Ottoman Empire",
+      "archiveSha256": "e792520cd24cfb77b117d41533a59b0a5b82fc53a291fff1549ddc73e7f9a8b2",
+      "candidateGeometryId": "27d2ec65970957b9059dc88d1969cc5875e6f427c5b5bc1a728b2e01ba21e3ff",
+      "iou": 0.486228,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: Berlin treaty direct rule vs suzerainty. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1878/d523",
+        "https://assets.cambridge.org/97805218/80602/excerpt/9780521880602_excerpt.pdf",
+        "https://tile.loc.gov/storage-services/master/frd/frdcstdy/tu/turkeycountrystu00metz_0/turkeycountrystu00metz_0.pdf"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1815:93",
+      "year": 1815,
+      "archiveName": "Kingdom of Sardinia",
+      "effectiveCandidateName": "Kingdom of Sardinia",
+      "archiveSha256": "fb654f734583f550904cfa45f361e395c1a488c4960050da2632cb2ac7d1cd1e",
+      "candidateGeometryId": "0dafd7c87f076819022731bb2fde6557c1ac38457c3eaeaa3791a81e030a2161",
+      "iou": 0.531595,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: Vienna restoration and acquisition of Genoa. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://www.treccani.it/enciclopedia/regno-di-sardegna_%28Enciclopedia-dei-ragazzi%29/",
+        "https://www.treccani.it/enciclopedia/torino_%28Dizionario-di-Storia%29/",
+        "https://history.state.gov/countries/piedmont-sardinia"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1815:94",
+      "year": 1815,
+      "archiveName": "Papal States",
+      "effectiveCandidateName": "Papal States",
+      "archiveSha256": "fb654f734583f550904cfa45f361e395c1a488c4960050da2632cb2ac7d1cd1e",
+      "candidateGeometryId": "0e18c7e748a88d81a38306b78e566b8aaecc3a2112a1a1288845817d094e17dd",
+      "iou": 0.701667,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: 1814–15 restoration after Napoleonic administration. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://www.archontology.org/nations/italy/papal_states/01_polity.php",
+        "https://www.treccani.it/enciclopedia/legazioni-e-delegazioni_%28Enciclopedia-Italiana%29/",
+        "https://www.treccani.it/enciclopedia/stato-pontificio_%28Enciclopedia-Italiana%29/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1815:170",
+      "year": 1815,
+      "archiveName": "Kingdom of Sardinia",
+      "effectiveCandidateName": "Kingdom of Sardinia",
+      "archiveSha256": "fb654f734583f550904cfa45f361e395c1a488c4960050da2632cb2ac7d1cd1e",
+      "candidateGeometryId": "0dafd7c87f076819022731bb2fde6557c1ac38457c3eaeaa3791a81e030a2161",
+      "iou": 0.280857,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: Vienna restoration and acquisition of Genoa. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://www.treccani.it/enciclopedia/regno-di-sardegna_%28Enciclopedia-dei-ragazzi%29/",
+        "https://www.treccani.it/enciclopedia/torino_%28Dizionario-di-Storia%29/",
+        "https://history.state.gov/countries/piedmont-sardinia"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1800:60",
+      "year": 1800,
+      "archiveName": "Papal States",
+      "effectiveCandidateName": "Papal States",
+      "archiveSha256": "51fcb6b1f1c361956a3fc24a9c646844ff88754842aa113780428fb4abcd5f2c",
+      "candidateGeometryId": "53fa1309880dc4765b8cb8ad02181febd512da4f7d9e546b6c93aafc3910139f",
+      "iou": 0.696387,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: Roman Republic cessation and Papal restoration. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://www.archontology.org/nations/italy/papal_states/01_polity.php",
+        "https://www.treccani.it/enciclopedia/legazioni-e-delegazioni_%28Enciclopedia-Italiana%29/",
+        "https://www.treccani.it/enciclopedia/stato-pontificio_%28Enciclopedia-Italiana%29/"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1800:159",
+      "year": 1800,
+      "archiveName": "Kingdom of Sardinia",
+      "effectiveCandidateName": "Kingdom of Sardinia",
+      "archiveSha256": "51fcb6b1f1c361956a3fc24a9c646844ff88754842aa113780428fb4abcd5f2c",
+      "candidateGeometryId": "a44e150a06bbe6fda2a8c35823fcf78e42effeede334ad43aabe9f50689dac1b",
+      "iou": 0.425244,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: French-administered Piedmont versus Savoy Sardinian island. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://www.treccani.it/enciclopedia/regno-di-sardegna_%28Enciclopedia-dei-ragazzi%29/",
+        "https://www.treccani.it/enciclopedia/torino_%28Dizionario-di-Storia%29/",
+        "https://history.state.gov/countries/piedmont-sardinia"
+      ],
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1800:164",
+      "year": 1800,
+      "archiveName": "Kingdom of Sardinia",
+      "effectiveCandidateName": "Kingdom of Sardinia",
+      "archiveSha256": "51fcb6b1f1c361956a3fc24a9c646844ff88754842aa113780428fb4abcd5f2c",
+      "candidateGeometryId": "a44e150a06bbe6fda2a8c35823fcf78e42effeede334ad43aabe9f50689dac1b",
+      "iou": 0.35267,
+      "classification": "dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline",
+      "reasonRu": "Архивное расхождение связано с конкретным историческим изменением: French-administered Piedmont versus Savoy Sardinian island. Годовая исходная заливка не устанавливает единую границу прямого управления, зависимости и военного контроля; идентичность и топология границы требуют независимой картографической проверки.",
+      "sources": [
+        "https://www.treccani.it/enciclopedia/regno-di-sardegna_%28Enciclopedia-dei-ragazzi%29/",
+        "https://www.treccani.it/enciclopedia/torino_%28Dizionario-di-Storia%29/",
+        "https://history.state.gov/countries/piedmont-sardinia"
       ],
       "geometryHistoricallyConfirmed": false
     }

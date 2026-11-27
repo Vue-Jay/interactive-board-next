@@ -601,6 +601,15 @@ function editorialSegments(base,derived=[]){
  if(base.sourceIndex===7187){cut(1454);cut(1462)}
  if(base.role==='polity'&&base.sourceName==='Sultanate of Malacca')cut(1529);
  if(base.role==='polity'&&base.sourceName==='Golden Horde'){cut(1466);cut(1502)}
+ // These are sovereignty/administration chronologies, not reconstructed
+ // historical boundary lines; yearly snapshots must expose transitions.
+ if(base.role==='polity'&&base.sourceName==='Montenegro')
+  for(const year of [1878,1879,1880,1881,1910,1911,1912,1913,1914,1915])cut(year);
+ if(base.role==='polity'&&base.sourceName==='Kingdom of Sardinia')
+  for(const year of [1798,1799,1800,1801,1814,1815,1816,1860,1861])cut(year);
+ if(base.role==='polity'&&base.sourceName==='Ottoman Empire')
+  for(const year of [1878,1879,1881,1882,1883,1898,1899,1908,1909,1912,1913,1914,1915])cut(year);
+
  // A chronological source label must not resurrect Papal sovereignty during
  // the Roman Republics or Napoleon's annexation; year-boundary transitions
  // have a separate warning and never imply a year-round uniform ruler.
@@ -665,6 +674,106 @@ function editorialSegments(base,derived=[]){
   const rename=(name,nameRu,url,reason,reasonRu)=>{r={...r,name,nameRu,nameStatus:'reviewed'};note(reason,[url],reasonRu);};
   // Historical legal scope warnings. Keep the immutable source polygon:
   // these independent treaties are not digital cadastral boundary datasets.
+
+  // A treaty or an occupation can change direct administration without
+  // transferring sovereignty. The original Cliopatria footprint is retained
+  // only as thematic evidence during a split-year transition; no replacement
+  // borders are synthesized from it.
+  if(base.role==='polity'&&base.sourceName==='Montenegro'){
+   const docs=['https://history.state.gov/historicaldocuments/frus1878/d523',
+    'https://www.gov.me/en/digital-museum/13-july-symbol-of-montenegrin-statehood?year=1941',
+    'https://cds-ngo.me/en/great-powers-and-the-international-recognition-and-delimitation-of-montenegro-in-the-period-1878-1884/',
+    'https://pressto.amu.edu.pl/bp/article/view/1766'];
+   const transitional=(en,ru,english,russian)=>{
+    r={...r,role:'settlement',sourceRole:'polity',name:en,nameRu:ru,nameStatus:'reviewed'};
+    note(english,docs,russian);
+   };
+   if(from===1878)transitional('Montenegro (1878 Berlin Treaty territorial transition)',
+    'Черногория (Берлинский трактат 1878 года; переходные границы)',
+    'Montenegro was recognized as independent by the 13 July 1878 Treaty of Berlin and received territorial changes; the imported entire-year outline is not a treaty demarcation.',
+    'Берлинский трактат 13 июля 1878 года признал независимость Черногории и изменил территориальные условия. Исходная граница на весь год не является подтверждённой линией договора.');
+   else if(from===1880)transitional('Montenegro (1880 Ulcinj transfer transition)',
+    'Черногория (передача Улциня в ноябре 1880 года)',
+    'Ulcinj/Dulcigno was handed over only in November 1880 after the contested Berlin settlement. The pre/post-transfer border cannot be inferred from a whole-year coastline.',
+    'Улцинь передан Черногории в ноябре 1880 года, после споров об исполнении Берлинского договора. Нельзя подменять смену границы единым контуром на весь 1880 год.');
+   else if(from===1910)transitional('Montenegro (1910 kingdom proclamation transition)',
+    'Черногория (провозглашение королевства в 1910 году)',
+    'Montenegro was proclaimed a kingdom in 1910 without establishing a new surveyed border at the proclamation.',
+    'В 1910 году Черногория провозглашена королевством. Смена государственного титула не устанавливает новую геодезическую границу.');
+   else if(from===1912||from===1913)transitional('Montenegro (1912–1913 Balkan Wars control transition)',
+    'Черногория (Балканские войны 1912–1913 годов; контур переходный)',
+    'Balkan Wars changed Montenegrin territorial control in 1912–1913. The precise intra-year front and postwar border are not evidenced by this source outline.',
+    'Балканские войны 1912–1913 годов изменили территориальный контроль Черногории. Исходный полигон не подтверждает фронт или годовую линию разграничения.');
+   else if(from>=1879&&to<=1909){
+    r={...r,name:'Montenegro (post-Berlin, pre-Balkan-Wars; outline unverified)',
+      nameRu:'Черногория (после Берлинского договора, до Балканских войн; контур не проверен)',nameStatus:'reviewed'};
+    note('Montenegro was independent but border demarcations and the November 1880 transfer of Ulcinj mean the post-1913 footprint must not be backdated to 1900.',docs,
+      'Независимость подтверждена, но разграничение 1878–1880 годов и позднейшее расширение 1912–1913 годов не позволяют использовать один современный контур для 1900 года.');
+   }else if(from===1914){
+    r={...r,name:'Kingdom of Montenegro (after 1912–1913 expansion; outline unverified)',
+     nameRu:'Королевство Черногория (после расширений 1912–1913 годов; контур не проверен)',nameStatus:'reviewed'};
+    note('1914 kingdom included territorial acquisitions of the 1912–13 Balkan Wars but its exact coastline and frontier require a dated comparison.',docs,
+     'К 1914 году королевство получило территории по итогам Балканских войн; точную границу нужно сверить с датированной картой.');
+   }
+  }
+  if(base.role==='polity'&&base.sourceName==='Kingdom of Sardinia'){
+   const docs=['https://www.treccani.it/enciclopedia/regno-di-sardegna_%28Enciclopedia-dei-ragazzi%29/',
+    'https://www.treccani.it/enciclopedia/torino_%28Dizionario-di-Storia%29/',
+    'https://history.state.gov/countries/piedmont-sardinia',
+    'https://history.state.gov/countries/genoa'];
+   const transitional=(en,ru,english,russian)=>{
+    r={...r,role:'settlement',sourceRole:'polity',name:en,nameRu:ru,nameStatus:'reviewed'};
+    note(english,docs,russian);
+   };
+   if(from===1798)transitional('Savoy monarchy (1798 French occupation transition)',
+    'Савойская монархия (французская оккупация Пьемонта в 1798 году)',
+    'French troops occupied Turin in December 1798. The mainland and the island Sardinia cannot be painted as one uninterrupted effective government throughout the year.',
+    'Французские войска заняли Турин в декабре 1798 года. Не следует изображать материковые владения и остров Сардинию как одну территорию непрерывного управления в течение всего года.');
+   else if(from>=1799&&to<=1813)transitional('Savoy monarchy in Sardinia / French-administered Piedmont (source footprint)',
+    'Савойский дом на Сардинии / французское управление Пьемонтом (исходный ареал)',
+    'The Savoy court retained its Sardinian island base while Piedmont was ruled by France or its allies; the source multi-region polygon does not represent one effectively governed kingdom.',
+    'Савойская династия сохраняла власть на острове Сардиния, а Пьемонт находился под иным управлением. Прежний общий политический контур не отражает реальное разделение.');
+   else if(from===1814||from===1815)transitional('Kingdom of Sardinia (1814–1815 restoration and Genoa acquisition)',
+    'Сардинское королевство (реставрация 1814–1815 годов и присоединение Генуи)',
+    'The Congress of Vienna restored and enlarged Piedmont-Sardinia with Genoa. Do not treat 1814/1815 as a fixed border for every day of each year.',
+    'Реставрация Савойской династии и присоединение Генуи по решению Венского конгресса изменили владения в 1814–1815 годах; единый годовой контур не подтверждён.');
+   else if(from===1860)transitional('Kingdom of Sardinia (1860 Savoy and Nice cessions; transition)',
+    'Сардинское королевство (уступка Савойи и Ниццы в 1860 году)',
+    'Savoy and Nice were ceded to France in 1860; a single unchanged polygon is not a dated pre/post-cession frontier.',
+    'Савойя и Ницца уступлены Франции в 1860 году. Прежний полигон не может служить точной границей до и после уступки.');
+  }
+  if(base.role==='polity'&&base.sourceName==='Ottoman Empire'){
+   const docs=['https://history.state.gov/historicaldocuments/frus1878/d523',
+    'https://assets.cambridge.org/97805218/80602/excerpt/9780521880602_excerpt.pdf',
+    'https://tile.loc.gov/storage-services/master/frd/frdcstdy/tu/turkeycountrystu00metz_0/turkeycountrystu00metz_0.pdf'];
+   const status='Directly administered provinces, nominal suzerainty and foreign military administration did not have the same boundaries.';
+   const transl=(en,ru,english,russian)=>{
+    r={...r,role:'settlement',sourceRole:'polity',name:en,nameRu:ru,nameStatus:'reviewed'};
+    note(english,docs,russian);
+   };
+   if([1878,1881,1882,1898,1908,1912,1913,1914].includes(from)){
+    const description={
+     1878:'Berlin settlement: recognition of Balkan independences; Bulgarian autonomy; Austria-Hungary administration in Bosnia; British administration of Cyprus.',
+     1881:'France established a protectorate in Tunisia without mapping every Ottoman legal claim.',
+     1882:'British forces occupied Egypt while the Ottoman legal relationship persisted.',
+     1898:'Crete entered a new autonomous arrangement under international pressure.',
+     1908:'Bulgaria declared independence and Austria-Hungary annexed Bosnia-Herzegovina.',
+     1912:'Balkan Wars and Italian annexation of Tripolitania changed direct control.',
+     1913:'Balkan Wars settlements changed borders through the year.',
+     1914:'Britain annexed Cyprus and declared a protectorate over Egypt as the First World War began.'
+    }[from];
+    transl('Ottoman Empire ('+from+' administration / treaty transition; historical footprint)',
+      'Османская империя ('+from+' год: смена управления или договора; ареал источника)',
+      description+' '+status+' A single annual source polygon is not a verified contemporaneous frontier.',
+      'В '+from+' году договоры, войны или изменение формы зависимости затронули управление и территориальную принадлежность отдельных областей. Исходный полигон не доказывает единую точную границу всего года.');
+   }else if(from>=1879&&to<=1911){
+    r={...r,name:'Ottoman Empire (direct rule versus suzerainty; scope unverified)',
+      nameRu:'Османская империя (прямое управление и номинальный сюзеренитет различаются)',nameStatus:'reviewed'};
+    note(status+' The source outline must not silently equate the 1878–1911 dependent or occupied territories with uniform direct rule.',docs,
+      'В период 1878–1911 годов непосредственное управление, зависимость и иностранная военная администрация были разными режимами. Границы исходного контура не подтверждены.');
+   }
+  }
+
   // The source is a *historical footprint*, not a cadastre of the Roman
   // Republics, Napoleonic departments or post-1860 papal remnant. Do not
   // invent successor borders from the old outline.
