@@ -664,8 +664,10 @@ await Promise.resolve();
 
 // A successful WebSocket handshake does not guarantee delivery or application.
 let recoveredVersion=8,rejectOnce=true,deliveryAttempts=0;
+const recoveryCursors=[];
 const recovery=api.selfhostWatchDocument("board-1",()=>recoveredVersion,doc=>{
   deliveryAttempts++;
+  recoveryCursors.push(doc.ink_cursors?.map(cursor=>cursor.user_id)??[]);
   if(rejectOnce){rejectOnce=false;return false;}
   recoveredVersion=doc.version;
 },()=>{});
@@ -676,15 +678,25 @@ recoverySocket.emit({type:"ready",version:8});
 env.changeDocument(9);
 recoverySocket.emit({type:"document_changed",version:9,base_version:8,
   delta:{items:{upsert:[{id:"pupil-stroke",kind:"pen",points:[{x:2,y:3}]}]}},
-  updated_at:"2026-11-26T00:00:00Z",updated_by:"student"});
+  updated_at:"2026-11-26T00:00:00Z",updated_by:"student",
+  ink_cursor:{type:"cursor",user_id:"student",client_id:"student_client",x:2,y:3}});
 await waitFor(()=>recoveredVersion===9);
 assert.ok(deliveryAttempts>=2,"Rejected revision must be read again, not marked delivered");
+assert.ok(recoveryCursors[0].includes("student"),"Initial rejected revision carries its committed cursor");
+assert.ok(recoveryCursors.at(-1).includes("student"),"Retry preserves the committed cursor until the revision is accepted");
 assert.ok(records.some(x=>x.path==="/api/v1/boards/board-1/document"&&x.query==="?ink_point_deltas=true"),
   "Rejected delta must recover through a full document read");
 env.changeDocument(10);
 for(let i=0;i<160&&recoveredVersion!==10;i++)await new Promise(resolve=>setTimeout(resolve,50));
 assert.equal(recoveredVersion,10,"Quiet but online socket must recover a missed student revision");
 assert.equal(recoverySocket.readyState,1);
+env.changeDocument(11);
+const readsBeforeInvalidPatch=records.length;
+recoverySocket.emit({type:"document_changed",version:11,base_version:10,
+  delta:{items:{order:["missing-object"]}},updated_at:"2026-11-26T00:00:00Z",updated_by:"student"});
+await waitFor(()=>recoveredVersion===11);
+assert.ok(records.slice(readsBeforeInvalidPatch).some(x=>x.path==="/api/v1/boards/board-1/document"&&x.query==="?ink_point_deltas=true"),
+  "An invalid socket delta must recover through a full snapshot, not the rejected chain");
 recovery();
 await Promise.resolve();
 env.changeDocument(8);
