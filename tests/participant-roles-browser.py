@@ -1661,6 +1661,43 @@ def check_undo_reconnect_sync(browser):
             print("Shared vocabulary and orthography responses, navigation and forged response denial passed.")
             replace_items([])
 
+            # Syntax annotations and number-base answers share the same board.
+            syntax={"id":"qa-syntax","kind":"graph","graphFigureId":"ru-syntax","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA syntax","createdBy":author,
+                    "schoolDiagram":{"kind":"syntax","title":"QA syntax","showMarks":True,"words":[{"id":"a","text":"Мама","role":"none"},{"id":"b","text":"читает","role":"none"}]}}
+            replace_items([syntax])
+            pupil.get_by_role("button",name="Мама: Не отмечать",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==syntax["id"] and i.get("schoolDiagram",{}).get("words",[{}])[0].get("role")=="subject" for i in d["items"]),"Syntax mark not saved")
+            expect(teacher.get_by_role("button",name="Мама: Подлежащее",exact=True)).to_be_visible(timeout=15000)
+            teacher.get_by_label("Выберите член предложения",exact=True).select_option("predicate")
+            teacher.get_by_role("button",name="читает: Не отмечать",exact=True).click()
+            expect(pupil.get_by_role("button",name="читает: Сказуемое",exact=True)).to_be_visible(timeout=15000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["words"][0]["text"]="Подмена"
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            replace_items([])
+            place={"id":"qa-place-value","kind":"graph","graphFigureId":"info-place-value","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA base","createdBy":author,
+                   "schoolDiagram":{"kind":"place-value","title":"QA base","base":2,"digits":"","showPowers":True}}
+            replace_items([place])
+            pupil.get_by_placeholder("Введите число",exact=True).fill("101")
+            wait_api(pupil,lambda d:any(i["id"]==place["id"] and i.get("schoolDiagram",{}).get("digits")=="101" for i in d["items"]),"Place-value response not saved")
+            expect(teacher.get_by_placeholder("Введите число",exact=True)).to_have_value("101",timeout=15000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["base"]=16
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            teacher.get_by_label("Основание",exact=True).select_option("10")
+            expect(pupil.get_by_placeholder("Введите число",exact=True)).to_have_value("",timeout=15000)
+            expect(pupil.get_by_text("Основание: 10",exact=True)).to_be_visible(timeout=15000)
+            pupil.get_by_placeholder("Введите число",exact=True).fill("98")
+            expect(teacher.get_by_placeholder("Введите число",exact=True)).to_have_value("98",timeout=15000)
+            print("Shared syntax marks, place-value input, teacher base replacement and forged source denial passed.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],

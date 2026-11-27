@@ -24,7 +24,7 @@ permissions:
 jobs:
   browser:
     name: Participant roles and touch UI — round ${{ matrix.round }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -87,7 +87,7 @@ jobs:
 
   production-browser:
     name: Read-only live browser and API connectivity
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4

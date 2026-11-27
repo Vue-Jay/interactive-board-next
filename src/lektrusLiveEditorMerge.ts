@@ -84,6 +84,42 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
   }
   return result as T;
  }
+ // Syntax annotations refer to a specific word identity and text. A stale
+ // pupil marking must not overwrite a replacement sentence, even when the
+ // teacher reused word IDs. Merge independent roles only on identical source.
+ if(record(base)&&record(edit)&&record(latest)&&base.kind==="syntax"&&edit.kind==="syntax"&&latest.kind==="syntax"&&
+    Array.isArray(base.words)&&Array.isArray(edit.words)&&Array.isArray(latest.words)&&
+    base.words.every(record)&&edit.words.every(record)&&latest.words.every(record)){
+  const before=base.words as Record<string,unknown>[],local=edit.words as Record<string,unknown>[],remote=latest.words as Record<string,unknown>[];
+  const source=(words:Record<string,unknown>[])=>words.map(w=>[w.id,w.text]);
+  const localChanged=!same(source(before),source(local)),remoteChanged=!same(source(before),source(remote));
+  const result:Record<string,unknown>={...latest};
+  for(const field of new Set([...Object.keys(base),...Object.keys(edit)])){
+   if(field==="words"||same(base[field],edit[field]))continue;
+   if(!(field in edit))delete result[field];else result[field]=mergeEditedValue(base[field],edit[field],latest[field],field);
+  }
+  if(localChanged){
+   result.words=local.map(w=>{
+    const b=before.find(v=>v.id===w.id&&v.text===w.text),r=remote.find(v=>v.id===w.id&&v.text===w.text);
+    return b&&r&&same(w.role,b.role)?{...w,role:r.role}:w;
+   });
+  }else if(!remoteChanged){
+   result.words=remote.map((w,i)=>({...w,role:same(local[i].role,before[i].role)?w.role:local[i].role}));
+  }
+  return result as T;
+ }
+ // A numeric answer belongs to its original base. Preserve unrelated
+ // properties, but never carry old binary digits into a replacement task.
+ if(record(base)&&record(edit)&&record(latest)&&base.kind==="place-value"&&edit.kind==="place-value"&&latest.kind==="place-value"){
+  const result:Record<string,unknown>={...latest};
+  for(const field of new Set([...Object.keys(base),...Object.keys(edit)])){
+   if(field==="base"||field==="digits"||same(base[field],edit[field]))continue;
+   if(!(field in edit))delete result[field];else result[field]=mergeEditedValue(base[field],edit[field],latest[field],field);
+  }
+  if(!same(base.base,edit.base)){result.base=edit.base;result.digits=edit.digits;}
+  else if(same(base.base,latest.base)&&!same(base.digits,edit.digits))result.digits=edit.digits;
+  return result as T;
+ }
  if(same(base,latest))return edit;
  // Permutations are atomic. Index merging can create duplicate words.
  if(key==="answerOrder"||key==="practice"||key==="response")return edit;

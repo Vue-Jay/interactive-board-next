@@ -351,3 +351,18 @@ for(const [base,source,response] of [
  assert.deepEqual(mergeEditedValue(base,updated,answered),updated);
  assert.deepEqual(mergeEditedValue(base,answered,{...base,title:"Rename"}),{...answered,title:"Rename"});
 }
+
+{
+ const syntax={kind:"syntax",title:"Sentence",showMarks:true,words:[{id:"a",text:"Мама",role:"none"},{id:"b",text:"читает",role:"none"}]};
+ const local={...syntax,words:[{...syntax.words[0],role:"subject"},syntax.words[1]]};
+ const remote={...syntax,words:[syntax.words[0],{...syntax.words[1],role:"predicate"}]};
+ assert.deepEqual(mergeEditedValue(syntax,local,remote).words,[local.words[0],remote.words[1]]);
+ const replacement={...syntax,words:[{id:"a",text:"Папа",role:"none"},syntax.words[1]]};
+ assert.deepEqual(mergeEditedValue(syntax,local,replacement),replacement,"Stale marks must not annotate a replacement word");
+ assert.deepEqual(mergeEditedValue(syntax,replacement,remote).words,[replacement.words[0],remote.words[1]],"Teacher change preserves independent marking of an unchanged word");
+ const place={kind:"place-value",title:"Number",base:2,digits:"",showPowers:true};
+ const answer={...place,digits:"101"},newBase={...place,base:10,digits:""};
+ assert.deepEqual(mergeEditedValue(place,answer,newBase),newBase);
+ assert.deepEqual(mergeEditedValue(place,newBase,answer),newBase);
+ assert.deepEqual(mergeEditedValue(place,answer,{...place,title:"Rename"}),{...answer,title:"Rename"});
+}
