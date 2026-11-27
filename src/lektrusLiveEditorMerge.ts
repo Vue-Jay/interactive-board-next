@@ -74,22 +74,36 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
      changed.length>old.length&&remote.length>old.length&&
      !same(changed,remote)&&
      !(isIdCollection(old,pointKey)&&isIdCollection(changed,pointKey)&&isIdCollection(remote,pointKey))){
-    const offset=remote.length-old.length;
+    // Match the exact append/deduplication rules of mergeArray. A fixed
+    // offset is wrong when a previously delivered point is already present.
+    const mergedTail=remote.slice(old.length);
+    const rebasedIndices=new Map<number,number>();
     const remoteNames=new Set(remote.filter(record).map(p=>String(p.label??"")));
     const nameFor=(index:number)=>{
      let n=index,label="";
      do{label=String.fromCharCode(65+n%26)+label;n=Math.floor(n/26)-1;}while(n>=0);
      return label;
     };
-    const appended=changed.slice(old.length).map(point=>{
-      if(!record(point)||typeof point.label!=="string"||!remoteNames.has(point.label))return point;
-      let i=0,label=nameFor(i);
-      while(remoteNames.has(label)&&i<1000)label=nameFor(++i);
-      remoteNames.add(label);
-      return {...point,label};
+    const appended=changed.slice(old.length).map((point,index)=>{
+      let match=mergedTail.findIndex(value=>same(value,point));
+      if(match<0){
+        if(record(point)&&typeof point.label==="string"&&point.label){
+          let label=point.label;
+          if(remoteNames.has(label)){
+            let i=0;label=nameFor(i);
+            while(remoteNames.has(label))label=nameFor(++i);
+            point={...point,label};
+          }
+          remoteNames.add(label);
+        }
+        match=mergedTail.length;
+        mergedTail.push(point);
+      }
+      rebasedIndices.set(old.length+index,old.length+match);
+      return point;
     });
     const shifted:Record<string,unknown>={...edit,[pointKey]:[...changed.slice(0,old.length),...appended]};
-    const shift=(index:unknown)=>typeof index==="number"&&index>=old.length?index+offset:index;
+    const shift=(index:unknown)=>typeof index==="number"?(rebasedIndices.get(index)??index):index;
     const fields=pointKey==="graphPoints"?
       ["graphSegments","graphAngles","graphCircles","graphPolygons","graphMidpoints","graphConstraints"]:
       ["segments","angles","circles","polygons","midpoints","constraints"];
@@ -128,8 +142,10 @@ export type LiveEditorOp={path:(string|number)[];kind:"set"|"remove"|"append"|"u
 const MAX_DEPTH=18;
 export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
  const changes:LiveEditorOp[]=[];
+ let overflow=false;
  const walk=(a:unknown,b:unknown,path:(string|number)[],depth:number)=>{
-  if(same(a,b)||depth>MAX_DEPTH)return;
+  if(overflow||same(a,b))return;
+  if(depth>MAX_DEPTH){overflow=true;return;}
   if(b===undefined&&path.length){changes.push({path,kind:"remove"});return;}
   if(Array.isArray(a)&&Array.isArray(b)){
    const key=String(path[path.length-1]??"");
@@ -163,7 +179,9 @@ export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
   changes.push({path,kind:"set",value:b});
  };
  walk(before,after,[],0);
- return changes.slice(0,300);
+ // Never publish half of a related geometry/diagram update. The durable
+ // revision still carries the entire edit when the preview budget is exceeded.
+ return overflow||changes.length>300?[]:changes;
 }
 export function applyEditorOps<T>(input:T,ops:readonly LiveEditorOp[]):T{
  let result:unknown=input;
@@ -186,7 +204,9 @@ export function applyEditorOps<T>(input:T,ops:readonly LiveEditorOp[]):T{
    case "upsert-id":{
      if(!Array.isArray(value)||!action.id||!record(action.value))return value;
      const index=value.findIndex(v=>record(v)&&v.id===action.id);
-     if(index<0)return [...value,action.value];
+     // An update with a prior value is not a creation. A delayed preview
+     // must not revive a peer-deleted point, wire, vessel or attached stroke.
+     if(index<0)return action.before!==undefined?value:[...value,action.value];
      return value.map((v,i)=>i===index&&action.before!==undefined?mergeEditedValue(action.before,action.value,v):i===index?action.value:v);
    }
    case "remove-id":{

@@ -57,6 +57,25 @@ assert.equal(new Set(combined.graphPoints.map(p=>p.label)).size,4,"vertex names 
 assert.deepEqual(combined.graphSegments.map(s=>[s.a,s.b]),[[1,2],[0,3]],
  "new vertex references are rebased instead of attaching to the wrong point");
 
+// A received checkpoint can already contain one of our newly appended
+// points. Rebase the remaining references to their actual merged indices.
+{
+ const shared={x:5,y:6,label:"C"};
+ const remoteOnly={x:7,y:8,label:"D"};
+ const localOnly={x:9,y:10,label:"E"};
+ const local={...original,graphPoints:[...original.graphPoints,shared,localOnly],
+  graphSegments:[{a:2,b:3,kind:"segment"}]};
+ const remote={...original,graphPoints:[...original.graphPoints,shared,remoteOnly]};
+ const result=mergeEditedValue(original,local,remote);
+ assert.deepEqual(result.graphPoints,[...original.graphPoints,shared,remoteOnly,localOnly]);
+ assert.deepEqual(result.graphSegments.map(s=>[s.a,s.b]),[[2,4]]);
+ // Also reserve labels assigned to earlier local vertices while rebasing.
+ const duplicateLabels={...original,graphPoints:[...original.graphPoints,
+  {x:11,y:12,label:"D"},{x:13,y:14,label:"E"}]};
+ const labels=mergeEditedValue(original,duplicateLabels,remote).graphPoints.map(p=>p.label);
+ assert.equal(new Set(labels).size,labels.length);
+}
+
 const atlas={schoolDiagram:{kind:"atlas",contourMarks:[{id:"one",lon:1,lat:2,label:"Старая"}],
  contourStrokes:[],paintedCountries:{"RU":"#eeeeee"},contourTask:"Задание"}};
 const first={schoolDiagram:{...atlas.schoolDiagram,
@@ -187,4 +206,22 @@ console.log("Lektrus collaborative editor merges, previews, and event wiring: ch
  const stored={id:"text",kind:"text",x:120,y:80,width:240,height:90,rotation:45,text:"original"};
  const delayed={...stored,x:0,y:0,width:100,height:20,rotation:0,text:"new text"};
  assert.deepEqual(live.boardLiveContent(stored,delayed),{...stored,text:"new text",connectorStart:undefined,connectorEnd:undefined});
+}
+
+// Delayed edits cannot resurrect deleted ID-based editor elements.
+for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
+ "components","junctions","wires","elements","rays","vessels","placedDevices","graphPoints","stickerInk"]){
+ const old={id:"old",x:1},changed={...old,x:2},fresh={id:"fresh",x:3};
+ const original={[key]:[old]};
+ const ops=JSON.parse(JSON.stringify(editorDiff(original,{[key]:[changed,fresh]})));
+ assert.deepEqual(applyEditorOps({[key]:[]},ops),{[key]:[fresh]},key+" stale update versus genuine creation");
+}
+{
+ const before={tableCells:Array.from({length:301},()=>0)};
+ const after={tableCells:Array.from({length:301},()=>1)};
+ assert.deepEqual(editorDiff(before,after),[],"Never send only the first 300 cells of an atomic edit");
+ assert.equal(editorDiff({tableCells:[0]},{tableCells:[1]}).length,1);
+ let a=0,b=1;for(let i=0;i<20;i++){a={nested:a};b={nested:b};}
+ assert.deepEqual(editorDiff({deep:a,text:"old"},{deep:b,text:"new"}),[],
+  "A deep partial edit must fall back to the complete durable revision");
 }
