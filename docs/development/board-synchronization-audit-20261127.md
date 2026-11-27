@@ -46,3 +46,7 @@ No physical-device, exhaustive UI or production publication claims are made in t
 ## Revision transport and resume follow-up
 
 Prevent malformed or wrong-board HTTP snapshots from poisoning delta bases; version watchdog uses a bounded single-flight timer independent of notification frequency; temporary access denial is rechecked via the authenticated version-only endpoint, with no content delivered while denied; wake-from-background cannot unlock input while the required server revision is only deferred. Added mocked client fault cases for wrong board, invalid version, invalid document and access recovery without reconnect. Still requires full two-session UI fault injection and physical-device evidence.
+
+## Real two-session acceptance infrastructure
+
+The API integration workflow now starts two independent Chrome profiles against the actual authenticated application and disposable PostgreSQL-backed Uvicorn through a local-only proxy. First scenario covers teacher pen, pupil marker, teacher undo/redo after pupil revision, transport disconnect, slow reconnect and reload; each condition is asserted against the authoritative API and both client backup documents. This is not yet full GUI coverage of 20 object types, physical devices, or measured production latency. Results pending CI. No production deployment from the audit branch.

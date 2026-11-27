@@ -25,7 +25,7 @@ from test_api import TEACHER, STUDENT, PASSWORD
 
 @pytest.mark.asyncio
 async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
-    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru")
+    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru,http://127.0.0.1:18764")
     _login_attempts.clear()
     conn=await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
@@ -315,6 +315,32 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass
             assert blocked.value.status_code==403
+
+            # Two independent full application sessions on a disposable API.
+            # Node/Chrome are enabled only by the integration CI job.
+            if os.getenv("LEKTRUS_RUN_BROWSER_SYNC") == "1":
+                async with app.state.pool.acquire() as db:
+                    await db.execute("UPDATE board_members SET participant_role='student' WHERE board_id=$1 AND user_id=$2",UUID(native),STUDENT)
+                current=(await http.get(url,headers=owner)).json()
+                seed={"version":1,"title":"Native","subject":"","view":{"x":0,"y":0,"zoom":1},
+                      "items":[{"id":"qa-sticky","kind":"sticky","x":300,"y":240,"width":200,"height":120,"text":"Shared note","color":"#fff2df","createdBy":str(TEACHER)}]}
+                saved=await http.put(url,headers=owner,json={"expected_version":current["version"],"document":seed})
+                assert saved.status_code==200,saved.text
+                root=Path(__file__).resolve().parents[1]
+                browser=await asyncio.create_subprocess_exec(
+                    "node","scripts/test-lektrus-two-session-browser.mjs",cwd=root,
+                    env={**os.environ,"LEKTRUS_QA_BOARD":native,
+                         "LEKTRUS_QA_OWNER":json.dumps(owner_session),
+                         "LEKTRUS_QA_STUDENT":json.dumps(student_session)},
+                    stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+                try:
+                    output,_=await asyncio.wait_for(browser.communicate(),timeout=220)
+                except asyncio.TimeoutError:
+                    browser.kill()
+                    await browser.wait()
+                    raise
+                assert browser.returncode==0,output.decode("utf-8",errors="replace")
+                print(output.decode("utf-8",errors="replace"))
 
             uri="ws://127.0.0.1:18762/api/v1/boards/"+board+"/events"
             async with websockets.connect(uri,origin="https://lektrus.ru") as ws_owner:
