@@ -1005,23 +1005,37 @@ console.log("Durable ink pipeline: three unacknowledged frames, bounded coalesci
    const first=idleEnv.sockets.at(-1);
    first.open();
    assert.equal(first.sent[0].idle_age_ms,0);
-   first.emit({type:"ready",version:1,idle_lease:true});
+   assert.equal(first.sent[0].background_idle,true);
+   assert.equal(first.sent[0].background,false);
+   first.emit({type:"ready",version:1,idle_lease:true,background_idle:true});
    assert.equal(first.sent.at(-1).type,"activity");
+   assert.equal(first.sent.at(-1).background,false);
+   clock+=3600000;
+   idleApi.selfhostSetBoardBackground("board-1",clock);
+   assert.equal(first.sent.at(-1).background,true);
+   assert.equal(first.sent.at(-1).idle_age_ms,0);
+   clock+=599999;
+   idleApi.selfhostSetBoardBackground("board-1",null);
+   assert.equal(first.sent.at(-1).background,false);
+   assert.equal(idleEnv.sockets.length,1,"Short background return must preserve the socket");
+   assert.equal(first.readyState,1);
+   idleApi.selfhostSetBoardBackground("board-1",clock);
    clock+=600000;
    first.onclose({code:4410});
    assert.ok(notices.includes("idle_timeout"));
    assert.equal(first.readyState,3);
    await new Promise(resolve=>setTimeout(resolve,350));
    assert.equal(idleEnv.sockets.length,1,"Idle closure must not reconnect in background");
-   idleApi.selfhostNoteBoardActivity("board-1");
+   idleApi.selfhostSetBoardBackground("board-1",null);
    await new Promise(resolve=>setTimeout(resolve,0));
-   assert.equal(idleEnv.sockets.length,2,"Real user activity must bypass backoff");
+   assert.equal(idleEnv.sockets.length,2,"Foreground return must reconnect without a click");
    const second=idleEnv.sockets.at(-1);
    second.open();
    assert.equal(second.sent[0].idle_age_ms,0);
-   second.emit({type:"ready",version:2,idle_lease:true});
+   assert.equal(second.sent[0].background,false);
+   second.emit({type:"ready",version:2,idle_lease:true,background_idle:true});
  } finally {stop?.();Date.now=originalNow;await Promise.resolve();}
- console.log("Negotiated inactivity: no background reconnect, immediate wake on real activity.");
+ console.log("Background-only lease: unlimited foreground, uninterrupted short return, automatic wake after ten minutes.");
 }
 
 // Simulate false offline network state, stale WebSocket auth and the room

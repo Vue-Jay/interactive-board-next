@@ -34,3 +34,9 @@ def idle_deadline(age, now=None):
     if not valid_idle_age(age):
         raise ValueError("invalid idle age")
     return (time.monotonic() if now is None else now) + BOARD_IDLE_SECONDS - age / 1000
+
+def background_deadline(background, age, now=None):
+    """Foreground is unbounded; a hidden board keeps its original deadline."""
+    if type(background) is not bool or not valid_idle_age(age) or (not background and age != 0):
+        raise ValueError("invalid background lease")
+    return idle_deadline(age, now) if background else None
