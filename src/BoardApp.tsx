@@ -8408,11 +8408,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ? await selfhostReadDocument(boardSummary.id,controller.signal)
             : await getRemoteBoardDocument(boardSummary.id);
           if(cancelled)return;
-          if(!row)throw new Error("Серверный документ недоступен");
+          if(!row||row.board_id!==boardSummary.id||!Number.isSafeInteger(row.version)||
+             row.version<0||(!row.document&&row.version>0))
+            throw new Error("Серверный документ недоступен");
           if(row.document&&receiveRemote.current({
             board_id:row.board_id,version:row.version,document:row.document,
             updated_at:row.updated_at??"",updated_by:row.updated_by
           })===false)throw new Error("Серверная версия не применена");
+          // A deferred revision is not yet reconciled. Do not unlock input
+          // or flush queued local edits against a stale acknowledged version.
+          if(row.version>(remoteVersion.current??-1)&&!(row.version===0&&!row.document))
+            throw new Error("Ожидаем применения серверной версии");
         }
         boardResumePendingRef.current=false;
         setBoardResumePending(false);

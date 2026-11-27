@@ -42,3 +42,7 @@ Nested personal undo additionally distinguishes independent changes inside JSON 
 | Performance and publication | Require measured latency, dropped revisions, reconnect convergence under sustained collaboration; do not publish or merge until all gate rows are evidenced. |
 
 No physical-device, exhaustive UI or production publication claims are made in this branch.
+
+## Revision transport and resume follow-up
+
+Prevent malformed or wrong-board HTTP snapshots from poisoning delta bases; version watchdog uses a bounded single-flight timer independent of notification frequency; temporary access denial is rechecked via the authenticated version-only endpoint, with no content delivered while denied; wake-from-background cannot unlock input while the required server revision is only deferred. Added mocked client fault cases for wrong board, invalid version, invalid document and access recovery without reconnect. Still requires full two-session UI fault injection and physical-device evidence.
