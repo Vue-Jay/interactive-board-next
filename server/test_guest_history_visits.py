@@ -106,8 +106,11 @@ async def test_durable_history_checkpoints_retention_restore_and_permissions(cli
     async with app.state.pool.acquire() as conn:
         await conn.execute("DELETE FROM board_history WHERE board_id=$1",UUID(target))
     assert (await client.get(root+"/history",headers=owner)).json()[0]["version"]==1
+    # A legacy editor may still edit objects, but may not rename the board.
+    denied=await client.patch(url,headers=student,json={"expected_version":1,"delta":{"set":{"title":"Forbidden"}}})
+    assert denied.status_code==403, denied.text
     for version in range(1,111):
-        delta={"set":{"title":str(version+1)},"items":{"upsert":[{"id":"a","kind":"pen","x":version}]}}
+        delta={"items":{"upsert":[{"id":"a","kind":"pen","x":version}]}}
         result=await client.patch(url,headers=student,json={"expected_version":version,"delta":delta})
         assert result.status_code==200, result.text
     history=(await client.get(root+"/history?limit=100",headers=owner)).json()
@@ -118,7 +121,7 @@ async def test_durable_history_checkpoints_retention_restore_and_permissions(cli
     assert (await client.get(root+"/history/12",headers=student)).status_code==403
     assert (await client.get(root+"/history/11",headers=owner)).status_code==404
     old=(await client.get(root+"/history/12",headers=owner)).json()
-    assert old["title"]=="12" and old["items"][0]["x"]==11
+    assert old["title"]=="Initial" and old["items"][0]["x"]==11
     async with app.state.pool.acquire() as conn:
         count=await conn.fetchval("SELECT count(*) FROM board_history WHERE board_id=$1",UUID(target))
         checkpoints=await conn.fetchval("SELECT count(*) FROM board_history WHERE board_id=$1 AND checkpoint IS NOT NULL",UUID(target))
