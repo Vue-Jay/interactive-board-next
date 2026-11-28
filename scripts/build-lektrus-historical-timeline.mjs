@@ -223,7 +223,7 @@ independentIslands.states.push(
  {iso:'SMR',wikidata:'Q238',from:1992,name:'San Marino',nameRu:'Сан-Марино',neighbors:[13384,13794],reasonRu:'Республика существовала до вступления в ООН в 1992 году; последнее территориальное расширение состоялось в 1463 году.',sources:['https://www.elezioni.sm/on-line/home/elezioni-giunte/cenni-storici-e-curiosita.html']}
 );
 export const independenceTransitions=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-independence-transitions.json',import.meta.url),'utf8'));
-export const modernIslandGeography=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-modern-island-geometries-20261127.json',import.meta.url),'utf8'));
+export const modernIslandGeography=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-modern-island-geometries-20261128.json',import.meta.url),'utf8'));
 export function deriveTerritorialBatch(features,batch=territorialBatch){
  const exclusions=[],pending=[],resolved=[],restorations=[],relabels=new Map(),attributions=[],extensions=[],seen=new Set(),transfers=[],subtractions=[],pendingExtensions=[];
  const transfer=territorialResolutions.transfer,ceylon=territorialResolutions.ceylonTransfer,mindanao=territorialResolutions.mindanaoReview;
@@ -2623,7 +2623,7 @@ export function normalizeHistoricalSource(source) {
 export function applyReviewedModernIslandGeographies(records,geometries,policy=modernIslandGeography){
  assert.equal(policy.schemaVersion,1);
  assert.equal(policy.source.sha256,independentIslands.source.sha256);
- assert.equal(policy.entries.length,4);
+ assert.equal(policy.entries.length,7);
  const polys=g=>g.type==='Polygon'?[g.coordinates]:g.coordinates;
  const bbox=p=>{let x=Infinity,y=Infinity,X=-Infinity,Y=-Infinity;
   for(const ring of p)for(const [lon,lat] of ring){x=Math.min(x,lon);y=Math.min(y,lat);X=Math.max(X,lon);Y=Math.max(Y,lat);}
@@ -2646,7 +2646,8 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
    Math.max(...boxes.map(b=>b[2]))+.1,Math.max(...boxes.map(b=>b[3]))+.1];
   const legacyExtras=polys(raw).filter(p=>{
    const b=bbox(p);
-   return b[0]>=cluster[0]&&b[1]>=cluster[1]&&b[2]<=cluster[2]&&b[3]<=cluster[3]&&!boxes.some(n=>overlaps(b,n));
+   const allowed=[cluster,...(d.legacyIslandBoxes??[])];
+   return allowed.some(box=>b[0]>=box[0]&&b[1]>=box[1]&&b[2]<=box[2]&&b[3]<=box[3])&&!boxes.some(n=>overlaps(b,n));
   });
   const repaired={type:'MultiPolygon',coordinates:[...main,...legacyExtras]};
   validateGeometry(repaired);
@@ -2673,7 +2674,7 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
      keptDisjointSourceIslands:legacyExtras.length,unrepresentedTinyIslands:d.limitations},
     review:{reason:[r.review?.reason,'Modern Natural Earth generalized island geometry supersedes the mismatched archived outline; tiny islands and dated historical coastlines require separate validation.'].filter(Boolean).join(' '),
      reasonRu:[r.review?.reasonRu,'Исторически устойчивые острова страны уточнены по современной генерализованной геометрии Natural Earth. Это не датированная береговая съёмка; '+d.limitations].filter(Boolean).join(' '),
-     sources:[...new Set([...(r.review?.sources??[]),d.sourceUrl,policy.source.url])]}};
+     sources:[...new Set([...(r.review?.sources??[]),d.sourceUrl,...(d.extraSources??[]),policy.source.url])]}};
    const inserts=[];
    if(r.from<start)inserts.push({...r,id:identity('before-modern-outline',r.id,start),to:start-1});
    inserts.push(repairedRecord);
