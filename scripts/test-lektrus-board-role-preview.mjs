@@ -269,7 +269,8 @@ assert.match(app,/const canChangeBoardMetadata=canEdit&&!isStudent&&!boardSummar
 assert.match(app,/const changeBoardSubject=\(subject:string\)=>\{\s*if\(!canChangeBoardMetadata\)return;/);
 assert.match(app,/\{canChangeBoardMetadata\?<input\s+aria-label="Название доски"/);
 assert.match(app,/<h1 className="lektrus-board-title-static" title=\{title\}>\{title\}<\/h1>/);
-assert.match(app,/\{canChangeBoardMetadata\?<LektrusSubjectPicker[^\n]+:<div className="lektrus-board-subject-static"/);
+assert.match(app,/\{canChangeBoardMetadata&&<LektrusSubjectPicker/);
+assert.match(app,/<div className="lektrus-board-identity">\s*<h1 className="lektrus-board-title-static"[^\n]+\n\s*<div className="lektrus-board-subject-static"/);
 assert.doesNotMatch(app,/readOnly=\{!canChangeBoardMetadata\}|disabled=\{!canChangeBoardMetadata\}/);
 assert.match(app,/canChangeSubject=\{canChangeBoardMetadata\}/);
 assert.match(app,/if\(!canCreateAssignments\)\{setNotice\("Создавать задания может только преподаватель/,

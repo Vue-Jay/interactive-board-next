@@ -165,23 +165,37 @@ body>.lektrus-subject-options>button.is-selected{
   body .topbar .lektrus-subject-field>button{width:24px!important;min-width:24px!important;flex-basis:24px!important;height:24px!important;min-height:24px!important}
 }
 
-/* Read-only board metadata is text, not disabled form chrome. */
+/* Read-only identity: the board title and a library-style subject tag.
+   Neither element is a field or an action. */
+html body .topbar .lektrus-board-identity{
+  display:flex;align-items:center;justify-content:flex-start;
+  align-self:center;flex:0 1 auto;min-width:0;max-width:min(460px,100%);
+  gap:10px;padding:0 2px;margin:0;box-sizing:border-box;overflow:hidden;cursor:default;
+  background:none;border:0;box-shadow:none;
+}
 html body .topbar .lektrus-board-title-static{
-  flex:0 1 auto;min-width:0;max-width:250px;margin:0;padding:0 3px;
-  color:var(--lt-text,#1d2b46);
-  font-family:inherit;font-size:15px;font-weight:750;line-height:1.35;
+  display:block;flex:0 1 auto;min-width:0;margin:0;padding:0;
+  color:var(--lt-text,#172a45);font-family:inherit;font-size:14px;font-weight:750;
+  line-height:20px;letter-spacing:-.012em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;
 }
 html body .topbar .lektrus-board-subject-static{
-  display:flex;align-items:center;flex:0 1 auto;min-width:0;max-width:285px;gap:8px;
-  padding:0 0 0 12px;margin:0;border-left:1px solid var(--lt-line,#d3deed);cursor:default;
+  display:flex;align-items:center;flex:0 1 auto;min-width:0;max-width:44%;
+  height:24px;box-sizing:border-box;padding:0 9px;margin:0;border:0;border-radius:7px;
+  background:var(--lt-selected,#e6eeff);color:var(--lt-selected-ink,#244da9);
+  font-family:inherit;font-size:11px;font-weight:700;line-height:16px;
+  white-space:nowrap;overflow:hidden;cursor:default;
 }
 html body .topbar .lektrus-board-subject-value{
-  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  color:var(--lt-text,#1d2b46);font-size:12px;font-weight:650;line-height:1.35;
+  display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:inherit;font:inherit;line-height:inherit;
 }
 @media(max-width:900px){
-  html body .topbar .lektrus-board-title-static{font-size:12px;flex:1 1 90px;min-width:0}
-  html body .topbar .lektrus-board-subject-static{max-width:35%;padding-left:6px;gap:4px}
-  html body .topbar .lektrus-board-subject-value{font-size:11px}
+  html body .topbar .lektrus-board-identity{max-width:100%;gap:6px;padding:0}
+  html body .topbar .lektrus-board-title-static{font-size:13px;line-height:18px}
+  html body .topbar .lektrus-board-subject-static{height:22px;padding:0 6px;font-size:11px}
+}
+@media(max-width:480px){
+  html body .topbar .lektrus-board-identity{gap:4px}
+  html body .topbar .lektrus-board-subject-static{padding:0 4px;font-size:10px}
 }
