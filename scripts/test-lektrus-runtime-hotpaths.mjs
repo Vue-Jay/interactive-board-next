@@ -40,10 +40,15 @@ const receivedEnd=app.indexOf("  useEffect(() => demoMode||layoutEditing||!board
 assert.ok(receivedStart>=0 && receivedEnd>receivedStart);
 const receiver=app.slice(receivedStart,receivedEnd);
 assert.ok(receiver.indexOf('if (preliminary === "ignore"){publishCommittedCursors();return;}')>=0);
-assert.ok(receiver.indexOf('if (preliminary === "defer")')>=0);
-assert.ok(receiver.indexOf('if (preliminary === "ignore")')<
-          receiver.indexOf("sharedBoardFingerprint(currentDocument())"),
- "Stale Realtime echoes must be discarded before hashing the local board");
+const ignoreGuard=receiver.indexOf('if (preliminary === "ignore")');
+const deferGuard=receiver.indexOf('if (preliminary === "defer"||gestureDefers)');
+const localHash=receiver.indexOf("sharedBoardFingerprint(currentDocument())");
+assert.ok(ignoreGuard>=0&&deferGuard>ignoreGuard&&localHash>deferGuard,
+ "Stale echoes and gesture-deferred revisions must be discarded before hashing the local board");
+assert.match(receiver,/const gestureDefers=gesture\.current&&\[[^\]]*"drag"[^\]]*"erase"[^\]]*\]\.includes\(gesture\.current\.mode\)/,
+ "An unfinished geometry or eraser gesture must retain its baseline");
+assert.match(receiver,/if \(preliminary === "defer"\|\|gestureDefers\) \{\s*if \(!deferredRemote\.current \|\| row\.version > deferredRemote\.current\.version\) deferredRemote\.current = row;\s*return;/,
+ "Only the newest deferred revision is retained; no local hash or application before release");
 assert.match(receiver,/applyServerDocument\(row,\s*data,\s*remoteFingerprint\)/,
  "Pass the already parsed and hashed remote document to the apply path");
 assert.match(app,/const applyServerDocument = \(row: RemoteBoardDocument, data: DocumentData, remoteFingerprint: string\) => \{/);
