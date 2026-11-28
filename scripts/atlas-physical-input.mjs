@@ -27,6 +27,8 @@ export async function auditPhysicalTerritories(page, results, modern=false,onRes
    row.stage='focused-card';
    const card=page.locator(`.lektrus-atlas-info-object[data-atlas-selected-index="${item.index}"]`);
    await card.waitFor({state:'visible',timeout:6000});
+   const type=card.locator('.lektrus-atlas-description strong + small').first();
+   assert.equal(await type.textContent({timeout:6000}),'Историческая территория','Directory focus must not label every historical territory as a state');
    for(const kind of ['mouse','touch']){
     row.stage=kind;
     // A preselected card must not make a dead pointer handler pass. The

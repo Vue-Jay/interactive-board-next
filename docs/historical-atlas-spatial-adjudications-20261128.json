@@ -34,8 +34,8 @@
     "minorIslandCoverageFindings": 6,
     "minorIslandCoverageFindingsOpen": 6,
     "minorIslandCoverageFindingsConfirmed": 0,
-    "followUpFindings": 12,
-    "followUpFindingsCorrected": 11,
+    "followUpFindings": 13,
+    "followUpFindingsCorrected": 12,
     "followUpFindingsOpen": 1
   },
   "warning": "24 approximate candidate comparisons; six physical island components added with independent territorial attribution. Archive can omit islands; full yearly build and post-repair GEOS validation pending. 340 unclassified, 769 expected territorial source component-years open. No spatial candidates certified.",
@@ -2620,6 +2620,15 @@
         "https://treaties.un.org/pages/historicalinfo.aspx"
       ],
       "resultRu": "Правило года независимости теперь использует историческое название Republic of Cape Verde; смена английской формы в 2013 году сохранена."
+    },
+    {
+      "id": "atlas-directory-mislabels-historical-dependencies-as-states",
+      "status": "corrected-card-classification",
+      "geometry": "unchanged-source",
+      "sources": [
+        "https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom"
+      ],
+      "resultRu": "Каталог и клик по карте показывают тип «Историческая территория». Для Бонайре в названии сохраняется статус особого муниципалитета, для Арубы и Кюрасао — стран Королевства."
     },
     {
       "id": "saint-martin-dated-boundary-unresolved",

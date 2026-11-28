@@ -1548,7 +1548,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   const s=clamp(Math.max(2,target),1,MAX_ATLAS_ZOOM);
   commitCamera({scale:s,position:normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s)});setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(explicitLayer??(nationalCapital(f)?"Столица":
    String(f.properties?.FEATURECLA??"").includes("Populated place")?"Населённый пункт":
-   mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
+   mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":historical?"Историческая территория":"Государство"));
   setSelectedMarker(null);
  };
  const mapConsumesPointer=(target:EventTarget)=>
