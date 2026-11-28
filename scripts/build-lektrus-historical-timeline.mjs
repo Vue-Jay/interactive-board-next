@@ -2637,6 +2637,19 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
   assert.equal(sha256(JSON.stringify(d.geometry)),d.geometrySha256,'Pinned Natural Earth island geometry changed: '+d.iso);
   const main=polys(d.geometry);assert.equal(main.length,d.parts);
   validateGeometry(d.geometry);
+  for(const m of d.minorIslandEvidence??[]){
+   const part=main.find(p=>sha256(JSON.stringify(p))===m.partSha256);
+   assert.ok(part,'Missing pinned minor island '+d.iso+'/'+m.name);
+   assert.ok(capitalInsideCountry(m.landmark,{type:'Polygon',coordinates:part}),'Minor island landmark outside pinned part '+m.name);
+   // A physical island must not be silently assigned twice across polities.
+   const partBox=bbox(part);
+   for(const other of records){
+    if(other.role!=='polity'||other.geometryStatus!=='candidate'||other.name===d.name||other.to<policy.from||other.from>policy.to)continue;
+    const otherGeometry=geometries.get(other.geometryId);assert.ok(otherGeometry,'Missing competing geometry');
+    if(polys(otherGeometry).some(p=>overlaps(partBox,bbox(p))&&polygonClipping.intersection(part,p).length))
+     throw new Error('Minor island overlaps a competing polity; historical review required: '+d.iso+'/'+m.name+'/'+other.name);
+   }
+  }
   for(const [name,lon,lat] of d.landmarks)
    assert.ok(capitalInsideCountry([lon,lat],d.geometry),'Absent verified island '+d.iso+'/'+name);
   // Do not truncate e.g. Comino, Petite Martinique or Mayreau solely because

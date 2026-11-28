@@ -9,7 +9,7 @@
   },
   "from": 1994,
   "to": 2024,
-  "status": "Eight generalized modern island candidates, 1994–2024 source-identity gates; four added candidates have approximate archive overlap measurements. Full source-year and historical acceptance pending.",
+  "status": "Eight generalized modern island candidates, including six additional independently attributed minor-island components; 24 archive comparison measurements. Full source-year and historical acceptance pending.",
   "entries": [
     {
       "iso": "ATG",
@@ -40,21 +40,27 @@
           "year": 1994,
           "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
           "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
-          "baselineIoU": 0.294042
+          "baselineIoU": 0.294042,
+          "proposedMainlandApproxIoU": 0.806201,
+          "previousAdminOutlineApproxIoU": 0.806201
         },
         {
           "id": "2000:159",
           "year": 2000,
           "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
           "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
-          "baselineIoU": 0.294042
+          "baselineIoU": 0.294042,
+          "proposedMainlandApproxIoU": 0.806201,
+          "previousAdminOutlineApproxIoU": 0.806201
         },
         {
           "id": "2010:159",
           "year": 2010,
           "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
           "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
-          "baselineIoU": 0.294042
+          "baselineIoU": 0.294042,
+          "proposedMainlandApproxIoU": 0.806201,
+          "previousAdminOutlineApproxIoU": 0.806201
         }
       ],
       "sourceUrl": "https://thecommonwealth.org/our-member-countries/antigua-and-barbuda",
@@ -555,7 +561,7 @@
       "name": "Saint Vincent and the Grenadines",
       "neId": 1159321409,
       "originalGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
-      "parts": 5,
+      "parts": 8,
       "landmarks": [
         [
           "Сент-Винсент",
@@ -581,6 +587,21 @@
           "Юнион",
           -61.439,
           12.599
+        ],
+        [
+          "Майро",
+          -61.395,
+          12.638
+        ],
+        [
+          "Балисо",
+          -61.14522,
+          12.94773
+        ],
+        [
+          "Баттовия",
+          -61.134,
+          12.959
         ]
       ],
       "snapshots": [
@@ -589,25 +610,31 @@
           "year": 1994,
           "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
           "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
-          "baselineIoU": 0.38263
+          "baselineIoU": 0.38263,
+          "proposedMainlandApproxIoU": 0.852824,
+          "previousAdminOutlineApproxIoU": 0.862083
         },
         {
           "id": "2000:168",
           "year": 2000,
           "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
           "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
-          "baselineIoU": 0.38263
+          "baselineIoU": 0.38263,
+          "proposedMainlandApproxIoU": 0.852824,
+          "previousAdminOutlineApproxIoU": 0.862083
         },
         {
           "id": "2010:168",
           "year": 2010,
           "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
           "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
-          "baselineIoU": 0.38263
+          "baselineIoU": 0.38263,
+          "proposedMainlandApproxIoU": 0.852824,
+          "previousAdminOutlineApproxIoU": 0.862083
         }
       ],
       "sourceUrl": "https://www.gov.vc/index.php/visitors/about-svg",
-      "limitations": "Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines.",
+      "limitations": "Добавлены Майро, Балисо и Баттовия по физическому слою Natural Earth с отдельно подтверждённой принадлежностью; Палм, Пти-Сент-Винсент, Тобаго-Кейс и другие малые острова остаются открытыми.",
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -962,17 +989,176 @@
                 12.868232
               ]
             ]
+          ],
+          [
+            [
+              [
+                -61.391428,
+                12.633653
+              ],
+              [
+                -61.397165,
+                12.629788
+              ],
+              [
+                -61.400461,
+                12.624294
+              ],
+              [
+                -61.402496,
+                12.628933
+              ],
+              [
+                -61.40453,
+                12.633938
+              ],
+              [
+                -61.400461,
+                12.640204
+              ],
+              [
+                -61.399566,
+                12.644436
+              ],
+              [
+                -61.395538,
+                12.643948
+              ],
+              [
+                -61.396311,
+                12.646837
+              ],
+              [
+                -61.391428,
+                12.643866
+              ],
+              [
+                -61.387359,
+                12.640448
+              ],
+              [
+                -61.391428,
+                12.633653
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -61.146962,
+                12.949774
+              ],
+              [
+                -61.142893,
+                12.94538
+              ],
+              [
+                -61.140696,
+                12.937934
+              ],
+              [
+                -61.148834,
+                12.935126
+              ],
+              [
+                -61.151763,
+                12.947048
+              ],
+              [
+                -61.152984,
+                12.952338
+              ],
+              [
+                -61.147003,
+                12.955919
+              ],
+              [
+                -61.146148,
+                12.952338
+              ],
+              [
+                -61.146962,
+                12.949774
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -61.139679,
+                12.958523
+              ],
+              [
+                -61.13386,
+                12.964219
+              ],
+              [
+                -61.131418,
+                12.957384
+              ],
+              [
+                -61.137603,
+                12.952582
+              ],
+              [
+                -61.139679,
+                12.958523
+              ]
+            ]
           ]
         ]
       },
-      "geometrySha256": "63a56e4f4e1a19670bbc510472d79ce593b91645a89eaf0d8243e5413612ab41"
+      "geometrySha256": "0cff2a4608c4a6e7b5310af2cf434b63bb8e6f97cea40525d78961634db58868",
+      "minorIslandEvidence": [
+        {
+          "name": "Майро",
+          "featureIndex": 2642,
+          "landFeatureIndex": 7,
+          "landPartIndex": 794,
+          "partSha256": "950a0988d3c5bd3c20d53071b7f247a88225efe28c71b76739383e1ec576c0aa",
+          "landmark": [
+            -61.395,
+            12.638
+          ]
+        },
+        {
+          "name": "Балисо",
+          "featureIndex": 2650,
+          "landFeatureIndex": 7,
+          "landPartIndex": 802,
+          "partSha256": "b5fd62ce27829b64bfbf3bbd99b46667905cb172625db674ef84b0c8fc5829a6",
+          "landmark": [
+            -61.14522,
+            12.94773
+          ]
+        },
+        {
+          "name": "Баттовия",
+          "featureIndex": 2652,
+          "landFeatureIndex": 7,
+          "landPartIndex": 804,
+          "partSha256": "a942881fec1198a880c64c35088307c3aeafa7933b3107bbe6367785fe3b10eb",
+          "landmark": [
+            -61.134,
+            12.959
+          ]
+        }
+      ],
+      "extraSources": [
+        "https://www.gov.vc/index.php/visitors/about-svg",
+        "https://whc.unesco.org/fr/listesindicatives/5750",
+        "https://www.keybiodiversityareas.org/en/site/factsheet/21967/site",
+        "https://www.geonames.org/3577963/baliceaux-island.html",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
+      ]
     },
     {
       "iso": "GRD",
       "name": "Grenada",
       "neId": 1159320813,
       "originalGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
-      "parts": 2,
+      "parts": 4,
       "landmarks": [
         [
           "Гренада",
@@ -983,6 +1169,16 @@
           "Карриаку",
           -61.45,
           12.479
+        ],
+        [
+          "Ронд",
+          -61.59,
+          12.303
+        ],
+        [
+          "Пти-Мартиник",
+          -61.39,
+          12.515
         ]
       ],
       "snapshots": [
@@ -991,25 +1187,31 @@
           "year": 1994,
           "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
           "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
-          "baselineIoU": 0.513519
+          "baselineIoU": 0.513519,
+          "proposedMainlandApproxIoU": 0.820781,
+          "previousAdminOutlineApproxIoU": 0.825305
         },
         {
           "id": "2000:162",
           "year": 2000,
           "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
           "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
-          "baselineIoU": 0.513519
+          "baselineIoU": 0.513519,
+          "proposedMainlandApproxIoU": 0.820781,
+          "previousAdminOutlineApproxIoU": 0.825305
         },
         {
           "id": "2010:162",
           "year": 2010,
           "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
           "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
-          "baselineIoU": 0.513519
+          "baselineIoU": 0.513519,
+          "proposedMainlandApproxIoU": 0.820781,
+          "previousAdminOutlineApproxIoU": 0.825305
         }
       ],
       "sourceUrl": "https://www.gov.gd/grenada",
-      "limitations": "Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap.",
+      "limitations": "Добавлены Ронд и Пти-Мартиник по физическим полигонам Natural Earth и отдельно подтверждённой принадлежности. Остальные малые острова и датированные береговые линии ещё не восстановлены.",
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -1276,17 +1478,128 @@
                 12.454657
               ]
             ]
+          ],
+          [
+            [
+              [
+                -61.587351,
+                12.315375
+              ],
+              [
+                -61.580474,
+                12.31155
+              ],
+              [
+                -61.585154,
+                12.306749
+              ],
+              [
+                -61.582916,
+                12.300849
+              ],
+              [
+                -61.588572,
+                12.28974
+              ],
+              [
+                -61.591013,
+                12.29088
+              ],
+              [
+                -61.595693,
+                12.294501
+              ],
+              [
+                -61.600616,
+                12.297593
+              ],
+              [
+                -61.599802,
+                12.299709
+              ],
+              [
+                -61.594146,
+                12.307196
+              ],
+              [
+                -61.591827,
+                12.312934
+              ],
+              [
+                -61.587351,
+                12.315375
+              ]
+            ]
+          ],
+          [
+            [
+              [
+                -61.397043,
+                12.512763
+              ],
+              [
+                -61.39859,
+                12.517808
+              ],
+              [
+                -61.38386,
+                12.520209
+              ],
+              [
+                -61.38801,
+                12.508368
+              ],
+              [
+                -61.39269,
+                12.509589
+              ],
+              [
+                -61.397043,
+                12.512763
+              ]
+            ]
           ]
         ]
       },
-      "geometrySha256": "d71bfe62e5a3c411e06cc75032b7a615f1c500c52263e725441c3451b91c1fac"
+      "geometrySha256": "1f06f824496507c3350e488782bb5f25408cdebf172bb7921e0c28cdbdd83292",
+      "minorIslandEvidence": [
+        {
+          "name": "Ронд",
+          "featureIndex": 792,
+          "landFeatureIndex": 7,
+          "landPartIndex": 785,
+          "partSha256": "5487296d9246d3017f2953a9289cbe3a800cbcb7246bcb41a66631f0ae4415c0",
+          "landmark": [
+            -61.59,
+            12.303
+          ]
+        },
+        {
+          "name": "Пти-Мартиник",
+          "featureIndex": 2637,
+          "landFeatureIndex": 7,
+          "landPartIndex": 789,
+          "partSha256": "dad7a14ead5e17c6eb026671b64c26ea6135fc5595e4a744b8624b7322969fdb",
+          "landmark": [
+            -61.39,
+            12.515
+          ]
+        }
+      ],
+      "extraSources": [
+        "https://whc.unesco.org/en/tentativelists/5845",
+        "https://www.getty.edu/vow/TGNFullDisplay?english=Y&find=&nation=colombia&place=&subjectid=1008802",
+        "https://www.puregrenada.com/about-petite-martinique/",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
+      ]
     },
     {
       "iso": "MLT",
       "name": "Malta",
       "neId": 1159321065,
       "originalGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
-      "parts": 2,
+      "parts": 3,
       "landmarks": [
         [
           "Мальта",
@@ -1297,6 +1610,11 @@
           "Гозо",
           14.242,
           36.045
+        ],
+        [
+          "Комино",
+          14.33669,
+          36.01226
         ]
       ],
       "snapshots": [
@@ -1305,25 +1623,31 @@
           "year": 1994,
           "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
           "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
-          "baselineIoU": 0.520931
+          "baselineIoU": 0.520931,
+          "proposedMainlandApproxIoU": 0.858278,
+          "previousAdminOutlineApproxIoU": 0.865214
         },
         {
           "id": "2000:187",
           "year": 2000,
           "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
           "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
-          "baselineIoU": 0.520931
+          "baselineIoU": 0.520931,
+          "proposedMainlandApproxIoU": 0.858278,
+          "previousAdminOutlineApproxIoU": 0.865214
         },
         {
           "id": "2010:187",
           "year": 2010,
           "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
           "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
-          "baselineIoU": 0.520931
+          "baselineIoU": 0.520931,
+          "proposedMainlandApproxIoU": 0.858278,
+          "previousAdminOutlineApproxIoU": 0.865214
         }
       ],
       "sourceUrl": "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
-      "limitations": "Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components.",
+      "limitations": "Добавлен Комино по физическому слою Natural Earth; Коминотто и прочие малые острова, намыв и датированные береговые линии требуют проверки.",
       "geometry": {
         "type": "MultiPolygon",
         "coordinates": [
@@ -1554,10 +1878,81 @@
                 36.075588
               ]
             ]
+          ],
+          [
+            [
+              [
+                14.33253,
+                36.018866
+              ],
+              [
+                14.343598,
+                36.01557
+              ],
+              [
+                14.350597,
+                36.009508
+              ],
+              [
+                14.338145,
+                36.004543
+              ],
+              [
+                14.327973,
+                36.003282
+              ],
+              [
+                14.327322,
+                36.003892
+              ],
+              [
+                14.324636,
+                36.003445
+              ],
+              [
+                14.325857,
+                36.006374
+              ],
+              [
+                14.323171,
+                36.011664
+              ],
+              [
+                14.321788,
+                36.016995
+              ],
+              [
+                14.32545,
+                36.01911
+              ],
+              [
+                14.33253,
+                36.018866
+              ]
+            ]
           ]
         ]
       },
-      "geometrySha256": "4afd9acc8ed9b161377d88a9904c810d0fa534a8284e810d36857a42405dc874"
+      "geometrySha256": "ba4ab59dca5e7309b6fbf5f07d0f3ce1e026fb60dad5f88e44772740b4f47217",
+      "minorIslandEvidence": [
+        {
+          "name": "Комино",
+          "featureIndex": 1785,
+          "landFeatureIndex": 7,
+          "landPartIndex": 1806,
+          "partSha256": "7b29bb2b19570c27af3b741b68a8bb8278e4b1f583cdf7bb7cee3f0addf086eb",
+          "landmark": [
+            14.33669,
+            36.01226
+          ]
+        }
+      ],
+      "extraSources": [
+        "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
+        "https://www.geonames.org/advanced-search.html?continentCode=&country=MT&featureClass=&q=Island",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
+      ]
     },
     {
       "iso": "BRB",
@@ -6685,5 +7080,15 @@
       ]
     }
   ],
-  "archiveComparisonMethod": "300x300 cell-center point-in-polygon sample over joint bbox, cosine latitude weights; three historical archive file SHA-256 values verified. Only proposed main-island geometry, not final combined or dated coastline. Sri Lanka: all five proposed Natural Earth components, not just its largest island."
+  "archiveComparisonMethod": "Approximate 300×300 weighted raster IoU, cos(latitude), shared bounding box; archive geometries may omit islands. These are not exact GEOS or proof of historical coastline.",
+  "minorIslandSource": {
+    "url": "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+    "gitBlobSha": "0b0f8adeb4fba6f5fd94b1e0881f48b363de2c3e",
+    "sha256": "8c933ca7a4760256bdc46408355706e39764b0fa01c160c28888b90b4faec29f",
+    "crossCheckUrl": "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson",
+    "crossCheckGitBlobSha": "2d76878175b8054acd9c5a52917ee9ea59a36fc5",
+    "crossCheckSha256": "1ac90796408bc6ad6911d69448485d3c4dbf2190370080368a09976e1c9f7416",
+    "license": "Public domain",
+    "status": "Physical shorelines only; attribution separately evidenced, not a dated shoreline survey."
+  }
 }

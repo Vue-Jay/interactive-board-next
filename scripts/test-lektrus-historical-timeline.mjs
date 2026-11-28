@@ -153,7 +153,7 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  // A small island absent from the 1:10m atlas but present in the source
  // must not disappear merely because the coastlines were refreshed.
  const malteseModern=modernIslandGeography.entries.find(d=>d.iso==='MLT');
- const simulatedComino=[[[14.334,36.006],[14.338,36.006],[14.338,36.009],[14.334,36.009],[14.334,36.006]]];
+ const simulatedComino=[[[14.334,36.010],[14.335,36.010],[14.335,36.011],[14.334,36.011],[14.334,36.010]]];
  modernOriginals.get(malteseModern.originalGeometryId).coordinates.push(simulatedComino);
  // Synthetic components only: ensure documented distant Jamaican cays
  // survive without granting unrelated distant source components to Jamaica.
@@ -180,7 +180,21 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  }
  assert.equal(modernTallies.length,8);
  assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT','BRB','LCA','JAM','LKA']);
- assert.equal(modernTallies.find(x=>x.iso==='MLT').retainedLegacyIslets,1,'Tiny legacy island silently lost');
+ assert.equal(modernTallies.find(x=>x.iso==='MLT').retainedLegacyIslets,0,'Overlapping old Comino duplicated');
+ const minorParts=modernIslandGeography.entries.flatMap(d=>(d.minorIslandEvidence??[]).map(m=>({d,m})));
+ assert.equal(minorParts.length,6);
+ for(const {d,m} of minorParts){
+  const coordinates=d.geometry.coordinates.find(p=>sha256(JSON.stringify(p))===m.partSha256);
+  assert.ok(coordinates,m.name);
+  assert.ok(capitalInsideCountry(m.landmark,{type:'Polygon',coordinates}),m.name);
+ }
+ // Foreign ownership collision must be exposed, not overwritten.
+ const conflict=minorParts[0],foreignPart=conflict.d.geometry.coordinates.find(p=>sha256(JSON.stringify(p))===conflict.m.partSha256);
+ const fakeForeign={type:'Polygon',coordinates:foreignPart},fakeId=sha256(JSON.stringify(fakeForeign));
+ const fakeRecords=[...modernIslandGeography.entries.map((d,i)=>({id:'fresh-'+i,name:d.name,geometryId:d.originalGeometryId,role:'polity',geometryStatus:'candidate',from:1990,to:2024})),{id:'foreign',name:'Synthetic competing polity',geometryId:fakeId,role:'polity',geometryStatus:'candidate',from:2000,to:2000}];
+ const fakeGeometries=new Map(modernIslandGeography.entries.map(d=>[d.originalGeometryId,{type:'MultiPolygon',coordinates:[d.geometry.coordinates[0]]}]));
+ fakeGeometries.set(fakeId,fakeForeign);
+ assert.throws(()=>applyReviewedModernIslandGeographies(fakeRecords,fakeGeometries),/Minor island overlaps a competing polity/);
  for(const d of modernIslandGeography.entries){
   const newer=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1994&&r.to===2024);
   const earlier=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1990&&r.to===1993);

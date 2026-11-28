@@ -30,9 +30,9 @@
     "ukColonialScopeComparisonCases": 3,
     "datedPoliticalStatusScopeReviews": 14,
     "modernIslandCoastlineReviewCases": 24,
-    "modernIslandApproximateOverlapCases": 12
+    "modernIslandApproximateOverlapCases": 24
   },
-  "warning": "Twelve approximate proposed island comparisons improve overlap with pinned archives; full yearly build and post-repair GEOS validation pending. 340 unclassified, 769 expected territorial source component-years open. No spatial candidates certified.",
+  "warning": "24 approximate candidate comparisons; six physical island components added with independent territorial attribution. Archive can omit islands; full yearly build and post-repair GEOS validation pending. 340 unclassified, 769 expected territorial source component-years open. No spatial candidates certified.",
   "cases": [
     {
       "id": "2010:119",
@@ -1854,12 +1854,14 @@
       "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
       "iou": 0.294042,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.806201 → 0.806201 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://thecommonwealth.org/our-member-countries/antigua-and-barbuda",
         "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.806201,
+      "previousAdminOutlineApproxIoU": 0.806201
     },
     {
       "id": "2000:159",
@@ -1870,12 +1872,14 @@
       "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
       "iou": 0.294042,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.806201 → 0.806201 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://thecommonwealth.org/our-member-countries/antigua-and-barbuda",
         "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.806201,
+      "previousAdminOutlineApproxIoU": 0.806201
     },
     {
       "id": "1994:158",
@@ -1886,12 +1890,14 @@
       "candidateGeometryId": "5e6be9b8cf7ca840ec702ee6e91a09601bcec7fffc914574ab7914e31b1fa50c",
       "iou": 0.294042,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Antigua and Barbuda. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth includes Antigua, Barbuda and Redonda. Tiny cays and exact historical shorelines remain unverified. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.806201 → 0.806201 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://thecommonwealth.org/our-member-countries/antigua-and-barbuda",
         "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.806201,
+      "previousAdminOutlineApproxIoU": 0.806201
     },
     {
       "id": "2010:168",
@@ -1902,12 +1908,19 @@
       "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
       "iou": 0.38263,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.862083 → 0.852824 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://www.gov.vc/index.php/visitors/about-svg",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://whc.unesco.org/fr/listesindicatives/5750",
+        "https://www.keybiodiversityareas.org/en/site/factsheet/21967/site",
+        "https://www.geonames.org/3577963/baliceaux-island.html",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.852824,
+      "previousAdminOutlineApproxIoU": 0.862083
     },
     {
       "id": "2000:168",
@@ -1918,12 +1931,19 @@
       "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
       "iou": 0.38263,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.862083 → 0.852824 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://www.gov.vc/index.php/visitors/about-svg",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://whc.unesco.org/fr/listesindicatives/5750",
+        "https://www.keybiodiversityareas.org/en/site/factsheet/21967/site",
+        "https://www.geonames.org/3577963/baliceaux-island.html",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.852824,
+      "previousAdminOutlineApproxIoU": 0.862083
     },
     {
       "id": "1994:167",
@@ -1934,12 +1954,19 @@
       "candidateGeometryId": "ee5e3c355c6cc57b4098526c81abb83fe7c119d23313da5b0f705fc800be575e",
       "iou": 0.38263,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Saint Vincent and the Grenadines. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers 5 land components, NOT the country's full 32-island archipelago; Mayreau, Petit Saint Vincent, Palm Island and small cays still require detailed coastlines. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.862083 → 0.852824 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://www.gov.vc/index.php/visitors/about-svg",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://whc.unesco.org/fr/listesindicatives/5750",
+        "https://www.keybiodiversityareas.org/en/site/factsheet/21967/site",
+        "https://www.geonames.org/3577963/baliceaux-island.html",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.852824,
+      "previousAdminOutlineApproxIoU": 0.862083
     },
     {
       "id": "2010:162",
@@ -1950,12 +1977,19 @@
       "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
       "iou": 0.513519,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.825305 → 0.820781 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://www.gov.gd/grenada",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://whc.unesco.org/en/tentativelists/5845",
+        "https://www.getty.edu/vow/TGNFullDisplay?english=Y&find=&nation=colombia&place=&subjectid=1008802",
+        "https://www.puregrenada.com/about-petite-martinique/",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.820781,
+      "previousAdminOutlineApproxIoU": 0.825305
     },
     {
       "id": "2000:162",
@@ -1966,12 +2000,19 @@
       "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
       "iou": 0.513519,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.825305 → 0.820781 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://www.gov.gd/grenada",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://whc.unesco.org/en/tentativelists/5845",
+        "https://www.getty.edu/vow/TGNFullDisplay?english=Y&find=&nation=colombia&place=&subjectid=1008802",
+        "https://www.puregrenada.com/about-petite-martinique/",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.820781,
+      "previousAdminOutlineApproxIoU": 0.825305
     },
     {
       "id": "1994:161",
@@ -1982,12 +2023,19 @@
       "candidateGeometryId": "d01d2b52ab970660426d69ed094f27092b43175e5171a0d7a9065355cd43d3f1",
       "iou": 0.513519,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Grenada. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth contains Grenada and Carriacou; Petite Martinique and small cays are absent from the modern generalization and remain an explicit coverage gap. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.825305 → 0.820781 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://www.gov.gd/grenada",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://whc.unesco.org/en/tentativelists/5845",
+        "https://www.getty.edu/vow/TGNFullDisplay?english=Y&find=&nation=colombia&place=&subjectid=1008802",
+        "https://www.puregrenada.com/about-petite-martinique/",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.820781,
+      "previousAdminOutlineApproxIoU": 0.825305
     },
     {
       "id": "2010:187",
@@ -1998,12 +2046,17 @@
       "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
       "iou": 0.520931,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2010 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.865214 → 0.858278 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://www.geonames.org/advanced-search.html?continentCode=&country=MT&featureClass=&q=Island",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.858278,
+      "previousAdminOutlineApproxIoU": 0.865214
     },
     {
       "id": "2000:187",
@@ -2014,12 +2067,17 @@
       "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
       "iou": 0.520931,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 2000 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.865214 → 0.858278 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://www.geonames.org/advanced-search.html?continentCode=&country=MT&featureClass=&q=Island",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.858278,
+      "previousAdminOutlineApproxIoU": 0.865214
     },
     {
       "id": "1994:186",
@@ -2030,12 +2088,17 @@
       "candidateGeometryId": "4d54e6c992f9b73ffee062c597b5d6a50a3f784296550bd47bfd6aeab9bbaee4",
       "iou": 0.520931,
       "classification": "modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance",
-      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки.",
+      "reasonRu": "Архивный исходный контур за 1994 год сопоставлен с закреплённой современной береговой генерализацией Natural Earth для Malta. Неидентичные полигональные представления малых островов переработаны в генераторе с сохранением непересекающихся мелких островов исходника. Natural Earth covers Malta and Gozo; Comino and small islands are omitted and need an additional verified shoreline, unless retained as non-overlapping legacy components. Фактический IoU после перерасчёта, историческая точность береговой линии и мелкие острова ещё требуют проверки. Сопоставление исходного административного и расширенного физическими островами контура с архивом: приблизительный IoU 0.865214 → 0.858278 (сетка 300×300, не точный GEOS). Архив сам может пропускать острова; снижение IoU не отменяет подтверждённую принадлежность суши.",
       "sources": [
         "https://govcms.gov.mt/en/About%20Malta/Pages/The%20Maltese%20Islands.aspx",
-        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson"
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+        "https://www.geonames.org/advanced-search.html?continentCode=&country=MT&featureClass=&q=Island",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_minor_islands.geojson",
+        "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_land.geojson"
       ],
-      "geometryHistoricallyConfirmed": false
+      "geometryHistoricallyConfirmed": false,
+      "proposedMainlandApproxIoU": 0.858278,
+      "previousAdminOutlineApproxIoU": 0.865214
     },
     {
       "id": "1994:159",
