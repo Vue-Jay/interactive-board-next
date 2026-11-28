@@ -15,6 +15,13 @@ const {
  STUDENT_PROTECTED_OBJECT_KINDS
 }=api;
 
+const metadata=api.canEditBoardMetadata;
+assert.equal(metadata("owner","owner"),true);
+assert.equal(metadata("editor","co_teacher"),true);
+assert.equal(metadata("editor","student"),false);
+assert.equal(metadata("editor",undefined),false);
+assert.equal(metadata("viewer","observer"),false);
+assert.equal(metadata("viewer","observer",true),true);
 const boardRoles=["owner","editor","viewer"];
 const accountRoles=["teacher","student"];
 const previews=["actual","teacher","student","guest"];

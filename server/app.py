@@ -460,6 +460,10 @@ async def board_participant(conn, board_id, user, role):
     return participant
 
 
+def can_edit_board_metadata(user, participant):
+    return bool(user["is_admin"] or participant in ("owner", "co_teacher"))
+
+
 def board_view(row, role: str, participant: str | None = None, plan_read_only: bool = False) -> dict[str, Any]:
     return {
         "id": str(row["id"]), "owner_id": str(row["owner_id"]),
@@ -563,25 +567,41 @@ async def get_board(board_id: UUID, request: Request, user=Depends(current_user)
         return board_view(board, role, participant, not user["is_admin"] and await conn.fetchval("SELECT billing_readonly($1)", board_id))
 
 
+async def set_shared_board_metadata(board_id: UUID, request: Request, user, changes):
+    # Direct catalogue changes must update an existing document revision too.
+    # Use the ordinary version-checked save path, not an unversioned JSON overwrite.
+    async with request.app.state.pool.acquire() as conn:
+        async with conn.transaction():
+            board, role = await board_access(conn, board_id, user["id"], lock=True)
+            participant = await board_participant(conn, board_id, user, role)
+            if not can_edit_board_metadata(user, participant):
+                error(403, "Название и предмет доступны владельцу, сопреподавателю и администратору.")
+            if not user["is_admin"] and await conn.fetchval("SELECT billing_readonly($1)", board_id):
+                error(403, "Доска доступна только для просмотра.")
+            version = await conn.fetchval("SELECT version FROM board_documents WHERE board_id=$1", board_id)
+            if version is None:
+                # Do not initialize the document here: template imports and
+                # first-open creation expect version zero on an empty board.
+                if "title" in changes:
+                    await conn.execute("UPDATE boards SET title=$2,updated_at=now() WHERE id=$1", board_id, changes["title"])
+                if "subject" in changes:
+                    await conn.execute("""INSERT INTO board_organization(board_id,subject) VALUES($1,$2)
+                        ON CONFLICT(board_id) DO UPDATE SET subject=excluded.subject,updated_at=now()""",board_id,changes["subject"])
+    if version is not None:
+        await persist_document(board_id, version, request, user, True, delta={"set":changes})
+    async with request.app.state.pool.acquire() as conn:
+        board, role = await board_access(conn, board_id, user["id"])
+        participant = await board_participant(conn, board_id, user, role)
+        return board_view(board, role, participant)
+
+
 @app.patch("/api/v1/boards/{board_id}")
 async def update_board(board_id: UUID, data: UpdateBoardInput,
                        request: Request, user=Depends(current_user)):
     title = data.title.strip()
     if not title:
         error(422, "Укажите название доски.")
-    async with request.app.state.pool.acquire() as conn:
-        async with conn.transaction():
-            _, role = await board_access(conn, board_id, user["id"], lock=True)
-            if role != "owner":
-                error(403, "Только владелец может переименовать доску.")
-            row = await conn.fetchrow(
-                """UPDATE boards SET title=$2,updated_at=now()
-                    WHERE id=$1
-                    RETURNING id,owner_id,title,created_at,updated_at,deleted_at""",
-                board_id, title,
-            )
-    return board_view(row, "owner")
-
+    return await set_shared_board_metadata(board_id, request, user, {"title":title})
 
 @app.delete("/api/v1/boards/{board_id}")
 async def trash_board(board_id: UUID, request: Request,
@@ -1006,6 +1026,7 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                 error(403, "Недостаточно прав для изменения доски.")
             participant = await board_participant(conn, board_id, user, role)
             restricted = participant == "student" and not user["is_admin"]
+            metadata_allowed = can_edit_board_metadata(user, participant)
             mark("access_ms")
             if approval_request_id is not None:
                 if not approvals.can_decide(role, participant):
@@ -1069,6 +1090,17 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                 base = decode_document(await conn.fetchval(
                     "SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id))
             mark("prepare_ms")
+            # Every full save, patch and durable WebSocket commit uses this
+            # check. A legacy editor without explicit co-teacher role is not
+            # allowed to change shared metadata, even with a teacher account.
+            previous_title = (base or {}).get("title", board["title"])
+            previous_subject = (base or {}).get("subject", "")
+            if not metadata_allowed and (
+                document.get("title", board["title"]) != previous_title or
+                ("title" in (base or {}) and "title" not in document) or
+                document.get("subject", "") != previous_subject
+            ):
+                error(403, "Название и предмет доступны владельцу, сопреподавателю и администратору.")
             if restricted:
                 # Check the actual complete candidate before any document/asset/history mutation.
                 # An empty new board permits student ink and own objects, not teacher metadata.
@@ -1134,9 +1166,20 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                        RETURNING version,updated_at""",
                     board_id, serialized, user["id"],
                 )
+            # Project only authorized metadata changes to the board catalogue.
+            # The normal ink/object save still performs one board row update.
+            new_title = document.get("title")
+            if not metadata_allowed or not isinstance(new_title,str) or not new_title.strip() or len(new_title)>300 or (new_title==previous_title and not (delta and "title" in delta.get("set",{}))):
+                new_title = None
             await conn.execute(
-                "UPDATE boards SET updated_at=now() WHERE id=$1", board_id,
+                "UPDATE boards SET updated_at=now(),title=COALESCE($2,title) WHERE id=$1", board_id,new_title,
             )
+            new_subject = document.get("subject","")
+            if metadata_allowed and isinstance(new_subject,str) and len(new_subject)<=80 and (
+                new_subject!=previous_subject or (delta and "subject" in delta.get("set",{}))
+            ):
+                await conn.execute("""INSERT INTO board_organization(board_id,subject) VALUES($1,$2)
+                    ON CONFLICT(board_id) DO UPDATE SET subject=excluded.subject,updated_at=now()""",board_id,new_subject)
             mark("write_ms")
             await record_revision(conn,board_id,revision,user,base,document,delta,history_group)
             mark("history_ms")
@@ -1728,7 +1771,7 @@ app.include_router(make_template_router(current_user, board_access, serialize_do
 from notifications import make_router as make_notifications_router
 app.include_router(make_notifications_router(current_user))
 from organization import make_router as make_organization_router
-app.include_router(make_organization_router(current_user,board_access))
+app.include_router(make_organization_router(current_user,board_access,board_participant,can_edit_board_metadata,set_shared_board_metadata))
 from direct_chats import make_router as make_direct_chats_router
 app.include_router(make_direct_chats_router(current_user))
 

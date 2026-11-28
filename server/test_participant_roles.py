@@ -261,3 +261,49 @@ async def test_student_interactive_teacher_objects_and_locked_content(client):
     for forbidden in ({**locked,**cases[0][1]},{**updates[1],"text":"Rewritten"},{**worksheet,"graphPoints":[{"x":1,"y":2}]},{**updates[4],"graphFigureId":"different"}):
         result=await client.patch(root+"/document",headers=pupil,json={"expected_version":2,"delta":{"items":{"upsert":[forbidden]}}})
         assert result.status_code==403,result.text
+
+
+@pytest.mark.asyncio
+async def test_board_metadata_permissions_are_role_local_on_all_write_paths(client):
+    _, owner = await sign_in(client,"teacher@example.test")
+    _, pupil = await sign_in(client,"student@example.test")
+    _, peer = await sign_in(client,"outsider@example.test")
+    board_id=(await client.post("/api/v1/boards",headers=owner,json={"title":"Original"})).json()["id"]
+    root="/api/v1/boards/"+board_id
+    org="/api/v1/organization/board"
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"student@example.test","role":"editor","participant_role":"student"})).status_code==200
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"outsider@example.test","role":"viewer","participant_role":"observer"})).status_code==200
+    assert (await client.put(root+"/document",headers=owner,json={"expected_version":0,"document":{"version":1,"title":"Original","subject":"math","items":[]}})).status_code==200
+    assert (await client.put(org,headers=owner,json={"board_id":board_id,"subject":"math","group_name":"9A"})).status_code==200
+    assert (await client.post("/api/v1/account/role/teacher",headers=pupil)).status_code==200
+    for denied in (pupil,peer):
+        row=(await client.get(root+"/document",headers=owner)).json()
+        assert (await client.patch(root,headers=denied,json={"title":"Forbidden"})).status_code==403
+        assert (await client.put(org,headers=denied,json={"board_id":board_id,"subject":"Forbidden"})).status_code==403
+        for key in ("title","subject"):
+            assert (await client.patch(root+"/document",headers=denied,json={"expected_version":row["version"],"delta":{"set":{key:"Forbidden"}}})).status_code==403
+            assert (await client.put(root+"/document",headers=denied,json={"expected_version":row["version"],"document":{**row["document"],key:"Forbidden"}})).status_code==403
+    assert (await client.post("/api/v1/account/role/teacher",headers=peer)).status_code==200
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"outsider@example.test","role":"editor","participant_role":"co_teacher"})).status_code==200
+    renamed=await client.patch(root,headers=peer,json={"title":"Co-teacher"})
+    assert renamed.status_code==200,renamed.text
+    assert renamed.json()["role"]=="editor" and renamed.json()["participant_role"]=="co_teacher"
+    assert (await client.put(org,headers=peer,json={"board_id":board_id,"subject":"physics","group_name":"Forbidden"})).status_code==200
+    row=(await client.get(root+"/document",headers=pupil)).json()
+    assert row["document"]["title"]=="Co-teacher" and row["document"]["subject"]=="physics"
+    organization=(await client.get("/api/v1/organization",headers=owner)).json()["boards"]
+    assert next(x for x in organization if x["board_id"]==board_id)["group_name"]=="9A"
+    assert (await client.delete(root,headers=peer)).status_code==403
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1",OUTSIDER)
+    renamed=await client.patch(root,headers=peer,json={"title":"Admin"})
+    assert renamed.status_code==200,renamed.text
+    assert renamed.json()["role"]=="viewer"
+    assert (await client.put(org,headers=peer,json={"board_id":board_id,"subject":"chemistry","group_name":"Forbidden"})).status_code==200
+    row=(await client.get(root+"/document",headers=owner)).json()
+    assert row["document"]["title"]=="Admin" and row["document"]["subject"]=="chemistry"
+    saved=await client.patch(root+"/document",headers=owner,json={"expected_version":row["version"],"delta":{"set":{"title":"Owner","subject":"biology"}}})
+    assert saved.status_code==200,saved.text
+    assert (await client.get(root,headers=pupil)).json()["title"]=="Owner"
+    organization=(await client.get("/api/v1/organization",headers=owner)).json()["boards"]
+    assert next(x for x in organization if x["board_id"]==board_id)=={"board_id":board_id,"subject":"biology","group_name":"9A"}

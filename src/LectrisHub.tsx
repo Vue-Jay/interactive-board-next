@@ -7,6 +7,7 @@ import type { AccountRole } from "./accountRoleStore";
 import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
 import { PARTICIPANT_ROLE_LABELS, participantRoleFor } from "./authStore";
+import {canEditBoardMetadata} from "./lektrusBoardRolePreview";
 import { getStudentsForTeacher, type StudentRecord } from "./studentsStore";
 import { listScheduledLessons, type ScheduledLesson } from "./scheduleStore";
 import { readGroupMembership, setGroupMembership } from "./lektrusGroupMembers";
@@ -16,6 +17,7 @@ type View = "home" | "subjects" | "groups";
 type Organization=LectrisOrganization;
 type Props = {
   user: AuthUser;
+  isAppAdmin?:boolean;
   role: AccountRole;
   view: View;
   boards: BoardSummary[];
@@ -50,7 +52,7 @@ function RecentBoardTitle({title}:{title:string}){
   </strong>;
 }
 
-export default function LectrisHub({user,role,view,boards,previews,loading,creating,onOpenBoard,onCreateBoard,onDeleteBoard}:Props){
+export default function LectrisHub({user,isAppAdmin=false,role,view,boards,previews,loading,creating,onOpenBoard,onCreateBoard,onDeleteBoard}:Props){
   const teacher=role==="teacher";
   const [organization,setOrganization]=useState<Record<string,Organization>>(()=>readLectrisLocalOrganization(user.id));
   const [editing,setEditing]=useState<string|null>(null);
@@ -175,12 +177,15 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   const availableGroupStudents=students.filter(s=>scope!==null&&!(groupMembers[scope]||[]).includes(s.userId));
   const updateGroupMembers=(group:string,ids:string[])=>{try{setGroupMembers(setGroupMembership(user.id,group,ids))}catch{window.alert("Не удалось сохранить состав группы на этом устройстве.")}};
   const openStudentFromGroup=(studentId:string)=>{sessionStorage.setItem("lektrus.students.open",studentId);navigate("students")};
+  const canEditMetadata=(board:BoardSummary)=>!board.planReadOnly&&canEditBoardMetadata(board.role,board.participantRole,isAppAdmin);
   const openEdit=(board:BoardSummary)=>{
+    if(!canEditMetadata(board))return;
     const current=getOrg(board);setEditing(board.id);setSubjectDraft(current.subject);setGroupDraft(current.group);
   };
   const saveEdit=()=>{
-    if(!editing||!teacher||boards.find(b=>b.id===editing)?.role!=="owner")return;
-    const value={subject:subjectDraft.trim().slice(0,80),group:groupDraft.trim().slice(0,80)};
+    const target=boards.find(b=>b.id===editing);
+    if(!editing||!target||!canEditMetadata(target))return;
+    const value={subject:subjectDraft.trim().slice(0,80),group:target.role==="owner"?groupDraft.trim().slice(0,80):getOrg(target).group};
     try{
       queueLectrisBoardOrganization(user.id,editing,value);
       setOrganization(readLectrisLocalOrganization(user.id));
@@ -216,7 +221,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
       value.toLocaleLowerCase("ru-RU").includes(collectionSearch.trim().toLocaleLowerCase("ru-RU"))));
 
   const label=(board:BoardSummary)=>getOrg(board);
-  const boardTile=(board:BoardSummary)=> <article className={`lectris-hub-board lektrus-recent-board${teacher&&board.role==="owner"?" has-menu":""}${boardMenu===board.id?" is-menu-open":""}`} key={board.id}>
+  const boardTile=(board:BoardSummary)=> <article className={`lectris-hub-board lektrus-recent-board${(teacher&&board.role==="owner"||canEditMetadata(board))?" has-menu":""}${boardMenu===board.id?" is-menu-open":""}`} key={board.id}>
     <button type="button" className="lectris-hub-board-main" onClick={()=>onOpenBoard(board)}>
       <RecentBoardTitle title={board.title}/>
       <span className="lectris-hub-board-cover" aria-hidden="true">
@@ -231,7 +236,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         <span className="lektrus-recent-board-footer"><time dateTime={board.updatedAt}>{shortDate(board.updatedAt)}</time><span className="lectris-hub-board-arrow" aria-hidden="true">↗</span></span>
       </span>
     </button>
-    {teacher&&board.role==="owner"&&<div className="lektrus-home-board-menu"><button type="button" className="lectris-hub-board-edit" aria-label={"Действия с доской "+board.title} aria-expanded={boardMenu===board.id} onClick={()=>setBoardMenu(v=>v===board.id?null:board.id)}>⋯</button>{boardMenu===board.id&&<div className="lektrus-home-board-actions"><button type="button" onClick={()=>{setBoardMenu(null);openEdit(board)}}>Предмет и группа</button><button type="button" className="danger" onClick={()=>{setBoardMenu(null);onDeleteBoard(board)}}>Удалить доску</button></div>}</div>}
+    {(teacher&&board.role==="owner"||canEditMetadata(board))&&<div className="lektrus-home-board-menu"><button type="button" className="lectris-hub-board-edit" aria-label={"Действия с доской "+board.title} aria-expanded={boardMenu===board.id} onClick={()=>setBoardMenu(v=>v===board.id?null:board.id)}>⋯</button>{boardMenu===board.id&&<div className="lektrus-home-board-actions">{canEditMetadata(board)&&<button type="button" onClick={()=>{setBoardMenu(null);openEdit(board)}}>{board.role==="owner"?"Предмет и группа":"Предмет"}</button>}{teacher&&board.role==="owner"&&<button type="button" className="danger" onClick={()=>{setBoardMenu(null);onDeleteBoard(board)}}>Удалить доску</button>}</div>}</div>}
   </article>;
   const quickTiles=[
     {id:teacher?"students":"teachers",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M19 20v-3a5 5 0 0 0-3-4.6"/></svg>,eyebrow:"УЧАСТНИКИ",title:teacher?"Ученики":"Преподаватели",description:teacher?"Ученики и приглашения":"Ваши преподаватели и общие доски",count:null,theme:"violet"},
@@ -375,7 +380,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         <p>Привяжите эту доску к предмету и группе. Она останется той же самой доской.</p>
         <label>Предмет<input list="lectris-subject-suggestions" placeholder="Например, химия" maxLength={80} value={subjectDraft} onChange={e=>setSubjectDraft(e.target.value)}/></label>
         <datalist id="lectris-subject-suggestions">{commonSubjects.map(x=><option value={x} key={x}/>)}</datalist>
-        <label>Группа или класс<input placeholder="Например, 9А" maxLength={80} value={groupDraft} onChange={e=>setGroupDraft(e.target.value)}/></label>
+        <label>Группа или класс<input placeholder="Например, 9А" maxLength={80} value={groupDraft} readOnly={boards.find(b=>b.id===editing)?.role!=="owner"} onChange={e=>setGroupDraft(e.target.value)}/></label>
         <p className="lectris-hub-local-note">{lectrisOrganizationSyncEnabled()?"Метаданные синхронизируются с сервером Lektrus.":"Метки сохраняются локально и не изменяют общую базу Supabase."}</p>
         <footer><button type="button" onClick={()=>setEditing(null)}>Отмена</button><button type="button" className="lectris-hub-primary" onClick={saveEdit}>Сохранить</button></footer>
       </section>

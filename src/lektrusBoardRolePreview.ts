@@ -6,6 +6,11 @@ import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
 // visible actions and locally enforced editing rules. Membership, identity,
 // credentials, and server authorization are always unchanged.
 export type BoardRolePreview="actual"|"teacher"|"student"|"guest";
+// Metadata rights are independent of assignment authoring and membership management.
+// Explicit co-teacher membership is required even for teacher accounts.
+export function canEditBoardMetadata(boardRole:BoardRole,participantRole?:BoardParticipantRole,isAdmin=false):boolean{
+ return isAdmin||boardRole==="owner"||(boardRole==="editor"&&participantRole==="co_teacher");
+}
 export type BoardRoleCapabilities={
  canEdit:boolean;isStudent:boolean;isGuestPreview:boolean;
  canManageBoard:boolean;canCreateAssignments:boolean;

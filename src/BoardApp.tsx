@@ -111,7 +111,7 @@ import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import { readDeveloperPreferences, writeDeveloperPreferences } from "./developerPreferences";
-import { boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoardObject, canTransformStudentBoardObject, restrictStudentDiagramChange, BOARD_ROLE_PREVIEW_LABELS, toolbarPreferenceKey, normalizeToolbarPins, resolveToolbarPins, TOOLBAR_DEFAULT_DESKTOP, TOOLBAR_DEFAULT_TOUCH, type BoardRolePreview } from "./lektrusBoardRolePreview";
+import { canEditBoardMetadata, boardRoleCapabilities, canUseBoardCreationTool, isStudentProtectedBoardObject, canTransformStudentBoardObject, restrictStudentDiagramChange, BOARD_ROLE_PREVIEW_LABELS, toolbarPreferenceKey, normalizeToolbarPins, resolveToolbarPins, TOOLBAR_DEFAULT_DESKTOP, TOOLBAR_DEFAULT_TOUCH, type BoardRolePreview } from "./lektrusBoardRolePreview";
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import { trackBoardVisit, listBoardVisits, type BoardVisit } from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
@@ -2190,6 +2190,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   });
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
   const showAdminControls=isAppAdmin&&rolePreview==="actual";
+  const canChangeBoardMetadata=canEdit&&!isStudent&&!boardSummary.planReadOnly&&canEditBoardMetadata(boardSummary.role,boardSummary.participantRole,showAdminControls&&adminMaintenance);
   const isBoardOwner=boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id;
   const canSaveTemplate=isBoardOwner && accountRole==="teacher" && !isStudent && !authUser.isGuest && !demoMode && !layoutEditing;
   const adminHidden = showAdminControls && adminInvisible;
@@ -2767,10 +2768,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   });
   const subjectCategories=["",...LEKTRUS_SCHOOL_SUBJECTS];
   const changeBoardSubject=(subject:string)=>{
-    if(!canManageBoard||boardSummary.ownerId!==authUser.id)return;
+    if(!canChangeBoardMetadata)return;
     const next={...lectrisBoardOrganization,subject:normalizeLektrusSubject(subject)};
     setLectrisBoardOrganization(next);
-    if(!demoMode)queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
+    // The self-hosted document save updates the shared catalogue in the same transaction.
+    if(!demoMode&&!selfhostMode)queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
     // An untouched worksheet follows the classroom subject. The first written
     // exercise locks its subject and preserves the design and its editor types.
     const tone=subjectToneForSubject(next.subject);
@@ -9139,7 +9141,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <span>Редактирование доски: {canEdit?"разрешено":"только просмотр"}</span>
                 <span>Создание и изменение заданий: {canCreateAssignments?"разрешено":"запрещено"}</span>
                 <span>Выполнение контурной карты: {roleCapabilities.canAnswerContour?"разрешено":"только просмотр"}</span>
-                <span>Управление предметом и участниками: {canManageBoard?"владелец":"недоступно"}</span>
+                <span>Название и предмет: {canChangeBoardMetadata?"доступно":"недоступно"}</span><span>Управление участниками: {canManageBoard?"владелец":"недоступно"}</span>
               </div>
             </div>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showInkDiagnostics} onChange={e=>changeDeveloperPref("showInkDiagnostics",e.target.checked)}/> Показывать отправку и получение штрихов</label>
@@ -9194,17 +9196,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             aria-label="Название доски"
             className="board-title"
             value={title}
-            onChange={(e) => { if (canCreateAssignments) setTitle(e.target.value); }}
+            onChange={(e) => { if (canChangeBoardMetadata) setTitle(e.target.value); }}
             onKeyDown={(e) => e.stopPropagation()}
             onFocus={() => {
               setSpace(false);
               end(true);
             }}
             maxLength={300}
-            readOnly={!canCreateAssignments}
+            readOnly={!canChangeBoardMetadata}
           />
           {authUser.isGuest&&!demoMode&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
-          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canManageBoard||boardSummary.ownerId!==authUser.id} onChange={changeBoardSubject}/>
+          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canChangeBoardMetadata} onChange={changeBoardSubject}/>
         </div>
         <div className="topbar-right">
           {!layoutEditing&&!publicPresentation&&!canEdit&&<span className="board-access-status" role="status" aria-label="Только просмотр" title={boardSummary.planReadOnly?"Только просмотр · выберите эту доску в разделе «Тарифы»":"Только просмотр · наблюдатель"}><Icon name="eye" size={16}/><span>Только просмотр</span></span>}
@@ -10331,7 +10333,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {canCreateAssignments&&subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {canCreateAssignments&&subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canChangeBoardMetadata} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(demoMode&&!id.startsWith("subject-task-"))return;
