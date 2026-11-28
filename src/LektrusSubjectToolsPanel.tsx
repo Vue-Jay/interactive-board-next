@@ -110,15 +110,14 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
         <button type="button" aria-label="Закрыть предметные инструменты" onClick={onClose}>×</button>
       </header>
       <div className="lektrus-subject-tools-body">
-        <label className="lektrus-subject-tools-category">
+        {canChangeSubject?<label className="lektrus-subject-tools-category">
           <span>Предмет доски</span>
-          <select aria-label="Предмет доски для набора инструментов" value={subject} disabled={!canChangeSubject} onChange={e=>onSubjectChange(e.target.value)}>
+          <select aria-label="Предмет доски для набора инструментов" value={subject} onChange={e=>onSubjectChange(e.target.value)}>
             <option value="">Выберите предмет</option>
             {subjects.filter(Boolean).map(name=><option key={name} value={name}>{name}</option>)}
             {subject&&!subjects.includes(subject)&&<option value={subject}>{subject}</option>}
           </select>
-          {!canChangeSubject&&<small>Предмет закреплён создателем доски</small>}
-        </label>
+        </label>:<div className="lektrus-subject-tools-category"><span>Предмет доски</span><strong>{subject||"Без предмета"}</strong></div>}
         {sections.length>0?
           <div className="lektrus-subject-tools-groups" role="group" aria-label={subject+" инструменты"}>
             {sections.map(section=>
