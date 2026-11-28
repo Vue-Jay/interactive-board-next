@@ -1660,43 +1660,93 @@ export function selfhostSubscribeBoard(
 
 // Technical telemetry only: never include object text, images, tokens, or raw errors.
 // Batch on a slow independent timer so drawing never waits for journal writes.
-type SyncJournalEvent={event:string;version?:number;expected_version?:number;status?:number;elapsed_ms?:number;count?:number;added?:number;changed?:number;removed?:number;transport?:"socket"|"http"};
-const syncJournalQueues=new Map<string,{userId:string;rows:SyncJournalEvent[];timer?:ReturnType<typeof setTimeout>;sending:boolean}>();
+type SyncJournalEvent={event:string;version?:number;expected_version?:number;status?:number;elapsed_ms?:number;count?:number;added?:number;changed?:number;removed?:number;transport?:"socket"|"http";reason?:"save_in_flight"|"gesture";fingerprint?:string;local_fingerprint?:string;pending?:boolean;deferred_version?:number;role?:"owner"|"co_teacher"|"student"|"observer";visibility?:"visible"|"hidden";ink?:boolean};
+type JournalSession={id:string;seq:number;started:number;dropped:number};
+type JournalRow=SyncJournalEvent&{session_id:string;sequence:number;occurred_at_ms:number;session_elapsed_ms:number;build_id:string;platform:"web"|"android"|"ios";dropped_count:number};
+type JournalQueue={userId:string;rows:JournalRow[];timer?:ReturnType<typeof setTimeout>;sending?:Promise<void>;nextSendAt:number};
+const syncJournalQueues=new Map<string,JournalQueue>();
+const journalSessions=new Map<string,JournalSession>();
+const journalBuild=String(import.meta.env.VITE_LEKTRUS_JOURNAL_BUILD||"lektrus-sync-journal-v2-2026-11-28");
+function journalSession(boardId:string){
+  let state=journalSessions.get(boardId);
+  if(!state){
+    const id=globalThis.crypto?.randomUUID?.()??Array.from({length:4},()=>Math.floor(Math.random()*0x100000000).toString(16).padStart(8,"0")).join("");
+    state={id,seq:0,started:Date.now(),dropped:0};
+    journalSessions.set(boardId,state);
+  }
+  return state;
+}
+function trimJournal(boardId:string,state:JournalQueue){
+  const dropped=state.rows.splice(0,Math.max(0,state.rows.length-240));
+  const current=journalSessions.get(boardId);
+  if(current)current.dropped+=dropped.filter(row=>row.session_id===current.id).length;
+}
+function scheduleJournal(boardId:string,state:JournalQueue){
+  if(state.timer!==undefined||state.sending)return;
+  state.timer=setTimeout(()=>{state.timer=undefined;void flushJournal(boardId,state)},15000);
+  (state.timer as unknown as {unref?:()=>void})?.unref?.();
+}
+function flushJournal(boardId:string,state:JournalQueue):Promise<void>{
+  if(state.sending)return state.sending;
+  if(syncJournalQueues.get(boardId)!==state||loadSession()?.user.id!==state.userId){
+    if(state.timer!==undefined)clearTimeout(state.timer);
+    if(syncJournalQueues.get(boardId)===state)syncJournalQueues.delete(boardId);
+    return Promise.resolve();
+  }
+  if(Date.now()<state.nextSendAt){scheduleJournal(boardId,state);return Promise.resolve();}
+  if(state.timer!==undefined){clearTimeout(state.timer);state.timer=undefined;}
+  if(!state.rows.length)return Promise.resolve();
+  const rows=state.rows.splice(0,40);
+  const current=journalSessions.get(boardId);
+  for(const row of rows)if(current?.id===row.session_id)row.dropped_count=current.dropped;
+  state.sending=(async()=>{
+    try{await selfhostRequest("/api/v1/boards/"+encodeURIComponent(boardId)+"/sync-journal",{method:"POST",body:JSON.stringify({events:rows})},8000)}
+    catch(error){
+      if(!(error instanceof SelfhostHttpError)||![401,403,404,422].includes(error.status)){
+        state.rows=[...rows,...state.rows];trimJournal(boardId,state);
+      }else if(current){current.dropped+=rows.filter(row=>row.session_id===current.id).length;}
+    }
+  })().finally(()=>{
+    state.nextSendAt=Date.now()+5000;
+    state.sending=undefined;
+    if(state.rows.length)scheduleJournal(boardId,state);
+    else if(syncJournalQueues.get(boardId)===state)syncJournalQueues.delete(boardId);
+  });
+  return state.sending;
+}
 export function selfhostLogBoardSync(boardId:string,event:SyncJournalEvent){
   const userId=loadSession()?.user.id;
   if(!userId)return;
   let queue=syncJournalQueues.get(boardId);
   if(!queue||queue.userId!==userId){
     if(queue?.timer!==undefined)clearTimeout(queue.timer);
-    queue={userId,rows:[],sending:false};
-    syncJournalQueues.set(boardId,queue);
+    if(queue)journalSessions.delete(boardId);
+    queue={userId,rows:[],nextSendAt:0};syncJournalQueues.set(boardId,queue);
   }
-  queue.rows.push(event);
-  if(queue.rows.length>120)queue.rows.splice(0,queue.rows.length-120);
-  const state=queue;
-  const schedule=()=>{
-    if(state.timer!==undefined||state.sending)return;
-    state.timer=setTimeout(async()=>{
-      state.timer=undefined;
-      if(syncJournalQueues.get(boardId)!==state||loadSession()?.user.id!==state.userId){
-        if(syncJournalQueues.get(boardId)===state)syncJournalQueues.delete(boardId);
-        return;
-      }
-      state.sending=true;
-      const rows=state.rows.splice(0,40);
-      try{await selfhostRequest("/api/v1/boards/"+encodeURIComponent(boardId)+"/sync-journal",{method:"POST",body:JSON.stringify({events:rows})})}
-      catch(error){
-        if(!(error instanceof SelfhostHttpError)||![401,403,404,422].includes(error.status))state.rows=[...rows,...state.rows].slice(-120);
-      }finally{
-        state.sending=false;
-        if(state.rows.length)schedule();else if(syncJournalQueues.get(boardId)===state)syncJournalQueues.delete(boardId);
-      }
-    },15000);
-    (state.timer as unknown as {unref?:()=>void})?.unref?.();
-  };
-  schedule();
+  const session=journalSession(boardId);
+  const now=Date.now(),platform=Capacitor.getPlatform();
+  queue.rows.push({...event,session_id:session.id,sequence:++session.seq,occurred_at_ms:now,
+    session_elapsed_ms:Math.max(0,now-session.started),build_id:journalBuild,
+    platform:platform==="android"||platform==="ios"?platform:"web",dropped_count:session.dropped});
+  trimJournal(boardId,queue);
+  scheduleJournal(boardId,queue);
 }
-export const selfhostExportBoardSync=(boardId:string)=>selfhostRequest<unknown>("/api/v1/boards/"+encodeURIComponent(boardId)+"/sync-journal");
+export function selfhostStartBoardJournal(boardId:string,role:SyncJournalEvent["role"]){
+  journalSessions.delete(boardId);
+  selfhostLogBoardSync(boardId,{event:"session_start",role,visibility:document.hidden?"hidden":"visible"});
+  const session=journalSessions.get(boardId);
+  return ()=>{
+    if(journalSessions.get(boardId)!==session)return;
+    selfhostLogBoardSync(boardId,{event:"session_end",visibility:document.hidden?"hidden":"visible"});
+    journalSessions.delete(boardId);
+  };
+}
+export async function selfhostExportBoardSync(boardId:string){
+  // Best effort: flush one current admin batch; other tabs can still be buffered.
+  const queue=syncJournalQueues.get(boardId);
+  if(queue)await flushJournal(boardId,queue);
+  return selfhostRequest<unknown>("/api/v1/boards/"+encodeURIComponent(boardId)+"/sync-journal");
+}
 
 export function selfhostWatchDocument(
   boardId:string,currentVersion:()=>number,onDocument:(row:SelfhostDocument)=>unknown,

@@ -106,7 +106,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostExportBoardSync, selfhostDecideAttachment, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostStartBoardJournal, selfhostExportBoardSync, selfhostDecideAttachment, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -3205,6 +3205,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const acknowledgedBoardData=useRef<DocumentData|null>(
     initialAcknowledged);
   const deferredRemote = useRef<RemoteBoardDocument | null>(null);
+  const journalDeferred=useRef<{first:number;latest:number;started:number}|null>(null);
+  const journalSettleRevision=()=>{
+    const waiting=journalDeferred.current,version=remoteVersion.current;
+    if(!selfhostMode||!waiting||version===null||version<waiting.latest)return;
+    journalDeferred.current=null;
+    selfhostLogBoardSync(boardSummary.id,{event:"revision_settled",version,expected_version:waiting.first,
+      elapsed_ms:Math.max(0,Math.round(performance.now()-waiting.started))});
+  };
+  const journalLastInkSample=useRef(0);
   const pendingRemote = useRef<RemoteBoardDocument | null>(null);
   const lastAttempt = useRef<{ version: number; fingerprint: string } | null>(null);
   const [, setRemoteConflict] = useState<RemoteBoardDocument | null>(null);
@@ -3483,7 +3492,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         remoteRetryTimer.current = null;
       }
       setSaveStatus("Сохранено на сервере");
-      if(selfhostMode&&!inkGesture)selfhostLogBoardSync(boardSummary.id,{event:"save_ack",version:result.version,elapsed_ms:Date.now()-startedAt,count:data.items.length});
+      if(selfhostMode){
+        const now=Date.now();
+        if(!inkGesture||now-journalLastInkSample.current>=5000){
+          if(inkGesture)journalLastInkSample.current=now;
+          selfhostLogBoardSync(boardSummary.id,{event:inkGesture?"ink_save_sample":"save_ack",version:result.version,elapsed_ms:now-startedAt,count:data.items.length+(data.ink?.length??0),ink:!!inkGesture});
+        }
+        journalSettleRevision();
+      }
       // The thumbnail is decorative metadata, not an autosave prerequisite.
       // It can finish even if the editor unmounts when returning to the dashboard.
       if(!selfhostMode)scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
@@ -8525,11 +8541,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     // Stale/own echoes cannot occupy the deferred slot during a gesture.
     const preliminary = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, false);
-    if (preliminary === "ignore"){publishCommittedCursors();return;}
+    if (preliminary === "ignore"){publishCommittedCursors();journalSettleRevision();return;}
     // Real ink may reconcile while drawing or erasing; other gesture geometry
     // still depends on its initial snapshot and must wait until release.
     const gestureDefers=gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode);
     if (preliminary === "defer"||gestureDefers) {
+      if(selfhostMode){
+        const waiting=journalDeferred.current;
+        if(waiting)waiting.latest=Math.max(waiting.latest,row.version);
+        else{
+          journalDeferred.current={first:row.version,latest:row.version,started:performance.now()};
+          selfhostLogBoardSync(boardSummary.id,{event:"revision_waiting",version:row.version,reason:preliminary==="defer"?"save_in_flight":"gesture"});
+        }
+      }
       if (!deferredRemote.current || row.version > deferredRemote.current.version) deferredRemote.current = row;
       return;
     }
@@ -8640,7 +8664,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setNotice("Не удалось прочитать новую серверную версию. Повторяем синхронизацию.");
       return false;
     }
-    finally{publishCommittedCursors();}
+    finally{publishCommittedCursors();journalSettleRevision();}
   };
   useEffect(()=>{
     if(!boardRealtimeAwake||!boardResumePending||demoMode||layoutEditing)return;
@@ -8699,6 +8723,28 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     void refresh();
     return()=>{cancelled=true;controller.abort();clearTimeout(retry);boardResumeRequestRunning.current=false};
   },[boardRealtimeAwake,boardResumePending,boardResumeAttempt,selfhostMode,boardSummary.id,demoMode,layoutEditing,flushSave]);
+  // Sample the local model and acknowledged content only off active gestures.
+  // No polling, additional document reads, or raw lesson content.
+  const journalSnapshot=useRef<()=>void>(()=>{});
+  journalSnapshot.current=()=>{
+    const data=snapshot.current,version=remoteVersion.current;
+    if(!data||version===null||gesture.current||eraserSession.current||labSimulationOnly.current)return;
+    const local=documentFingerprint(data),ack=acknowledgedSharedContent.current;
+    selfhostLogBoardSync(boardSummary.id,{event:"state_checkpoint",version,
+      fingerprint:ack??undefined,local_fingerprint:local,count:data.items.length+(data.ink?.length??0),
+      pending:remoteSaveInFlight.current||!!queuedRemoteSnapshot.current||local!==ack,
+      deferred_version:deferredRemote.current?.version,visibility:document.hidden?"hidden":"visible"});
+  };
+  useEffect(()=>{
+    if(!selfhostMode||demoMode||layoutEditing)return;
+    const finish=selfhostStartBoardJournal(boardSummary.id,isBoardOwner?"owner":isStudent?"student":canEdit?"co_teacher":"observer");
+    journalDeferred.current=null;
+    const visibility=()=>selfhostLogBoardSync(boardSummary.id,{event:"visibility_changed",visibility:document.hidden?"hidden":"visible"});
+    journalSnapshot.current();
+    const timer=setInterval(()=>{if(!document.hidden)journalSnapshot.current()},15000);
+    document.addEventListener("visibilitychange",visibility);
+    return()=>{clearInterval(timer);document.removeEventListener("visibilitychange",visibility);journalSnapshot.current();finish()};
+  },[boardSummary.id,selfhostMode,demoMode,layoutEditing,authUser.id,isBoardOwner,isStudent,canEdit]);
   useEffect(()=>{
     if(demoMode||layoutEditing||!boardRealtimeAwake)return;
     if(selfhostMode){

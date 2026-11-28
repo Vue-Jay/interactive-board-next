@@ -26,7 +26,8 @@ async function loadSelfhost(enabled, platform="web") {
   source=source
     .replaceAll("import.meta.env.VITE_LEKTRUS_BACKEND",JSON.stringify(enabled?"selfhost":""))
     .replaceAll("import.meta.env.VITE_LEKTRUS_API_ORIGIN",JSON.stringify("https://pilot.lektrus.example"))
-    .replaceAll("import.meta.env.DEV","false");
+    .replaceAll("import.meta.env.DEV","false")
+    .replaceAll("import.meta.env.VITE_LEKTRUS_JOURNAL_BUILD",JSON.stringify("journal-test-build"));
   const compiled=ts.transpileModule(source,{
     compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS},
   }).outputText;
@@ -323,6 +324,18 @@ assert.equal(storage.get("lesson-board.supabase.session.v1"),"production-must-re
 assert.equal(records[0].body.email,"teacher@example.test");
 assert.equal((await api.selfhostBoards()).length,1);
 assert.equal(env.nativeRequests.length,0,"The regular browser must keep its own Fetch transport");
+const journalBoard="00000000-0000-4000-8000-000000000004";
+const endJournal=api.selfhostStartBoardJournal(journalBoard,"owner");
+api.selfhostLogBoardSync(journalBoard,{event:"revision_waiting",version:8,reason:"gesture"});
+api.selfhostLogBoardSync(journalBoard,{event:"revision_settled",version:9,expected_version:8,elapsed_ms:42});
+endJournal();
+await api.selfhostExportBoardSync(journalBoard);
+const journalRows=records.find(r=>r.path.endsWith("/sync-journal")&&r.method==="POST").body.events;
+assert.deepEqual(journalRows.map(r=>r.event),["session_start","revision_waiting","revision_settled","session_end"]);
+assert.equal(new Set(journalRows.map(r=>r.session_id)).size,1);
+assert.deepEqual(journalRows.map(r=>r.sequence),[1,2,3,4]);
+assert.ok(journalRows.every(r=>r.occurred_at_ms>0&&r.build_id==="journal-test-build"&&r.platform==="web"));
+
 
 // Simulate the actual Android HTTP bridge, checking the transport boundary,
 // HTTP statuses, signed-in requests, cancellation, and no accidental retries.

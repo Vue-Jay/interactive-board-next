@@ -34,7 +34,7 @@ from billing import MESSAGES, limit_detail, make_billing_router
 from finance import make_finance_router
 from fastapi.responses import JSONResponse
 from board_history import ensure_baseline, record_revision, make_history_router, ink_history_group
-from board_sync_journal import write_sync_events, SyncJournalBatch, read_sync_events
+from board_sync_journal import write_sync_events, SyncJournalBatch, read_sync_events, server_sync_journal, export_metadata
 import attachment_approvals as approvals
 from board_visits import make_visit_router
 from feedback_mail import run_feedback_mail
@@ -111,6 +111,7 @@ async def lifespan(app: FastAPI):
         if mail_task:
             mail_task.cancel()
             await asyncio.gather(mail_task, return_exceptions=True)
+        await server_sync_journal(app).close()
         await app.state.pool.close()
 
 app = FastAPI(
@@ -978,7 +979,14 @@ async def persist_normalized_items(conn, board_id, previous, base, document, del
 async def _persist_document(board_id: UUID, expected_version: int, request: Request | WebSocket,
                            user, version_only: bool, document: dict | None = None,
                            delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None,
-                           approval_request_id: str | None = None):
+                           approval_request_id: str | None = None, timings: dict | None = None):
+    phase_started = time.monotonic()
+    def mark(phase):
+        nonlocal phase_started
+        now = time.monotonic()
+        if timings is not None:
+            timings[phase] = round((now-phase_started)*1000)
+        phase_started = now
     # Full saves remain supported for older clients and initial/recovery saves.
     serialized = serialize_document(document) if document is not None else None
     wire_delta = None
@@ -989,13 +997,16 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                 error(413, "Изменения превышают ограничение 1 МБ.")
         except (ValueError, OverflowError):
             error(422, "Недопустимые данные изменений.")
+    mark("validate_ms")
     async with request.app.state.pool.acquire() as conn:
+        mark("pool_ms")
         async with conn.transaction():
             board, role = await board_access(conn, board_id, user["id"], lock=True)
             if role not in ("owner", "editor") and not user["is_admin"]:
                 error(403, "Недостаточно прав для изменения доски.")
             participant = await board_participant(conn, board_id, user, role)
             restricted = participant == "student" and not user["is_admin"]
+            mark("access_ms")
             if approval_request_id is not None:
                 if not approvals.can_decide(role, participant):
                     error(403, "Решение доступно преподавателю.")
@@ -1057,6 +1068,7 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
             elif previous:
                 base = decode_document(await conn.fetchval(
                     "SELECT lektrus_board_document(d) FROM board_documents d WHERE board_id=$1", board_id))
+            mark("prepare_ms")
             if restricted:
                 # Check the actual complete candidate before any document/asset/history mutation.
                 # An empty new board permits student ink and own objects, not teacher metadata.
@@ -1098,7 +1110,9 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                 approval_events = await approvals.approve_new_media(conn, board_id, user, role, restricted, base, document, delta)
                 if approval_request_id is not None and not any(e["request_id"] == approval_request_id for e in approval_events):
                     error(409, "attachment_request_identity_conflict")
+            mark("permission_ms")
             history_group = await ink_history_group(conn,board_id,user,base,document,delta,ink_gesture)
+            mark("history_group_ms")
             if normalized_delta:
                 revision = await persist_normalized_items(
                     conn, board_id, previous, base, document, delta, user["id"], fast,
@@ -1123,7 +1137,10 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
             await conn.execute(
                 "UPDATE boards SET updated_at=now() WHERE id=$1", board_id,
             )
+            mark("write_ms")
             await record_revision(conn,board_id,revision,user,base,document,delta,history_group)
+            mark("history_ms")
+    mark("commit_ms")
     version = revision["version"]
     if delta is not None:
         request.app.state.document_deltas.remember(board_id, version, delta, wire_delta)
@@ -1142,6 +1159,7 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
     await announce_board_event(board_id, event, request.app.state.pool)
     for approval_event in approval_events:
         await announce_board_event(board_id, approval_event, request.app.state.pool)
+    mark("broadcast_ms")
     if version_only:
         return {"version": version}
     return {"board_id": str(board_id), "document": document, "version": version,
@@ -1153,20 +1171,25 @@ async def persist_document(board_id: UUID, expected_version: int, request: Reque
                            delta: dict | None = None, ink_gesture: str | None = None, ink_cursor: dict | None = None,
                            approval_request_id: str | None = None):
     started = time.monotonic()
+    occurred_at = round(time.time()*1000)
     transport = "socket" if isinstance(request, WebSocket) else "http"
+    timings = {}
+    writer = server_sync_journal(request.app)
+    def log_event(event, **fields):
+        writer.submit(board_id, user["id"], {"event":event, "expected_version":expected_version,
+            "transport":transport, "occurred_at_ms":occurred_at, "elapsed_ms":round((time.monotonic()-started)*1000),
+            "timings_ms":timings, "ink":bool(ink_gesture), **fields})
     try:
         result = await _persist_document(board_id, expected_version, request, user, version_only,
-                                        document, delta, ink_gesture, ink_cursor, approval_request_id)
+                                        document, delta, ink_gesture, ink_cursor, approval_request_id, timings)
     except HTTPException as exc:
-        if exc.status_code in (403,409,413,422,429):
-            await write_sync_events(request.app.state.pool, board_id, user["id"], "server",
-                [{"event":"save_error","expected_version":expected_version,"status":exc.status_code,
-                  "transport":transport,"elapsed_ms":round((time.monotonic()-started)*1000)}])
+        log_event("save_error",status=exc.status_code)
         raise
-    if not ink_gesture:
-        await write_sync_events(request.app.state.pool, board_id, user["id"], "server",
-            [{"event":"save_ack","expected_version":expected_version,"version":result["version"],
-              "transport":transport,"elapsed_ms":round((time.monotonic()-started)*1000)}])
+    except Exception:
+        log_event("save_error",status=500)
+        raise
+    if not ink_gesture or writer.sample_ink(board_id,user["id"]):
+        log_event("ink_save_sample" if ink_gesture else "save_ack",version=result["version"])
     return result
 
 
@@ -1175,8 +1198,10 @@ async def post_board_sync_journal(board_id: UUID, data: SyncJournalBatch, reques
                                  user=Depends(current_user)):
     async with request.app.state.pool.acquire() as conn:
         await board_access(conn, board_id, user["id"])
-    await write_sync_events(request.app.state.pool, board_id, user["id"], "client",
+    accepted = await write_sync_events(request.app.state.pool, board_id, user["id"], "client",
                             [event.model_dump(exclude_none=True) for event in data.events])
+    if not accepted:
+        error(429, "Журнал занят; повторите отправку.")
     return {"ok": True}
 
 
@@ -1184,10 +1209,13 @@ async def post_board_sync_journal(board_id: UUID, data: SyncJournalBatch, reques
 async def get_board_sync_journal(board_id: UUID, request: Request, user=Depends(current_user)):
     if not user["is_admin"]:
         error(403, "Журнал доступен только администратору.")
+    writer = server_sync_journal(request.app)
+    await writer.drain()
     async with request.app.state.pool.acquire() as conn:
         await board_access(conn, board_id, user["id"])
         rows=await read_sync_events(conn,board_id)
-    return {"board_id":str(board_id),"retention_days":7,"events":rows}
+        version=await conn.fetchval("SELECT version FROM board_documents WHERE board_id=$1", board_id)
+    return {"board_id":str(board_id),**export_metadata(rows,version,writer),"events":rows}
 
 
 @app.put("/api/v1/boards/{board_id}/document")
