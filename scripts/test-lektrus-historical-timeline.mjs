@@ -150,11 +150,12 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  }));
  const modernOriginals=new Map(modernIslandGeography.entries.map(d=>[d.originalGeometryId,
   {type:'MultiPolygon',coordinates:[d.geometry.type==='Polygon'?d.geometry.coordinates:d.geometry.coordinates[0]]}]));
- // A small island absent from the 1:10m atlas but present in the source
- // must not disappear merely because the coastlines were refreshed.
+ // A source copy overlapping the independently sourced Comino must not
+ // survive as a duplicate, while a disjoint nearby source islet must survive.
  const malteseModern=modernIslandGeography.entries.find(d=>d.iso==='MLT');
  const simulatedComino=[[[14.334,36.010],[14.335,36.010],[14.335,36.011],[14.334,36.011],[14.334,36.010]]];
- modernOriginals.get(malteseModern.originalGeometryId).coordinates.push(simulatedComino);
+ const simulatedDisjointMalteseIslet=[[[14.317,36.013],[14.318,36.013],[14.318,36.014],[14.317,36.014],[14.317,36.013]]];
+ modernOriginals.get(malteseModern.originalGeometryId).coordinates.push(simulatedComino,simulatedDisjointMalteseIslet);
  // Synthetic components only: ensure documented distant Jamaican cays
  // survive without granting unrelated distant source components to Jamaica.
  const jamaicanModern=modernIslandGeography.entries.find(d=>d.iso==='JAM');
@@ -173,14 +174,14 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  const latestSpatial=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-spatial-adjudications-20261128.json',import.meta.url),'utf8'));
  assert.equal(latestSpatial.cases.length,136);assert.equal(new Set(latestSpatial.cases.map(c=>c.id)).size,136);
  assert.equal(latestSpatial.counts.remainingWithoutExplanation,340);
- for(const d of modernIslandGeography.entries.filter(d=>['BRB','LCA','JAM','LKA'].includes(d.iso)))for(const snap of d.snapshots){
+ for(const d of modernIslandGeography.entries)for(const snap of d.snapshots){
   const c=latestSpatial.cases.find(c=>c.id===snap.id);
   assert.equal(c.geometryHistoricallyConfirmed,false);assert.equal(c.proposedMainlandApproxIoU,snap.proposedMainlandApproxIoU);
   assert.ok(c.proposedMainlandApproxIoU>c.iou);assert.equal(c.candidateGeometryId,d.originalGeometryId);
  }
  assert.equal(modernTallies.length,8);
  assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT','BRB','LCA','JAM','LKA']);
- assert.equal(modernTallies.find(x=>x.iso==='MLT').retainedLegacyIslets,0,'Overlapping old Comino duplicated');
+ assert.equal(modernTallies.find(x=>x.iso==='MLT').retainedLegacyIslets,1,'Old Comino duplicated or disjoint legacy islet lost');
  const minorParts=modernIslandGeography.entries.flatMap(d=>(d.minorIslandEvidence??[]).map(m=>({d,m})));
  assert.equal(minorParts.length,6);
  for(const {d,m} of minorParts){
@@ -192,7 +193,7 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  const conflict=minorParts[0],foreignPart=conflict.d.geometry.coordinates.find(p=>sha256(JSON.stringify(p))===conflict.m.partSha256);
  const fakeForeign={type:'Polygon',coordinates:foreignPart},fakeId=sha256(JSON.stringify(fakeForeign));
  const fakeRecords=[...modernIslandGeography.entries.map((d,i)=>({id:'fresh-'+i,name:d.name,geometryId:d.originalGeometryId,role:'polity',geometryStatus:'candidate',from:1990,to:2024})),{id:'foreign',name:'Synthetic competing polity',geometryId:fakeId,role:'polity',geometryStatus:'candidate',from:2000,to:2000}];
- const fakeGeometries=new Map(modernIslandGeography.entries.map(d=>[d.originalGeometryId,{type:'MultiPolygon',coordinates:[d.geometry.coordinates[0]]}]));
+ const fakeGeometries=new Map(modernIslandGeography.entries.map(d=>[d.originalGeometryId,{type:'MultiPolygon',coordinates:[d.geometry.type==='Polygon'?d.geometry.coordinates:d.geometry.coordinates[0]]}]));
  fakeGeometries.set(fakeId,fakeForeign);
  assert.throws(()=>applyReviewedModernIslandGeographies(fakeRecords,fakeGeometries),/Minor island overlaps a competing polity/);
  for(const d of modernIslandGeography.entries){
@@ -208,7 +209,7 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
   for(const [name,lon,lat] of d.landmarks)
    assert.ok(capitalInsideCountry([lon,lat],geom),d.iso+' missing '+name+' in new record');
  }
- assert.equal(modernOriginals.get(modernSyntheticRecords.find(r=>r.name==='Malta'&&r.from===1994).geometryId).coordinates.length,3);
+ assert.equal(modernOriginals.get(modernSyntheticRecords.find(r=>r.name==='Malta'&&r.from===1994).geometryId).coordinates.length,4);
  
 // Year-gated source splits preserve raw geometric identity and never invent
  // a surveyed border during administrative/territorial transitions.

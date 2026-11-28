@@ -2644,7 +2644,7 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
    // A physical island must not be silently assigned twice across polities.
    const partBox=bbox(part);
    for(const other of records){
-    if(other.role!=='polity'||other.geometryStatus!=='candidate'||other.name===d.name||other.to<policy.from||other.from>policy.to)continue;
+    if(other.role!=='polity'||other.geometryStatus!=='candidate'||(other.name===d.name&&other.geometryId===d.originalGeometryId)||other.to<policy.from||other.from>policy.to)continue;
     const otherGeometry=geometries.get(other.geometryId);assert.ok(otherGeometry,'Missing competing geometry');
     if(polys(otherGeometry).some(p=>overlaps(partBox,bbox(p))&&polygonClipping.intersection(part,p).length))
      throw new Error('Minor island overlaps a competing polity; historical review required: '+d.iso+'/'+m.name+'/'+other.name);

@@ -110,4 +110,18 @@ const coast=latest.cases.filter(r=>r.classification.startsWith('modern-independe
 assert.equal(coast.length,24);
 assert.equal(latest.counts.modernIslandCoastlineReviewCases,coast.length);
 assert.equal(latest.counts.modernIslandApproximateOverlapCases,coast.filter(r=>r.proposedMainlandApproxIoU!==undefined).length);
+const minorFindings=latest.minorIslandCoverageFindings;
+assert.equal(minorFindings.length,6);
+assert.equal(new Set(minorFindings.map(x=>x.id)).size,6);
+assert.equal(latest.counts.minorIslandCoverageFindings,minorFindings.length);
+assert.equal(latest.counts.minorIslandCoverageFindingsOpen,6);
+assert.equal(latest.counts.minorIslandCoverageFindingsConfirmed,0);
+for(const m of minorFindings){
+ assert.equal(m.geometryHistoricallyConfirmed,false);
+ assert.equal(m.status,"implemented-candidate-awaiting-full-yearly-acceptance");
+ assert.equal(m.componentYears,m.to-m.from+1);
+ assert.equal(m.archiveCaseIds.length,3);
+ for(const id of m.archiveCaseIds)assert.ok(latestIds.has(id),"Unlinked coverage finding "+m.id);
+ assert.ok(m.sources.length>0&&m.sources.every(s=>s.startsWith("https://")));
+}
 console.log("Current snapshot: 136 classified, 340 unclassified, all 476 geometries unverified.");
