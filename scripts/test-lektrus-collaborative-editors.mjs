@@ -153,8 +153,8 @@ const app=read("src/BoardApp.tsx");
 const school=read("src/LektrusSchoolDiagramEditor.tsx");
 const ws=read("src/boardWorkSync.ts");
 const atlasMap=read("src/LektrusMapAtlas.tsx");
-assert.match(atlasMap,/mergeEditedValue\(after,last.before,currentContour\(\)\)/,
- "contour undo rebases its inverse on the latest shared markings");
+assert.match(atlasMap,/undoCollaborativeValue\(after,last.before,currentContour\(\)\)/,
+ "contour undo applies the conflict-aware personal inverse to the latest shared markings");
 assert.match(atlasMap,/contourMarks:typeof contourMarks;contourStrokes:typeof contourStrokes/,
  "undo wrapper must preserve canonical ID-collection names");
 assert.match(atlasMap,/contourMarks:restored\.contourMarks/,

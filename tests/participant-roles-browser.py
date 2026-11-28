@@ -2282,6 +2282,8 @@ def check_final_subject_gestures(browser):
             status=re.compile("Правильно|Есть неточности")
             expect(teacher.locator(".lektrus-sentence-status")).to_contain_text(status,timeout=15000)
             words=pupil.locator("[data-sentence-word]")
+            expect(words).to_have_count(3)
+            expect(words.first).to_be_visible()
             first=words.first.bounding_box()
             last=words.last.bounding_box()
             x=first["x"]+first["width"]/2;y=first["y"]+first["height"]/2
@@ -2293,7 +2295,12 @@ def check_final_subject_gestures(browser):
             cdp.send("Input.dispatchTouchEvent",{"type":"touchCancel","touchPoints":[]})
             expect(pupil.locator(".lektrus-sentence-drag-preview")).to_have_count(0)
             expect(pupil.locator(".lektrus-sentence-status")).to_contain_text(status)
-            assert read()["version"]==checked["version"],"Cancelled drag must not persist a change"
+            # Unrelated autosizing/presence revisions may advance the board
+            # version; verify the exact answer fields rather than that counter.
+            pupil.wait_for_timeout(700)
+            after_cancel=read()["document"]["items"][0]["schoolDiagram"]
+            before_cancel=checked["document"]["items"][0]["schoolDiagram"]
+            assert after_cancel.get("answerOrder")==before_cancel.get("answerOrder") and after_cancel.get("answerChecked") is True,"Cancelled drag must not persist an answer change"
             cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":False})
             order=words.evaluate_all("els=>els.map(e=>e.dataset.sentenceWord)")
             pupil.mouse.move(x,y);pupil.mouse.down()
@@ -2315,6 +2322,8 @@ def check_final_subject_gestures(browser):
             ta=teacher.locator(editor).get_by_role("button",name=mark,exact=True)
             pa=pupil.locator(editor).get_by_role("button",name=mark,exact=True)
             def lon(items):return items[0]["schoolDiagram"]["contourMarks"][0]["lon"]
+            expect(ta).to_be_visible(timeout=30000)
+            expect(pa).to_be_visible(timeout=30000)
             ta.press("ArrowRight")
             first_move=wait(lambda items:lon(items)>20,"First contour move missing")
             first_lon=lon(first_move["document"]["items"])
