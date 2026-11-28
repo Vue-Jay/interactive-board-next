@@ -29,7 +29,7 @@
     "datedScopeDiscrepancies": 34,
     "ukColonialScopeComparisonCases": 3,
     "datedPoliticalStatusScopeReviews": 14,
-    "modernIslandCoastlineReviewCases": 21,
+    "modernIslandCoastlineReviewCases": 24,
     "modernIslandApproximateOverlapCases": 12
   },
   "warning": "Twelve approximate proposed island comparisons improve overlap with pinned archives; full yearly build and post-repair GEOS validation pending. 340 unclassified, 769 expected territorial source component-years open. No spatial candidates certified.",

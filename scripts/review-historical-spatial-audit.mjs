@@ -67,8 +67,11 @@ assert.equal(classes.get("bolivian-pacific-coast-and-chaco-dated-disputes"),6);
 assert.equal(classes.get("anglo-french-condominium-not-independent"),1);
 assert.equal(classes.get("1938-munich-intra-year-border-transition"),1);
 assert.equal(classes.get("siam-tributary-claims-versus-direct-borders"),6);
-assert.equal(seen.size,95);assert.equal(current.counts.newlyExplained,90);
-assert.equal(current.counts.remainingWithoutExplanation,381);
+assert.equal(classes.get("historical-uk-proper-vs-imperial-source-scope-not-like-for-like"),3);
+assert.equal(classes.get("dated-political-status-or-composite-scope-noncomparable-to-single-year-sovereign-outline"),14);
+assert.equal(classes.get("modern-independent-island-coastline-candidate-reconstructed-pending-yearly-geometric-acceptance"),12);
+assert.equal(seen.size,124);assert.equal(current.counts.newlyExplained,119);
+assert.equal(current.counts.remainingWithoutExplanation,352);
 assert.equal(current.counts.historicallyVerifiedGeometries,0);
 assert.equal(current.counts.territorialComponentYearsStillOpenExpected,769);
 const source=fs.readFileSync(new URL("scripts/audit-historical-unique-geometries.py",base),"utf8");
@@ -77,7 +80,7 @@ assert.ok(!source.includes("name_key(r['name']), name_key(r['sourceName'])"));
 assert.ok(source.includes("sourceAliasOnly"));
 assert.ok(source.includes("retrospectiveAliasWithoutEffectiveMatch"));
 assert.ok(source.includes("rawSourceAliasOnlyArchiveFeatures"));
-console.log("Atlas spatial comparison: 13 false historical name matches corrected, 95 mismatches explained, 381 awaiting review; geometry unverified.");
+console.log("Atlas spatial comparison: 13 false historical name matches corrected, 124 mismatches explained, 352 awaiting review; geometry unverified.");
 
 // Preserve the previous frozen acceptance checks above, and validate the current
 // snapshot as well. A documented political context is not a certified boundary.
@@ -103,4 +106,8 @@ assert.equal(latest.counts.historicallyVerifiedGeometries,0);
 assert.equal(latest.counts.unverifiedArchiveGeometries,byId.size);
 assert.equal(latest.counts.territorialComponentYearsStillOpenExpected,769);
 assert.equal(latestIds.size,136);
+const coast=latest.cases.filter(r=>r.classification.startsWith('modern-independent-island-coastline-candidate-'));
+assert.equal(coast.length,24);
+assert.equal(latest.counts.modernIslandCoastlineReviewCases,coast.length);
+assert.equal(latest.counts.modernIslandApproximateOverlapCases,coast.filter(r=>r.proposedMainlandApproxIoU!==undefined).length);
 console.log("Current snapshot: 136 classified, 340 unclassified, all 476 geometries unverified.");
