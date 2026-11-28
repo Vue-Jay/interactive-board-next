@@ -34,9 +34,9 @@
     "minorIslandCoverageFindings": 6,
     "minorIslandCoverageFindingsOpen": 6,
     "minorIslandCoverageFindingsConfirmed": 0,
-    "followUpFindings": 13,
+    "followUpFindings": 14,
     "followUpFindingsCorrected": 12,
-    "followUpFindingsOpen": 1
+    "followUpFindingsOpen": 2
   },
   "warning": "24 approximate candidate comparisons; six physical island components added with independent territorial attribution. Archive can omit islands; full yearly build and post-repair GEOS validation pending. 340 unclassified, 769 expected territorial source component-years open. No spatial candidates certified.",
   "cases": [
@@ -2639,6 +2639,145 @@
         "https://www.legifrance.gouv.fr/eli/loi/2026/7/22/2026-645/jo/texte"
       ],
       "resultRu": "Нужны датированные контуры обеих сторон. Подписание 26 мая 2023 года и разрешение на одобрение во Франции в июле 2026 года — разные этапы. В нидерландском реестре дата вступления в силу не указана."
+    },
+    {
+      "id": "world-bank-2025-saint-barthelemy-coverage-gap",
+      "from": 2025,
+      "to": 2025,
+      "status": "open",
+      "geometry": "dated-source-needed",
+      "sources": [
+        "https://source.coop/geographyis/wb-gad",
+        "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000465963"
+      ],
+      "resultRu": "Снимок 2 декабря 2025 года не содержит контура Сен-Бартелеми. Датированный контур для этого года нужно подтвердить отдельно."
     }
-  ]
+  ],
+  "modernReferenceAudits": {
+    "2025": {
+      "edition": "2025-12-02",
+      "catalog": "https://source.coop/geographyis/wb-gad",
+      "status": "independent-reference-candidate",
+      "layers": {
+        "ADM0": {
+          "file": "world-2025-adm0-candidate.geojson",
+          "source": "https://data.source.coop/geographyis/wb-gad/WB_GAD_ADM0.geojson",
+          "sourceSHA256": "0e88acdd3732a8261e9b6572599f1f6438c6963c13ffca9a25b9eaceee083bf3",
+          "candidateSHA256": "bc375eb7872ded4a9341425b8094fb5e12ee6226c1e13fc4dda17d1e285ce22f",
+          "features": 260,
+          "membershipCounts": {
+            "members": 193,
+            "observers": 2,
+            "outsideRosterFeatures": 61
+          },
+          "topologyRepairs": [],
+          "labelCorrections": [
+            {
+              "index": 189,
+              "before": "Bonaire, Sint Eustatius and Saba (Neth.)",
+              "after": "Saba (Neth.)"
+            },
+            {
+              "index": 190,
+              "before": "Bonaire, Sint Eustatius and Saba (Neth.)",
+              "after": "Sint Eustatius (Neth.)"
+            },
+            {
+              "index": 219,
+              "before": "Bonaire, Sint Eustatius and Saba (Neth.)",
+              "after": "Bonaire (Neth.)"
+            },
+            {
+              "index": 26,
+              "before": "TÃ¼rkiye",
+              "after": "Türkiye"
+            },
+            {
+              "index": 114,
+              "before": "PeÃ±Ã³n de Alhucaimas (Sp.)",
+              "after": "Peñón de Alhucaimas (Sp.)"
+            },
+            {
+              "index": 115,
+              "before": "PeÃ±Ã³n de VÃ©lez de la Gomera (Sp.)",
+              "after": "Peñón de Vélez de la Gomera (Sp.)"
+            },
+            {
+              "index": 133,
+              "before": "CÃ´te d'Ivoire",
+              "after": "Côte d'Ivoire"
+            },
+            {
+              "index": 159,
+              "before": "SÃ£o TomÃ© and PrÃ­ncipe",
+              "after": "São Tomé and Príncipe"
+            },
+            {
+              "index": 223,
+              "before": "CuraÃ§ao (Neth.)",
+              "after": "Curaçao (Neth.)"
+            }
+          ],
+          "unresolvedOverlaps": [],
+          "coverageGaps": [
+            {
+              "iso": "BLM",
+              "name": "Saint Barthélemy",
+              "reason": "Separate territory absent from the pinned source",
+              "source": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000465963"
+            }
+          ]
+        },
+        "NDLSA": {
+          "file": "world-2025-ndlsa-candidate.geojson",
+          "source": "https://data.source.coop/geographyis/wb-gad/WB_GAD_ADM0_NDLSA.geojson",
+          "sourceSHA256": "3ff2a1aead884d470d260720b7a62673c619cccebc66473614837ee5e7a57166",
+          "candidateSHA256": "52dfeec5bc646429357f604cb6c4c4c78f5626b0dd6f8f3a11d8b2057e396d65",
+          "features": 24,
+          "membershipCounts": {
+            "members": 0,
+            "observers": 0,
+            "outsideRosterFeatures": 24
+          },
+          "topologyRepairs": [],
+          "labelCorrections": [],
+          "unresolvedOverlaps": [],
+          "coverageGaps": []
+        }
+      }
+    },
+    "2026": {
+      "edition": "2026-08-28",
+      "source": "https://services.arcgis.com/iQ1dY19aHwbSDYIF/arcgis/rest/services/World_Bank_Global_Administrative_Divisions/FeatureServer/1",
+      "status": "independent-reference-candidate",
+      "membershipCounts": {
+        "un-member": 193,
+        "non-member-observer": 2,
+        "outside-roster": 56
+      },
+      "adm0Snapshot": {
+        "file": "world-2026-candidate.geojson",
+        "sha256": "b6b12f0da27baff9b49629022aba2c3006cbe4838d64f0c2bbe5a34693e09c6b",
+        "rawFile": "world-2026-source.geojson",
+        "rawSHA256": "4647711ca668285803927d052ba5d020489f16269c510afc10a0c7289dfcf455",
+        "features": 251,
+        "distinctSourceCodes": 245,
+        "missingGeometry": 0
+      },
+      "ndlsa": {
+        "status": "separate-layer-pending-territorial-review",
+        "edition": "2026-08-28",
+        "features": 24,
+        "sourceSHA256": "c4e099ac942522a282ca405ff2d17953e8f356d8771cca041cec797cdd341833",
+        "candidateSHA256": "97525ef8309941ced5099900377f41c24193feced2087d20a2cf26c592691961",
+        "missingGeometry": 0,
+        "topologyRepairs": 1
+      },
+      "archivedFeatures": 257,
+      "archiveRecordsWithoutDirectMatch": 21,
+      "namedSeparateLayerCandidates": 4,
+      "splitAdministrativeCandidates": 1,
+      "adm0OverlapsAbove001Km2": 0
+    }
+  }
 }
