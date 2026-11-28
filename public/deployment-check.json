@@ -2,6 +2,6 @@
   "application": "lektrus",
   "source": "github-actions",
   "branch": "main",
-  "marker": "lektrus-static-board-metadata-2026-11-28",
-  "board_change": "noneditable-title-and-subject-render-as-text"
+  "marker": "lektrus-board-identity-polish-2026-11-28",
+  "board_change": "compact-aligned-board-title-and-subtitle"
 }

@@ -219,7 +219,18 @@ def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
         expect(subject_input).to_have_count(0)
         expect(static_title).to_have_count(1)
         expect(static_subject).to_have_count(1)
-        expect(static_subject.locator('input,button,select,[tabindex],[contenteditable="true"]')).to_have_count(0)
+        identity=scope.locator('.topbar .lektrus-board-identity')
+        expect(identity).to_be_visible()
+        expect(static_title).to_be_visible()
+        expect(static_subject).to_be_visible()
+        # Both lines form one centered, left-aligned, noninteractive identity.
+        geometry=identity.evaluate("""el => {
+          const a=el.querySelector('h1').getBoundingClientRect(), b=el.querySelector('.lektrus-board-subject-static').getBoundingClientRect(),
+                g=el.getBoundingClientRect(), h=el.closest('.topbar').getBoundingClientRect();
+          return {left:Math.abs(a.left-b.left),gap:b.top-a.bottom,center:Math.abs((g.top+g.bottom-h.top-h.bottom)/2),fits:g.top>=h.top-1&&g.bottom<=h.bottom+1,width:g.width};
+        }""")
+        assert geometry["left"]<=1 and 0<=geometry["gap"]<=4 and geometry["center"]<=4 and geometry["fits"] and geometry["width"]>0, geometry
+        expect(identity.locator('input,button,select,[tabindex],[contenteditable="true"]')).to_have_count(0)
         assert static_title.evaluate("el => el.tabIndex === -1 && !el.isContentEditable")
         expect(scope.locator('#lektrus-subject-options')).to_have_count(0)
     subject=scope.locator('button[aria-label="Предметные инструменты"]:visible')

@@ -165,23 +165,30 @@ body>.lektrus-subject-options>button.is-selected{
   body .topbar .lektrus-subject-field>button{width:24px!important;min-width:24px!important;flex-basis:24px!important;height:24px!important;min-height:24px!important}
 }
 
-/* Read-only board metadata is text, not disabled form chrome. */
+/* Board identity: a compact, non-interactive title/subtitle lockup. */
+html body .topbar .lektrus-board-identity{
+  display:flex;flex-direction:column;justify-content:center;align-items:stretch;
+  align-self:center;flex:0 1 auto;min-width:0;max-width:min(360px,100%);
+  gap:2px;padding:0;margin:0;box-sizing:border-box;overflow:hidden;cursor:default;
+  background:none;border:0;box-shadow:none;
+}
 html body .topbar .lektrus-board-title-static{
-  flex:0 1 auto;min-width:0;max-width:250px;margin:0;padding:0 3px;
-  color:var(--lt-text,#1d2b46);
-  font-family:inherit;font-size:15px;font-weight:750;line-height:1.35;
+  display:block;min-width:0;max-width:100%;margin:0;padding:0;
+  color:var(--lt-text,#1d2b46);font-family:inherit;font-size:15px;font-weight:750;
+  line-height:19px;letter-spacing:-.015em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;
 }
 html body .topbar .lektrus-board-subject-static{
-  display:flex;align-items:center;flex:0 1 auto;min-width:0;max-width:285px;gap:8px;
-  padding:0 0 0 12px;margin:0;border-left:1px solid var(--lt-line,#d3deed);cursor:default;
+  display:block;min-width:0;max-width:100%;padding:0;margin:0;border:0;
+  color:var(--lt-muted,#667894);font-family:inherit;font-size:11px;font-weight:600;
+  line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;
 }
 html body .topbar .lektrus-board-subject-value{
-  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  color:var(--lt-text,#1d2b46);font-size:12px;font-weight:650;line-height:1.35;
+  display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:inherit;font:inherit;line-height:inherit;
 }
 @media(max-width:900px){
-  html body .topbar .lektrus-board-title-static{font-size:12px;flex:1 1 90px;min-width:0}
-  html body .topbar .lektrus-board-subject-static{max-width:35%;padding-left:6px;gap:4px}
-  html body .topbar .lektrus-board-subject-value{font-size:11px}
+  html body .topbar .lektrus-board-identity{flex:0 1 auto;max-width:100%;gap:1px}
+  html body .topbar .lektrus-board-title-static{font-size:13px;line-height:17px}
+  html body .topbar .lektrus-board-subject-static{font-size:11px;line-height:13px}
 }
