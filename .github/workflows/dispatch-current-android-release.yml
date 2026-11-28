@@ -1,0 +1,30 @@
+name: Dispatch verified current Android release
+on:
+  push:
+    branches: ['ops/dispatch-current-android-release-20261128']
+    paths: ['.github/workflows/dispatch-current-android-release.yml']
+permissions:
+  actions: write
+  contents: read
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      EXPECTED: 39c491347773a20a3a87df0111ce6326f00daf20
+    steps:
+      - name: Request standard release workflow for verified main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)" = "$EXPECTED"
+          gh api "repos/$GH_REPO/actions/runs/46119098702" --jq '{head_sha,conclusion}' | jq -e --arg sha "$EXPECTED" '.head_sha == $sha and .conclusion == "success"'
+          existing="$(gh api "repos/$GH_REPO/actions/workflows/native-build.yml/runs?head_sha=$EXPECTED&per_page=20" --jq '.total_count')"
+          if [[ "$existing" != 0 ]]; then
+            echo 'Native run already exists for current main; refusing duplicate dispatch.'
+            exit 0
+          fi
+          gh workflow run native-build.yml --repo "$GH_REPO" --ref main -f publish_android=true
+          echo "Requested standard signed Android publication for $EXPECTED"
