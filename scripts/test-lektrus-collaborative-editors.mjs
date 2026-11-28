@@ -366,3 +366,20 @@ for(const [base,source,response] of [
  assert.deepEqual(mergeEditedValue(place,newBase,answer),newBase);
  assert.deepEqual(mergeEditedValue(place,answer,{...place,title:"Rename"}),{...answer,title:"Rename"});
 }
+
+{
+ const a={id:"a",kind:"task",format:"interactive",activity:{mode:"choice",options:["one","two"],correctIndex:0},answer:""};
+ const b={...a,id:"b",title:"B"},c={...a,id:"c",title:"C"};
+ const base={subjectBoardEntries:[a,b]},answer={...a,activityResponse:{selected:1,checked:true}};
+ const local={subjectBoardEntries:[answer,b]},remote={subjectBoardEntries:[b,c]};
+ assert.deepEqual(mergeEditedValue(base,local,remote),remote,"Deleted task cannot be revived by an answer");
+ const reordered={subjectBoardEntries:[b,a,c]};
+ assert.deepEqual(mergeEditedValue(base,local,reordered),{subjectBoardEntries:[b,answer,c]},"Answer follows stable ID across reorder");
+ assert.deepEqual(mergeEditedValue(base,{subjectBoardEntries:[b,a]},local),{subjectBoardEntries:[b,answer]},"Reorder preserves concurrent answers");
+ const replacement={...a,activity:{mode:"choice",options:["three","four"],correctIndex:1}};
+ assert.deepEqual(mergeEditedValue(base,local,{subjectBoardEntries:[replacement,b]}),{subjectBoardEntries:[replacement,b]});
+ assert.deepEqual(mergeEditedValue(base,{subjectBoardEntries:[replacement,b]},local),{subjectBoardEntries:[replacement,b]});
+ assert.deepEqual(applyEditorOps({subjectBoardEntries:[replacement,b]},editorDiff(base,local)),{subjectBoardEntries:[replacement,b]},"Delayed preview cannot answer replaced task");
+ assert.deepEqual(applyEditorOps(remote,editorDiff(base,local)),remote,"Delayed preview cannot recreate deleted task");
+ assert.deepEqual(editorDiff(base,{subjectBoardEntries:[b,a]}),[],"Reorder uses durable revision");
+}

@@ -293,3 +293,13 @@ assert.match(board,/\(isStudent&&!isBoardOwner&&blockedStudentObjectEdits\(items
  const newSentence={...marked,schoolDiagram:{...marked.schoolDiagram,words:[{id:"a",text:"Папа",role:"subject"},syntax.schoolDiagram.words[1]]}};
  assert.equal(applyPersonalBoardEdit([newSentence],choose([syntax],[marked]),"undo").changed,false);
 }
+
+{
+ const task={id:"q",kind:"task",format:"interactive",activity:{mode:"choice",options:["one","two"]},activityResponse:{selected:0,checked:false}};
+ const before={...object("worksheet"),kind:"graph",subjectBoardEntries:[task]};
+ const after={...before,subjectBoardEntries:[{...task,activityResponse:{selected:1,checked:false}}]};
+ const peerCheck={...after,subjectBoardEntries:[{...after.subjectBoardEntries[0],activityResponse:{selected:1,checked:true}}]};
+ assert.equal(applyPersonalBoardEdit([peerCheck],choose([before],[after]),"undo").changed,false,"Undo cannot split a checked peer answer");
+ const replacement={...after,subjectBoardEntries:[{...after.subjectBoardEntries[0],activity:{mode:"choice",options:["three","four"]}}]};
+ assert.equal(applyPersonalBoardEdit([replacement],choose([before],[after]),"undo").changed,false,"Old answer cannot undo into new task");
+}

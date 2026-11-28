@@ -7145,7 +7145,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry) ,{publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
-   const patchSubjectBoardEntry=(boardId:string,entryId:string,changes:Partial<import("./boardModel").SubjectBoardEntry>,teacherOnly=false)=>{
+   const patchSubjectBoardEntry=(boardId:string,entryId:string,changes:Partial<import("./boardModel").SubjectBoardEntry>,teacherOnly=false,base?:import("./boardModel").SubjectBoardEntry)=>{
      const latest=itemsRef.current.find(value=>value.id===boardId);
      if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||(teacherOnly&&!roleCapabilities.canUseTeacherTools))return;
      const entries=latest.subjectBoardEntries??[];
@@ -7158,8 +7158,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
        !subjectTaskTypeAllowed(tone,changes.format))return;
      if(changes.format&&changes.format!==current.format&&!roleCapabilities.canUseTeacherTools)return;
      if(!roleCapabilities.canUseTeacherTools&&Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse","russianWork"].includes(key)))return;
-     const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{
-       ...entry,...changes,subject:boardTone(latest)}:entry)};
+     if(base&&base.id!==current.id)return;
+     const origin=base??current;
+     const updated=mergeEditedValue(origin,{...origin,...changes,subject:tone},current,"subjectBoardEntries");
+     if(JSON.stringify(updated)===JSON.stringify(current))return;
+     const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?updated:entry)};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
      // Controlled worksheet inputs and editor buttons must observe the latest
      // entry before the next input event. Frame-batched painting is for
@@ -9761,7 +9764,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           return <LektrusSubjectBoardSolutionEditor key={entry.id} tone={boardTone(source)} value={entry.workedSolution}
             initialGiven={entry.details?.given??entry.details?.expression??entry.details?.reaction??""}
             initialFind={entry.details?.find??""}
-            onChange={value=>patchSubjectBoardEntry(source.id,entry.id,{workedSolution:value})}
+            onChange={value=>patchSubjectBoardEntry(source.id,entry.id,{workedSolution:value},false,entry)}
             onClose={()=>setSubjectBoardSolution(null)}/>;
         })()}
         {subjectBoardEditor&&(()=>{
@@ -9779,10 +9782,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 scienceReactionDomain:entry.domain??"inorganic"}}
               onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,{
                 steps:next.scienceReactionSteps??[],domain:next.scienceReactionDomain??"inorganic"
-              },true)} onSave={closeSubjectBoardEntry} onCancel={closeSubjectBoardEntry}/>;
+              },true,entry)} onSave={closeSubjectBoardEntry} onCancel={closeSubjectBoardEntry}/>;
           }
           return <LektrusSubjectBoardTaskEditor key={entry.id} tone={boardTone(boardItem)} entry={entry}
-            onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,next,true)}
+            onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,next,true,entry)}
             onDelete={()=>{removeSubjectBoardEntry(boardItem.id,entry.id);setSubjectBoardEditor(null)}}
             onClose={closeSubjectBoardEntry}/>;
         })()}
@@ -11054,20 +11057,20 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   onAction={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     (mode,entryId)=>openSubjectBoardEntry(item,mode,entryId):undefined}
                   onAnswerChange={canEdit&&!item.locked&&!presentation?
-                    (entryId,answer)=>patchSubjectBoardEntry(item.id,entryId,{answer}):undefined}
+                    (entryId,answer)=>patchSubjectBoardEntry(item.id,entryId,{answer},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}
                   onReveal={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     entryId=>{const entry=item.subjectBoardEntries?.find(value=>value.id===entryId);
-                      if(entry)patchSubjectBoardEntry(item.id,entryId,{revealed:!entry.revealed},true);}:undefined}
+                      if(entry)patchSubjectBoardEntry(item.id,entryId,{revealed:!entry.revealed},true,entry);}:undefined}
                   onMove={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     (entryId,direction)=>moveSubjectBoardEntry(item.id,entryId,direction):undefined}
                   onEditSolution={canEdit&&!item.locked&&!presentation?
                     entryId=>openSubjectBoardSolution(item.id,entryId):undefined}
                   onWorkedSolutionChange={canEdit&&!item.locked&&!presentation?
-                    (entryId,solution)=>patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution}):undefined}
+                    (entryId,solution)=>patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}
                   onActivityAnswer={canEdit&&!item.locked&&!presentation?
-                    (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response}):undefined}
+                    (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}
                   onRussianWorkChange={canEdit&&!item.locked&&!presentation?
-                    (entryId,work)=>patchSubjectBoardEntry(item.id,entryId,{russianWork:work}):undefined}/>}
+                    (entryId,work)=>patchSubjectBoardEntry(item.id,entryId,{russianWork:work},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}/>}
                 {item.kind==="graph"&&
                  (item.subjectBoardStandalone===true&&item.graphFigureId==="subject-board-chemistry"||
                   item.graphFigureId?.startsWith("chem-formula-"))&&

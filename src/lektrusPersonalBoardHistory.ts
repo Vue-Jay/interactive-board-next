@@ -36,9 +36,10 @@ function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResu
   const grouped=new Set<string>();
   if(expected.kind===desired.kind&&expected.kind===live.kind){
    const kind=expected.kind;
-   const source=kind==="sentence-builder"?["parts"]:kind==="geo-training"?["exercise","relation","reverse","countryCodes"]:
+   const subjectTask=kind==="task"&&typeof expected.id==="string"&&expected.id===desired.id&&expected.id===live.id;
+   const source=subjectTask?["format","activity"]:kind==="sentence-builder"?["parts"]:kind==="geo-training"?["exercise","relation","reverse","countryCodes"]:
      kind==="flashcards"?["cards","direction"]:kind==="orthography"?["questions"]:kind==="place-value"?["base"]:[];
-   const answer=kind==="sentence-builder"?["answerOrder","answerChecked"]:kind==="geo-training"?["practice"]:
+   const answer=subjectTask?["activityResponse"]:kind==="sentence-builder"?["answerOrder","answerChecked"]:kind==="geo-training"?["practice"]:
      kind==="flashcards"||kind==="orthography"?["response"]:kind==="place-value"?["digits"]:[];
    if(source.length&&answer.length){
     const keys=[...source,...answer];keys.forEach(k=>grouped.add(k));

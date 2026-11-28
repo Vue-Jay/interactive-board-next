@@ -1776,6 +1776,34 @@ def check_undo_reconnect_sync(browser):
             print("Chemical laboratory bidirectional mode and durable state passed.")
             replace_items([])
 
+            # Subject-board entry responses are shared and must follow an
+            # entry's identity even when the teacher changes its position.
+            task_a={"id":"qa-task-a","kind":"task","subject":"mathematics","format":"interactive","title":"QA task A","prompt":"Choose A","answer":"","solution":"","revealed":False,
+                    "activity":{"mode":"choice","options":["QA one","QA two"],"correctIndex":0}}
+            task_b={"id":"qa-task-b","kind":"task","subject":"mathematics","format":"interactive","title":"QA task B","prompt":"Choose B","answer":"","solution":"","revealed":False,
+                    "activity":{"mode":"choice","options":["QA three","QA four"],"correctIndex":1}}
+            worksheet={"id":"qa-worksheet","kind":"graph","graphFigureId":"subject-board-mathematics","graphPurpose":"geometry","graphAxisMode":"none","x":120,"y":80,"width":820,"height":600,
+                       "text":"QA worksheet","createdBy":author,"subjectBoardEntries":[task_a,task_b]}
+            replace_items([worksheet])
+            pupil.get_by_role("button",name="А QA one",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==worksheet["id"] and any(e["id"]==task_a["id"] and e.get("activityResponse",{}).get("selected")==0 for e in i.get("subjectBoardEntries",[])) for i in d["items"]),"Worksheet response not saved")
+            expect(teacher.get_by_role("button",name="А QA one",exact=True)).to_have_attribute("aria-pressed","true",timeout=15000)
+            row=client.get(url).json()
+            reordered=json.loads(json.dumps(row["document"]))
+            reordered["items"][0]["subjectBoardEntries"].reverse()
+            client.put(url,json={"expected_version":row["version"],"document":reordered}).raise_for_status()
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const entries=raw&&JSON.parse(raw).items.find(i=>i.id===id)?.subjectBoardEntries;
+                    return entries?.[0]?.id==="qa-task-b"&&entries?.[1]?.activityResponse?.selected===0;
+                }""",arg={"ident":ident,"id":worksheet["id"]},timeout=30000)
+            pupil.get_by_role("button",name="Б QA four",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==worksheet["id"] and i["subjectBoardEntries"][0].get("activityResponse",{}).get("selected")==1 and i["subjectBoardEntries"][1].get("activityResponse",{}).get("selected")==0 for i in d["items"]),"Reordered worksheet answers did not stay on their entries")
+            expect(teacher.get_by_role("button",name="Б QA four",exact=True)).to_have_attribute("aria-pressed","true",timeout=15000)
+            print("Subject-board shared answers preserved across task reordering.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],

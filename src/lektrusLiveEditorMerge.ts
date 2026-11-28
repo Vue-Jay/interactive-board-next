@@ -16,7 +16,7 @@ const isIdCollection=(values:unknown[],key:string)=>(
  ["contourMarks","contourStrokes","bodies","supports","forces","components","junctions","wires","elements","rays",
   // Chemical glassware and appliances are addressed by persistent IDs.
   // Index-based array appends can duplicate a beaker on an evaporation tick.
-  "vessels","placedDevices","graphPoints","points","stickerInk"].includes(key)&&
+  "vessels","placedDevices","graphPoints","points","stickerInk","subjectBoardEntries"].includes(key)&&
  values.every(x=>record(x)&&typeof x.id==="string")
 );
 function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):unknown[]{
@@ -32,7 +32,18 @@ function mergeArray(base:unknown[],edit:unknown[],latest:unknown[],key:string):u
    if(result.has(id)&&!same(original,value))result.set(id,mergeEditedValue(original,value,result.get(id),key));
   }
   for(const [id] of before)if(!edit.some(v=>(v as {id:string}).id===id))result.delete(id);
-  return [...result.values()];
+  const values=[...result.values()];
+  if(key==="subjectBoardEntries"){
+   // Reorder only surviving common entries. Peer additions retain their slots.
+   const ids=(list:unknown[])=>list.map(v=>(v as {id:string}).id);
+   const common=new Set(ids(base).filter(id=>result.has(id)&&ids(edit).includes(id)&&ids(latest).includes(id)));
+   const old=ids(base).filter(id=>common.has(id)),ordered=ids(edit).filter(id=>common.has(id));
+   if(!same(old,ordered)){
+    let i=0;
+    return values.map(v=>common.has((v as {id:string}).id)?result.get(ordered[i++]):v);
+   }
+  }
+  return values;
  }
  // Editing coordinates of an existing vertex cannot overwrite edits to other
  // vertices. Unrelated new vertices and strokes are appended, not discarded.
@@ -118,6 +129,25 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
   }
   if(!same(base.base,edit.base)){result.base=edit.base;result.digits=edit.digits;}
   else if(same(base.base,latest.base)&&!same(base.digits,edit.digits))result.digits=edit.digits;
+  return result as T;
+ }
+ // A response is tied to the task's authored interactive source. The
+ // same numerical indices can refer to completely different answers after
+ // the teacher changes the task. Never carry an old response across it.
+ if(key==="subjectBoardEntries"&&record(base)&&record(edit)&&record(latest)&&
+    base.id===edit.id&&base.id===latest.id&&base.kind==="task"&&edit.kind==="task"&&latest.kind==="task"){
+  const source=["format","activity"],answer="activityResponse";
+  const changed=(a:Record<string,unknown>,b:Record<string,unknown>)=>source.some(k=>!same(a[k],b[k]));
+  const result:Record<string,unknown>={...latest};
+  const copy=(from:Record<string,unknown>,k:string)=>{if(from[k]===undefined)delete result[k];else result[k]=from[k];};
+  for(const field of new Set([...Object.keys(base),...Object.keys(edit)])){
+   if(source.includes(field)||field===answer||same(base[field],edit[field]))continue;
+   if(!(field in edit))delete result[field];else result[field]=mergeEditedValue(base[field],edit[field],latest[field],field);
+  }
+  if(changed(base,edit)){
+   for(const field of source)copy(edit,field);
+   if(changed(edit,latest))delete result[answer];
+  }else if(!changed(base,latest)&&!same(base[answer],edit[answer]))copy(edit,answer);
   return result as T;
  }
  if(same(base,latest))return edit;
@@ -220,6 +250,13 @@ export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
    if(isIdCollection(a,key)&&isIdCollection(b,key)){
     const previous=new Map(a.map(v=>[(v as {id:string}).id,v]));
     const following=new Map(b.map(v=>[(v as {id:string}).id,v]));
+    if(key==="subjectBoardEntries"){
+     const old=[...previous.keys()].filter(id=>following.has(id));
+     const next=[...following.keys()].filter(id=>previous.has(id));
+     // A reorder cannot be represented by upsert-id. Leave it to the
+     // complete durable revision rather than broadcast a positional patch.
+     if(!same(old,next)){overflow=true;return;}
+    }
     for(const [id,value] of following)
      if(!same(value,previous.get(id)))
       changes.push({path,kind:"upsert-id",id,value,before:previous.get(id)});
@@ -275,7 +312,7 @@ export function applyEditorOps<T>(input:T,ops:readonly LiveEditorOp[]):T{
      // An update with a prior value is not a creation. A delayed preview
      // must not revive a peer-deleted point, wire, vessel or attached stroke.
      if(index<0)return action.before!==undefined?value:[...value,action.value];
-     return value.map((v,i)=>i===index&&action.before!==undefined?mergeEditedValue(action.before,action.value,v):i===index?action.value:v);
+     return value.map((v,i)=>i===index&&action.before!==undefined?mergeEditedValue(action.before,action.value,v,String(path[path.length-1]??"")):i===index?action.value:v);
    }
    case "remove-id":{
      if(!Array.isArray(value))return value;
