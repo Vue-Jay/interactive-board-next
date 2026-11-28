@@ -334,3 +334,8 @@ console.log("Board-local participant roles: explicit role matrix passed");
  assert.equal(allowed([graph],[{...graph,graphPoints:[{x:1,y:2}]}],"student").length,0);
  assert.equal(allowed([{...graph,subjectBoardEntries:[]}],[{...graph,subjectBoardEntries:[],graphPoints:[{x:1,y:2}]}],"student").length,1);
 }
+
+// Open contour editors must recheck current permission and validate the merged map.
+assert.match(app,/if\(!canEdit\|\|!latest\|\|latest.graphFigureId!=="contour-atlas"\|\|/);
+assert.match(app,/const allowed=isStudent\?restrictStudentDiagramChange\(latest.schoolDiagram,merged\):merged;\s*if\(!allowed\|\|allowed.kind!=="atlas"\|\|!isSchoolDiagram\(allowed\)\)return;/);
+assert.match(app,/if\(!canEdit\|\|!current\|\|current.locked\|\|current.graphFigureId!=="geo-matching"/);

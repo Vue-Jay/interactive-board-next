@@ -9709,18 +9709,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           onCancel={()=>setSchoolEditorItem(null)}
           onLiveChange={(before,next)=>{
             const latest=itemsRef.current.find(item=>item.id===schoolEditorItem.id);
-            if(!latest||latest.graphFigureId!=="contour-atlas"||
+            if(!canEdit||!latest||latest.graphFigureId!=="contour-atlas"||
               latest.schoolDiagram?.kind!=="atlas"||next.kind!=="atlas"||before.kind!=="atlas")return;
-            // Students can edit only their answers; never overwrite the
-            // teacher's assignment, territory, or permitted map layers.
-            const allowed=isStudent?new Set([
-              "contourMarks","contourStrokes","contourLegend","paintedCountries","contourCamera"
-            ]):null;
-            const submitted=allowed?{...before,...Object.fromEntries(
-              [...allowed].map(key=>[key,next[key as keyof typeof next]])
-            )}:next;
+            // Locking a contour worksheet protects placement, not its answer.
+            // Recheck edit permission and validate against the CURRENT source;
+            // a stale editor or realtime preview must not bypass the normal
+            // pupil response policy or send a malformed map to another client.
+            const submitted=isStudent?restrictStudentDiagramChange(before,next):next;
+            if(!submitted||submitted.kind!=="atlas")return;
             const merged=mergeEditedValue(before,submitted,latest.schoolDiagram);
-            const updated={...latest,schoolDiagram:merged,text:merged.title};
+            const allowed=isStudent?restrictStudentDiagramChange(latest.schoolDiagram,merged):merged;
+            if(!allowed||allowed.kind!=="atlas"||!isSchoolDiagram(allowed))return;
+            const updated={...latest,schoolDiagram:allowed,text:allowed.title};
+            if(JSON.stringify(updated)===JSON.stringify(latest))return;
             if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
             commit(itemsRef.current.map(item=>item.id===latest.id?updated:item) ,{publishLiveEdits:false});
             workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
@@ -11086,10 +11087,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     item.graphFigureId==="chem-experiment-free"&&!!item.scienceLabBench&&tool==="select"?
                     (nextBench,simulationOnly=false)=>{
                       const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
-                      if(!latest||latest.locked)return;
+                      if(!canEdit||!latest||latest.locked||latest.graphFigureId!=="chem-experiment-free"||
+                         !latest.scienceLabBench||structurallyLockedForStudent(latest))return;
                       if(simulationOnly&&readLabBench(item).tableEpoch!==readLabBench(latest).tableEpoch)return;
                       const merged=mergeLabBench(readLabBench(item),nextBench,readLabBench(latest));
                       const updated={...latest,scienceLabBench:merged};
+                      if(JSON.stringify(merged)===JSON.stringify(latest.scienceLabBench))return;
                       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
                       commit(itemsRef.current.map(v=>v.id===latest.id?updated:v),
                         {labSimulation:simulationOnly,publishLiveEdits:false});
@@ -11118,7 +11121,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   onMatchingSize={!isStudent&&canEdit&&!item.locked&&!presentation&&
                    item.graphFigureId==="geo-matching"?(width,height)=>{
                     const current=itemsRef.current.find(entry=>entry.id===item.id);
-                    if(!current||current.graphFigureId!=="geo-matching"||
+                    if(!canEdit||!current||current.locked||current.graphFigureId!=="geo-matching"||
                        current.schoolDiagram?.kind!=="geo-training"||current.schoolDiagram.exercise!=="matching")return;
                     const w=Math.round(width),h=Math.round(height);
                     if(!Number.isFinite(w)||!Number.isFinite(h)||w<300||w>1200||h<200||h>2200||

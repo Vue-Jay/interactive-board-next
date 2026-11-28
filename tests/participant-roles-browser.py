@@ -1698,6 +1698,84 @@ def check_undo_reconnect_sync(browser):
             print("Shared syntax marks, place-value input, teacher base replacement and forged source denial passed.")
             replace_items([])
 
+            # Teacher's historical period selection is a shared document edit.
+            # A pupil may explore locally but must not rewrite the teacher's atlas.
+            atlas_source={"kind":"atlas","scope":"history","title":"Исторический атлас","mode":"historical","year":1914,
+                          "showLabels":True,"showGrid":False,"showEvents":False,"markers":[],"regionId":"world","borderView":"russian"}
+            history={"id":"qa-history-atlas","kind":"graph","graphFigureId":"history-atlas","graphPurpose":"geometry","graphAxisMode":"none",
+                     "x":150,"y":80,"width":800,"height":460,"text":"Исторический атлас","createdBy":author,"schoolDiagram":atlas_source}
+            replace_items([history])
+            period="Выбрать год исторической карты"
+            teacher.get_by_label(period,exact=True).select_option("2000")
+            wait_api(teacher,lambda d:any(i["id"]==history["id"] and i.get("schoolDiagram",{}).get("year")==2000 for i in d["items"]),"Atlas year not persisted")
+            expect(pupil.get_by_label(period,exact=True)).to_have_value("2000",timeout=30000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["year"]=1914
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            print("Historical atlas teacher period convergence and pupil source denial passed.")
+            replace_items([])
+
+            # Two open contour editors: independent keyboard changes are
+            # delivered to both participants and persisted without reopening.
+            contour={"id":"qa-contour","kind":"graph","graphFigureId":"contour-atlas","graphPurpose":"geometry","graphAxisMode":"none",
+                     "x":150,"y":80,"width":800,"height":460,"text":"Контурная карта","createdBy":author,
+                     "schoolDiagram":{**atlas_source,"scope":"geography","title":"Контурная карта","mode":"contour","contourTask":"Переместите обозначения",
+                       "contourMarks":[{"id":"qa-a","lat":30,"lon":20,"text":"QA A","kind":"point","color":"#334455"},
+                                       {"id":"qa-b","lat":40,"lon":40,"text":"QA B","kind":"point","color":"#334455"}],
+                       "contourStrokes":[],"paintedCountries":{}}}
+            replace_items([contour])
+            editor_selector=".lektrus-contour-editor-fullscreen"
+            for page in (teacher,pupil):
+                select_all(page)
+                page.get_by_role("button",name="Настроить учебный объект",exact=True).click()
+                expect(page.locator(editor_selector)).to_be_visible(timeout=30000)
+            ta=teacher.locator(editor_selector).get_by_role("button",name="Передвинуть обозначение: QA A",exact=True)
+            pb=pupil.locator(editor_selector).get_by_role("button",name="Передвинуть обозначение: QA B",exact=True)
+            expect(ta).to_be_visible(timeout=30000)
+            expect(pb).to_be_visible(timeout=30000)
+            ta.press("ArrowRight")
+            pb.press("ArrowLeft")
+            contour_saved=wait_api(teacher,lambda d:any(i["id"]==contour["id"] and any(m["id"]=="qa-a" and m["lon"]>20 for m in i.get("schoolDiagram",{}).get("contourMarks",[])) and any(m["id"]=="qa-b" and m["lon"]<40 for m in i.get("schoolDiagram",{}).get("contourMarks",[])) for i in d["items"]),"Independent contour marks not saved")
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const marks=raw&&JSON.parse(raw).items.find(i=>i.id===id)?.schoolDiagram?.contourMarks;
+                    return marks?.some(m=>m.id==="qa-a"&&m.lon>20)&&marks?.some(m=>m.id==="qa-b"&&m.lon<40);
+                }""",arg={"ident":ident,"id":contour["id"]},timeout=30000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["contourTask"]="Подмена задания"
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            for page in (teacher,pupil):
+                page.locator(editor_selector).get_by_role("button",name="Закрыть общий редактор",exact=True).click()
+                expect(page.locator(editor_selector)).to_have_count(0)
+            print("Contour map two open editors, independent marks and protected assignment passed.")
+            replace_items([])
+
+            # Laboratory mode is persisted in the same board object, not a
+            # private fullscreen setting. Use a paused, empty beaker fixture.
+            lab={"id":"qa-lab","kind":"graph","graphFigureId":"chem-experiment-free","graphPurpose":"geometry","graphAxisMode":"none",
+                 "x":100,"y":70,"width":960,"height":580,"text":"Химическая лаборатория","createdBy":author,
+                 "scienceLabBench":{"vessels":[{"id":"v1","kind":"beaker","x":48,"y":70,"reagents":[],"environment":"aqueous","observed":False}],
+                                    "selectedId":"v1","event":0,"mode":"reactions","simulationPaused":True}}
+            replace_items([lab])
+            for page in (teacher,pupil):
+                page.locator('[data-interface-control="select"]:visible').first.click()
+            lab_mode="Режим химической лаборатории"
+            teacher.get_by_label(lab_mode,exact=True).select_option("titration")
+            wait_api(teacher,lambda d:any(i["id"]==lab["id"] and i.get("scienceLabBench",{}).get("mode")=="titration" for i in d["items"]),"Lab mode not saved")
+            expect(pupil.get_by_label(lab_mode,exact=True)).to_have_value("titration",timeout=30000)
+            pupil.get_by_label(lab_mode,exact=True).select_option("reactions")
+            wait_api(pupil,lambda d:any(i["id"]==lab["id"] and i.get("scienceLabBench",{}).get("mode")=="reactions" for i in d["items"]),"Pupil lab mode not saved")
+            expect(teacher.get_by_label(lab_mode,exact=True)).to_have_value("reactions",timeout=30000)
+            print("Chemical laboratory bidirectional mode and durable state passed.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],
