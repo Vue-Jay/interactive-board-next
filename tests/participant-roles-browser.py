@@ -203,6 +203,25 @@ def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
     # Inspect its real controls and canvas, not the empty parent document.
     scope=page.frame_locator("iframe.lektrus-browser-board-frame") if embedded else page
     expect(scope.locator("section.board")).to_be_visible(timeout=90000)
+    # Metadata must be real text for learners/guests/viewers, not focusable
+    # disabled controls. Run this on desktop and the rotated touch frame.
+    title_input=scope.locator('.topbar input[aria-label="Название доски"]')
+    subject_input=scope.locator('.topbar [role="combobox"][aria-label="Выбрать предмет доски"]')
+    static_title=scope.locator('.topbar h1.lektrus-board-title-static')
+    static_subject=scope.locator('.topbar .lektrus-board-subject-static')
+    if can_author:
+        expect(title_input).to_be_editable()
+        expect(subject_input).to_be_editable()
+        expect(static_title).to_have_count(0)
+        expect(static_subject).to_have_count(0)
+    else:
+        expect(title_input).to_have_count(0)
+        expect(subject_input).to_have_count(0)
+        expect(static_title).to_have_count(1)
+        expect(static_subject).to_have_count(1)
+        expect(static_subject.locator('input,button,select,[tabindex],[contenteditable="true"]')).to_have_count(0)
+        assert static_title.evaluate("el => el.tabIndex === -1 && !el.isContentEditable")
+        expect(scope.locator('#lektrus-subject-options')).to_have_count(0)
     subject=scope.locator('button[aria-label="Предметные инструменты"]:visible')
     if can_author:
         expect(subject.first).to_be_visible(timeout=15000)

@@ -164,3 +164,24 @@ body>.lektrus-subject-options>button.is-selected{
   body .topbar .lektrus-subject-field>input{font-size:11px!important}
   body .topbar .lektrus-subject-field>button{width:24px!important;min-width:24px!important;flex-basis:24px!important;height:24px!important;min-height:24px!important}
 }
+
+/* Read-only board metadata is text, not disabled form chrome. */
+html body .topbar .lektrus-board-title-static{
+  flex:0 1 auto;min-width:0;max-width:250px;margin:0;padding:0 3px;
+  color:var(--lt-text,#1d2b46);
+  font-family:inherit;font-size:15px;font-weight:750;line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;
+}
+html body .topbar .lektrus-board-subject-static{
+  display:flex;align-items:center;flex:0 1 auto;min-width:0;max-width:285px;gap:8px;
+  padding:0 0 0 12px;margin:0;border-left:1px solid var(--lt-line,#d3deed);cursor:default;
+}
+html body .topbar .lektrus-board-subject-value{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--lt-text,#1d2b46);font-size:12px;font-weight:650;line-height:1.35;
+}
+@media(max-width:900px){
+  html body .topbar .lektrus-board-title-static{font-size:12px;flex:1 1 90px;min-width:0}
+  html body .topbar .lektrus-board-subject-static{max-width:35%;padding-left:6px;gap:4px}
+  html body .topbar .lektrus-board-subject-value{font-size:11px}
+}

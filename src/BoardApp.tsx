@@ -9194,7 +9194,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           >
             {leavingBoard?"Сохраняем…":authUser.guestBoardId?"← Выйти":"← Доски"}
           </button>
-          <input
+          {canChangeBoardMetadata?<input
             aria-label="Название доски"
             className="board-title"
             value={title}
@@ -9205,10 +9205,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               end(true);
             }}
             maxLength={300}
-            readOnly={!canChangeBoardMetadata}
-          />
+          />:<h1 className="lektrus-board-title-static" title={title}>{title}</h1>}
           {authUser.isGuest&&!demoMode&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
-          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canChangeBoardMetadata} onChange={changeBoardSubject}/>
+          {canChangeBoardMetadata?<LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} onChange={changeBoardSubject}/>:<div className="lektrus-board-subject-static" title={lectrisBoardOrganization.subject||"Без предмета"}><span className="lektrus-subject-label">Предмет</span><span className="lektrus-board-subject-value">{lectrisBoardOrganization.subject||"Без предмета"}</span></div>}
         </div>
         <div className="topbar-right">
           {!layoutEditing&&!publicPresentation&&!canEdit&&<span className="board-access-status" role="status" aria-label="Только просмотр" title={boardSummary.planReadOnly?"Только просмотр · выберите эту доску в разделе «Тарифы»":"Только просмотр · наблюдатель"}><Icon name="eye" size={16}/><span>Только просмотр</span></span>}

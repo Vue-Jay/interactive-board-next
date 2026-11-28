@@ -267,7 +267,10 @@ assert.match(app,/const merged=mergeEditedValue\(base,diagram,before.schoolDiagr
 assert.match(app,/const canChangeBoardMetadata=canEdit&&!isStudent&&!boardSummary.planReadOnly&&canEditBoardMetadata\(/,
  "shared metadata permission must be independent of assignment authoring and ownership-only membership management");
 assert.match(app,/const changeBoardSubject=\(subject:string\)=>\{\s*if\(!canChangeBoardMetadata\)return;/);
-assert.match(app,/readOnly=\{!canChangeBoardMetadata\}/);
+assert.match(app,/\{canChangeBoardMetadata\?<input\s+aria-label="Название доски"/);
+assert.match(app,/<h1 className="lektrus-board-title-static" title=\{title\}>\{title\}<\/h1>/);
+assert.match(app,/\{canChangeBoardMetadata\?<LektrusSubjectPicker[^\n]+:<div className="lektrus-board-subject-static"/);
+assert.doesNotMatch(app,/readOnly=\{!canChangeBoardMetadata\}|disabled=\{!canChangeBoardMetadata\}/);
 assert.match(app,/canChangeSubject=\{canChangeBoardMetadata\}/);
 assert.match(app,/if\(!canCreateAssignments\)\{setNotice\("Создавать задания может только преподаватель/,
  "students cannot generate assignments");
