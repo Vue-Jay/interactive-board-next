@@ -297,6 +297,12 @@
  font:inherit;font-weight:700;font-size:clamp(12px,1.3vw,17px);
  touch-action:none;user-select:none;-webkit-user-select:none;
  transition:background-color .12s,border-color .12s,box-shadow .12s}
+/* Generic workspace button touch-action:manipulation must not win over
+ * draggable words. The scrollable word container is the browser's nearest
+ * gesture boundary; prevent native pan before the first pointerdown. */
+.lektrus-sentence-on-board .lektrus-sentence-parts button[data-sentence-word]{
+ touch-action:none!important;
+}
 .lektrus-sentence-parts button:hover{background:#e1edff;border-color:#8fb5e6}
 .lektrus-sentence-parts button:active{cursor:grabbing}
 .lektrus-sentence-parts button.is-dragging{opacity:.4;border:2px dashed #3d78d5;

@@ -2300,6 +2300,7 @@ def check_final_subject_gestures(browser,author):
                     cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":True,"maxTouchPoints":1})
                     pupil.wait_for_timeout(500)
                     x,y=word_center(words.first)
+                    assert words.first.evaluate("e=>getComputedStyle(e).touchAction")=="none","Workspace CSS must not enable native panning on draggable words"
                     cdp.send("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":[{"x":x,"y":y,"id":1}]})
                     for offset in (12,24,36):
                         cdp.send("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":[{"x":x+offset,"y":y,"id":1}]})
