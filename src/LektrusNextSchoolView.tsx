@@ -179,7 +179,7 @@ export default function LektrusNextSchoolView({diagram:d,onChange,studentMode=fa
  return <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column"}}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   {onChange&&<div style={panelStyle}>
-   {studentMode?<span>Основание: {d.base}</span>:<label>Основание <select style={entryStyle} value={d.base}
+   {studentMode?<span>Основание: {d.base}</span>:<label>Основание <select aria-label="Основание" style={entryStyle} value={d.base}
     onChange={e=>onChange({...d,base:Number(e.target.value) as 2|8|10|16,digits:""})}>
     {[2,8,10,16].map(v=><option value={v} key={v}>{v}</option>)}</select></label>}
    <label>Число <input style={entryStyle} value={d.digits} maxLength={10}

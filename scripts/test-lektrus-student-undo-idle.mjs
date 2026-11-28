@@ -266,3 +266,30 @@ assert.match(board,/\(isStudent&&!isBoardOwner&&blockedStudentObjectEdits\(items
  assert.match(board,/historyBaseline:undefined|\{historyBaseline\}/);
  assert.match(board,/rebaseTextEdit\(session,previousText,remoteEdited.text,edited.text\)/);
 }
+
+{
+ const graph={...object("assignment"),kind:"graph",schoolDiagram:{kind:"sentence-builder",parts:[{id:"a",text:"I"},{id:"b",text:"read"}],answerOrder:["a","b"],answerChecked:true}};
+ const edited={...graph,schoolDiagram:{...graph.schoolDiagram,answerOrder:["b","a"],answerChecked:false}};
+ const operation=choose([graph],[edited]);
+ const peerCheck={...edited,schoolDiagram:{...edited.schoolDiagram,answerChecked:true}};
+ assert.equal(applyPersonalBoardEdit([peerCheck],operation,"undo").changed,false,"Undo cannot split a peer's checked answer and word order");
+ const replacement={...edited,schoolDiagram:{...edited.schoolDiagram,parts:[{id:"a",text:"We"},{id:"b",text:"write"}]}};
+ assert.equal(applyPersonalBoardEdit([replacement],operation,"undo").changed,false,"Undo cannot modify a replacement sentence");
+ assert.deepEqual(applyPersonalBoardEdit([{...edited,x:30}],operation,"undo").items,[{...graph,x:30}]);
+ const spelling={...graph,schoolDiagram:{kind:"orthography",questions:[{id:"a",prompt:"л□с"}],response:{index:0,picked:0,checked:false}}};
+ const checked={...spelling,schoolDiagram:{...spelling.schoolDiagram,response:{index:0,picked:0,checked:true}}};
+ const later={...checked,schoolDiagram:{...checked.schoolDiagram,response:{index:0,picked:1,checked:true}}};
+ assert.equal(applyPersonalBoardEdit([later],choose([spelling],[checked]),"undo").changed,false,"Undo must not uncheck a peer's replacement answer");
+ const number={...graph,schoolDiagram:{kind:"place-value",base:2,digits:""}};
+ const answered={...number,schoolDiagram:{...number.schoolDiagram,digits:"101"}};
+ const changedBase={...answered,schoolDiagram:{kind:"place-value",base:10,digits:"101"}};
+ assert.equal(applyPersonalBoardEdit([changedBase],choose([number],[answered]),"undo").changed,false);
+ const syntax={...graph,schoolDiagram:{kind:"syntax",words:[{id:"a",text:"Мама",role:"none"},{id:"b",text:"читает",role:"none"}]}};
+ const marked={...syntax,schoolDiagram:{...syntax.schoolDiagram,words:[{...syntax.schoolDiagram.words[0],role:"subject"},syntax.schoolDiagram.words[1]]}};
+ const peerMark={...marked,schoolDiagram:{...marked.schoolDiagram,words:[marked.schoolDiagram.words[0],{...marked.schoolDiagram.words[1],role:"predicate"}]}};
+ const reverted=applyPersonalBoardEdit([peerMark],choose([syntax],[marked]),"undo");
+ assert.equal(reverted.items[0].schoolDiagram.words[0].role,"none");
+ assert.equal(reverted.items[0].schoolDiagram.words[1].role,"predicate");
+ const newSentence={...marked,schoolDiagram:{...marked.schoolDiagram,words:[{id:"a",text:"Папа",role:"subject"},syntax.schoolDiagram.words[1]]}};
+ assert.equal(applyPersonalBoardEdit([newSentence],choose([syntax],[marked]),"undo").changed,false);
+}

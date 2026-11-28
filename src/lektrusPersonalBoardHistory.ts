@@ -30,7 +30,43 @@ function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResu
  if(same(expected,live))return {value:desired,changed:true,conflicts:0};
  if(record(expected)&&record(desired)&&record(live)){
   const result={...live};let changed=false,conflicts=0;
+  // Assignment answers must be undone as a coherent unit and only against
+  // the original source. A later peer edit to one response field must not
+  // leave a mixture of the old answer and a new exercise.
+  const grouped=new Set<string>();
+  if(expected.kind===desired.kind&&expected.kind===live.kind){
+   const kind=expected.kind;
+   const source=kind==="sentence-builder"?["parts"]:kind==="geo-training"?["exercise","relation","reverse","countryCodes"]:
+     kind==="flashcards"?["cards","direction"]:kind==="orthography"?["questions"]:kind==="place-value"?["base"]:[];
+   const answer=kind==="sentence-builder"?["answerOrder","answerChecked"]:kind==="geo-training"?["practice"]:
+     kind==="flashcards"||kind==="orthography"?["response"]:kind==="place-value"?["digits"]:[];
+   if(source.length&&answer.length){
+    const keys=[...source,...answer];keys.forEach(k=>grouped.add(k));
+    if(keys.some(k=>!same(expected[k],desired[k]))){
+     if(keys.every(k=>same(expected[k],live[k]))){
+      for(const k of keys)if(!same(expected[k],desired[k])){
+       if(desired[k]===undefined)delete result[k];else result[k]=desired[k];
+       changed=true;
+      }
+     }else conflicts++;
+    }
+   }
+   // Syntax words carry both teacher text and pupil role. Independent
+   // markings may still undo independently, but not across a replaced word.
+   if(kind==="syntax"&&Array.isArray(expected.words)&&Array.isArray(desired.words)&&Array.isArray(live.words)&&
+      expected.words.every(record)&&desired.words.every(record)&&live.words.every(record)){
+    const sourceOf=(words:Record<string,unknown>[])=>words.map(w=>[w.id,w.text]);
+    if(!same(sourceOf(expected.words),sourceOf(desired.words))||!same(sourceOf(expected.words),sourceOf(live.words))){
+     grouped.add("words");
+     if(!same(expected.words,desired.words)){
+      if(same(expected.words,live.words)){result.words=desired.words;changed=true;}
+      else conflicts++;
+     }
+    }
+   }
+  }
   for(const key of new Set([...Object.keys(expected),...Object.keys(desired)])){
+   if(grouped.has(key))continue;
    if(key==="id"||key==="createdBy"||key==="__proto__"||key==="constructor"||key==="prototype")continue;
    const next=inverseValue(expected[key],desired[key],live[key]);
    conflicts+=next.conflicts;
