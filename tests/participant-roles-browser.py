@@ -1698,6 +1698,9 @@ def check_undo_reconnect_sync(browser):
             expect(pupil.get_by_text("Основание: 10",exact=True)).to_be_visible(timeout=15000)
             pupil.get_by_placeholder("Введите число",exact=True).fill("98")
             expect(teacher.get_by_placeholder("Введите число",exact=True)).to_have_value("98",timeout=15000)
+            # A live peer preview is not a durable acknowledgement. Verify the
+            # exact final response on the server before the fixture replaces it.
+            wait_api(pupil,lambda d:any(i["id"]==place["id"] and i.get("schoolDiagram",{}).get("digits")=="98" and i.get("schoolDiagram",{}).get("base")==10 for i in d["items"]),"Final place-value response not persisted")
             print("Shared syntax marks, place-value input, teacher base replacement and forged source denial passed.")
             replace_items([])
 
