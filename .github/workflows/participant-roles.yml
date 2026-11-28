@@ -14,6 +14,7 @@ on:
       - 'src/guestNameCache.ts'
       - 'src/lektrusBoardObjectAuth.ts'
       - 'src/lektrusBoardRolePreview.ts'
+      - 'tests/participant-roles-browser.py'
       - 'tests/production-browser-connectivity.py'
       - 'package.json'
       - 'package-lock.json'
