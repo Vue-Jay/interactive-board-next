@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
 import polygonClipping from 'polygon-clipping';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
+import {modernStatusRulesFor,modernStatusAt} from './atlas-modern-political-status.mjs';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {HISTORY_SCHEMA, HISTORY_FIRST_YEAR, HISTORY_LAST_YEAR, historicalYearOrdinal, historicalYearFromOrdinal, validateHistoricalManifest, validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 
@@ -663,6 +664,8 @@ function editorialSegments(base,derived=[]){
  if(base.sourceIndex===13245)cut(1963);
  if(base.sourceIndex===13306)cut(1970);
  if(base.sourceIndex===13371)cut(1990);
+ const statusRules=modernStatusRulesFor(base);
+ for(const rule of statusRules){cut(rule.from);cut(rule.to+1);}
  const titleRules=historicalTitleCorrections.filter(([name,qid])=>base.role==='polity'&&base.sourceName===name&&base.sourceWikidata===qid);
  for(const [, , start,end] of titleRules){cut(start);cut(end+1);}
  const sorted=[...cuts].sort((a,b)=>a-b);
@@ -1308,6 +1311,11 @@ function editorialSegments(base,derived=[]){
    const components=r.components.filter(n=>!(from>=1803&&to<=1805&&n==='British Cape Colony'));
    r={...r,sourceComponents:base.components,components:[...new Set([...components,...names])]};
    note('Separate geographically distinct colonial administrations formerly hidden in the Cape source aggregate; their local boundaries remain approximate.',[capeSource,sierraSource,seychellesSource,gambiaSource],'Раздельно указаны колониальные администрации, ошибочно объединённые в исходной записи Капской колонии; местные границы остаются приблизительными.');
+  }
+  const modernStatus=modernStatusAt(statusRules,from,to);
+  if(modernStatus){
+   r={...r,name:modernStatus.name,nameRu:modernStatus.nameRu,nameStatus:'reviewed',role:modernStatus.role,...(modernStatus.role!==base.role?{sourceRole:base.role}:{})};
+   note(modernStatus.reason,modernStatus.sources,modernStatus.reasonRu);
   }
   if(reasons.length)r={...r,review:{reason:reasons.join(' '),...(reasonsRu.length?{reasonRu:reasonsRu.join(' ')}:{}),sources:[...sources]}};
   // Avoid artificial splits where none of the corrections applied.

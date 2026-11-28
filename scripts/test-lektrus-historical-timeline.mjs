@@ -7,6 +7,7 @@ import {tmpdir} from 'node:os';
 import {buildHistoricalTimeline,normalizeHistoricalSource,sha256,removeRetracedHole,deriveConfirmedOverlapExclusions,deriveTerritorialBatch,territorialBatch,territorialResolutions,documentedStateCoverageGaps,independentIslands,independentIslandGeometry,partitionHistoricalGeometry,applyReviewedModernIslandGeographies,modernIslandGeography,historicalTitleCorrections,tianjinReviewedSourceOwner,secondaryExactReviews,thirdExactReviews,fourthExactReviews,fifthExactReviews,sixthExactReviews,provisionalExactReviews,exactConflictPendingReviews,exactConflictGroupPrefix,elba1797Partition,buildElbaPartition,earlyComorosRoutes,earlyComorosHashes} from './build-lektrus-historical-timeline.mjs';
 import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalDatedGapCenters,tianjinConcessionChronology,tianjinConcessionStatus,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 import {capitalInsideCountry} from './atlas-2026-capitals.mjs';
+import {modernStatusRulesFor,modernStatusAt} from './atlas-modern-political-status.mjs';
 import {historicalYearOrdinal,historicalYearFromOrdinal,stepHistoricalYear,historicalBlockForYear,historicalYearState,historicalYearFeatureCollection,historicalYearSourcesComparable,validateHistoricalManifest,validateHistoricalPack} from '../src/lektrusHistoricalTimeline.ts';
 import {createHistoricalTimelineLoader} from '../src/lektrusHistoricalTimelineLoader.ts';
 import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
@@ -44,6 +45,23 @@ assert.deepEqual(exactComponentConflicts(withSettlement,new Map([['a',['x','y']]
 assert.equal(componentHash(square().coordinates),componentHash([[[1,1],[1,0],[0,0],[0,1],[1,1]]]));
 assert.notEqual(componentHash(square().coordinates),componentHash(square(1).coordinates));
 const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY',components='')=>({type:'Feature',properties:{Name:name,FromYear:from,ToYear:to,Wikidata:wikidata,Type:type,Components:components},geometry});
+
+// Modern political chronology: do not confuse internal administration,
+// constitutional reform, military occupation or a dispute with a new border.
+for(const [name,qid,from,to,x] of [['Barbados','Q244',2019,2024,0],['Netherlands','Q55',2008,2012,3],['Montenegro','Q236',1999,2008,6],['Kuwait','Q817',1989,1995,9],['Belize','Q242',1999,2020,12],['Saint Lucia','Q760',1977,1981,15]]){
+ const input=feature(name,from,to,square(x),qid);
+ const output=normalizeHistoricalSource({type:'FeatureCollection',features:[input]});
+ const relevant=output.records.filter(r=>r.sourceName===name);
+ for(let year=from;year<=to;year++){
+  const candidates=relevant.filter(r=>r.from<=year&&r.to>=year);
+  assert.equal(candidates.length,1,name+'/'+year+' lost or duplicated annual record');
+  const r=candidates[0],expected=modernStatusAt(modernStatusRulesFor({sourceName:name,sourceWikidata:qid,role:'polity',from,to}),year,year);
+  assert.equal(r.geometryId,sha256(JSON.stringify(square(x))),name+'/'+year+' changed unverified geometry');
+  if(expected){assert.equal(r.role,expected.role);assert.equal(r.nameRu,expected.nameRu);assert.ok(r.review.reasonRu.includes(expected.reasonRu));}
+ }
+}
+assert.equal(modernStatusRulesFor({sourceName:'Montenegro',sourceWikidata:'Q999999',role:'polity',from:2000,to:2006}).length,0);
+
 const duplicateSource=[feature('Old rule',1800,1806,{type:'MultiPolygon',coordinates:[square().coordinates,square(3).coordinates]}),feature('New rule',1802,1803,square()),feature('New rule',1805,1806,square()),feature('New rule',1802,1806,square(3))];
 const derived=deriveConfirmedOverlapExclusions(duplicateSource,[{index:0,loser:/Old rule/,winner:/New rule/,from:1801,to:1805,boxes:[[-1,-1,2,2]],reason:'evidence',ru:'evidence',source:'https://example.com'}]);
 assert.deepEqual(derived.map(r=>[r[2],r[3],r[7]]),[[1802,[0],1803],[1805,[0],1805]]);
