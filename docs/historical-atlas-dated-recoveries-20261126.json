@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-26",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "mainUntouched": true,
+  "releaseReady": false,
+  "kind": "dated-city-administration-not-geopolitical-borders",
+  "verifiedYearEvents": [
+    {
+      "year": 1630,
+      "locations": [
+        "Recife",
+        "Olinda",
+        "Schans de Bruyne / Brum historical site",
+        "Frederik Hendrick / Cinco Pontas historical site"
+      ],
+      "status": "dated-city-event-and-fort-site-locations-visible",
+      "polygon": "unresolved"
+    },
+    {
+      "year": 1631,
+      "locations": [
+        "Recife",
+        "Olinda",
+        "Schans de Bruyne / Brum historical site",
+        "Frederik Hendrick / Cinco Pontas historical site"
+      ],
+      "status": "dated-city-event-and-fort-site-locations-visible",
+      "polygon": "unresolved"
+    },
+    {
+      "year": 1673,
+      "locations": [
+        "New Orange / New Netherland"
+      ],
+      "status": "dated-event-visible",
+      "polygon": "unresolved"
+    },
+    {
+      "year": 1674,
+      "locations": [
+        "New York / New Orange"
+      ],
+      "status": "dated-event-visible",
+      "polygon": "unresolved"
+    }
+  ],
+  "territorialCount": {
+    "open": 859,
+    "distinctRegionYears": 780,
+    "unchanged": true,
+    "partialCoreYearsExpected": 43
+  },
+  "sourceUrls": [
+    "https://dutchportcities.globalasiaprogram.org/home/recife/",
+    "https://www.loc.gov/item/2021668315/",
+    "https://history.nycourts.gov/legal-history-by-era/new-york-under-dutch-rule/",
+    "https://history.nycourts.gov/legal-history-by-era/colonial-new-york-under-british-rule/",
+    "https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf",
+    "https://whc.unesco.org/en/tentativelists/5997",
+    "https://sicg.iphan.gov.br/sicg/bem/visualizar/1753",
+    "https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php",
+    "https://history.nycourts.gov/figure/anthony-colve/"
+  ],
+  "nextGeometryWork": [
+    "georeference 1630 Van Buren / 1631 Drewisch plans before restoring fort polygons",
+    "independently validate 1673–1674 New Netherland submissions without reuse of 1663 maximal outline",
+    "georeference actual dated 1630-1631 Recife fortified sites",
+    "independently locate 1673 New Orange holdings rather than reuse 1663 colony"
+  ],
+  "fortMicrogeometry": {
+    "status": "candidate-awaiting-annual-validation",
+    "region": "Ceylon VOC war 1640–1658",
+    "recordSegments": 8,
+    "partialGeometryYears": 28,
+    "sites": [
+      {
+        "name": "Batticaloa",
+        "from": 1638,
+        "to": 1641
+      },
+      {
+        "name": "Trincomalee",
+        "from": 1639,
+        "to": 1639
+      },
+      {
+        "name": "Galle",
+        "from": 1640,
+        "to": 1658
+      },
+      {
+        "name": "Colombo",
+        "from": 1656,
+        "to": 1658
+      },
+      {
+        "name": "Jaffna",
+        "from": 1658,
+        "to": 1658
+      }
+    ],
+    "wholeCoastlineBoundaryEstablished": false,
+    "territorialCasesClosed": 0,
+    "evidence": [
+      "https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002",
+      "https://mass.cultureelerfgoed.nl/documents/00000041.pdf",
+      "https://whc.unesco.org/en/list/451/",
+      "https://hpip.org/en/Contents/Place/501",
+      "https://dur.ac.uk/research/institutes-and-centres/ethics-cultural-heritage/unescochair/research/sri-lanka/"
+    ]
+  },
+  "marshallIslands": {
+    "years": [
+      1986,
+      1987,
+      1988,
+      1989
+    ],
+    "status": "archival-island-geography-candidate-awaiting-yearly-build-and-visual-review",
+    "addedCountryYears": 4,
+    "politicalIndependence": "1986-10-21",
+    "sourceCoastline": "Natural Earth 1:10m generalized modern coastline",
+    "historicMaps": [
+      "https://marshall.csu.edu.au/Marshalls/html/STATS/1986StatsAbstract.pdf",
+      "https://pubs.usgs.gov/of/1986/0419/report.pdf",
+      "https://digitallibrary.un.org/record/58340"
+    ],
+    "coastlineHistoricallySurveyed": false,
+    "territorialCasesClosed": 0
+  },
+  "kiribati": {
+    "years": [
+      1979,
+      1980,
+      1981,
+      1982
+    ],
+    "status": "historic-state-presence-restored-candidate-unverified-annual",
+    "addedCountryYears": 4,
+    "independence": "1979-07-12",
+    "usClaims14Islands": "prior-to-1983-treaty",
+    "treatySigned": "1979-09-20",
+    "treatyEnteredIntoForce": "1983-09-23",
+    "historicalCoastlineSurveyed": false,
+    "territorialCasesClosed": 0,
+    "sources": [
+      "https://www.un.org/dppa/decolonization/sites/www.un.org.dppa.decolonization/files/decon_num_15-1.pdf",
+      "https://faolex.fao.org/docs/pdf/bi-67019.pdf"
+    ]
+  },
+  "recifeFortSites": {
+    "years": [
+      1630,
+      1631
+    ],
+    "sites": 2,
+    "siteYearMarkers": 4,
+    "siteCoordinatesAreModern": true,
+    "politicalPolygonsCreated": 0,
+    "territorialCasesClosed": 0,
+    "sourceUrls": [
+      "https://whc.unesco.org/en/tentativelists/5997",
+      "https://sicg.iphan.gov.br/sicg/bem/visualizar/1753",
+      "https://dutchportcities.globalasiaprogram.org/home/recife/"
+    ]
+  },
+  "newOrangeHandover": {
+    "treatyYear": 1674,
+    "handoverDate": "1674-11-10",
+    "mixedAdministrativeControl": true,
+    "verifiedBoundaries": false,
+    "source": "https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php"
+  }
+}

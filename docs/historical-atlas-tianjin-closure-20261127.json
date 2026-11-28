@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-27",
+  "sourceDataset": "Cliopatria 0.2.1, pinned SHA-256 fc6f0d1e4cc42f45da83522b3696db6f2cc85ec0d12259a85c89b31347b8fc0a",
+  "status": "128 false-foreign source component-year corrections implemented, current full annual rebuild/CI PENDING",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "scope": "Tianjin false oversized foreign concession polygons and regional state attribution",
+  "years": {
+    "1900": 6,
+    "1901": 6,
+    "1902": 6,
+    "1916": 9,
+    "1917": 5,
+    "1918": 5,
+    "1919": 5,
+    "1920": 5,
+    "1921": 5,
+    "1922": 5,
+    "1923": 5,
+    "1924": 5,
+    "1925": 5,
+    "1926": 5,
+    "1927": 5,
+    "1936": 4
+  },
+  "closedSourceComponentYears": 128,
+  "closedDistinctSourceRegionYears": 128,
+  "before": {
+    "regionalResolved": 269,
+    "tianjinPending": 98,
+    "totalTerritorialOpen": 859,
+    "openRegionYears": 780,
+    "totalReviewedTerritorial": 6486
+  },
+  "afterExpected": {
+    "regionalResolved": 397,
+    "tianjinPending": 8,
+    "totalTerritorialOpen": 769,
+    "openRegionYears": 690,
+    "territorialReviewed": 6524,
+    "territorialResolved": 5755
+  },
+  "correctedBackgroundPolities": [
+    {
+      "years": "1916",
+      "raw": "Empire of China",
+      "sourceWikidata": "Q175379",
+      "mapped": "Republic of China (Hongxian transition)"
+    },
+    {
+      "years": "1917–1927",
+      "raw": "Kuomintang",
+      "sourceWikidata": "Q31113",
+      "mapped": "Republic of China (Beiyang-era disputed aggregate)"
+    },
+    {
+      "years": "1936",
+      "raw": "Republic of China",
+      "sourceWikidata": "Q148",
+      "mapped": "Republic of China"
+    }
+  ],
+  "explicitlyUnresolved": [
+    1900,
+    1901,
+    1902,
+    1937,
+    1945
+  ],
+  "notClaimed": "Not historical geodetic borders of leased railway or concessions. Qing/ROC regional sovereign background only, with non-sovereign Japanese garrison noted. 1937/1945 transition cells unresolved.",
+  "sources": [
+    "https://mainuat.chiculture.org.hk/en/photo-story/2348",
+    "https://pure.tudelft.nl/ws/files/142459867/9789463666503_WEB.pdf",
+    "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487",
+    "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3",
+    "https://journals.open.tudelft.nl/iphs/article/download/2751/2962/"
+  ],
+  "datedTransitionsAdded": [
+    {
+      "year": 1928,
+      "description": "В июне 1928 года после Северного похода муниципальное управление Тяньцзиня перешло к Националистическому правительству Китайской Республики. Гоминьдан не являлся отдельным государством.",
+      "source": "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487"
+    },
+    {
+      "year": 1937,
+      "description": "30 июля 1937 года после боёв японские войска захватили Тяньцзинь; до этой даты в китайских районах действовало управление Китайской Республики. Год 1937 остаётся переходным, без единого годового контура военного контроля.",
+      "source": "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3"
+    },
+    {
+      "year": 1945,
+      "description": "Формальная капитуляция японских войск в Тяньцзине состоялась 6 октября 1945 года. Это не означает, что китайская администрация восстановила полный контроль 15 августа или что все иностранные муниципальные вопросы были урегулированы одновременно.",
+      "source": "https://history.state.gov/historicaldocuments/frus1945v07/d447"
+    }
+  ],
+  "additionalHistoricalCountryTitle": [
+    "Kuomintang",
+    "Q31113",
+    1928,
+    1929,
+    "Republic of China (Nationalist government; source aggregate)",
+    "Китайская Республика (Националистическое правительство; исходный агрегат)",
+    "https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487",
+    "After the 1928 Northern Expedition the Nanjing Nationalist Government governed Tianjin, but the party itself was not a separate sovereign country. Exact frontlines of Chinese rival administrations are not established by the imported polygon.",
+    "После Северного похода 1928 года Тяньцзинь перешёл под Националистическое правительство Китайской Республики. Гоминьдан не был отдельной суверенной страной, а исходный контур не является картой фронтов."
+  ],
+  "preexistingRawSourceOwner": {
+    "name": "Qing Dynasty",
+    "wikidata": "Q8733",
+    "sourceIndex": 12207,
+    "from": 1900,
+    "to": 1904
+  },
+  "legalAndMunicipalDifference": {
+    "period": "1900-1902",
+    "status": "Qing dynasty retains legal sovereignty while multinational provisional government administers Tianjin city and district",
+    "resolved18": "Only source cells with a unique Qing backdrop and no competing regional polygon",
+    "open3": "One in each of 1900, 1901 and 1902 has overlapping Empire of Japan regional polygon, retained as unresolved",
+    "evidence": [
+      "https://history.state.gov/historicaldocuments/frus1902/d159",
+      "https://history.state.gov/historicaldocuments/frus1901China/d122",
+      "https://www.cambridge.org/core/journals/urban-history/article/multiimperial-dimensions-in-treatyport-tianjin-and-its-historiographical-significance/B0D546345E6077BF4C7AAD7872AC0399"
+    ]
+  },
+  "additionalJapaneseSouthSourceYearCases": {
+    "from": 1900,
+    "to": 1937,
+    "total": 38,
+    "resolved": 37,
+    "transitionYearUnresolved": 1937,
+    "region": "Taku/Tanggu south of Tianjin urban concessions",
+    "approximateBbox": [
+      117.262535,
+      38.738853,
+      117.70903,
+      38.99723
+    ],
+    "sourcePolity": "Empire of Japan",
+    "sourceWikidata": "Q188712",
+    "sourceSovereigntyClaimRejected": true,
+    "legalJustification": "Boxer Protocol 1901 Article IX: privilege to station troops at communication points, not a territorial cession",
+    "sources": [
+      "https://history.state.gov/historicaldocuments/frus1901China/d179",
+      "https://history.state.gov/historicaldocuments/frus1901China/d102",
+      "https://openrivers.lib.umn.edu/article/river-conservancy-and-the-undetermined-future-of-the-port-of-tianjin-1888-1937/",
+      "https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3"
+    ],
+    "verifiedComponents": 14,
+    "formerGermanOverlapCasesNowResolved": 5,
+    "originalSourceIndices": [
+      12182,
+      12260,
+      12306,
+      12371,
+      12440,
+      12522,
+      12577,
+      12617,
+      12632,
+      12649,
+      12667,
+      12678,
+      12712,
+      12777
+    ]
+  },
+  "validationGuards": {
+    "japaneseSouthPolity": "Empire of Japan",
+    "sourceWikidata": "Q188712",
+    "yearRange": [
+      1900,
+      1937
+    ],
+    "coordinateBounds": [
+      "117.26 < west < 117.27",
+      "38.73 < south < 38.75",
+      "117.70 < east < 117.72",
+      "38.99 < north < 39"
+    ],
+    "resolvedCrossForeignOverlap": [
+      1900,
+      1901,
+      1902,
+      1903,
+      1904
+    ],
+    "independentYearPreflight": {
+      "sourceComponentYears": 405,
+      "resolved": 397,
+      "pending": 8
+    }
+  }
+}

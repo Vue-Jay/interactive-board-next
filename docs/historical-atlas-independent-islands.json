@@ -1,0 +1,155 @@
+{
+  "source": {
+    "name": "Natural Earth 1:10m",
+    "url": "https://github.com/nvkelso/natural-earth-vector/blob/ca96624a56bd078437bca8184e78163e5039ad19/geojson/ne_10m_admin_0_countries.geojson",
+    "sha256": "239eec57ac17f100a11e2536cffc56752c318b50ae765b0918ff7aab4ce8f255",
+    "license": "Public domain"
+  },
+  "states": [
+    {
+      "iso": "MDV",
+      "wikidata": "Q826",
+      "from": 1965,
+      "name": "Sultanate of Maldives",
+      "nameRu": "Мальдивский султанат",
+      "transition": {
+        "year": 1968,
+        "name": "Republic of Maldives",
+        "nameRu": "Мальдивская Республика"
+      },
+      "reasonRu": "Независимость с 26 июля 1965 года; султанат до провозглашения второй республики 11 ноября 1968 года.",
+      "sources": [
+        "https://foreign.gov.mv/index.php/en/ministry/about-ministry",
+        "https://majlis.gov.mv/edu/K4/Keystage%204.pdf"
+      ]
+    },
+    {
+      "iso": "WSM",
+      "wikidata": "Q683",
+      "from": 1962,
+      "name": "Western Samoa",
+      "nameRu": "Западное Самоа",
+      "transition": {
+        "year": 1997,
+        "name": "Samoa",
+        "nameRu": "Самоа"
+      },
+      "reasonRu": "Западное Самоа независимо с 1 января 1962 года, переименовано в Самоа в 1997 году; Американское Самоа не включено.",
+      "sources": [
+        "https://history.state.gov/countries/samoa",
+        "https://www.gov.uk/government/publications/country-names/timeline-of-country-name-changes-in-hmg-use-1919-to-present"
+      ]
+    },
+    {
+      "iso": "KNA",
+      "wikidata": "Q763",
+      "from": 1983,
+      "name": "Saint Kitts and Nevis",
+      "nameRu": "Сент-Китс и Невис",
+      "reasonRu": "Независимость двух островов с 19 сентября 1983 года. Ангилья не входит в федерацию; исходная ошибочная ячейка Сент-Китса на острове Санта-Крус не используется.",
+      "sources": [
+        "https://www.gov.kn/the-constitution/",
+        "https://www.gov.kn/about-st-kitts-and-nevis/"
+      ]
+    },
+    {
+      "iso": "MHL",
+      "wikidata": "Q709",
+      "from": 1986,
+      "name": "Republic of the Marshall Islands",
+      "nameRu": "Республика Маршалловы Острова",
+      "reasonRu": "Республика Маршалловы Острова признана США 21 октября 1986 года. Современный генерализованный островной контур Nature Earth показан с 1986 года только как картографический кандидат: государственная карта в статистическом сборнике за 1986 год (издан 1987), карта USGS 1986 года и карта ООН октября 1988 года независимо подтверждают состав и расположение архипелага. Эти материалы не являются координатной оцифровкой каждого атолла и не доказывают точность современного берега в 1986 году. Договор об опеке ООН прекратил действие позднее, в 1990 году; эту дату не путать с началом независимости.",
+      "sources": [
+        "https://history.state.gov/countries/marshall-islands",
+        "https://digitallibrary.un.org/record/103696",
+        "https://www.archives.gov/federal-register/codification/proclamations/05564.html",
+        "https://www.govinfo.gov/content/pkg/USCODE-2022-title48/html/USCODE-2022-title48-chap14.htm",
+        "https://marshall.csu.edu.au/Marshalls/html/STATS/1986StatsAbstract.pdf",
+        "https://pubs.usgs.gov/of/1986/0419/report.pdf",
+        "https://digitallibrary.un.org/record/58340"
+      ],
+      "recognitionFrom": 1986,
+      "unTerminationYear": 1990,
+      "historicalCartography": {
+        "from": 1986,
+        "to": 1989,
+        "status": "approximate-island-outline-corroborated-by-dated-archipelago-maps",
+        "precision": "not-georeferenced-from-1986-source",
+        "mapSources": [
+          "https://marshall.csu.edu.au/Marshalls/html/STATS/1986StatsAbstract.pdf",
+          "https://pubs.usgs.gov/of/1986/0419/report.pdf",
+          "https://digitallibrary.un.org/record/58340"
+        ]
+      }
+    },
+    {
+      "iso": "KIR",
+      "wikidata": "Q710",
+      "from": 1979,
+      "name": "Republic of Kiribati",
+      "nameRu": "Республика Кирибати",
+      "reasonRu": "Кирибати стало независимым государством 12 июля 1979 года. Доклад Комитета ООН по деколонизации, выпущенный к независимости (1979), прямо перечисляет острова Гилберта, Банаба, Феникс и Лайн как территорию страны. При этом США сохраняли оспариваемые притязания на 14 отдельных островов групп Феникс и Лайн: договор дружбы подписан 20 сентября 1979 года, но юридически вступил в силу только 23 сентября 1983 года (в сводных источниках встречается дата 20 сентября как дата ратификации). Для 1979–1982 гг. показана признанная Кирибати государственная принадлежность с обязательной оговоркой об американских притязаниях, а не бесспорная международная граница. Береговые очертания Natural Earth — современная генерализация, не картографическая съёмка 1979 года; точные морские границы не показаны.",
+      "sources": [
+        "https://history.state.gov/countries/kiribati",
+        "https://1997-2001.state.gov/background_notes/kiribati_0596_bgn.html",
+        "https://2009-2017.state.gov/documents/organization/218912.pdf",
+        "https://www.un.org/dppa/decolonization/sites/www.un.org.dppa.decolonization/files/decon_num_15-1.pdf",
+        "https://faolex.fao.org/docs/pdf/bi-67019.pdf",
+        "https://www.doi.gov/oia/islands/disputedislands",
+        "https://kiribati.gov.ki/know-kiribati/history"
+      ],
+      "historicalCartography": {
+        "from": 1979,
+        "to": 1982,
+        "kind": "sovereignty-with-disputed-islands",
+        "historicalTitle": "Republic of Kiribati",
+        "disputedTerritoryCount": 14,
+        "claimant": "United States",
+        "treatySigned": "1979-09-20",
+        "treatyEntryIntoForce": "1983-09-23",
+        "precision": "modern-generalized-island-outlines-not-1979-survey",
+        "sources": [
+          "https://www.un.org/dppa/decolonization/sites/www.un.org.dppa.decolonization/files/decon_num_15-1.pdf",
+          "https://faolex.fao.org/docs/pdf/bi-67019.pdf",
+          "https://www.doi.gov/oia/islands/disputedislands"
+        ]
+      }
+    },
+    {
+      "iso": "NRU",
+      "wikidata": "Q697",
+      "from": 1968,
+      "name": "Republic of Nauru",
+      "nameRu": "Республика Науру",
+      "reasonRu": "Независимость бывшей подопечной территории Науру с 1968 года.",
+      "sources": [
+        "https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts",
+        "https://www.un.org/dppa/decolonization/en/history/international-trusteeship-system-and-trust-territories"
+      ]
+    },
+    {
+      "iso": "TON",
+      "wikidata": "Q678",
+      "from": 1970,
+      "name": "Kingdom of Tonga",
+      "nameRu": "Королевство Тонга",
+      "reasonRu": "Конституционная монархия с 1875 года; британский протекторат закончился в 1970 году. Показаны сухопутные острова, не морские притязания.",
+      "sources": [
+        "https://history.state.gov/countries/tonga",
+        "https://www.gov.uk/government/publications/application-to-register-as-british-overseas-territory-citizen/guidance-on-registering-as-a-british-overseas-territories-citizen-using-form-rs2-after-making-a-declaration-of-renunciation-accessible"
+      ]
+    },
+    {
+      "iso": "TUV",
+      "wikidata": "Q672",
+      "from": 1978,
+      "name": "Tuvalu",
+      "nameRu": "Тувалу",
+      "reasonRu": "Отдельное островное государство после независимости в 1978 году; не объединяется с бывшими островами Гилберта.",
+      "sources": [
+        "https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts",
+        "https://www.un.org/en/about-us/growth-in-un-membership"
+      ]
+    }
+  ]
+}

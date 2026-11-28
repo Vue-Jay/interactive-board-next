@@ -152,7 +152,8 @@ assert.ok(map.includes('russianPlaceName(f.feature)??""'));
 assert.ok(map.includes('shownRiverNames.slice(0,scale<2?20:scale<6?42:65)'));
 assert.ok(map.includes('className="lektrus-atlas-mineral-landmarks"'));
 assert.ok(map.includes('enabled={terrainEnabled||mineralTerrainEnabled}'));
-assert.ok(map.includes('fillOpacity={mineralTerrainEnabled?.56:1}'));
+assert.match(map,/fillOpacity=\{(?:documentedCore\?\.65:)?mineralTerrainEnabled\?\.56:1\}/,
+ 'Mineral terrain must retain its .56 opacity alongside historical documented-core styling');
 assert.ok(map.includes('checked={d.hypsometry!==false}'));
 assert.ok(map.includes('mineralContext?atlasRiverStroke(l.feature)*.85'));
 assert.ok(map.indexOf('className="lektrus-atlas-mineral-points"')>

@@ -1,0 +1,1656 @@
+{
+  "retained": {
+    "Nicobar": {
+      "reason": "The Austrian expedition claimed Nancowry, Chaura, Trinkat and Katchal, not Great or Little Nicobar. Retain the documented Danish claim, not an Austrian territorial possession; colonial administration of indigenous communities was limited.",
+      "reasonRu": "Австрийская экспедиция заявляла права на Нанкаури, Чауру, Тринкат и Катчал, не на Большой или Малый Никобар. Сохранена датская номинальная претензия, а не австрийское владение; местные общины не следует считать полностью подконтрольными колониальной администрации.",
+      "sources": [
+        "https://bibliotekanauki.pl/articles/23051028.pdf",
+        "https://censusindia.gov.in/nada/index.php/catalog/32395/download/35576/20797_1911_REP.pdf"
+      ]
+    },
+    "Champagne": {
+      "reason": "Hugh was Count of Champagne during 1094–1110; Blois and Champagne must not be depicted as the same independent political possession before the succession of 1125.",
+      "reasonRu": "В 1094–1110 гг. Шампанью правил граф Гуго; совпадающий контур сохранён за Шампанью, а не графством Блуа. Исторические границы остаются приблизительными.",
+      "sources": [
+        "https://www.archives-aube.fr/image/583298/116357?crop=centre&download=1&force-inline=&format=pdf&realHeight=1754&realWidth=1240&region=full&size=%21800%2C800",
+        "https://pure.royalholloway.ac.uk/files/18393326/A_History_of_the_Counts_of_Brienne.pdf"
+      ]
+    },
+    "Athenian islands": {
+      "reason": "The exact island components are retained in the Roman political layer; this does not extinguish local civic institutions or imply uniform provincial administration. Rome guaranteed Athenian possession of Lemnos after Pydna; Kea and Lemnos had distinct local histories under Roman hegemony.",
+      "reasonRu": "Кея и Лемнос показаны в политическом контуре Рима, а не как второе независимое государство. Рим подтвердил афинские права на Лемнос после Пидны; местное самоуправление и правовой статус отдельных островов различались.",
+      "sources": [
+        "https://www.cambridge.org/core/books/cyprus-crete-and-the-aegean-islands-in-antiquity/from-independence-to-dependence-the-administrative-status-of-the-aegean-islands-from-129-bc-to-294-ad/4A254CEB2266C96063586CAAFF55749F",
+        "https://academic.oup.com/edited-volume/61673/chapter-abstract/549652393"
+      ]
+    },
+    "Crete": {
+      "reason": "Roman conquest of Crete ended in 67 BCE. The matching island belongs in the Roman political layer in 66–64 BCE, without erasing local city institutions.",
+      "reasonRu": "Римское завоевание Крита завершилось в 67 г. до н. э.; в 66–64 гг. до н. э. остров относится к римскому политическому контуру, а местные полисы не представляются отдельным независимым островным государством.",
+      "sources": [
+        "https://assets.cambridge.org/97811070/18402/excerpt/9781107018402_excerpt.pdf",
+        "https://www.cambridge.org/core/journals/annual-of-the-british-school-at-athens/article/the-destruction-of-political-communities-in-the-second-century-bc-and-the-resilience-of-the-cretan-polis/A8246A6F1F51CF5A8DD767DAD4E7AAD0"
+      ]
+    },
+    "Brandenburg-Prussia": {
+      "reason": "After the 1701 coronation, the elector of Brandenburg was King in Prussia. The matching contours belong to the same Hohenzollern monarchy, not two competing independent states; Brandenburg retained its distinct imperial legal status.",
+      "reasonRu": "После коронации 1701 года курфюрст Бранденбурга стал королём в Пруссии. Совпадающие компоненты относятся к одной монархии Гогенцоллернов, а не к двум независимым государствам; Бранденбург сохранял особый статус в Священной Римской империи.",
+      "sources": [
+        "https://www.preussenchronik.de/service/popup_jsp/key%3Dbeitrag_25044.html",
+        "https://www.preussenchronik.de/bild_jsp/key%3Dbild_200.html"
+      ]
+    },
+    "Papua and New Guinea": {
+      "reason": "Papua and mandated New Guinea were administered by Australia, through ANGAU during the war; the duplicated British imperial outline is not a separate direct administration. This does not establish the changing wartime front or Japanese occupation lines.",
+      "reasonRu": "Папуа и подмандатная Новая Гвинея находились под австралийским управлением, во время войны — ANGAU. Совпадающие контуры не являются вторым британским владением с отдельным прямым управлением; линия японской оккупации и фронта здесь не реконструирована.",
+      "sources": [
+        "https://www.awm.gov.au/collection/MSS1920",
+        "https://digitallibrary.un.org/record/828938/files/A_189-EN.pdf"
+      ]
+    },
+    "Ryukyu": {
+      "reason": "The exact Iriomote and Miyako components are shown with Japan's residual sovereignty rather than as US sovereign territory. Article 3 of the 1951 treaty gave the United States administrative, legislative and jurisdictional powers; neither component is in the Amami group returned in December 1953.",
+      "reasonRu": "Ириомоте и Мияко показаны с остаточным суверенитетом Японии, не как территория США. По статье 3 мирного договора американская администрация осуществляла законодательные, административные и судебные полномочия. Эти два компонента не относятся к возвращённой в 1953 году группе Амами.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1951v06p1/d596",
+        "https://history.state.gov/historicaldocuments/frus1952-54v14p2/d595",
+        "https://history.state.gov/historicaldocuments/frus1952-54v14p2/d731"
+      ]
+    }
+  },
+  "restored": {
+    "Мэн (лордство)": {
+      "anchor": 6167,
+      "entity": "isle-of-man-lordship",
+      "name": "Isle of Man (English Crown suzerainty)",
+      "nameRu": "Остров Мэн (сюзеренитет английской короны)",
+      "excludeCounterpart": true,
+      "reason": "Henry IV took control in 1402 and granted the island to Stanley in 1406; distinguish the island lordship from both Scotland and England proper.",
+      "reasonRu": "Генрих IV установил контроль в 1402 году и пожаловал остров Стэнли в 1406 году; остров выделен отдельно от Шотландии и собственно Англии.",
+      "sources": [
+        "https://www.gov.im/news/2023/may/04/manx-coronation-gift-recognises-kings-passion-for-environment-and-continues-600-year-old-tradition/",
+        "https://manxnationalheritage.im/news/medieval-ring-declared-treasure/"
+      ]
+    },
+    "Манус": {
+      "anchor": 12956,
+      "entity": "manus-mandated-new-guinea",
+      "name": "Manus (Australian-administered mandated New Guinea)",
+      "nameRu": "Манус (подмандатная Новая Гвинея, управление Австралии)",
+      "excludeCounterpart": true,
+      "reason": "Allied forces retook the Admiralty Islands in 1944; in 1945 Manus belonged to Australian-administered mandated New Guinea, not Japan or a separate direct British administration.",
+      "reasonRu": "Союзники заняли острова Адмиралтейства в 1944 году; в 1945 году Манус относился к подмандатной Новой Гвинее под управлением Австралии, а не Японии или отдельному прямому британскому владению.",
+      "sources": [
+        "https://www.awm.gov.au/collection/MSS1920",
+        "https://www.history.navy.mil/browse-by-topic/wars-conflicts-and-operations/world-war-ii/1944/admiralty-islands.html"
+      ]
+    },
+    "Исландия": {
+      "anchor": 12868,
+      "name": "Kingdom of Iceland",
+      "nameRu": "Королевство Исландия",
+      "entity": "iceland-1918",
+      "transition": {
+        "year": 1944,
+        "name": "Republic of Iceland",
+        "nameRu": "Республика Исландия"
+      },
+      "reason": "Iceland remained sovereign under the 1941 defence agreement; the republic was proclaimed on 17 June 1944. Annual 1944 label follows the successor with the transition explicitly recorded. Only the verified main-island contour is restored.",
+      "reasonRu": "Исландия сохраняла суверенитет по соглашению об обороне 1941 года; республика провозглашена 17 июня 1944 года. В переходном 1944 году указана республика. Восстановлен только подтверждённый контур главного острова.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1941v02/d779",
+        "https://history.state.gov/historicaldocuments/frus1944v03/d915",
+        "https://history.state.gov/countries/iceland"
+      ]
+    },
+    "Мафия": {
+      "anchor": 12295,
+      "name": "Mafia Island (German East Africa)",
+      "nameRu": "Мафия (Германская Восточная Африка)",
+      "entity": "mafia-german-east-africa",
+      "reason": "The 1890 Anglo-German agreement assigned Mafia to Germany; the island was German in 1913, before the First World War. Restore the exact island, not an inferred continental boundary.",
+      "reasonRu": "По англо-германскому соглашению 1890 года остров Мафия передан Германии; в 1913 году он входил в Германскую Восточную Африку. Восстановлен только исходный контур острова.",
+      "sources": [
+        "https://germanhistorydocs.org/en/wilhelmine-germany-and-the-first-world-war-1890-1918/anglo-german-treaty-heligoland-zanzibar-treaty-july-1-1890",
+        "https://brema.suub.uni-bremen.de/dsdk/content/pagetext/1788933",
+        "https://hansard.parliament.uk/Lords%E2%80%8F/1915-04-20/debates/3dce5576-6ccc-45e1-91f7-1913bcf0f534/SecondaryTheatresOfTheWar"
+      ]
+    },
+    "Bangka": {
+      "anchor": 10780,
+      "name": "Bangka (British administration)",
+      "nameRu": "Банка (британское управление)",
+      "entity": "bangka-british-administration",
+      "reason": "Bangka was ceded to the British in 1812 and remained under their administration until the 1816 handover. The exact island contour is restored for 1814–1815 only.",
+      "reasonRu": "Банка уступлена британцам в 1812 году и до передачи голландцам в 1816 году оставалась под британским управлением. Восстановлен точный исходный контур острова за 1814–1815 годы.",
+      "sources": [
+        "https://searcharchives.bl.uk/catalog/040-003377793",
+        "https://revue-archipel.fr/pdfnumeros/ARCHIPEL107%282024%29.pdf",
+        "https://www.orientalnumismaticsociety.org/archive/ONS_215.pdf"
+      ]
+    }
+  },
+  "componentRestorations": {
+    "49bad8e0df1d4b6978774e72482211a230a2fc16d3a56064d47b334c80173320": {
+      "group": "Никобары",
+      "anchor": 11781,
+      "entity": "great-nicobar",
+      "name": "Great Nicobar (local communities; annexation pending)",
+      "nameRu": "Большой Никобар (местные общины; присоединение не завершено)",
+      "excludeCounterpart": true,
+      "transition": {
+        "year": 1869,
+        "name": "Great Nicobar (British India)",
+        "nameRu": "Большой Никобар (Британская Индия)"
+      },
+      "reason": "Denmark relinquished its claim in 1868; formal British possession followed in 1869. Neither island was Dutch. The source island outline is exact but does not imply uniform colonial control.",
+      "reasonRu": "Дания отказалась от притязаний в 1868 году; формальное присоединение Великобританией состоялось в 1869 году. Остров не являлся нидерландским владением; исходный островной контур не означает полного контроля над местными общинами.",
+      "sources": [
+        "https://www.persee.fr/doc/outre_0399-1385_1933_num_21_93_2853",
+        "https://nicobars.andaman.nic.in/history/",
+        "https://searcharchives.bl.uk/catalog/041-000543417"
+      ]
+    },
+    "0bef4c92c6b9d24d9c7853ca3096f14378cf1809d30b1ed0feaf091d102c7dae": {
+      "group": "Никобары",
+      "anchor": 11781,
+      "entity": "little-nicobar",
+      "name": "Little Nicobar (local communities; annexation pending)",
+      "nameRu": "Малый Никобар (местные общины; присоединение не завершено)",
+      "excludeCounterpart": true,
+      "transition": {
+        "year": 1869,
+        "name": "Little Nicobar (British India)",
+        "nameRu": "Малый Никобар (Британская Индия)"
+      },
+      "reason": "Denmark relinquished its claim in 1868; formal British possession followed in 1869. Neither island was Dutch. The source island outline is exact but does not imply uniform colonial control.",
+      "reasonRu": "Дания отказалась от притязаний в 1868 году; формальное присоединение Великобританией состоялось в 1869 году. Остров не являлся нидерландским владением; исходный островной контур не означает полного контроля над местными общинами.",
+      "sources": [
+        "https://www.persee.fr/doc/outre_0399-1385_1933_num_21_93_2853",
+        "https://nicobars.andaman.nic.in/history/",
+        "https://searcharchives.bl.uk/catalog/041-000543417"
+      ]
+    },
+    "8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c": {
+      "group": "Коморы",
+      "anchor": 11329,
+      "entity": "anjouan-sultanate",
+      "name": "Sultanate of Anjouan",
+      "nameRu": "Султанат Анжуан",
+      "reason": "Anjouan was an independent sultanate in 1842–1845; the French protectorate came later in the nineteenth century.",
+      "reasonRu": "В 1842–1845 гг. Анжуан оставался самостоятельным султанатом; французский протекторат установлен позднее.",
+      "sources": [
+        "https://www.persee.fr/doc/outre_1631-0438_2012_num_99_374_4921",
+        "https://www.assemblee-nationale.fr/dyn/17/rapports/om/l17b0774_rapport-information.pdf"
+      ]
+    },
+    "ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233": {
+      "group": "Коморы",
+      "anchor": 11329,
+      "entity": "moheli-sultanate",
+      "name": "Sultanate of Mohéli",
+      "nameRu": "Султанат Мохели",
+      "reason": "Mohéli was a separate sultanate in 1842–1845; the French protectorate came later in the nineteenth century.",
+      "reasonRu": "В 1842–1845 гг. Мохели был самостоятельным султанатом; французский протекторат установлен позднее.",
+      "sources": [
+        "https://www.persee.fr/doc/outre_1631-0438_2012_num_99_374_4921",
+        "https://www.assemblee-nationale.fr/dyn/17/rapports/om/l17b0774_rapport-information.pdf"
+      ]
+    }
+  },
+  "transfer": {
+    "group": "Савойя — север Ниццы",
+    "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+    "reason": "Nice and its hinterland passed to Savoy in 1388. The exact source cell north of Nice joins the contemporaneous Savoy geometry; this is not a newly surveyed historical boundary.",
+    "reasonRu": "Ницца и её окрестности перешли к Савойе в 1388 году. Исходная ячейка карты к северу от Ниццы присоединена к контуру Савойи соответствующего года; это приблизительный исторический контур, а не точная реконструкция границы.",
+    "sources": [
+      "https://www.departement06.fr/du-xie-au-xive-siecle",
+      "https://www.departement06.fr/les-xve-et-xvie-siecles",
+      "https://www.nice.fr/uploads/media/default/0001/02/les-limites-du-comte-de-nice.pdf"
+    ],
+    "routes": [
+      [
+        6732,
+        3,
+        1388,
+        1394
+      ],
+      [
+        6756,
+        4,
+        1395,
+        1401
+      ],
+      [
+        6865,
+        0,
+        1402,
+        1406
+      ],
+      [
+        6887,
+        0,
+        1407,
+        1414
+      ],
+      [
+        6960,
+        4,
+        1415,
+        1421
+      ],
+      [
+        6996,
+        0,
+        1422,
+        1428
+      ],
+      [
+        7062,
+        0,
+        1429,
+        1439
+      ],
+      [
+        7149,
+        4,
+        1440,
+        1449
+      ],
+      [
+        7254,
+        4,
+        1450,
+        1452
+      ],
+      [
+        7268,
+        4,
+        1453,
+        1525
+      ],
+      [
+        7938,
+        2,
+        1526,
+        1528
+      ],
+      [
+        7992,
+        2,
+        1529,
+        1539
+      ],
+      [
+        8238,
+        2,
+        1564,
+        1631
+      ],
+      [
+        8762,
+        1,
+        1632,
+        1641
+      ]
+    ],
+    "targets": [
+      6727,
+      6752,
+      6825,
+      7146,
+      7320,
+      7460,
+      7529,
+      7644,
+      7787,
+      7845,
+      7874,
+      7999,
+      8026,
+      8260,
+      8336,
+      8453,
+      8466,
+      8556,
+      8758
+    ]
+  },
+  "niceLegalRestoration": {
+    "group": "Савойя — север Ниццы",
+    "entity": "county-nice-savoy",
+    "name": "County of Nice (Duchy of Savoy)",
+    "nameRu": "Графство Ницца (Савойское герцогство)",
+    "reason": "The source cell north of Nice lies east of the Var, the France–Savoy boundary. Nice remained under Savoy's legal sovereignty during the French occupation of the duchy, including the siege of 1543. The cell is not an independently surveyed boundary or a reconstruction of transient military control.",
+    "reasonRu": "Исходная ячейка к северу от Ниццы лежит восточнее Вара, исторической границы Франции и Савойи. Юридическая принадлежность Ниццы Савойе сохранялась и во время французской оккупации герцогства, включая осаду 1543 года. Ячейка приблизительная; временный военный контроль и точные границы графства не реконструированы.",
+    "sources": [
+      "https://www.departement06.fr/les-xve-et-xvie-siecles",
+      "https://www.nice.fr/uploads/media/default/0001/02/les-limites-du-comte-de-nice.pdf",
+      "https://www.persee.fr/doc/acths_1764-7355_2015_act_136_12_2749",
+      "https://www.persee.fr/doc/camed_0395-9317_1984_num_28_1_961"
+    ],
+    "routes": [
+      [
+        8090,
+        2,
+        1540,
+        1546
+      ],
+      [
+        8124,
+        2,
+        1547,
+        1563
+      ]
+    ],
+    "frenchTargets": [
+      8069,
+      8100,
+      8159,
+      8235
+    ]
+  },
+  "kandy": {
+    "indices": [
+      8742,
+      8760,
+      8828,
+      9052,
+      9108,
+      9257,
+      9276,
+      10067,
+      10395,
+      10423,
+      10917
+    ],
+    "reason": "These inland source polygons cover Kandy, not the colonial ports. The Kandyan kingdom remained independent until 1815; the 1766 treaty ceded coastal territory without extinguishing the kingdom. The source footprint is approximate.",
+    "reasonRu": "Внутренние контуры охватывают Канди, а не колониальные порты. Королевство Канди сохраняло независимость до 1815 года; договор 1766 года передавал прибрежные земли, но не прекращал самостоятельность королевства. Исходные границы приблизительны.",
+    "sources": [
+      "https://www.noolaham.net/project/47/4612/4612.pdf",
+      "https://tile.loc.gov/storage-services/master/frd/frdcstdy/sr/srilankacountrys00ross/srilankacountrys00ross.pdf",
+      "https://epub.ub.uni-muenchen.de/123143/1/9789004699830-70374.pdf"
+    ]
+  },
+  "ceylonTransfer": {
+    "group": "Цейлон",
+    "target": 9052,
+    "reason": "Portuguese rule ended in 1658. Before the Dutch reoccupation of Trincomalee and Batticaloa in 1665, the two eastern regional cells belonged within the Kandyan political sphere; local chiefs and earlier Dutch fort occupations had distinct status. The source cells approximate regions, not exact fort or administrative boundaries.",
+    "reasonRu": "Португальское правление завершилось в 1658 году. До повторного занятия Тринкомали и Баттикалоа нидерландцами в 1665 году эти восточные области относились к политической сфере Канди; местные вожди и более ранние нидерландские форты имели особый статус. Исходные ячейки приблизительны, это не точные границы фортов или округов.",
+    "sources": [
+      "https://lakdiva.org.lk/codrington/chap09.html",
+      "https://thenationaltrust.lk/blog/robert-knoxs-journeys-in-ceylon-and-the-world-in-the-17th-century-one/",
+      "https://soas-repository.worktribe.com/output/388087/dutch-power-in-ceylon-1658-1687",
+      "https://noolaham.net/project/1025/102411/102411.pdf"
+    ],
+    "routes": [
+      [
+        9013,
+        10,
+        1659,
+        1661
+      ],
+      [
+        9013,
+        12,
+        1659,
+        1661
+      ],
+      [
+        9054,
+        6,
+        1659,
+        1661
+      ],
+      [
+        9054,
+        7,
+        1659,
+        1661
+      ],
+      [
+        9066,
+        7,
+        1662,
+        1664
+      ],
+      [
+        9066,
+        8,
+        1662,
+        1664
+      ]
+    ]
+  },
+  "elbaTransfer": {
+    "group": "Эльба",
+    "hash": "c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8",
+    "entity": "elba-tuscany",
+    "name": "Elba (Grand Duchy of Tuscany)",
+    "nameRu": "Эльба (Великое герцогство Тосканское)",
+    "reason": "Article 100 of the 1815 Final Act assigned Elba to the Grand Duchy of Tuscany; the Habsburg-Lorraine dynastic connection did not make it a province of the Austrian Empire.",
+    "reasonRu": "По статье 100 Венского акта 1815 года Эльба вошла в Великое герцогство Тосканское, а не в Австрийскую империю. Династическая связь Габсбургов-Лотарингских не означает австрийского суверенитета.",
+    "sources": [
+      "https://worldjpn.net/documents/texts/docs/18150609.T1E.html",
+      "https://www.consiglio.regione.toscana.it/upload/COCCOINA/documenti/pannelli%20percorsi%20storici%282%29.pdf",
+      "https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf"
+    ],
+    "target": 10979,
+    "routes": [
+      [
+        10965,
+        1,
+        1815,
+        1819
+      ],
+      [
+        11031,
+        1,
+        1820,
+        1827
+      ],
+      [
+        11192,
+        1,
+        1828,
+        1829
+      ],
+      [
+        11232,
+        1,
+        1830,
+        1833
+      ],
+      [
+        11241,
+        1,
+        1834,
+        1835
+      ],
+      [
+        11309,
+        1,
+        1836,
+        1839
+      ],
+      [
+        11349,
+        1,
+        1840,
+        1845
+      ],
+      [
+        11432,
+        1,
+        1846,
+        1847
+      ],
+      [
+        11481,
+        1,
+        1849,
+        1852
+      ],
+      [
+        11549,
+        1,
+        1853,
+        1855
+      ],
+      [
+        11556,
+        1,
+        1856,
+        1856
+      ],
+      [
+        11603,
+        1,
+        1857,
+        1858
+      ]
+    ],
+    "provisional": {
+      "source": 11649,
+      "part": 1,
+      "from": 1859,
+      "to": 1859,
+      "entity": "elba-tuscany-provisional",
+      "name": "Elba (Provisional Government of Tuscany)",
+      "nameRu": "Эльба (Временное правительство Тосканы)",
+      "reason": "The Provisional Government of Tuscany held power in 1859; legal annexation to Sardinia followed on 22 March 1860.",
+      "reasonRu": "В 1859 году Тосканой управляло временное правительство; формальное присоединение к Сардинскому королевству произошло 22 марта 1860 года.",
+      "sources": [
+        "https://sias-archivi.cultura.gov.it/cgi-bin/pagina.pl?Chiave=112&RicProgetto=as&TipoPag=contesto"
+      ]
+    }
+  },
+  "tuscanyMainland": {
+    "group": "Тоскана",
+    "entity": "tuscany-restoration",
+    "name": "Grand Duchy of Tuscany",
+    "nameRu": "Великое герцогство Тосканское",
+    "reason": "The restored Grand Duchy of Tuscany was a distinct state, not an Austrian province. The original coarse mainland cell contains Florence, Pisa, Siena and Arezzo; comparison with the source's 1848 Tuscany cell confirms its regional identity. Its precise border with Lucca, Massa and the neighbouring duchies, including the transfers of 1847–1849, remains unverified.",
+    "reasonRu": "Великое герцогство Тосканское было отдельным государством, а не австрийской провинцией. Исходная приблизительная материковая ячейка содержит Флоренцию, Пизу, Сиену и Ареццо; её региональная принадлежность подтверждается сопоставлением с исходным контуром Тосканы 1848 года. Точные границы с Луккой, Массой и соседними герцогствами, включая обмены 1847–1849 годов, ещё не проверены.",
+    "sources": [
+      "https://worldjpn.net/documents/texts/docs/18150609.T1E.html",
+      "https://archiviodistatofirenze.cultura.gov.it/catastotoscano/fondo_mappe.html",
+      "https://www502.regione.toscana.it/castoreapp/0_introduzione.htm",
+      "https://www.bancaditalia.it/pubblicazioni/collana-storica/contributi/contributi-12/CSBI-contributi-12.pdf"
+    ],
+    "routes": [
+      [
+        10965,
+        3,
+        1815,
+        1819
+      ],
+      [
+        11031,
+        2,
+        1820,
+        1827
+      ],
+      [
+        11192,
+        2,
+        1828,
+        1829
+      ],
+      [
+        11232,
+        2,
+        1830,
+        1833
+      ],
+      [
+        11241,
+        2,
+        1834,
+        1835
+      ],
+      [
+        11309,
+        2,
+        1836,
+        1839
+      ],
+      [
+        11349,
+        2,
+        1840,
+        1845
+      ],
+      [
+        11432,
+        2,
+        1846,
+        1847
+      ],
+      [
+        11481,
+        2,
+        1849,
+        1852
+      ],
+      [
+        11549,
+        2,
+        1853,
+        1855
+      ],
+      [
+        11556,
+        2,
+        1856,
+        1856
+      ],
+      [
+        11603,
+        2,
+        1857,
+        1858
+      ]
+    ],
+    "earlyHash": "47a0c32bb12dba54abe2b4c6a38b64290b0576778958e51f645c0b205b7d5a08",
+    "lateHash": "cf6e6e04ac8c03d1c0de0045129eaa968ca710b4b00ae28213ee29d856ad90d4"
+  },
+  "corsica1796": {
+    "group": "Corsica",
+    "source": 10403,
+    "part": 5,
+    "from": 1796,
+    "to": 1796,
+    "target": 10427,
+    "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+    "reason": "British withdrawal and French reconquest in October 1796: the annual transition shows French rule at the end of the year.",
+    "reasonRu": "В октябре 1796 года британцы покинули Корсику и остров вновь заняла Франция. В переходном годовом состоянии показана принадлежность на конец года.",
+    "sources": [
+      "https://www.isula.corsica/assemblea/file/243958/",
+      "https://www.napoleon.org/en/history-of-the-two-empires/articles/the-british-navy-1793-1802/"
+    ]
+  },
+  "italy1861": {
+    "source": 11691,
+    "successor": 11710,
+    "year": 1861,
+    "reason": "Kingdom of Italy proclaimed on 17 March 1861; the source has the same geometry as its 1862–1865 Kingdom of Italy record. Correct the annual name and identity only; boundaries remain candidates.",
+    "reasonRu": "Королевство Италия провозглашено 17 марта 1861 года. Исходная геометрия совпадает с записью Королевства Италия за 1862–1865 гг.; исправлены годовое название и идентичность, границы остаются предварительными.",
+    "sources": [
+      "https://www.senato.it/legislature/regno/italia/8/resoconti-elenco-cronologico"
+    ]
+  },
+  "angloCorsicanRestoration": {
+    "group": "Corsica",
+    "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+    "source": 10380,
+    "part": 5,
+    "from": 1794,
+    "to": 1795,
+    "entity": "anglo-corsican-kingdom",
+    "name": "Anglo-Corsican Kingdom",
+    "nameRu": "Англо-Корсиканское королевство",
+    "reason": "Corsica had its own constitution and parliament under the British crown from June 1794; it was not an integral territory of the Kingdom of Great Britain. The transition during 1796 is reviewed separately.",
+    "reasonRu": "С июня 1794 года Корсика имела собственную конституцию и парламент под британской короной, а не являлась частью собственно Великобритании. Переходный 1796 год требует отдельной проверки.",
+    "sources": [
+      "https://research-repository.st-andrews.ac.uk/handle/10023/13232",
+      "https://www.isula.corsica/assemblea/docs/RapportCP/2025052CP-annexe.pdf"
+    ]
+  },
+  "pendingIslandReviews": {
+    "Corsica": {
+      "reason": "Corsican Republic controlled much of the island, while Genoese fortified towns and Cap Corse (until 1763) remained outside Paoli's rule; French garrisons entered several towns from 1764. Whole-island coastlines cannot represent the changing partition.",
+      "reasonRu": "Республика Паоли контролировала значительную часть острова; генуэзские укреплённые города и до 1763 года также Кап-Корс оставались вне её власти. С 1764 года в некоторые города вошли французские гарнизоны. Береговая линия не устанавливает меняющиеся границы разделённой власти.",
+      "sources": [
+        "https://www.persee.fr/doc/ahrf_0003-4436_1974_num_218_1_4183",
+        "https://www.ac-corse.fr/paoli-storia-e-memoria-124634",
+        "https://www.napoleon.org/en/history-of-the-two-empires/biographies/paoli-pascal-philippe-antoine-also-known-as-pasquale-paoli/",
+        "https://www.isula.corsica/file/200599/"
+      ]
+    },
+    "Эльба": {
+      "reason": "The island was divided between the Tuscan possession of Portoferraio, Neapolitan Porto Longone and Piombino. The British occupied Portoferraio in 1796 and withdrew in 1797; their garrison did not constitute sovereignty over Elba. The 1575 demarcation and eighteenth-century maps attest the Tuscan boundary, not a ready-to-use georeferenced partition.",
+      "reasonRu": "Остров был разделён между тосканским Портоферрайо, неаполитанским Порто-Лонгоне и Пьомбино. Британцы заняли Портоферрайо в 1796 году и эвакуировались в 1797-м; на конец обоих рассматриваемых лет британского владения не было. Межевание 1575 года и карты XVIII века подтверждают границу Тосканы, но точные геопривязанные границы трёх владений ещё не восстановлены.",
+      "sources": [
+        "https://www.consiglio.regione.toscana.it/upload/eda/pubblicazioni/pub4072.pdf",
+        "https://www.e-perimetron.org/Vol_7_4/Piccardi_Lepore.pdf",
+        "https://www.rmg.co.uk/collections/objects/rmgc-object-540400",
+        "https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf",
+        "https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=8550&RicDimF=2&RicLin=en&TipoPag=prodente",
+        "https://www.consiglio.regione.toscana.it/upload/eda/pubblicazioni/vol2.pdf",
+        "https://www.comune.rio.li.it/vivere-il-comune/luoghi/localita-bagnaia/",
+        "https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=2251&RicDimF=2&RicProgetto=reg-tos&TipoPag=prodente"
+      ]
+    },
+    "Коморы": {
+      "reason": "Grande Comore contained historical sultanates such as Bambao and Itsandra, rather than a single French colonial polity. Individual boundaries are not established.",
+      "reasonRu": "На Нгазидже (Гранд-Комор) существовали отдельные султанаты, а не единое французское колониальное владение. Бамбао (Морони, Икони) и Итсандра были самостоятельными центрами; свидетельство экспедиции 1844 года также называет правителя Мицамиули. Точные границы отдельных султанатов не установлены.",
+      "sources": [
+        "https://whc.unesco.org/document/136401",
+        "https://mjp.univ-perp.fr/constit/km1886.htm",
+        "https://fr.wikisource.org/wiki/Essai_sur_les_Comores/2",
+        "https://odyssee.univ-amu.fr/items/show/965"
+      ]
+    },
+    "Малакка": {
+      "reason": "The Dutch took Malacca in 1641 with Johor's support. Portuguese attribution is false thereafter, and the oversized identical Dutch cell is unsupported. Schouten's 1641 report distinguishes the vassal villages Naning and Ringy from the neighbouring Johor possessions Muar and Rembau, and documents incomplete local obedience. A 1646 VOC treaty names local chiefs of Rembau and Naning. Later descriptions of the Linggi–Kesang boundary do not supply a verified 1641 inland frontier. A conservative fortified core is restored separately.",
+      "reasonRu": "В 1641 году Малакка перешла нидерландцам при поддержке Джохора. Португальская ячейка после завоевания ошибочна; идентичная чрезмерно обширная нидерландская не подтверждена. Отчёт Схаутена 1641 года различает вассальные Нанинг и Ринги у Кесанга и соседние джохорские владения Муар и Рембау; даже заявленная вассальная зависимость не означала беспрепятственного прямого управления. Договор VOC с правителями Рембау и Нанинга от 17 сентября 1646 года подтверждает наличие отдельных местных властей. Позднее описание относит пределы Лингги — Кесанг к 1641 году, но досье ЮНЕСКО связывает более чёткое межевание с британским управлением. Внутренний участок крепости восстановлен отдельно; точные внешние границы остаются открытыми.",
+      "sources": [
+        "https://api.icj-cij.org/sites/default/files/case-related/130/14139.pdf",
+        "https://www.sabrizain.org/malaya/library/polistat01.pdf",
+        "https://gtwhi.com.my/ms/wp-content/uploads/2024/09/Nomination-Dossier-Historic-Cities-of-the-Straits-of-Malacca.pdf",
+        "https://macaudata.mo/showbook?bno=b000614",
+        "https://www.dbnl.org/tekst/_ber002185901_01/_ber002185901_01_0004.php",
+        "https://sejarah-nusantara.anri.go.id/corpusdiplomaticum_contracts_search/?areaName=Malakka",
+        "https://repo.uum.edu.my/id/eprint/13538/1/PID226.pdf"
+      ]
+    }
+  },
+  "malaccaPendingRoutes": [
+    [
+      8866,
+      11,
+      1641,
+      1644,
+      8910
+    ],
+    [
+      8910,
+      10,
+      1645,
+      1647,
+      8866
+    ]
+  ],
+  "bracketedIslandRestorations": [
+    {
+      "group": "Corsica",
+      "year": 1944,
+      "target": 12942,
+      "before": {
+        "index": 12901,
+        "part": 4
+      },
+      "after": {
+        "index": 12962,
+        "part": 3
+      },
+      "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+      "reason": "Corsica is absent from the 1944 source. The identical island outline brackets the gap in 1943 and 1945; the French department was continuously administered by liberated France after October 1943, including during the 1944 Provence operations. Restore this island only, not a mainland interpolation.",
+      "reasonRu": "Корсика отсутствует в исходной карте 1944 года. Совпадающие контуры острова за 1943 и 1945 годы и документы о непрерывном французском управлении после октября 1943 года подтверждают восстановление острова в составе освобождённой Франции. Материковые границы не интерполируются.",
+      "sources": [
+        "https://www.ordredelaliberation.fr/fr/compagnons/charles-luizet",
+        "https://www.defense.gouv.fr/chemins-memoire/histoire-memoires/ressources-historiques/seconde-guerre-mondiale/resister/resistance-interieure/9"
+      ]
+    }
+  ],
+  "datedIslandCorrections": [
+    {
+      "group": "Эльба",
+      "source": 10561,
+      "part": 14,
+      "from": 1802,
+      "to": 1802,
+      "target": 10557,
+      "hash": "c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8",
+      "reason": "The Treaty of Amiens in 1802 transferred the entire island to France.",
+      "reasonRu": "После Амьенского мира 1802 года весь остров перешёл Франции, а не Габсбургской монархии.",
+      "sources": [
+        "https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf"
+      ]
+    },
+    {
+      "group": "Эльба",
+      "source": 10892,
+      "part": 4,
+      "from": 1814,
+      "to": 1814,
+      "hash": "c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8",
+      "entity": "principality-of-elba",
+      "name": "Principality of Elba",
+      "nameRu": "Княжество Эльба",
+      "reason": "Article III of the Treaty of Fontainebleau, 11 April 1814, established Elba as a separate principality under Napoleon's sovereignty.",
+      "reasonRu": "Статья III договора в Фонтенбло от 11 апреля 1814 года установила отдельное княжество Эльба под суверенитетом Наполеона.",
+      "sources": [
+        "https://hansard.parliament.uk/Commons/1815-04-07/debates/1896cd52-12bf-4569-9467-a9663a8bc020/PapersRelativeToThePersonAndFamilyOfBuonaparte"
+      ]
+    },
+    {
+      "group": "Corsica",
+      "source": 12901,
+      "part": 4,
+      "from": 1943,
+      "to": 1943,
+      "target": 12893,
+      "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+      "reason": "Corsica was completely liberated on 4 October 1943 by French forces and the resistance; the year-end attribution is French, under the CFLN, not Italian.",
+      "reasonRu": "Корсика полностью освобождена французскими войсками и сопротивлением 4 октября 1943 года; на конец года остров относится к Франции под управлением ФКНО, не Италии.",
+      "sources": [
+        "https://www.defense.gouv.fr/chemins-memoire/histoire-memoires/ressources-historiques/seconde-guerre-mondiale/operations-militaires/1941-1943-5"
+      ]
+    },
+    {
+      "group": "Эльба",
+      "source": 12928,
+      "part": 13,
+      "from": 1944,
+      "to": 1944,
+      "target": 12929,
+      "hash": "c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8",
+      "reason": "Operation Brassard removed German control in June 1944. Show Italian legal sovereignty with Allied military occupation, not Nazi Germany or French annexation.",
+      "reasonRu": "Операция «Брассар» прекратила немецкий контроль в июне 1944 года. Показана юридическая принадлежность Италии при союзном военном управлении, а не германская или французская аннексия.",
+      "sources": [
+        "https://history.army.mil/Portals/143/Images/Publications/Publication%20By%20Title%20Images/R%20Pdf/CMH_Pub_11-6.pdf",
+        "https://history.army.mil/portals/143/Images/Publications/catalog/11-3.pdf"
+      ]
+    }
+  ],
+  "independentComoros": {
+    "group": "Коморы (независимость)",
+    "entity": "comoros-independent",
+    "name": "Comoros",
+    "nameRu": "Коморы",
+    "routes": [
+      [
+        13247,
+        1975,
+        1975,
+        [
+          16,
+          17,
+          18
+        ]
+      ],
+      [
+        13372,
+        1976,
+        2023,
+        [
+          7,
+          8,
+          9
+        ]
+      ],
+      [
+        13646,
+        2024,
+        2024,
+        [
+          7,
+          8,
+          9
+        ]
+      ]
+    ],
+    "hashes": [
+      "ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233",
+      "8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c",
+      "cf8a539df8f350003fa8d49a17d63e1c36f9ff5f3a21c912e39b611680012904"
+    ],
+    "reason": "The Comoros became independent in 1975. Restore the three islands of Grande Comore, Mohéli and Anjouan from the exact source cells; this depicts state territory, not uniform effective control during separatist crises. Mayotte is separately administered by France and claimed by the Comoros.",
+    "reasonRu": "Коморы получили независимость в 1975 году. Восстановлены три острова: Нгазиджа, Мвали и Ндзуани. Показана государственная территория, а не единообразный фактический контроль во время сепаратистских кризисов. Майотта отдельно управляется Францией; Коморы оспаривают её статус.",
+    "sources": [
+      "https://digitallibrary.un.org/record/189353",
+      "https://www.diplomatie.gouv.fr/fr/information-par-pays/comores/presentation-des-comores",
+      "https://mandates.un.org/mandate/A/RES/49/18"
+    ]
+  },
+  "independenceGapRestorations": [
+    {
+      "source": 13161,
+      "parts": [
+        14
+      ],
+      "from": 1960,
+      "to": 1960,
+      "identitySource": 13242,
+      "name": "Republic of Cyprus",
+      "nameRu": "Республика Кипр",
+      "entity": "cyprus",
+      "group": "Кипр",
+      "year": 1960,
+      "reason": "Cyprus became independent on 16 August 1960. The exact successor outline is a candidate; British sovereign base areas have no separate geometry in this source.",
+      "reasonRu": "Кипр стал независимым 16 августа 1960 года. Контур совпадает с последующей записью, но британские суверенные базы отдельно в источнике не выделены.",
+      "sources": [
+        "https://peacemaker.un.org/en/node/9380",
+        "https://www.legislation.gov.uk/uksi/1960/1368/pdfs/uksi_19601368_en.pdf"
+      ]
+    },
+    {
+      "source": 13183,
+      "parts": [
+        2
+      ],
+      "from": 1962,
+      "to": 1962,
+      "identitySource": 13253,
+      "name": "Jamaica",
+      "nameRu": "Ямайка",
+      "entity": "jamaica",
+      "group": "Ямайка",
+      "year": 1962
+    },
+    {
+      "source": 13183,
+      "parts": [
+        25,
+        26
+      ],
+      "from": 1962,
+      "to": 1962,
+      "identitySource": 13256,
+      "identitySourceName": "Republic of Trinidad and Tobago",
+      "name": "Trinidad and Tobago",
+      "nameRu": "Тринидад и Тобаго",
+      "entity": "trinidad-tobago",
+      "group": "Тринидад и Тобаго",
+      "year": 1962
+    },
+    {
+      "source": 13232,
+      "parts": [
+        0
+      ],
+      "from": 1966,
+      "to": 1966,
+      "identitySource": 13280,
+      "identitySourceName": "Lesotho",
+      "name": "Kingdom of Lesotho",
+      "nameRu": "Королевство Лесото",
+      "entity": "lesotho",
+      "group": "Лесото",
+      "year": 1966
+    },
+    {
+      "source": 13262,
+      "parts": [
+        21
+      ],
+      "from": 1966,
+      "to": 1966,
+      "identitySource": 13281,
+      "identitySourceName": "Guyana",
+      "name": "Guyana",
+      "nameRu": "Гайана",
+      "entity": "guyana",
+      "group": "Гайана",
+      "year": 1966
+    },
+    {
+      "source": 13262,
+      "parts": [
+        23
+      ],
+      "from": 1966,
+      "to": 1966,
+      "identitySource": 13287,
+      "name": "Barbados",
+      "nameRu": "Барбадос",
+      "entity": "barbados",
+      "group": "Барбадос",
+      "year": 1966
+    },
+    {
+      "source": 13262,
+      "parts": [
+        19
+      ],
+      "from": 1968,
+      "to": 1968,
+      "identitySource": 13303,
+      "name": "Mauritius",
+      "nameRu": "Маврикий",
+      "entity": "mauritius",
+      "group": "Маврикий",
+      "year": 1968
+    },
+    {
+      "source": 13232,
+      "parts": [
+        1
+      ],
+      "from": 1968,
+      "to": 1968,
+      "identitySource": 13315,
+      "identitySourceName": "Eswatini",
+      "name": "Kingdom of Swaziland",
+      "nameRu": "Королевство Свазиленд",
+      "entity": "swaziland",
+      "group": "Свазиленд",
+      "year": 1968
+    },
+    {
+      "source": 13241,
+      "parts": [
+        8,
+        9
+      ],
+      "from": 1968,
+      "to": 1968,
+      "identitySource": 13319,
+      "name": "Equatorial Guinea",
+      "nameRu": "Экваториальная Гвинея",
+      "entity": "equatorial-guinea",
+      "group": "Экваториальная Гвинея",
+      "year": 1968
+    },
+    {
+      "source": 11956,
+      "parts": [
+        0
+      ],
+      "from": 1975,
+      "to": 1975,
+      "identitySource": 13394,
+      "name": "Republic of Suriname",
+      "nameRu": "Республика Суринам",
+      "entity": "suriname",
+      "group": "Суринам",
+      "year": 1975
+    },
+    {
+      "source": 13277,
+      "parts": [
+        16,
+        17
+      ],
+      "from": 1975,
+      "to": 1975,
+      "identitySource": 13395,
+      "name": "São Tomé and Príncipe",
+      "nameRu": "Сан-Томе и Принсипи",
+      "entity": "sao-tome-principe",
+      "group": "Сан-Томе и Принсипи",
+      "year": 1975,
+      "alreadyExcluded": true
+    },
+    {
+      "source": 13318,
+      "parts": [
+        3
+      ],
+      "from": 1978,
+      "to": 1978,
+      "identitySource": 13403,
+      "name": "Commonwealth of Dominica",
+      "nameRu": "Содружество Доминики",
+      "entity": "dominica",
+      "group": "Доминика",
+      "year": 1978
+    },
+    {
+      "source": 13318,
+      "parts": [
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "from": 1978,
+      "to": 1978,
+      "identitySource": 13412,
+      "name": "Solomon Islands",
+      "nameRu": "Соломоновы Острова",
+      "entity": "solomon-islands",
+      "group": "Соломоновы Острова",
+      "year": 1978
+    },
+    {
+      "source": 13161,
+      "parts": [
+        15
+      ],
+      "from": 1964,
+      "to": 1966,
+      "identitySource": 13290,
+      "identitySourceName": "Malta",
+      "name": "Malta",
+      "nameRu": "Мальта",
+      "entity": "malta",
+      "group": "Мальта",
+      "year": 1964
+    },
+    {
+      "source": 13232,
+      "parts": [
+        6
+      ],
+      "from": 1965,
+      "to": 1966,
+      "identitySource": 13285,
+      "identitySourceName": "Republic of The Gambia",
+      "name": "The Gambia",
+      "nameRu": "Гамбия",
+      "entity": "gambia",
+      "group": "Гамбия",
+      "year": 1965
+    },
+    {
+      "source": 13318,
+      "parts": [
+        22,
+        23,
+        24
+      ],
+      "from": 1970,
+      "to": 1972,
+      "identitySource": 13329,
+      "identitySourceName": "Republic of Fiji",
+      "name": "Fiji",
+      "nameRu": "Фиджи",
+      "entity": "fiji",
+      "group": "Фиджи",
+      "year": 1970
+    },
+    {
+      "source": 13305,
+      "parts": [
+        10
+      ],
+      "from": 1971,
+      "to": 1972,
+      "identitySource": 13348,
+      "identitySourceName": "State of Qatar",
+      "name": "State of Qatar",
+      "nameRu": "Государство Катар",
+      "entity": "qatar",
+      "group": "Катар",
+      "year": 1971,
+      "alreadyExcluded": true,
+      "sources": [
+        "https://history.state.gov/countries/qatar/recognition"
+      ]
+    },
+    {
+      "source": 13305,
+      "parts": [
+        11
+      ],
+      "from": 1971,
+      "to": 1972,
+      "identitySource": 13327,
+      "identitySourceName": "Kingdom of Bahrain",
+      "name": "Bahrain",
+      "nameRu": "Бахрейн",
+      "entity": "bahrain",
+      "group": "Бахрейн",
+      "year": 1971,
+      "alreadyExcluded": true,
+      "sources": [
+        "https://history.state.gov/countries/bahrain"
+      ]
+    },
+    {
+      "source": 13318,
+      "parts": [
+        1
+      ],
+      "from": 1974,
+      "to": 1975,
+      "identitySource": 13390,
+      "identitySourceName": "Grenada",
+      "name": "Grenada",
+      "nameRu": "Гренада",
+      "entity": "grenada",
+      "group": "Гренада",
+      "year": 1974
+    },
+    {
+      "source": 13247,
+      "parts": [
+        1
+      ],
+      "from": 1977,
+      "to": 1978,
+      "identitySource": 13414,
+      "identitySourceName": "Republic of Djibouti",
+      "name": "Republic of Djibouti",
+      "nameRu": "Республика Джибути",
+      "entity": "djibouti",
+      "group": "Джибути",
+      "year": 1977
+    },
+    {
+      "source": 13318,
+      "parts": [
+        4
+      ],
+      "from": 1981,
+      "to": 1982,
+      "identitySource": 13432,
+      "identitySourceName": "Belize",
+      "name": "Belize",
+      "nameRu": "Белиз",
+      "entity": "belize",
+      "group": "Белиз",
+      "year": 1981
+    },
+    {
+      "source": 13279,
+      "parts": [
+        37
+      ],
+      "from": 1994,
+      "to": 1995,
+      "identitySource": 13546,
+      "identitySourceName": "Palau",
+      "name": "Palau",
+      "nameRu": "Палау",
+      "entity": "palau",
+      "group": "Палау",
+      "year": 1994
+    },
+    {
+      "source": 13344,
+      "parts": [
+        1
+      ],
+      "from": 1973,
+      "to": 1975,
+      "geometryReference": 13359,
+      "name": "Seychelles (British colony)",
+      "nameRu": "Сейшельские острова (британская колония)",
+      "entity": "seychelles-british-colony",
+      "entityNamespace": "reviewed-polity",
+      "group": "Сейшелы",
+      "year": 1976,
+      "reason": "Mahé remained part of British Seychelles until independence on 29 June 1976, not South Africa; only the exact Mahé source component is restored.",
+      "reasonRu": "До независимости 29 июня 1976 года Маэ входил в британские Сейшелы, не в ЮАР; восстановлен только совпадающий исходный контур Маэ.",
+      "sources": [
+        "https://www.statehouse.gov.sc/news/7040/constitution-day-celebrations-commence-with-flag-raising-ceremony-at-monument-lavwa-lanasyon"
+      ]
+    }
+  ],
+  "vanuatuIndependence": {
+    "source": 13415,
+    "successor": 13420,
+    "year": 1980,
+    "name": "Vanuatu",
+    "nameRu": "Вануату",
+    "reason": "New Hebrides became independent as Vanuatu in 1980; all twelve source components match its successor, so the state name and identity change without changing the geometry.",
+    "reasonRu": "В 1980 году Новые Гебриды получили независимость как Вануату; все двенадцать исходных компонентов совпадают с записью государства-преемника. Исправлены название и идентичность без изменения контура.",
+    "sources": [
+      "https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts"
+    ]
+  },
+  "datedPostIndependenceNames": [
+    {
+      "source": 13285,
+      "sourceName": "Republic of The Gambia",
+      "year": 1970,
+      "name": "The Gambia",
+      "nameRu": "Гамбия",
+      "reason": "The Gambia became a republic on 24 April 1970; before then it was an independent constitutional monarchy.",
+      "reasonRu": "Гамбия стала республикой 24 апреля 1970 года; до этого являлась независимой конституционной монархией.",
+      "sources": [
+        "https://gambia.gov.gm/independent-electoral-commission/"
+      ]
+    },
+    {
+      "source": 13329,
+      "sourceName": "Republic of Fiji",
+      "year": 1987,
+      "name": "Fiji",
+      "nameRu": "Фиджи",
+      "reason": "Fiji was proclaimed a republic on 7 October 1987, not in 1973.",
+      "reasonRu": "Фиджи провозглашено республикой 7 октября 1987 года, а не в 1973 году.",
+      "sources": [
+        "https://www.parliament.gov.fj/wp-content/uploads/2024/06/Daily-Hansard-Tuesday-21-May-2024.pdf"
+      ]
+    },
+    {
+      "source": 13327,
+      "sourceName": "Kingdom of Bahrain",
+      "year": 2002,
+      "name": "Bahrain",
+      "nameRu": "Бахрейн",
+      "reason": "The State of Bahrain became the Kingdom of Bahrain on 14 February 2002.",
+      "reasonRu": "Государство Бахрейн стало Королевством Бахрейн 14 февраля 2002 года.",
+      "sources": [
+        "https://digitallibrary.un.org/record/466740/files/E_CONF.94_CRP.11-EN.pdf"
+      ]
+    }
+  ],
+  "mayotte2024": {
+    "group": "Майотта",
+    "source": 13646,
+    "part": 6,
+    "from": 2024,
+    "to": 2024,
+    "target": 13690,
+    "hash": "5e8c3940ad185cbe4cf1af0d7f420aeaaa9bead9e850dd11ecbb7a72f850de2a",
+    "reason": "Mayotte is administered by France; Comorian sovereignty is claimed and supported by UN General Assembly resolutions. This is an administrative-control attribution, not a determination of sovereignty.",
+    "reasonRu": "Майоттой управляет Франция; Коморы заявляют суверенитет, который поддержан резолюциями Генеральной Ассамблеи ООН. Показано фактическое управление, а не решение вопроса о суверенитете.",
+    "sources": [
+      "https://www.diplomatie.gouv.fr/fr/priorites-et-actions/grands-dossiers/la-strategie-de-la-france-dans-l-indopacifique/l-espace-indopacifique-une-priorite-pour-la-france/l-union-des-comores-et-mayotte",
+      "https://mandates.un.org/mandate/A/RES/49/18"
+    ]
+  },
+  "mindanaoReview": {
+    "group": "Mindanao",
+    "hash": "a067cf1d9a83eeef3a75003f2b0ecc21af4e3a0b4148972b03644ca58a1caaec",
+    "reason": "The island contained multiple distinct centres: Maguindanao in the lower Pulangi valley, Buayan upstream and Butuan in the northeast. Neither Brunei nor Maguindanao can be assigned the entire island. The coastline is not a political boundary; keep the unverified territorial reconstruction open.",
+    "reasonRu": "На острове существовали отдельные центры власти: Магинданао в нижнем течении Пуланги, Буаян выше по течению и Бутуан на северо-востоке. Ни Брунею, ни Магинданао нельзя приписывать весь остров. Береговая линия не является установленной политической границей; реконструкция остаётся открытой.",
+    "sources": [
+      "https://www.nqc.gov.ph/en/map/",
+      "https://ecommons.cornell.edu/bitstream/handle/1813/57550/082.pdf?sequence=1andisAllowed=y",
+      "https://ncca.gov.ph/about-ncca-3/subcommissions/subcommission-on-cultural-communities-and-traditional-arts-sccta/central-cultural-communities/the-history-of-the-muslim-in-the-philippines/",
+      "https://publishing.cdlib.org/ucpressebooks/public/book/muslim-rulers-and-rebels-everyday-politics-and-armed-separatism-in-the-southern-philippines.html",
+      "https://doi.org/10.1080/0967828X.2021.1927811",
+      "https://www.gutenberg.org/cache/epub/12635/pg12635.html",
+      "https://www.gutenberg.org/cache/epub/13280/pg13280.html"
+    ],
+    "pendingRoutes": [
+      [
+        7792,
+        7,
+        1512,
+        1520,
+        7904
+      ],
+      [
+        7904,
+        0,
+        1582,
+        1608,
+        7792
+      ]
+    ]
+  },
+  "davaoTransfer": {
+    "group": "Давао",
+    "hash": "60ce72fed1538dee528a2c4f3252e5173c6b6bcce3686f77c248b0420a8d87bf",
+    "target": 11140,
+    "routes": [
+      [
+        8613,
+        0,
+        1848,
+        1848
+      ],
+      [
+        11490,
+        0,
+        1849,
+        1852
+      ]
+    ],
+    "allowSourceOverlap": true,
+    "reason": "The Spanish campaign captured Datu Bago's fortified Davao settlement after an initial failed assault and later reinforcements in 1848. The official Davao city history reports that Oyanguren claimed peaceful possession of the gulf territory only by the end of 1849, while local communities continued to resist. The 1848 polygon is therefore a deliberately generalized, uncertain attribution of Spanish military occupation of the settlement, NOT a proven entire-gulf effective-control boundary. The 1849–52 component remains a generalized historical candidate and not a surveyed border.",
+    "reasonRu": "В 1848 году после неудачного первого штурма и подхода подкреплений испанская экспедиция взяла укреплённое поселение дату Баго. Согласно опубликованной истории города Давао, лишь к концу 1849 года Оянгурен сообщал о мирном владении территорией залива, при продолжающемся сопротивлении местных общин. Контур 1848 года — условная схема военного присутствия у поселения, а НЕ доказанная граница эффективного управления всем заливом. Контур 1849–1852 годов тоже остаётся обобщённой кандидатной реконструкцией, а не исторической кадастровой границей.",
+    "sources": [
+      "https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf",
+      "https://readingroo.ms/3/5/3/9/35391/35391-h/35391-h.htm",
+      "https://www.academia.edu/127094528/Magindanao_1860_1888_The_Career_of_Datu_Utto_of_Buayan"
+    ]
+  },
+  "nicobarExtensions": {
+    "austrian": [
+      [
+        10174,
+        11,
+        12,
+        1778,
+        1779
+      ],
+      [
+        10205,
+        11,
+        12,
+        1780,
+        1790
+      ]
+    ],
+    "dutch": [
+      [
+        10767,
+        11,
+        12,
+        1809,
+        1813
+      ],
+      [
+        10939,
+        12,
+        13,
+        1814,
+        1814
+      ],
+      [
+        10978,
+        12,
+        13,
+        1815,
+        1821
+      ],
+      [
+        11081,
+        13,
+        14,
+        1822,
+        1823
+      ],
+      [
+        11124,
+        16,
+        17,
+        1824,
+        1827
+      ],
+      [
+        11184,
+        16,
+        17,
+        1828,
+        1829
+      ],
+      [
+        11279,
+        16,
+        17,
+        1836,
+        1845
+      ],
+      [
+        11427,
+        18,
+        19,
+        1846,
+        1848
+      ],
+      [
+        11504,
+        18,
+        19,
+        1849,
+        1852
+      ],
+      [
+        11514,
+        18,
+        19,
+        1853,
+        1855
+      ],
+      [
+        11591,
+        14,
+        15,
+        1856,
+        1856
+      ],
+      [
+        11610,
+        16,
+        17,
+        1857,
+        1858
+      ],
+      [
+        11628,
+        16,
+        17,
+        1859,
+        1859
+      ],
+      [
+        11660,
+        15,
+        16,
+        1860,
+        1861
+      ],
+      [
+        11709,
+        15,
+        16,
+        1862,
+        1865
+      ],
+      [
+        11781,
+        16,
+        17,
+        1866,
+        1867
+      ]
+    ],
+    "british": [
+      [
+        11781,
+        16,
+        17,
+        1870,
+        1872
+      ]
+    ]
+  },
+  "extensions": [
+    {
+      "group": "Сент-Круа",
+      "source": 12421,
+      "part": 38,
+      "from": 1917,
+      "to": 1917
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12464,
+      "part": 38,
+      "from": 1918,
+      "to": 1919
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12542,
+      "part": 38,
+      "from": 1920,
+      "to": 1921
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12557,
+      "part": 38,
+      "from": 1922,
+      "to": 1923
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12598,
+      "part": 38,
+      "from": 1924,
+      "to": 1925
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12644,
+      "part": 38,
+      "from": 1926,
+      "to": 1926
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12652,
+      "part": 38,
+      "from": 1927,
+      "to": 1927
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12661,
+      "part": 38,
+      "from": 1928,
+      "to": 1931
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12730,
+      "part": 13,
+      "from": 1932,
+      "to": 1941
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12888,
+      "part": 11,
+      "from": 1942,
+      "to": 1945
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 12988,
+      "part": 4,
+      "from": 1946,
+      "to": 1946
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 13036,
+      "part": 4,
+      "from": 1947,
+      "to": 1957
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 13183,
+      "part": 1,
+      "from": 1958,
+      "to": 1962
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 13262,
+      "part": 28,
+      "from": 1963,
+      "to": 1966
+    },
+    {
+      "group": "Исландия",
+      "source": 12850,
+      "part": 9,
+      "from": 1940,
+      "to": 1940
+    },
+    {
+      "group": "Исландия",
+      "source": 12868,
+      "part": 10,
+      "from": 1941,
+      "to": 1941
+    },
+    {
+      "group": "Исландия",
+      "source": 12957,
+      "part": 41,
+      "from": 1945,
+      "to": 1945
+    },
+    {
+      "group": "Мафия",
+      "source": 12272,
+      "part": 37,
+      "from": 1908,
+      "to": 1910
+    },
+    {
+      "group": "Мафия",
+      "source": 12295,
+      "part": 71,
+      "from": 1911,
+      "to": 1912
+    },
+    {
+      "group": "Мафия",
+      "source": 12353,
+      "part": 7,
+      "from": 1914,
+      "to": 1914
+    }
+  ],
+  "relabel": {
+    "Сент-Круа": {
+      "indices": [
+        13297,
+        13678
+      ],
+      "hash": "81a1445f2ace712fafb7d5e7d3b261cddff03b5a08df860b53feaeb1ac07c621",
+      "name": "Saint Croix (United States Virgin Islands)",
+      "nameRu": "Сент-Круа (Американские Виргинские острова)",
+      "reason": "The source record named Saint Kitts actually consists solely of Saint Croix. Denmark transferred Saint Croix to the United States on 31 March 1917. This fixes that false label, not the missing real Saint Kitts and Nevis geometry.",
+      "reasonRu": "Исходная запись «Сент-Китс» содержит только Сент-Круа. Дания передала этот остров США 31 марта 1917 года. Истинная геометрия Сент-Китса и Невиса остаётся отдельным незакрытым пробелом.",
+      "sources": [
+        "https://history.state.gov/historicaldocuments/frus1917/d881",
+        "https://history.state.gov/historicaldocuments/frus1917/d889",
+        "https://www.doi.gov/oia/islands/virgin-islands",
+        "https://www.weather.gov/media/ctwp/PDF/CARIBE-EWS%20Users%20Guide%20-%20V1.2a.pdf"
+      ]
+    }
+  }
+}

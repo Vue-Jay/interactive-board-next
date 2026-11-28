@@ -1,0 +1,3011 @@
+{
+  "baseline": "9b28cc64af870c30ccc4933032a2457584e25774",
+  "sourceSha256": "fc6f0d1e4cc42f45da83522b3696db6f2cc85ec0d12259a85c89b31347b8fc0a",
+  "descriptions": {
+    "Сен-Пьер и Микелон": "В декабре 1941 года острова перешли под управление Свободной Франции.",
+    "Маврикий / Реюньон": "Британское управление после завоевания 1810 года; Реюньон возвращён Франции в апреле 1815 года.",
+    "Корсика": "По миру 1559 года остров возвращён Генуе; французский контур в 1560–1563 годах анахроничен.",
+    "Мэн": "Остров находился под особым лордством с английским влиянием; не обычная шотландская территория.",
+    "Хиос": "Византийское управление 1329–1346, генуэзское с 1346 года; переходный год не изменён.",
+    "Невер": "Невер и Шампань/Бургундия — разные владения; исправлена конкретная ошибочная атрибуция.",
+    "Кеа": "В 1281–1295 годах остров принадлежал Византии, не герцогству Наксос.",
+    "Лофотены и север Норвегии": "В 1035 году власть перешла к Магнусу Доброму; Североморская империя больше не управляла этими островами.",
+    "Кипр": "Римская аннексия 58 до н. э., возврат Птолемеям в 48/47 до н. э.; переходные годы оставлены.",
+    "Фасос": "В 203 до н. э. Фасос не принадлежал Македонии; точный совпадающий контур сохраняется в местной записи.",
+    "Лемнос": "После устранения сил Кассандра в 314 до н. э. остров получил самостоятельность в союзе с Антигоном.",
+    "Сент-Круа": "Остров принадлежал США с 1917 года; оба сводных контура 1967–1968 неверны. Нужна отдельная атрибуция.",
+    "Исландия": "Исландия сохраняла суверенитет во время британского и американского военного присутствия; нужна собственная запись.",
+    "Мафия": "В 1913 году остров входил в Германскую Восточную Африку, не британские владения.",
+    "Никобары": "Голландская атрибуция 1868–1869 неверна; датская претензия, местные общины и британская передача требуют разграничения.",
+    "Коморы": "Анжуан, Мохели и Гранд-Комор не были французскими протекторатами в 1842–1845; нужны локальные султанаты.",
+    "Пондишери": "Британская администрация в отмеченные полные годы; французские права на реституцию не уничтожаются.",
+    "Маэ": "Британская администрация в отмеченные полные годы; французские права на реституцию не уничтожаются.",
+    "Карикал и Янам": "Британская администрация в 1762 году.",
+    "Антильские острова ABC": "В 1799 году Аруба, Бонайре и Кюрасао ещё не находились под британским управлением.",
+    "Эльба": "Остров разделён между несколькими владениями; оба полных контура неверны.",
+    "Цейлон": "Португальское управление закончилось в 1658; границы Канди и VOC требуют отдельной реконструкции.",
+    "Малакка": "Португальская Малакка сдалась VOC в 1641; широкий контур требует разграничения с Джохором.",
+    "Косумель": "Испанское присутствие 1519 не означало непрерывную власть в 1520–1525.",
+    "Мэн (лордство)": "Шотландская атрибуция неверна; нужно представить особое лордство и верховную власть раздельно.",
+    "Гуадалканал": "Японские силы эвакуированы в феврале 1943 года.",
+    "Новая Георгия и прилегающие острова": "Кампания завершилась к октябрю 1943; последующие японские контуры неверны.",
+    "Велья-Лавелья": "Японский гарнизон эвакуирован в октябре 1943 года.",
+    "Малаита": "Устойчивого японского управления островом не было.",
+    "Макира": "Наземные японские силы не высаживались; полная японская атрибуция ошибочна.",
+    "Манус": "Союзники заняли остров в марте 1944; требуется восстановить австралийское управление.",
+    "Холо": "Холо — ядро отдельного султаната Сулу; связи с Брунеем не означают прямой контроль.",
+    "Савойя — север Ниццы": "Полные совпадающие контуры не отражают реальные границы владений Савойи, местных сеньорий и соседних государств.",
+    "Majorca": "Мальорка и Ибица возвращены королю Мальорки в 1298; на 1294–1297 сохраняется арагонский контур.",
+    "Corsica": "Генуя удерживала прибрежные крепости, Корсиканская республика — значительную часть острова; обе полные границы неверны.",
+    "Belitung": "После уступки 1812 года остров находился под британской властью до 1824.",
+    "Bangka": "Остров уступлен в 1812; британское управление до передачи Нидерландам в 1816. Переход 1816 не изменён.",
+    "Nicobar": "Австрийская экспедиция имела ограниченные притязания и прекратилась после датского вмешательства; не весь архипелаг.",
+    "Isle of Man": "Шотландская администрация до английского захвата 1333 года.",
+    "Solomon": "Рендова и Велья-Лавелья в британском протекторате с 1893 года.",
+    "Champagne": "Шампань и Блуа имели разных графов до 1125; нужно различить их прямые владения и сюзеренитет.",
+    "Mindanao": "Остров включал несколько политических центров; ни Бруней, ни Магинданао не обладали доказанной властью над всем островом.",
+    "Brandenburg-Prussia": "Бранденбург и Пруссия — составные владения одного монарха, с различным правовым статусом. Не две конкурирующие независимые территории.",
+    "Papua and New Guinea": "Австралийское управление Папуа и мандатной Новой Гвинеей; британская имперская принадлежность не равна прямому управлению.",
+    "Ryukyu": "Американская администрация по статье 3 мирного договора, при остаточном японском суверенитете; не территория США.",
+    "Altenburg": "Саксен-Альтенбург — отдельное герцогство после раздела 1826 года.",
+    "Crete": "После завоевания Римом 69–67 до н. э. местные полисы не составляли независимого островного государства.",
+    "Rhodes": "Родос — самостоятельная полития, не суверенная территория Птолемеев.",
+    "Athenian islands": "Кеа и Лемнос — афинские владения в условиях римской гегемонии; местная принадлежность не равна самостоятельному суверенитету."
+  },
+  "rows": [
+    {
+      "group": "Сен-Пьер и Микелон",
+      "source": 12849,
+      "part": 6,
+      "other": 12893,
+      "otherParts": [
+        2
+      ],
+      "from": 1942,
+      "to": 1942,
+      "hash": "7e0f63b09a305712c1ebb24bbdb507087fa3c003bb8b2295913eeddbd756cc2c",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Маврикий / Реюньон",
+      "source": 9759,
+      "part": 1,
+      "other": 10840,
+      "otherParts": [
+        32
+      ],
+      "from": 1811,
+      "to": 1811,
+      "hash": "0819ebeeedc3cc3c75b3c13a59837d37fae1c1acdeb12574bc502c68593ab65e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Маврикий / Реюньон",
+      "source": 9759,
+      "part": 0,
+      "other": 10840,
+      "otherParts": [
+        31
+      ],
+      "from": 1811,
+      "to": 1811,
+      "hash": "9cc72ffff16bec25596bcef1663780c1489d72c20e060cce53ed1021da46ac53",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Маврикий / Реюньон",
+      "source": 9759,
+      "part": 1,
+      "other": 10855,
+      "otherParts": [
+        33
+      ],
+      "from": 1812,
+      "to": 1813,
+      "hash": "0819ebeeedc3cc3c75b3c13a59837d37fae1c1acdeb12574bc502c68593ab65e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Маврикий / Реюньон",
+      "source": 9759,
+      "part": 0,
+      "other": 10855,
+      "otherParts": [
+        32
+      ],
+      "from": 1812,
+      "to": 1813,
+      "hash": "9cc72ffff16bec25596bcef1663780c1489d72c20e060cce53ed1021da46ac53",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Маврикий / Реюньон",
+      "source": 9759,
+      "part": 1,
+      "other": 10899,
+      "otherParts": [
+        54
+      ],
+      "from": 1814,
+      "to": 1814,
+      "hash": "0819ebeeedc3cc3c75b3c13a59837d37fae1c1acdeb12574bc502c68593ab65e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Маврикий / Реюньон",
+      "source": 9759,
+      "part": 0,
+      "other": 10899,
+      "otherParts": [
+        53
+      ],
+      "from": 1814,
+      "to": 1814,
+      "hash": "9cc72ffff16bec25596bcef1663780c1489d72c20e060cce53ed1021da46ac53",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Корсика",
+      "source": 8235,
+      "part": 0,
+      "other": 8124,
+      "otherParts": [
+        1
+      ],
+      "from": 1560,
+      "to": 1563,
+      "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Мэн",
+      "source": 6167,
+      "part": 0,
+      "other": 6346,
+      "otherParts": [
+        0
+      ],
+      "from": 1347,
+      "to": 1394,
+      "hash": "e61c6b03d80d2ab02c3a387f9ec1bd3546bae563bdc52b4ae8c97d6f6b2d2cda",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Мэн",
+      "source": 6167,
+      "part": 0,
+      "other": 6771,
+      "otherParts": [
+        0
+      ],
+      "from": 1395,
+      "to": 1401,
+      "hash": "e61c6b03d80d2ab02c3a387f9ec1bd3546bae563bdc52b4ae8c97d6f6b2d2cda",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Хиос",
+      "source": 6133,
+      "part": 0,
+      "other": 6302,
+      "otherParts": [
+        11
+      ],
+      "from": 1333,
+      "to": 1343,
+      "hash": "54db4aecd66044fc194aa22a675a109e0b9227c51f0398fd2975738f38fdf1a1",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Хиос",
+      "source": 6133,
+      "part": 0,
+      "other": 6392,
+      "otherParts": [
+        12
+      ],
+      "from": 1344,
+      "to": 1345,
+      "hash": "54db4aecd66044fc194aa22a675a109e0b9227c51f0398fd2975738f38fdf1a1",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Хиос",
+      "source": 6392,
+      "part": 12,
+      "other": 6133,
+      "otherParts": [
+        0
+      ],
+      "from": 1347,
+      "to": 1351,
+      "hash": "54db4aecd66044fc194aa22a675a109e0b9227c51f0398fd2975738f38fdf1a1",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Невер",
+      "source": 5834,
+      "part": 0,
+      "other": 5941,
+      "otherParts": [
+        0
+      ],
+      "from": 1285,
+      "to": 1304,
+      "hash": "a9616ea1e110ec8d50a08ac3c0d9d8812dfe46aafc92bdb5d0282cd8a5dfc60d",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кеа",
+      "source": 5356,
+      "part": 1,
+      "other": 5909,
+      "otherParts": [
+        1
+      ],
+      "from": 1281,
+      "to": 1284,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кеа",
+      "source": 5356,
+      "part": 1,
+      "other": 5966,
+      "otherParts": [
+        2
+      ],
+      "from": 1285,
+      "to": 1293,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кеа",
+      "source": 5356,
+      "part": 1,
+      "other": 5983,
+      "otherParts": [
+        2
+      ],
+      "from": 1294,
+      "to": 1295,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Лофотены и север Норвегии",
+      "source": 4310,
+      "part": 6,
+      "other": 4203,
+      "otherParts": [
+        17
+      ],
+      "from": 1036,
+      "to": 1039,
+      "hash": "8a64fc95eee8110c6951bc596f974ccf48517d38368c2502c283d70a2c172ead",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Лофотены и север Норвегии",
+      "source": 4310,
+      "part": 5,
+      "other": 4203,
+      "otherParts": [
+        16
+      ],
+      "from": 1036,
+      "to": 1039,
+      "hash": "9239e609a391d3188ae728ee3231a1b0e79201b1784254515661b224d49e52a9",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Лофотены и север Норвегии",
+      "source": 4310,
+      "part": 9,
+      "other": 4203,
+      "otherParts": [
+        15
+      ],
+      "from": 1036,
+      "to": 1039,
+      "hash": "92f53826864e4a3d5a24f852c01545c5f11c572dc77fd592519ab878ae0978a8",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Лофотены и север Норвегии",
+      "source": 4310,
+      "part": 8,
+      "other": 4203,
+      "otherParts": [
+        14
+      ],
+      "from": 1036,
+      "to": 1039,
+      "hash": "f4ee1098c42aef2ca3cff7f661f5039e7713e095fe258651b715665ff61547c8",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 943,
+      "part": 1,
+      "other": 1042,
+      "otherParts": [
+        15
+      ],
+      "from": -50,
+      "to": -50,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 943,
+      "part": 1,
+      "other": 1047,
+      "otherParts": [
+        15
+      ],
+      "from": -49,
+      "to": -49,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 1050,
+      "part": 15,
+      "other": 943,
+      "otherParts": [
+        1
+      ],
+      "from": -46,
+      "to": -45,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 1051,
+      "part": 15,
+      "other": 943,
+      "otherParts": [
+        1
+      ],
+      "from": -44,
+      "to": -43,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 1053,
+      "part": 15,
+      "other": 943,
+      "otherParts": [
+        1
+      ],
+      "from": -42,
+      "to": -42,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 1058,
+      "part": 15,
+      "other": 943,
+      "otherParts": [
+        1
+      ],
+      "from": -41,
+      "to": -41,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 1061,
+      "part": 17,
+      "other": 943,
+      "otherParts": [
+        1
+      ],
+      "from": -40,
+      "to": -37,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Кипр",
+      "source": 1071,
+      "part": 15,
+      "other": 943,
+      "otherParts": [
+        1
+      ],
+      "from": -36,
+      "to": -32,
+      "hash": "5d65fafe39cd856939582d71f302493ddb2350468ed283b2a088a2620d9ca048",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Фасос",
+      "source": 815,
+      "part": 6,
+      "other": 808,
+      "otherParts": [
+        8
+      ],
+      "from": -203,
+      "to": -203,
+      "hash": "ede521c386940d7ef15b34763d5eac56031022025b00b1568324944ab1d6486b",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Лемнос",
+      "source": 510,
+      "part": 12,
+      "other": 503,
+      "otherParts": [
+        15
+      ],
+      "from": -313,
+      "to": -308,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 13262,
+      "part": 28,
+      "other": 13297,
+      "otherParts": [
+        0
+      ],
+      "from": 1967,
+      "to": 1968,
+      "hash": "81a1445f2ace712fafb7d5e7d3b261cddff03b5a08df860b53feaeb1ac07c621",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Исландия",
+      "source": 12868,
+      "part": 10,
+      "other": 12897,
+      "otherParts": [
+        44
+      ],
+      "from": 1942,
+      "to": 1943,
+      "hash": "a77615b6a8c9e407c3eacb6912ce4f61e4a6157a4ede756d6bc0c8e0b938d234",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Исландия",
+      "source": 12868,
+      "part": 10,
+      "other": 12937,
+      "otherParts": [
+        48
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "a77615b6a8c9e407c3eacb6912ce4f61e4a6157a4ede756d6bc0c8e0b938d234",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Сент-Круа",
+      "source": 13297,
+      "part": 0,
+      "other": 13262,
+      "otherParts": [
+        28
+      ],
+      "from": 1967,
+      "to": 1968,
+      "hash": "81a1445f2ace712fafb7d5e7d3b261cddff03b5a08df860b53feaeb1ac07c621",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Исландия",
+      "source": 12897,
+      "part": 44,
+      "other": 12868,
+      "otherParts": [
+        10
+      ],
+      "from": 1942,
+      "to": 1943,
+      "hash": "a77615b6a8c9e407c3eacb6912ce4f61e4a6157a4ede756d6bc0c8e0b938d234",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Исландия",
+      "source": 12937,
+      "part": 48,
+      "other": 12868,
+      "otherParts": [
+        10
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "a77615b6a8c9e407c3eacb6912ce4f61e4a6157a4ede756d6bc0c8e0b938d234",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937652981"
+    },
+    {
+      "group": "Мафия",
+      "source": 12295,
+      "part": 71,
+      "other": 12345,
+      "otherParts": [
+        7
+      ],
+      "from": 1913,
+      "to": 1913,
+      "hash": "69c85ca493442805ac3372a1fe2aa49a509f4b1f2be0cccd1f3b5d32ede353bd",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Мафия",
+      "source": 12345,
+      "part": 7,
+      "other": 12295,
+      "otherParts": [
+        71
+      ],
+      "from": 1913,
+      "to": 1913,
+      "hash": "69c85ca493442805ac3372a1fe2aa49a509f4b1f2be0cccd1f3b5d32ede353bd",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Никобары",
+      "source": 11781,
+      "part": 17,
+      "other": 11836,
+      "otherParts": [
+        3
+      ],
+      "from": 1868,
+      "to": 1869,
+      "hash": "0bef4c92c6b9d24d9c7853ca3096f14378cf1809d30b1ed0feaf091d102c7dae",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Никобары",
+      "source": 11781,
+      "part": 16,
+      "other": 11836,
+      "otherParts": [
+        1
+      ],
+      "from": 1868,
+      "to": 1869,
+      "hash": "49bad8e0df1d4b6978774e72482211a230a2fc16d3a56064d47b334c80173320",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Коморы",
+      "source": 11329,
+      "part": 3,
+      "other": 11399,
+      "otherParts": [
+        10
+      ],
+      "from": 1842,
+      "to": 1845,
+      "hash": "8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Коморы",
+      "source": 11329,
+      "part": 2,
+      "other": 11399,
+      "otherParts": [
+        9
+      ],
+      "from": 1842,
+      "to": 1845,
+      "hash": "ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Коморы",
+      "source": 11329,
+      "part": 4,
+      "other": 11399,
+      "otherParts": [
+        11
+      ],
+      "from": 1842,
+      "to": 1845,
+      "hash": "cf8a539df8f350003fa8d49a17d63e1c36f9ff5f3a21c912e39b611680012904",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Коморы",
+      "source": 11399,
+      "part": 10,
+      "other": 11329,
+      "otherParts": [
+        3
+      ],
+      "from": 1842,
+      "to": 1845,
+      "hash": "8f31d16f944b3cefe048b3146bf73aea4320e11e4b0dcabb74b7fe8d1886569c",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Коморы",
+      "source": 11399,
+      "part": 9,
+      "other": 11329,
+      "otherParts": [
+        2
+      ],
+      "from": 1842,
+      "to": 1845,
+      "hash": "ca0861672c2aec6d4ea750a6f663d4b43e5be11e371c321ed69e8c520313b233",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Коморы",
+      "source": 11399,
+      "part": 11,
+      "other": 11329,
+      "otherParts": [
+        4
+      ],
+      "from": 1842,
+      "to": 1845,
+      "hash": "cf8a539df8f350003fa8d49a17d63e1c36f9ff5f3a21c912e39b611680012904",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Пондишери",
+      "source": 9759,
+      "part": 8,
+      "other": 10499,
+      "otherParts": [
+        22
+      ],
+      "from": 1799,
+      "to": 1799,
+      "hash": "aff8098d8301a7c1c0b2a2d14a352853e5dcd1eef51361ede74b23e2156a154e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Пондишери",
+      "source": 9759,
+      "part": 8,
+      "other": 10456,
+      "otherParts": [
+        23
+      ],
+      "from": 1797,
+      "to": 1798,
+      "hash": "aff8098d8301a7c1c0b2a2d14a352853e5dcd1eef51361ede74b23e2156a154e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Пондишери",
+      "source": 9759,
+      "part": 8,
+      "other": 10404,
+      "otherParts": [
+        23
+      ],
+      "from": 1796,
+      "to": 1796,
+      "hash": "aff8098d8301a7c1c0b2a2d14a352853e5dcd1eef51361ede74b23e2156a154e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Пондишери",
+      "source": 9759,
+      "part": 8,
+      "other": 10381,
+      "otherParts": [
+        23
+      ],
+      "from": 1794,
+      "to": 1795,
+      "hash": "aff8098d8301a7c1c0b2a2d14a352853e5dcd1eef51361ede74b23e2156a154e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Пондишери",
+      "source": 9759,
+      "part": 8,
+      "other": 10223,
+      "otherParts": [
+        2
+      ],
+      "from": 1781,
+      "to": 1782,
+      "hash": "aff8098d8301a7c1c0b2a2d14a352853e5dcd1eef51361ede74b23e2156a154e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Пондишери",
+      "source": 9759,
+      "part": 8,
+      "other": 10203,
+      "otherParts": [
+        2
+      ],
+      "from": 1780,
+      "to": 1780,
+      "hash": "aff8098d8301a7c1c0b2a2d14a352853e5dcd1eef51361ede74b23e2156a154e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Пондишери",
+      "source": 9759,
+      "part": 8,
+      "other": 9993,
+      "otherParts": [
+        2
+      ],
+      "from": 1762,
+      "to": 1762,
+      "hash": "aff8098d8301a7c1c0b2a2d14a352853e5dcd1eef51361ede74b23e2156a154e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Маэ",
+      "source": 9759,
+      "part": 7,
+      "other": 10223,
+      "otherParts": [
+        1
+      ],
+      "from": 1781,
+      "to": 1782,
+      "hash": "3506a2b93eaab2377391d3f6033c1d165663cc9ff48ebb56895301db4177c1f5",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Маэ",
+      "source": 9759,
+      "part": 7,
+      "other": 10203,
+      "otherParts": [
+        1
+      ],
+      "from": 1780,
+      "to": 1780,
+      "hash": "3506a2b93eaab2377391d3f6033c1d165663cc9ff48ebb56895301db4177c1f5",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Маэ",
+      "source": 9759,
+      "part": 7,
+      "other": 9993,
+      "otherParts": [
+        1
+      ],
+      "from": 1762,
+      "to": 1762,
+      "hash": "3506a2b93eaab2377391d3f6033c1d165663cc9ff48ebb56895301db4177c1f5",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Карикал и Янам",
+      "source": 9759,
+      "part": 6,
+      "other": 9993,
+      "otherParts": [
+        0
+      ],
+      "from": 1762,
+      "to": 1762,
+      "hash": "877145df75ff4f50424dea06973bdb6640b9ac9c4ca37ff73b9e0540c4074283",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Карикал и Янам",
+      "source": 9759,
+      "part": 9,
+      "other": 9993,
+      "otherParts": [
+        5
+      ],
+      "from": 1762,
+      "to": 1762,
+      "hash": "be65310726b6081e11e965fcf6b1af383998ce43abbe4ed447073f1028ebee04",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Антильские острова ABC",
+      "source": 10490,
+      "part": 21,
+      "other": 10478,
+      "otherParts": [
+        3
+      ],
+      "from": 1799,
+      "to": 1799,
+      "hash": "a52ce20e0c58a974a7d62d29b521b8b21d584a5d7781dd91745aa58e6bc786e6",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Антильские острова ABC",
+      "source": 10490,
+      "part": 20,
+      "other": 10478,
+      "otherParts": [
+        2
+      ],
+      "from": 1799,
+      "to": 1799,
+      "hash": "b7039b0c37dfb66e0127c65baf073d8bb33a1faad692265b5af48e3f9ac29c8d",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Антильские острова ABC",
+      "source": 10490,
+      "part": 19,
+      "other": 10478,
+      "otherParts": [
+        1
+      ],
+      "from": 1799,
+      "to": 1799,
+      "hash": "c8464b2cdb143b23c76bf71ab4eeed26d74413ec287ac14657e6e50213f46837",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Эльба",
+      "source": 9986,
+      "part": 2,
+      "other": 10455,
+      "otherParts": [
+        5
+      ],
+      "from": 1797,
+      "to": 1798,
+      "hash": "c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Эльба",
+      "source": 10455,
+      "part": 5,
+      "other": 9986,
+      "otherParts": [
+        2
+      ],
+      "from": 1797,
+      "to": 1798,
+      "hash": "c440529d0c7fde4ec1dbf13983ef01d0c128f86661e64156915318dd023a27c8",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Цейлон",
+      "source": 9013,
+      "part": 12,
+      "other": 9054,
+      "otherParts": [
+        7
+      ],
+      "from": 1659,
+      "to": 1661,
+      "hash": "2d50a232fa48d35b73744b75a766f07d8c671e54887e777186f4d78d3a377041",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Цейлон",
+      "source": 9013,
+      "part": 10,
+      "other": 9054,
+      "otherParts": [
+        6
+      ],
+      "from": 1659,
+      "to": 1661,
+      "hash": "5d8f264729b083811bd3b2b665ec7b3d6644c024cd851ff88c9cde35928c5f4f",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Малакка",
+      "source": 8866,
+      "part": 11,
+      "other": 8910,
+      "otherParts": [
+        10
+      ],
+      "from": 1645,
+      "to": 1647,
+      "hash": "863c6273c2e50d9d3fdb251fb1ac5c8af5def763839bc464af335a1af8dc4323",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Косумель",
+      "source": 7853,
+      "part": 6,
+      "other": 7200,
+      "otherParts": [
+        1
+      ],
+      "from": 1520,
+      "to": 1520,
+      "hash": "e87ace8e2c04939a0ea298c46b2af14ff1b3e9bfb4bb04d526e399074932a6b3",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Косумель",
+      "source": 7923,
+      "part": 7,
+      "other": 7200,
+      "otherParts": [
+        1
+      ],
+      "from": 1521,
+      "to": 1525,
+      "hash": "e87ace8e2c04939a0ea298c46b2af14ff1b3e9bfb4bb04d526e399074932a6b3",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Мэн (лордство)",
+      "source": 6167,
+      "part": 0,
+      "other": 6866,
+      "otherParts": [
+        5
+      ],
+      "from": 1402,
+      "to": 1406,
+      "hash": "e61c6b03d80d2ab02c3a387f9ec1bd3546bae563bdc52b4ae8c97d6f6b2d2cda",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937702539"
+    },
+    {
+      "group": "Гуадалканал",
+      "source": 12923,
+      "part": 120,
+      "other": 12888,
+      "otherParts": [
+        69
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "82b02af5200fbfcaa5931d6dfae8b9f3a886cfc87190c2a119ee6a85f93d2604",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Новая Георгия и прилегающие острова",
+      "source": 12923,
+      "part": 123,
+      "other": 12888,
+      "otherParts": [
+        74
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "5f1017f49a7dd800adb9bc4cad069073ddee4d3230bca6b321c5556ead90af22",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Новая Георгия и прилегающие острова",
+      "source": 12923,
+      "part": 122,
+      "other": 12888,
+      "otherParts": [
+        72
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "b4c641afb2dc2418d1e1bae15d5e44c6c643d063df160d91b100700b611f1f3d",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Велья-Лавелья",
+      "source": 12923,
+      "part": 125,
+      "other": 12888,
+      "otherParts": [
+        76
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "f801b53c75db192714b37a9f2168a652c5e2ebdf80e772ff606feba412630e0e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Гуадалканал",
+      "source": 12956,
+      "part": 107,
+      "other": 12888,
+      "otherParts": [
+        69
+      ],
+      "from": 1945,
+      "to": 1945,
+      "hash": "82b02af5200fbfcaa5931d6dfae8b9f3a886cfc87190c2a119ee6a85f93d2604",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Новая Георгия и прилегающие острова",
+      "source": 12956,
+      "part": 110,
+      "other": 12888,
+      "otherParts": [
+        74
+      ],
+      "from": 1945,
+      "to": 1945,
+      "hash": "5f1017f49a7dd800adb9bc4cad069073ddee4d3230bca6b321c5556ead90af22",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Новая Георгия и прилегающие острова",
+      "source": 12956,
+      "part": 109,
+      "other": 12888,
+      "otherParts": [
+        72
+      ],
+      "from": 1945,
+      "to": 1945,
+      "hash": "b4c641afb2dc2418d1e1bae15d5e44c6c643d063df160d91b100700b611f1f3d",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Велья-Лавелья",
+      "source": 12956,
+      "part": 112,
+      "other": 12888,
+      "otherParts": [
+        76
+      ],
+      "from": 1945,
+      "to": 1945,
+      "hash": "f801b53c75db192714b37a9f2168a652c5e2ebdf80e772ff606feba412630e0e",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Малаита",
+      "source": 12904,
+      "part": 140,
+      "other": 12888,
+      "otherParts": [
+        71
+      ],
+      "from": 1943,
+      "to": 1943,
+      "hash": "2da95c3066c2e2df96b2d234d1be04c83c02417fd654b86f7778b3b8daa7d861",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Макира",
+      "source": 12904,
+      "part": 138,
+      "other": 12888,
+      "otherParts": [
+        68
+      ],
+      "from": 1943,
+      "to": 1943,
+      "hash": "8363750e5ff87722049337506bfefa2747c9ffbe8f1c8fed58699cba6907ccd6",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Малаита",
+      "source": 12923,
+      "part": 121,
+      "other": 12888,
+      "otherParts": [
+        71
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "2da95c3066c2e2df96b2d234d1be04c83c02417fd654b86f7778b3b8daa7d861",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Макира",
+      "source": 12923,
+      "part": 119,
+      "other": 12888,
+      "otherParts": [
+        68
+      ],
+      "from": 1944,
+      "to": 1944,
+      "hash": "8363750e5ff87722049337506bfefa2747c9ffbe8f1c8fed58699cba6907ccd6",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Малаита",
+      "source": 12956,
+      "part": 108,
+      "other": 12888,
+      "otherParts": [
+        71
+      ],
+      "from": 1945,
+      "to": 1945,
+      "hash": "2da95c3066c2e2df96b2d234d1be04c83c02417fd654b86f7778b3b8daa7d861",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Макира",
+      "source": 12956,
+      "part": 106,
+      "other": 12888,
+      "otherParts": [
+        68
+      ],
+      "from": 1945,
+      "to": 1945,
+      "hash": "8363750e5ff87722049337506bfefa2747c9ffbe8f1c8fed58699cba6907ccd6",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Манус",
+      "source": 12956,
+      "part": 123,
+      "other": 12888,
+      "otherParts": [
+        46
+      ],
+      "from": 1945,
+      "to": 1945,
+      "hash": "df273176a69be6713a164804c85b3ea9cc929fdbf8391ae9c0b4ef52ab419303",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Холо",
+      "source": 7792,
+      "part": 4,
+      "other": 8003,
+      "otherParts": [
+        1
+      ],
+      "from": 1529,
+      "to": 1581,
+      "hash": "d095103a6aaf3b377d52d3a3b65c1c6681dbd06baada25df136cca4df15b4a6a",
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7338,
+      "otherParts": [
+        1
+      ],
+      "from": 1459,
+      "to": 1462,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7338,
+      "part": 1,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1459,
+      "to": 1462,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7388,
+      "otherParts": [
+        0
+      ],
+      "from": 1463,
+      "to": 1481,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7388,
+      "part": 0,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1463,
+      "to": 1481,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7622,
+      "otherParts": [
+        0
+      ],
+      "from": 1492,
+      "to": 1496,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7622,
+      "part": 0,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1492,
+      "to": 1496,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7643,
+      "otherParts": [
+        0
+      ],
+      "from": 1497,
+      "to": 1501,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7643,
+      "part": 0,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1497,
+      "to": 1501,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7701,
+      "otherParts": [
+        2
+      ],
+      "from": 1502,
+      "to": 1506,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7701,
+      "part": 2,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1502,
+      "to": 1506,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7755,
+      "otherParts": [
+        1
+      ],
+      "from": 1507,
+      "to": 1511,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7755,
+      "part": 1,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1507,
+      "to": 1511,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7808,
+      "otherParts": [
+        0
+      ],
+      "from": 1512,
+      "to": 1515,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7808,
+      "part": 0,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1512,
+      "to": 1515,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7829,
+      "otherParts": [
+        0
+      ],
+      "from": 1516,
+      "to": 1518,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7829,
+      "part": 0,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1516,
+      "to": 1518,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7893,
+      "otherParts": [
+        0
+      ],
+      "from": 1519,
+      "to": 1520,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7893,
+      "part": 0,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1519,
+      "to": 1520,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7268,
+      "part": 4,
+      "other": 7933,
+      "otherParts": [
+        0
+      ],
+      "from": 1521,
+      "to": 1525,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Савойя — север Ниццы",
+      "source": 7933,
+      "part": 0,
+      "other": 7268,
+      "otherParts": [
+        4
+      ],
+      "from": 1521,
+      "to": 1525,
+      "hash": "283ced83cf1c4d88d4b978f9fa188f5d3c8f069560bbad201cdd2e7a2757a939",
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937756430"
+    },
+    {
+      "group": "Majorca",
+      "source": 5885,
+      "part": 0,
+      "hash": "40074b61136adf2f46e63bbeb1d5e8bd6d305cd8213cc2f8067a641f1fadc9bc",
+      "from": 1294,
+      "to": 1297,
+      "other": 6041,
+      "otherParts": [
+        2
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Majorca",
+      "source": 5885,
+      "part": 1,
+      "hash": "87e122019f6c7b2eaac91b431ea1739fad4fac6615abc19ddeec431e397c5d6f",
+      "from": 1294,
+      "to": 1297,
+      "other": 6041,
+      "otherParts": [
+        3
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Corsica",
+      "source": 9854,
+      "part": 0,
+      "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+      "from": 1763,
+      "to": 1767,
+      "other": 10012,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Corsica",
+      "source": 10012,
+      "part": 0,
+      "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+      "from": 1763,
+      "to": 1767,
+      "other": 9854,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Corsica",
+      "source": 9854,
+      "part": 0,
+      "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+      "from": 1757,
+      "to": 1762,
+      "other": 9904,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Corsica",
+      "source": 9904,
+      "part": 0,
+      "hash": "c6112dfe98f227b48dbd7df302405c9bd2abbe65204887ced3463de80aa1ac44",
+      "from": 1757,
+      "to": 1762,
+      "other": 9854,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Belitung",
+      "source": 10780,
+      "part": 1,
+      "hash": "7b0d968d01dd8f7bb5468f35cc81f6ae5f6f6dd05faa85fa0bad377ef3660e4a",
+      "from": 1813,
+      "to": 1813,
+      "other": 10855,
+      "otherParts": [
+        37
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Belitung",
+      "source": 10780,
+      "part": 1,
+      "hash": "7b0d968d01dd8f7bb5468f35cc81f6ae5f6f6dd05faa85fa0bad377ef3660e4a",
+      "from": 1814,
+      "to": 1814,
+      "other": 10899,
+      "otherParts": [
+        56
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Belitung",
+      "source": 10780,
+      "part": 1,
+      "hash": "7b0d968d01dd8f7bb5468f35cc81f6ae5f6f6dd05faa85fa0bad377ef3660e4a",
+      "from": 1815,
+      "to": 1819,
+      "other": 10975,
+      "otherParts": [
+        51
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Bangka",
+      "source": 10780,
+      "part": 2,
+      "hash": "a91a1672114cb08877903a19597c61e8e9eb16da8cd3f8fa11b6fdd03b606f8a",
+      "from": 1813,
+      "to": 1813,
+      "other": 10855,
+      "otherParts": [
+        39
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Bangka",
+      "source": 10780,
+      "part": 2,
+      "hash": "a91a1672114cb08877903a19597c61e8e9eb16da8cd3f8fa11b6fdd03b606f8a",
+      "from": 1814,
+      "to": 1814,
+      "other": 10939,
+      "otherParts": [
+        9
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Bangka",
+      "source": 10939,
+      "part": 9,
+      "hash": "a91a1672114cb08877903a19597c61e8e9eb16da8cd3f8fa11b6fdd03b606f8a",
+      "from": 1814,
+      "to": 1814,
+      "other": 10780,
+      "otherParts": [
+        2
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Bangka",
+      "source": 10780,
+      "part": 2,
+      "hash": "a91a1672114cb08877903a19597c61e8e9eb16da8cd3f8fa11b6fdd03b606f8a",
+      "from": 1815,
+      "to": 1815,
+      "other": 10978,
+      "otherParts": [
+        9
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Bangka",
+      "source": 10978,
+      "part": 9,
+      "hash": "a91a1672114cb08877903a19597c61e8e9eb16da8cd3f8fa11b6fdd03b606f8a",
+      "from": 1815,
+      "to": 1815,
+      "other": 10780,
+      "otherParts": [
+        2
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Bangka",
+      "source": 10780,
+      "part": 2,
+      "hash": "a91a1672114cb08877903a19597c61e8e9eb16da8cd3f8fa11b6fdd03b606f8a",
+      "from": 1817,
+      "to": 1819,
+      "other": 10978,
+      "otherParts": [
+        9
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Nicobar",
+      "source": 10174,
+      "part": 11,
+      "hash": "49bad8e0df1d4b6978774e72482211a230a2fc16d3a56064d47b334c80173320",
+      "from": 1779,
+      "to": 1779,
+      "other": 9940,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Nicobar",
+      "source": 10205,
+      "part": 11,
+      "hash": "49bad8e0df1d4b6978774e72482211a230a2fc16d3a56064d47b334c80173320",
+      "from": 1780,
+      "to": 1790,
+      "other": 9940,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Nicobar",
+      "source": 10205,
+      "part": 12,
+      "hash": "0bef4c92c6b9d24d9c7853ca3096f14378cf1809d30b1ed0feaf091d102c7dae",
+      "from": 1785,
+      "to": 1790,
+      "other": 9940,
+      "otherParts": [
+        1
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Isle of Man",
+      "source": 6233,
+      "part": 5,
+      "hash": "e61c6b03d80d2ab02c3a387f9ec1bd3546bae563bdc52b4ae8c97d6f6b2d2cda",
+      "from": 1329,
+      "to": 1332,
+      "other": 6167,
+      "otherParts": [
+        0
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Solomon",
+      "source": 12069,
+      "part": 14,
+      "hash": "b4c641afb2dc2418d1e1bae15d5e44c6c643d063df160d91b100700b611f1f3d",
+      "from": 1895,
+      "to": 1897,
+      "other": 12119,
+      "otherParts": [
+        88
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Solomon",
+      "source": 12069,
+      "part": 17,
+      "hash": "f801b53c75db192714b37a9f2168a652c5e2ebdf80e772ff606feba412630e0e",
+      "from": 1895,
+      "to": 1897,
+      "other": 12119,
+      "otherParts": [
+        92
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Champagne",
+      "source": 4663,
+      "part": 1,
+      "hash": "5e2cff3cd3662e565ac7908d21f4e071e1860d081511b51f51a70ff9c20ad05e",
+      "from": 1094,
+      "to": 1110,
+      "other": 4717,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6937806446"
+    },
+    {
+      "group": "Mindanao",
+      "source": 7792,
+      "part": 7,
+      "hash": "a067cf1d9a83eeef3a75003f2b0ecc21af4e3a0b4148972b03644ca58a1caaec",
+      "from": 1521,
+      "to": 1581,
+      "other": 7904,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Mindanao",
+      "source": 7904,
+      "part": 0,
+      "hash": "a067cf1d9a83eeef3a75003f2b0ecc21af4e3a0b4148972b03644ca58a1caaec",
+      "from": 1521,
+      "to": 1581,
+      "other": 7792,
+      "otherParts": [
+        7
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 4,
+      "hash": "8a039b7b06d92cfe385724b52de760d1d390fcb71e3385eae1d0bf97b3fec549",
+      "from": 1713,
+      "to": 1717,
+      "other": 9554,
+      "otherParts": [
+        4
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 6,
+      "hash": "ce682ae5d904c23cfb423c3b3a00394ac47460d2ae2958ad685e0304f990d3d2",
+      "from": 1713,
+      "to": 1717,
+      "other": 9554,
+      "otherParts": [
+        6
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 2,
+      "hash": "d83a41fc99efd902bfc08b0860ee73947b80fd97202bda97d339d0b90a3850a4",
+      "from": 1713,
+      "to": 1717,
+      "other": 9554,
+      "otherParts": [
+        2
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 3,
+      "hash": "2c4dc13a3fa80e71572d03f0fe3180d038fa97c6a262ba9b10eff6f54090f614",
+      "from": 1709,
+      "to": 1712,
+      "other": 9480,
+      "otherParts": [
+        3
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 4,
+      "hash": "8a039b7b06d92cfe385724b52de760d1d390fcb71e3385eae1d0bf97b3fec549",
+      "from": 1709,
+      "to": 1712,
+      "other": 9480,
+      "otherParts": [
+        4
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 6,
+      "hash": "ce682ae5d904c23cfb423c3b3a00394ac47460d2ae2958ad685e0304f990d3d2",
+      "from": 1709,
+      "to": 1712,
+      "other": 9480,
+      "otherParts": [
+        6
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 2,
+      "hash": "d83a41fc99efd902bfc08b0860ee73947b80fd97202bda97d339d0b90a3850a4",
+      "from": 1709,
+      "to": 1712,
+      "other": 9480,
+      "otherParts": [
+        2
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 1,
+      "hash": "19dd9cc67b1cedf18b7a70c39275d42bd793c80608acafabc562198b7572527e",
+      "from": 1706,
+      "to": 1708,
+      "other": 9459,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 3,
+      "hash": "2c4dc13a3fa80e71572d03f0fe3180d038fa97c6a262ba9b10eff6f54090f614",
+      "from": 1706,
+      "to": 1708,
+      "other": 9459,
+      "otherParts": [
+        2
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 5,
+      "hash": "3a024a2100bbc89ab87f2e916bea14af8a85314a4708ae551ef676d603fece38",
+      "from": 1706,
+      "to": 1708,
+      "other": 9459,
+      "otherParts": [
+        4
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 4,
+      "hash": "8a039b7b06d92cfe385724b52de760d1d390fcb71e3385eae1d0bf97b3fec549",
+      "from": 1706,
+      "to": 1708,
+      "other": 9459,
+      "otherParts": [
+        3
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 6,
+      "hash": "ce682ae5d904c23cfb423c3b3a00394ac47460d2ae2958ad685e0304f990d3d2",
+      "from": 1706,
+      "to": 1708,
+      "other": 9459,
+      "otherParts": [
+        5
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 2,
+      "hash": "d83a41fc99efd902bfc08b0860ee73947b80fd97202bda97d339d0b90a3850a4",
+      "from": 1706,
+      "to": 1708,
+      "other": 9459,
+      "otherParts": [
+        1
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 7,
+      "hash": "e0ef903bda6f9dd6ac70ae64b2ea531c523e53c7b6c3dcd7d6d44cc640b0a6d6",
+      "from": 1706,
+      "to": 1708,
+      "other": 9459,
+      "otherParts": [
+        6
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Brandenburg-Prussia",
+      "source": 9393,
+      "part": 4,
+      "hash": "8a039b7b06d92cfe385724b52de760d1d390fcb71e3385eae1d0bf97b3fec549",
+      "from": 1702,
+      "to": 1705,
+      "other": 9411,
+      "otherParts": [
+        3
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 41,
+      "hash": "18c177e6d729439409141461f85cfcc5277837f11c12e9a19da656543b6c498b",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        22
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 44,
+      "hash": "247ac951cc63b969540bdb723ede450028e45cdd161a3a16a87a3725abf5012d",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        8
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 73,
+      "hash": "5744c8a46ac5a85d76a7580897e9cf7ed24c67c4a2ed49be0071d797c5313e05",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        20
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 37,
+      "hash": "63c27876e0bacc40f62ce20e854ef5855e0f0fdd8a166b283012868c4922a981",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        17
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 65,
+      "hash": "6e476802a28f860d3818d5f749b2ef359726b1446359cf61d96850ba58d40c4a",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        15
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 43,
+      "hash": "7c6edee3fe54cf98a709ec971c797162d657b04ca61604b46ba71dbc67b5f5ee",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        24
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 38,
+      "hash": "84139ccc05ee6d5595f2e30e50b9c88f8b4ad87abef29820b28a659b21f2e133",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        18
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 67,
+      "hash": "b2e052b34f57876a2edc097e586e479c584cd6dbb500321e9a6c6321d3db6ed6",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        16
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 40,
+      "hash": "b8b195a4fd27b4e0ad06c197ed507b7a2dc2a03d636e8b9bf420fbe657faed3d",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        21
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 70,
+      "hash": "c4d29e4a53dfea326de81af8cb385aa44b6ed6406f6aa6293687b200dfbd4dc9",
+      "from": 1945,
+      "to": 1945,
+      "other": 12959,
+      "otherParts": [
+        19
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 41,
+      "hash": "18c177e6d729439409141461f85cfcc5277837f11c12e9a19da656543b6c498b",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        21
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 44,
+      "hash": "247ac951cc63b969540bdb723ede450028e45cdd161a3a16a87a3725abf5012d",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        8
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 73,
+      "hash": "5744c8a46ac5a85d76a7580897e9cf7ed24c67c4a2ed49be0071d797c5313e05",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        18
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 37,
+      "hash": "63c27876e0bacc40f62ce20e854ef5855e0f0fdd8a166b283012868c4922a981",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        15
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 65,
+      "hash": "6e476802a28f860d3818d5f749b2ef359726b1446359cf61d96850ba58d40c4a",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        13
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 38,
+      "hash": "84139ccc05ee6d5595f2e30e50b9c88f8b4ad87abef29820b28a659b21f2e133",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        16
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 67,
+      "hash": "b2e052b34f57876a2edc097e586e479c584cd6dbb500321e9a6c6321d3db6ed6",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        14
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 40,
+      "hash": "b8b195a4fd27b4e0ad06c197ed507b7a2dc2a03d636e8b9bf420fbe657faed3d",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        19
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 70,
+      "hash": "c4d29e4a53dfea326de81af8cb385aa44b6ed6406f6aa6293687b200dfbd4dc9",
+      "from": 1944,
+      "to": 1944,
+      "other": 12936,
+      "otherParts": [
+        17
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 73,
+      "hash": "5744c8a46ac5a85d76a7580897e9cf7ed24c67c4a2ed49be0071d797c5313e05",
+      "from": 1943,
+      "to": 1943,
+      "other": 12915,
+      "otherParts": [
+        14
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 37,
+      "hash": "63c27876e0bacc40f62ce20e854ef5855e0f0fdd8a166b283012868c4922a981",
+      "from": 1943,
+      "to": 1943,
+      "other": 12915,
+      "otherParts": [
+        11
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 65,
+      "hash": "6e476802a28f860d3818d5f749b2ef359726b1446359cf61d96850ba58d40c4a",
+      "from": 1943,
+      "to": 1943,
+      "other": 12915,
+      "otherParts": [
+        9
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 38,
+      "hash": "84139ccc05ee6d5595f2e30e50b9c88f8b4ad87abef29820b28a659b21f2e133",
+      "from": 1943,
+      "to": 1943,
+      "other": 12915,
+      "otherParts": [
+        12
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 67,
+      "hash": "b2e052b34f57876a2edc097e586e479c584cd6dbb500321e9a6c6321d3db6ed6",
+      "from": 1943,
+      "to": 1943,
+      "other": 12915,
+      "otherParts": [
+        10
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Papua and New Guinea",
+      "source": 12888,
+      "part": 70,
+      "hash": "c4d29e4a53dfea326de81af8cb385aa44b6ed6406f6aa6293687b200dfbd4dc9",
+      "from": 1943,
+      "to": 1943,
+      "other": 12915,
+      "otherParts": [
+        13
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Ryukyu",
+      "source": 13019,
+      "part": 24,
+      "hash": "01e4eb92c4d0a222b720ef62cc37535b2c3da84d60f397513768c44751a34d63",
+      "from": 1953,
+      "to": 1953,
+      "other": 13142,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Ryukyu",
+      "source": 13019,
+      "part": 25,
+      "hash": "5a8a600a48d645425f982997f82fcef68060146c3eb059068014ee7973adb4c1",
+      "from": 1953,
+      "to": 1953,
+      "other": 13142,
+      "otherParts": [
+        1
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Ryukyu",
+      "source": 13019,
+      "part": 24,
+      "hash": "01e4eb92c4d0a222b720ef62cc37535b2c3da84d60f397513768c44751a34d63",
+      "from": 1954,
+      "to": 1966,
+      "other": 13142,
+      "otherParts": [
+        0
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Ryukyu",
+      "source": 13019,
+      "part": 25,
+      "hash": "5a8a600a48d645425f982997f82fcef68060146c3eb059068014ee7973adb4c1",
+      "from": 1954,
+      "to": 1966,
+      "other": 13142,
+      "otherParts": [
+        1
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Altenburg",
+      "source": 11179,
+      "part": 2,
+      "hash": "184c7206653e309e4614b219041606019ba65b9745ad52f0bfd8d04695c44536",
+      "from": 1836,
+      "to": 1839,
+      "other": 11313,
+      "otherParts": [
+        3
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Crete",
+      "source": 990,
+      "part": 0,
+      "hash": "72d717eff155de4683a6696068f58341d7d4d4daab17d87b4a5d73c5f51adf9a",
+      "from": -66,
+      "to": -64,
+      "other": 1004,
+      "otherParts": [
+        14
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Rhodes",
+      "source": 809,
+      "part": 1,
+      "hash": "c22d01ef76cc640b6a67404eec6e37746232f12b728bed73760b70f82ce66c96",
+      "from": -203,
+      "to": -203,
+      "other": 808,
+      "otherParts": [
+        11
+      ],
+      "status": "ready",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 68,
+      "to": 77,
+      "other": 1185,
+      "otherParts": [
+        25
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 68,
+      "to": 77,
+      "other": 1185,
+      "otherParts": [
+        33
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 60,
+      "to": 67,
+      "other": 1178,
+      "otherParts": [
+        24
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 60,
+      "to": 67,
+      "other": 1178,
+      "otherParts": [
+        34
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 51,
+      "to": 59,
+      "other": 1162,
+      "otherParts": [
+        23
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 51,
+      "to": 59,
+      "other": 1162,
+      "otherParts": [
+        33
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 43,
+      "to": 50,
+      "other": 1145,
+      "otherParts": [
+        23
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 43,
+      "to": 50,
+      "other": 1145,
+      "otherParts": [
+        33
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 23,
+      "to": 42,
+      "other": 1137,
+      "otherParts": [
+        20
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 23,
+      "to": 42,
+      "other": 1137,
+      "otherParts": [
+        28
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 14,
+      "to": 22,
+      "other": 1127,
+      "otherParts": [
+        20
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 14,
+      "to": 22,
+      "other": 1127,
+      "otherParts": [
+        28
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 9,
+      "to": 13,
+      "other": 1122,
+      "otherParts": [
+        23
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 9,
+      "to": 13,
+      "other": 1122,
+      "otherParts": [
+        32
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 6,
+      "to": 8,
+      "other": 1119,
+      "otherParts": [
+        23
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 6,
+      "to": 8,
+      "other": 1119,
+      "otherParts": [
+        31
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": 1,
+      "to": 5,
+      "other": 1112,
+      "otherParts": [
+        20
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": 1,
+      "to": 5,
+      "other": 1112,
+      "otherParts": [
+        28
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -14,
+      "to": -1,
+      "other": 1106,
+      "otherParts": [
+        21
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -14,
+      "to": -1,
+      "other": 1106,
+      "otherParts": [
+        29
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -19,
+      "to": -15,
+      "other": 1103,
+      "otherParts": [
+        21
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -19,
+      "to": -15,
+      "other": 1103,
+      "otherParts": [
+        29
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -25,
+      "to": -20,
+      "other": 1100,
+      "otherParts": [
+        24
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -25,
+      "to": -20,
+      "other": 1100,
+      "otherParts": [
+        31
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -27,
+      "to": -26,
+      "other": 1095,
+      "otherParts": [
+        22
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -27,
+      "to": -26,
+      "other": 1095,
+      "otherParts": [
+        31
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -30,
+      "to": -28,
+      "other": 1084,
+      "otherParts": [
+        23
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -30,
+      "to": -28,
+      "other": 1084,
+      "otherParts": [
+        32
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -36,
+      "to": -32,
+      "other": 1071,
+      "otherParts": [
+        21
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -36,
+      "to": -32,
+      "other": 1071,
+      "otherParts": [
+        30
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -40,
+      "to": -37,
+      "other": 1061,
+      "otherParts": [
+        23
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -40,
+      "to": -37,
+      "other": 1061,
+      "otherParts": [
+        32
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 0,
+      "hash": "6fbf2ac7b5a45fcfc1690395992cb7205db4bc1e9b4de4ba387d8f8a997e7617",
+      "from": -41,
+      "to": -41,
+      "other": 1058,
+      "otherParts": [
+        21
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    },
+    {
+      "group": "Athenian islands",
+      "source": 1052,
+      "part": 1,
+      "hash": "f11e096abc2062e5c5e916981e6c294cf0e1b5d66af70ef46b7e9156e7d464b8",
+      "from": -41,
+      "to": -41,
+      "other": 1058,
+      "otherParts": [
+        31
+      ],
+      "status": "reconstruct",
+      "evidence": "https://github.com/Vue-Jay/interactive-board-next/pull/364#issuecomment-6938718357"
+    }
+  ]
+}

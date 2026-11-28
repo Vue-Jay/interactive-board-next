@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-26",
+  "findingSource": "docs/historical-atlas-spatial-findings-20261124.json",
+  "classification": "mixed-comparability-differences-boundaries-unverified",
+  "notice": "The Danish realm scope and 1994 Bosnia/2000 Afghanistan military-control maps differ from the legal national country polygon. These mismatches do not independently prove that either geometrical shape is a historically correct border.",
+  "counts": {
+    "originalCandidates": 476,
+    "recentCasesExplained": 3,
+    "geometricCasesClosed": 0,
+    "remainingUnverifiedGeometries": 476,
+    "conflictControlCasesExplained": 2,
+    "totalComparabilityCasesExplained": 5
+  },
+  "sources": [
+    "https://english.stm.dk/the-prime-ministers-office/the-unity-of-the-realm",
+    "https://www.government.fo/en/foreign-relations/constitutional-status/"
+  ],
+  "cases": [
+    {
+      "id": "2010:119",
+      "year": 2010,
+      "archiveName": "Denmark",
+      "iou": 0.013726,
+      "sourceCandidateGeometryId": "b33556919841a2668ad4df2ea6851ba71f24428d663ba39ce9ff16967e116d3f",
+      "archiveSha256": "d18dcbe41df5e68ec174e5f3887578142bf70fba72f56e204c9de5a8571ae0f4",
+      "classification": "non-like-for-like-metropolitan-denmark-vs-kingdom",
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:119",
+      "year": 2000,
+      "archiveName": "Denmark",
+      "iou": 0.013726,
+      "sourceCandidateGeometryId": "b33556919841a2668ad4df2ea6851ba71f24428d663ba39ce9ff16967e116d3f",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "classification": "non-like-for-like-metropolitan-denmark-vs-kingdom",
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:120",
+      "year": 1994,
+      "archiveName": "Denmark",
+      "iou": 0.013726,
+      "sourceCandidateGeometryId": "b33556919841a2668ad4df2ea6851ba71f24428d663ba39ce9ff16967e116d3f",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "classification": "non-like-for-like-metropolitan-denmark-vs-kingdom",
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "1994:71",
+      "year": 1994,
+      "archiveName": "Bosnia and Herzegovina",
+      "iou": 0.25912,
+      "sourceCandidateGeometryId": "1db878272895fad3e69dfe532529c89ecef4b520fc90140d2c5b806b5d003a88",
+      "archiveSha256": "5369249d6b9d37d1cb799a87eb7f48783587f6c3b9e6d24de35ff58a4935c216",
+      "classification": "war-front-lines-not-sovereign-border",
+      "geometryHistoricallyConfirmed": false
+    },
+    {
+      "id": "2000:86",
+      "year": 2000,
+      "archiveName": "Afghanistan",
+      "iou": 0.117066,
+      "sourceCandidateGeometryId": "5d5cbbce4b2a8c3e0ad0717abe3f5a8bb8b713b7d39ee4eff063d6866172ac6d",
+      "archiveSha256": "7de99c532c410c5175abba2d540ed3a21f526f85abb9db408eafef88b0b7fcb3",
+      "classification": "competing-control-not-state-border",
+      "geometryHistoricallyConfirmed": false
+    }
+  ]
+}

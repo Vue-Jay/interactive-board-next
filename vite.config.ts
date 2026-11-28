@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import { readFileSync } from 'node:fs'
+import { createReadStream, readFileSync, statSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 
 // Ship the same branded, dependency-free recovery screen in every web and
@@ -32,6 +33,29 @@ const journalBuild=process.env.GITHUB_SHA || JSON.parse(readFileSync(new URL('./
 export default defineConfig({
   define: {'import.meta.env.VITE_LEKTRUS_JOURNAL_BUILD':JSON.stringify(journalBuild)},
   plugins: [react(), {
+    name: 'lektrus-annual-atlas-local-preview',
+    apply: 'serve',
+    // Main's public demo now starts empty. Reuse the separate release fixture
+    // only on an explicitly opted-in local QA server, never in built bundles.
+    transform(code, id) {
+      if (process.env.LEKTRUS_ATLAS_QA_FIXTURE === '1' && id.replaceAll('\\', '/').endsWith('/src/App.tsx')) {
+        return code.replace('import("./PublicDemoBoard")', 'import("../scripts/qa-release-board-fixture")')
+      }
+    },
+    configureServer(server) {
+      const folder=process.env.LEKTRUS_ANNUAL_TIMELINE_DIR
+      if(!folder)return
+      server.middlewares.use('/__atlas-annual',(req,res)=>{
+        const file=req.url?.split('?')[0]?.replace(/^\//,'')??''
+        if(file!=='manifest.json'&&!/^packs\/[0-9a-f]{64}\.json$/.test(file)){res.statusCode=404;res.end();return}
+        const target=resolve(folder,file)
+        try{const info=statSync(target);if(!info.isFile())throw new Error('not a file');res.setHeader('Content-Length',info.size)}catch{res.statusCode=404;res.end();return}
+        res.setHeader('Content-Type','application/json')
+        res.setHeader('Cache-Control',file==='manifest.json'?'no-cache':'public, max-age=31536000, immutable')
+        createReadStream(target).on('error',()=>res.destroy()).pipe(res)
+      })
+    },
+  }, {
     name: 'lektrus-service-recovery',
     transformIndexHtml: {order:'pre',handler(html){
       return html.replace('</head>',recoveryScript+initialModuleFallback+'</head>').replace('<div id="root"></div>','<div id="root"></div>'+recoveryTemplate)

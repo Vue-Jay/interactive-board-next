@@ -128,3 +128,17 @@ substage** when the user says «дальше», «продолжай», «дел
 user instructions take priority. Do not claim anatomy accepted from CI alone:
 scientific credibility and real browser screenshots at multiple zoom levels
 are separate acceptance gates. Keep existing GitHub access instructions above.
+
+## Historical atlas: permanent development and verification contract
+
+Before any work on the historical map, its data, chronology, layers, cards,
+rendering or verification, read and follow
+[`docs/HISTORICAL_ATLAS_CANONICAL_PLAN.md`](docs/HISTORICAL_ATLAS_CANONICAL_PLAN.md).
+It defines the user-approved change-driven review, complete automated annual
+coverage, evidence standards and release gates. Maintain the
+progress ledger there after each development iteration. On «дальше», «делай»
+or «продолжай», resume the next unfinished stage and unresolved review units
+in the change registry; do not silently skip annual checks or unresolved dates.
+Direct new user instructions take precedence. Do not merge or deploy an
+unfinished historical atlas, or equate passing code tests with factual or
+visual verification.

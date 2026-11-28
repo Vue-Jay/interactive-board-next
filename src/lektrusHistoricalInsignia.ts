@@ -175,9 +175,9 @@ export const historicalDatedNationalFlags:readonly HistoricalInsignia[]=[
  country("DE",1867,1918,"Flag of Germany (1867–1918).svg"),
  country("DE",1919,1932,"Flag of Germany (3-2).svg"),
  country("DE",1949,2026,"Flag of Germany.svg"),
- country("CA",1868,1920,"Flag of Canada (1868–1921).svg"),
- country("CA",1921,1956,"Flag of Canada (1921–1957).svg"),
- country("CA",1957,1964,"Flag of Canada (1957–1965).svg"),
+ {code:"CA",from:1868,to:1920,file:"Flag of Canada (1868–1921).svg",kind:"banner",title:"Исторический канадский красный энсин (до официального национального флага; не отдельный государственный флаг)"},
+ {code:"CA",from:1921,to:1956,file:"Flag of Canada (1921–1957).svg",kind:"banner",title:"Канадский красный энсин; использовался на судах и зданиях, но не принимался как национальный флаг"},
+ {code:"CA",from:1957,to:1964,file:"Flag of Canada (1957–1965).svg",kind:"banner",title:"Канадский красный энсин; историческая эмблема, а не утверждённый национальный флаг"},
  country("CA",1965,2026,"Flag of Canada (Pantone).svg"),
  country("JP",1870,1998,"Flag of Japan (1870–1999).svg"),
  country("JP",1999,2026,"Flag of Japan.svg"),
@@ -243,11 +243,93 @@ export function historicalInsigniaUrl(file:string,width=220):string{
 export function historicalInsigniaSourceUrl(file:string):string{
  return "https://commons.wikimedia.org/wiki/File:"+encodeURIComponent(file.replace(/ /g,"_"));
 }
+/** Annual maps are not date-precise. During an attested flag transition, a
+ * single image would falsely imply that its design represented the whole year.
+ * Preserve the archival images, but use the Lektrus neutral mark in that year
+ * with the dated explanation and a verifiable source. */
+export type HistoricalFlagReview={
+ code:string;from:number;to:number;label:string;note:string;sourceUrl:string;
+};
+const historicalFlagReviews:readonly HistoricalFlagReview[]=[
+ {code:"US",from:1777,to:1911,label:"Исторический флаг: единый рисунок звёзд не установлен",
+  note:"Число звёзд и полос определялось законом, но расположение звёзд и пропорции в течение этого периода не были единообразно установлены на федеральном уровне. Конкретную современную прорисовку нельзя выдавать за единственный официальный рисунок. С 1818 года новые звёзды появлялись 4 июля, не 1 января.",
+  sourceUrl:"https://history.house.gov/Collection/Detail/15032411627"},
+ {code:"US",from:1912,to:1912,label:"Смена флага и стандартизация рисунка в течение года",
+  note:"48-звёздный флаг вступил в силу 4 июля 1912 года. Президентский указ июня 1912 года определил единую схему звёзд для федеральных учреждений. До 4 июля продолжал действовать 46-звёздный вариант.",
+  sourceUrl:"https://www.si.edu/spotlight/flag-day/flag-facts"},
+ {code:"ES",from:1981,to:1981,label:"Смена государственной геральдики в течение года",
+  note:"Испанский красно-жёлто-красный флаг сохранился, но новый герб установлен законом 5 октября 1981 года, а официальный графический образец опубликован 19 декабря. В начале 1981 года использовался прежний герб.",
+  sourceUrl:"https://www.boe.es/eli/es/rd/1981/12/18/2964"},
+ {code:"IT",from:1946,to:1946,label:"Переход от королевства к республике",
+  note:"2 июня 1946 года состоялся референдум о монархии и республике; 19 июня установлен временный рисунок республиканского триколора без савойского герба. На протяжении 1946 года символика изменялась.",
+  sourceUrl:"https://www.quirinale.it/it/pagine/simboli-repubblica-tricolore"},
+ {code:"IN",from:1947,to:1947,label:"Независимость и утверждение национального флага",
+  note:"Флаг был принят Учредительным собранием 22 июля 1947 года, а флагом независимого Доминиона Индия стал 15 августа 1947 года. Нельзя показывать его в качестве символа независимой страны с 1 января.",
+  sourceUrl:"https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=1749614&lang=1&reg=3"},
+ {code:"CY",from:1960,to:1960,label:"Возникновение республики в течение года",
+  note:"Республика Кипр получила независимость 16 августа 1960 года и тогда же установила государственный флаг. До этой даты остров имел британскую колониальную администрацию.",
+  sourceUrl:"https://www.gov.cy/presidency/en/about/state-symbols/"},
+ {code:"CA",from:1868,to:1964,label:"Нет отдельного официального национального флага",
+  note:"Канадский красный энсин употреблялся как исторический национальный символ, но до 15 февраля 1965 года не был официально принят национальным флагом. Это не означает отсутствия других официально используемых флагов.",
+  sourceUrl:"https://www.canada.ca/en/canadian-heritage/services/flag-canada-history.html"},
+ {code:"US",from:1959,to:1959,label:"Смена флага в течение года",
+  note:"49-звёздный флаг вступил в силу 4 июля 1959 года; до этого использовался 48-звёздный. Ни один рисунок не описывает весь 1959 год.",
+  sourceUrl:"https://www.si.edu/spotlight/flag-day/flag-facts"},
+ {code:"US",from:1960,to:1960,label:"Смена флага в течение года",
+  note:"49-звёздный флаг действовал до 3 июля 1960 года включительно; 50-звёздный стал официальным 4 июля.",
+  sourceUrl:"https://www.archives.gov/federal-register/codification/executive-order/10834.html"},
+ {code:"CA",from:1965,to:1965,label:"Смена флага в течение года",
+  note:"Современный кленовый лист принят как официальный национальный флаг 15 февраля 1965 года. В январе действовали прежние правила использования флагов.",
+  sourceUrl:"https://www.canada.ca/en/canadian-heritage/services/flag-canada-history/timeline-national-flag.html"},
+ {code:"CN",from:1949,to:1949,label:"Создание государства в течение года",
+  note:"Флаг КНР принят к образованию Китайской Народной Республики 1 октября 1949 года; до этой даты КНР не существовала. Годовой контур не показывает весь год как единый политический режим.",
+  sourceUrl:"https://www.britannica.com/topic/flag-of-China"},
+ {code:"RO",from:1989,to:1989,label:"Смена флага в конце года",
+  note:"После румынской революции декабря 1989 года коммунистический герб убрали с национального триколора. Нынешний рисунок не представлял весь 1989 год.",
+  sourceUrl:"https://www.upi.com/Archives/1989/12/29/Romania-sheds-decades-of-totalitarian-rule/1700630910800/"},
+ {code:"BY",from:1995,to:1995,label:"Смена флага в течение года",
+  note:"Нынешний тип красно-зелёного флага утверждён указом 7 июня 1995 года, сменив бело-красно-белый флаг; позднейшие изменения орнамента отдельно датируются.",
+  sourceUrl:"https://www.crwflags.com/FOTW/FLAGS/by_law.html"},
+ {code:"MK",from:1995,to:1995,label:"Смена флага в течение года",
+  note:"Новый флаг с восьмилучевым солнцем принят 5 октября 1995 года, а до этого использовался иной вариант. Выбранный год не обозначает одну символику на все 12 месяцев.",
+  sourceUrl:"https://heraldika.org.mk/en/drzhavni-simboli/"},
+ {code:"BA",from:1998,to:1998,label:"Смена флага в течение года",
+  note:"Общий флаг Боснии и Герцеговины установлен решением Высокого представителя 3–4 февраля 1998 года; прежние символы применялись в начале года.",
+  sourceUrl:"https://www.ohr.int/ohr_archive/ohr-bulletin-66-23-february-1998/"},
+ {code:"GE",from:2004,to:2004,label:"Смена флага в начале года",
+  note:"Флаг с пятью крестами принят законом Грузии 14 января 2004 года; первые 13 дней года действовал прежний государственный символ.",
+  sourceUrl:"https://www.matsne.gov.ge/en/document/view/13270"},
+ {code:"FR",from:1974,to:1976,label:"Недатированная цветовая редакция",
+  note:"Светлый и тёмный варианты синего сосуществовали в 1970-х. Для 1974–1976 годов точный оттенок и дата общегосударственного перехода не подтверждены; официальный триколор как таковой не ставится под сомнение.",
+  sourceUrl:"https://www.crwflags.com/fotw/Flags/fr.html"}
+];
+export function findHistoricalFlagReview(code:string,year:number):HistoricalFlagReview|undefined{
+ return historicalFlagReviews.find(row=>row.code===code&&year>=row.from&&year<=row.to);
+}
+// Only dated government flags with well established provenance belong in
+// political reference cards. Other images remain in the archival research
+// catalogue, but must not be displayed as state symbols.
+const attestedStateFlagIds=new Set([
+ "ussr","russian-empire","ottoman","german-empire","prussia",
+ "qing","gdr","frg-west","kingdom-italy","papal-states","france-kingdom"
+]);
+export function historicallyAttestedStateFlag(row:HistoricalInsignia):boolean{
+ return row.kind==="flag"&&!row.reconstruction&&row.from>=1800&&
+ !!row.id&&attestedStateFlagIds.has(row.id)&&
+ !(row.id==="russian-empire"&&row.from<1896);
+}
+export function historicallyAttestedNationalFlag(row:HistoricalInsignia):boolean{
+ return row.kind==="flag"&&!row.reconstruction&&!!row.code&&
+  !(row.code==="CA"&&row.from<1965)&&
+  !(row.code==="US"&&row.from<1912)&&
+ !(row.code==="FR"&&row.from<1790)&&
+ !(row.code==="ES"&&row.from<1843);
+}
 /** Enumerate every reviewed graphic for a given reference.
  * A kingdom may have several different banners or dynastic symbols over time.
  * Catalogue icons use an attested year, NOT the last year of the kingdom. */
 export function listHistoricalStateInsignia(id:string):HistoricalInsignia[]{
- return historicalStateInsignia.filter(row=>row.id===id)
+ return historicalStateInsignia.filter(row=>row.id===id&&historicallyAttestedStateFlag(row))
   .sort((a,b)=>a.from-b.from||a.to-b.to);
 }
 export function historicalReferenceSymbolYear(entry:{id:string;from:number;to:number}):number{
@@ -257,8 +339,8 @@ export function historicalReferenceSymbolYear(entry:{id:string;from:number;to:nu
  return latest?Math.min(entry.to,latest.to):entry.to;
 }
 export function findHistoricalStateInsignia(id:string,year:number):HistoricalInsignia|undefined{
- return historicalStateInsignia.find(row=>row.id===id&&year>=row.from&&year<=row.to);
+ return historicalStateInsignia.find(row=>row.id===id&&year>=row.from&&year<=row.to&&historicallyAttestedStateFlag(row));
 }
 export function findHistoricalCountryFlag(code:string,year:number):HistoricalInsignia|undefined{
- return historicalDatedNationalFlags.find(row=>row.code===code&&year>=row.from&&year<=row.to);
+ return historicalDatedNationalFlags.find(row=>row.code===code&&year>=row.from&&year<=row.to&&historicallyAttestedNationalFlag(row));
 }

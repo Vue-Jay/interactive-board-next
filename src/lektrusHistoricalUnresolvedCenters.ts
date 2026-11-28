@@ -1,0 +1,323 @@
+// Locators are not territorial polygons or exact archaeological coordinates.
+// Display only while the corresponding unresolved source geometry is active.
+const mindanaoCenters=[
+ {id:'maguindanao',from:1521,to:1608,lon:124.246,lat:7.224,title:'Магинданао — район Котабато',description:'Политический центр у устья Пуланги. Магинданао упомянуто в свидетельстве Пигафетты за 1521 год; область Котабато не означает власть над всем Минданао. Точка приблизительная, по современному географическому ориентиру.',url:'https://www.nqc.gov.ph/en/map/'},
+ {id:'butuan',from:1521,to:1565,lon:125.544,lat:8.949,title:'Бутуан — северо-восток Минданао',description:'Самостоятельный торгово-политический центр, засвидетельствованный в ранних испанских описаниях XVI века, в том числе в 1521 и 1565 годах. Точка показывает район Бутуана, а не точное положение древнего поселения или его границы.',url:'https://s3.us-west-1.wasabisys.com/p-library/books/41a52e1dbb925c4eeb9b743b6555fa48.pdf'},
+ {id:'buayan',from:1579,to:1608,lon:124.504,lat:7.026,title:'Буаян — район Дулава́на',description:'В документах экспедиции Габриэля де Риверы 1579 года упомянуто поселение Буайен. Отдельный центр власти выше по течению Пуланги; в 1605 году испанцы заключили соглашение с султаном Буаяна. Точка приблизительно обозначает район современного Дату-Пианга, не границу султаната.',url:'https://www.gutenberg.org/cache/epub/12635/pg12635.html'},
+ {id:'malabang',from:1515,to:1515,lon:124.0735,lat:7.5964,title:'Малабанг — прибытие Кабунгсувана',description:'В 1515 году, согласно историческому обзору филиппинской комиссии по культуре, Кабунгсуван прибыл в Малабанг. Точка отмечает место события, а не территорию или точную дату создания султаната.',url:'https://ncca.gov.ph/about-ncca-3/subcommissions/subcommission-on-cultural-communities-and-traditional-arts-sccta/central-cultural-communities/the-history-of-the-muslim-in-the-philippines/'},
+ {id:'kipit',from:1521,to:1521,lon:122.4769,lat:8.0594,title:'Кипит — владение раджи Каланао',description:'В мае 1521 года экспедиция встретила раджу Каланао у устья реки Кипит на полуострове Замбоанга. Национальная историческая комиссия отождествляет место с современным Кипитом в Лабасоне. Точка обозначает засвидетельствованный центр, а не границы владений.',url:'https://www.nqc.gov.ph/en/map/'},
+ {id:'butuan-1578',from:1578,to:1578,lon:125.544,lat:8.949,title:'Бутуан — испанская экспедиция',description:'Инструкции 1578 года отдельно называют горных жителей Бутуана и предписывают выяснить расположение их поселений. Это не доказательство испанского владения всем районом. Точка — современный географический ориентир.',url:'https://www.gutenberg.org/cache/epub/12635/pg12635.html'},
+] as const;
+
+const regionalCenters=[
+ {group:'Давао — местные правители',id:'cotabato-late',from:1612,to:1847,lon:124.246,lat:7.223,title:'Котабато — центр султаната Магинданао',description:'Политический центр в нижнем течении Пуланги, не в заливе Давао. Точка отмечает исторический район Котабато; границы султаната и его зависимых владений менялись.',url:'https://publishing.cdlib.org/ucpressebooks/public/book/muslim-rulers-and-rebels-everyday-politics-and-armed-separatism-in-the-southern-philippines.html'},
+ {group:'Давао — местные правители',id:'buayan-late',from:1612,to:1847,lon:124.493,lat:7.025,title:'Буаян — самостоятельный центр власти',description:'Буаян располагался выше по течению Пуланги и соперничал с Магинданао. Точка приблизительно отмечает район современного Дату-Пианга; не обозначает территориальную границу.',url:'https://publishing.cdlib.org/ucpressebooks/public/book/muslim-rulers-and-rebels-everyday-politics-and-armed-separatism-in-the-southern-philippines.html'},
+ {group:'Давао — местные правители',id:'davao-local',from:1620,to:1843,lon:125.609,lat:7.068,title:'Давао — местные правители и торговый центр',description:'Нидерландские сведения 1620-х годов называют нескольких правителей Дабу; влияние султаната Магинданао не означает прямой или неизменной власти над всем заливом. Точка отмечает город.',url:'https://cpdo.davaocity.gov.ph/wp-content/uploads/2016/10/Vol1CLUP2013-202220151215084007.pdf'},
+ {group:'Давао — местные правители',id:'davao-cession',from:1844,to:1847,lon:125.609,lat:7.068,title:'Давао — уступка Испании и сопротивление местных дату',description:'Султан Котабато уступил Давао Испании в 1844 г., но местные дату не признали его распоряжений. Дату Баго был побеждён испанцами в 1848 г. Точка отмечает район поселения, не границу контроля.',url:'https://ecommons.cornell.edu/bitstream/handle/1813/57550/082.pdf?sequence=1andisAllowed%3Dy'},
+ {group:'Кохинхина — кампания 1859 года',id:'saigon-1859',from:1859,to:1859,lon:106.7,lat:10.78,title:'Сайгон — французский захват 1859 года',description:'В феврале 1859 г. французы атаковали Сайгон. Точка отмечает город, а не площадь военного контроля в дельте Меконга.',url:'https://catalogue.bnf.fr/ark%3A/12148/cb179398418'},
+ {group:'Кохинхина — поэтапная уступка',id:'saigon-1860',from:1860,to:1861,lon:106.7,lat:10.78,title:'Сайгон — французская военная кампания',description:'После захвата Сайгона в 1859 г. боевые действия продолжились. Точка отмечает город, не предел французских владений.',url:'https://catalogue.bnf.fr/ark%3A/12148/cb179398418'},
+ {group:'Кохинхина — поэтапная уступка',id:'saigon-1862',from:1862,to:1866,lon:106.7,lat:10.78,title:'Сайгон — уступленная провинция',description:'Договор от 5 июня 1862 г. закрепил уступку провинции Зядинь (Сайгон). Точка отмечает город; историческая провинциальная граница не восстановлена.',url:'https://mjp.univ-perp.fr/constit/vn1862.htm'},
+ {group:'Кохинхина — поэтапная уступка',id:'bienhoa-1862',from:1862,to:1866,lon:106.82,lat:10.95,title:'Бьенхоа — уступленная провинция',description:'Бьенхоа была одной из трёх восточных провинций, уступленных Франции в 1862 г. Точка отмечает город, а не весь контур провинции.',url:'https://mjp.univ-perp.fr/constit/vn1862.htm'},
+ {group:'Кохинхина — поэтапная уступка',id:'mytho-1862',from:1862,to:1866,lon:106.36,lat:10.36,title:'Митхо — уступленная провинция Диньтыонг',description:'Диньтыонг (Митхо) уступлена Франции в 1862 г. Точка отмечает административный центр; западные провинции аннексированы только в 1867 г.',url:'https://mjp.univ-perp.fr/constit/vn1862.htm'},
+ {group:'Corsica',id:'corte',from:1757,to:1767,lon:9.151,lat:42.306,title:'Корте — Корсиканская республика',description:'Столица независимой Корсики при Паскуале Паоли (1755–1769). Точка обозначает политический центр, а не границу республики.',url:'https://www.napoleon.org/en/magazine/itineraries/napoleon-and-corsica/'},
+ {group:'Corsica',id:'bastia',from:1757,to:1767,lon:9.451,lat:42.697,title:'Бастия — прибрежная крепость',description:'Один из генуэзских укреплённых городов, сохранявшихся вне власти Паоли; в 1764 году по соглашению с Генуей здесь разместились французские войска. Точка не задаёт границу гарнизона.',url:'https://www.isula.corsica/file/200599/'},
+ {group:'Corsica',id:'saint-florent',from:1757,to:1767,lon:9.303,lat:42.680,title:'Сен-Флоран — прибрежная крепость',description:'По договору в Компьене 1764 года Сен-Флоран вошёл в число пяти генуэзских крепостей под охраной французских войск. Точка обозначает крепость, не границы гарнизона.',url:'https://www.museudiacorsica.corsica/wp-content/uploads/2021/03/11.-Journal-college-lycee-Paoli.pdf'},
+ {group:'Corsica',id:'algajola-genoa',from:1757,to:1763,lon:8.862,lat:42.609,title:'Альгайола — генуэзская крепость',description:'Крепость служила резиденцией генуэзского представителя Баланьи до 1764 года. Точка отмечает укреплённый город, не область суверенитета.',url:'https://www.corsicatheque.com/layout/set/print/Histoire-patrimoine/Sites-historiques/Algajola-Chateau-fort-et-citadelle'},
+ {group:'Corsica',id:'algajola',from:1764,to:1766,lon:8.862,lat:42.609,title:'Альгайола — французский гарнизон',description:'Вторая конвенция в Компьене предусматривала размещение французских войск в Альгайоле на четыре года. Точка обозначает укреплённый город, не область суверенитета.',url:'https://www.museudiacorsica.corsica/wp-content/uploads/2021/03/11.-Journal-college-lycee-Paoli.pdf'},
+ {group:'Corsica',id:'algajola-1767',from:1767,to:1767,lon:8.862,lat:42.609,title:'Альгайола — захват Паоли в августе 1767 года',description:'Паоли занял крепость во время временного ухода французского гарнизона в августе 1767 года. Точка обозначает событие смены контроля, а не установленную границу округа на конец года.',url:'https://www.persee.fr/doc/ahrf_0003-4436_1974_num_218_1_4183?pageId=T1_511'},
+ {group:'Corsica',id:'ajaccio',from:1757,to:1767,lon:8.736,lat:41.919,title:'Аяччо — прибрежная крепость',description:'Генуэзский укреплённый город; в 1764 году здесь разместилась французская гарнизонная администрация. Точка отмечает город, а не территорию его власти.',url:'https://www.isula.corsica/culture/agendafile/626756/'},
+ {group:'Corsica',id:'calvi',from:1757,to:1767,lon:8.759,lat:42.568,title:'Кальви — прибрежная крепость',description:'Генуэзский укреплённый город, куда в 1764 году были допущены французские войска. Точка обозначает город, а не границу его округа.',url:'https://www.isula.corsica/file/200599/'},
+ {group:'Corsica',id:'bonifacio',from:1757,to:1767,lon:9.16,lat:41.387,title:'Бонифачо — генуэзский опорный пункт',description:'Укреплённый город на юге острова, связанный с Генуей до французского перехода. Точка не задаёт границу гарнизона.',url:'https://www.isula.corsica/assemblea/docs/rapports/2019E3219-annexes-Convention-obtention-label-Ville-art-histoire-commune-Bunifaziu.pdf'},
+ {group:'Corsica',id:'cap-corse',from:1757,to:1760,lon:9.4108,lat:42.8368,title:'Кап-Корс — зона генуэзского контроля',description:'Северный полуостров сохранял генуэзское управление до осады Мацинажо и перехода местных общин на сторону Паоли в начале 1760-х годов. Точка обозначает регион, не точную границу контроля и не отдельное поселение.',url:'https://www.persee.fr/doc/ahrf_0003-4436_1974_num_218_1_4183'},
+ {group:'Corsica',id:'cap-corse',from:1761,to:1762,lon:9.4108,lat:42.8368,title:'Кап-Корс — борьба за контроль',description:'В 1761 году войска Паоли осаждали Мацинажо. В 1762 году местные общины переходили на сторону Паоли, но укрепления оставались предметом борьбы. Точка обозначает регион, не установленную линию контроля.',url:'https://www.academia.edu/40638823/R_O_C_C_H_E_Revue_On_Line_Cap_Corse_Historique_vol_6_2019'},
+ {group:'Эльба',id:'portoferraio',from:1797,to:1798,lon:10.329,lat:42.815,title:'Портоферрайо — тосканское владение',description:'Британцы заняли порт в 1796 году и эвакуировались в 1797-м; на конец 1797 и в 1798 году он снова под управлением Тосканы. Точка обозначает город, не границу владения.',url:'https://www.consiglio.regione.toscana.it/upload/eda/pubblicazioni/pub4072.pdf'},
+ {group:'Эльба',id:'portolongone',from:1797,to:1798,lon:10.398,lat:42.766,title:'Порто-Лонгоне — владение Неаполя',description:'Укреплённый порт Лонгоне (ныне Порто-Адзурро) зависел от Неаполитанского королевства. Точка показывает порт, не границу владения.',url:'https://archiviodistatosiena.cultura.gov.it/fileadmin/user_upload/045-GOVERNO-DI-SIENA.pdf'},
+ {group:'Эльба',id:'rio-elba',from:1797,to:1798,lon:10.396,lat:42.814,title:'Рио — княжество Пьомбино',description:'Община Рио относилась к княжеству Пьомбино, а не к территории Портоферрайо или Лонгоне. Точка обозначает поселение, не границу княжества.',url:'https://siusa-archivi.cultura.gov.it/cgi-bin/siusa/pagina.pl?Chiave=8611&RicLin=en&RicProgetto=reg-tos&TipoPag=prodente'},
+ {group:'Эльба',id:'bagnaia',from:1797,to:1798,lon:10.364227294921877,lat:42.81089209378219,title:'Баньяя — исторический рубеж Тосканы',description:'Муниципальный архив Рио указывает Баньяю как восточный предел округа Портоферрайо по соглашению 1575 года. Точка обозначает сам населённый пункт; точная линия межевания требует оцифровки.',url:'https://www.comune.rio.li.it/vivere-il-comune/luoghi/localita-bagnaia/'},
+ {group:'Коморы',id:'iconi',from:1677,to:1885,lon:43.232583,lat:-11.744675,title:'Икони — султанат Бамбао',description:'Один из древних политических центров Бамбао на Нгазидже. Точка отмечает медину по координатам ЮНЕСКО, а не границу султаната или неизменное место резиденции правителя.',url:'https://whc.unesco.org/en/list/1768/maps'},
+ {group:'Коморы',id:'itsandra',from:1677,to:1885,lon:43.26465,lat:-11.675294,title:'Итсандра — исторический центр султаната',description:'ИКОМОС отмечает Итсандру среди ведущих торговых центров уже во второй половине XVI века. Точка отображает историческую медину, не точную границу владений.',url:'https://whc.unesco.org/document/227371'},
+ {group:'Коморы',id:'ntsudjini',from:1677,to:1885,lon:43.270017,lat:-11.663689,title:'Нцуджини — историческая медина Итсандры',description:'ИКОМОС называет Нцуджини важным торговым центром XVI века. Точка отмечает медину, не отдельное от Итсандры государство и не границу владения.',url:'https://whc.unesco.org/en/list/1768/maps'},
+ {group:'Коморы',id:'moroni-1844',from:1844,to:1844,lon:43.255,lat:-11.704,title:'Морони — султан Ахмед',description:'По свидетельству экспедиции «Prudence», 6 ноября 1844 года она пришла к Морони, городу султана Ахмеда. Точка обозначает город, не границу его владений.',url:'https://fr.wikisource.org/wiki/Essai_sur_les_Comores/2'},
+ {group:'Коморы',id:'mitsamiouli-1844',from:1844,to:1844,lon:43.284,lat:-11.384,title:'Мицамиули — отдельный султанат',description:'В рассказе о поездке 1844 года назван местный султан Муинанау, сын Ахмеда, правивший в Мицамиули. Точка обозначает современный город, не границу султаната.',url:'https://fr.wikisource.org/wiki/Essai_sur_les_Comores/2'},
+ {group:'Малакка',id:'melaka',from:1641,to:1647,lon:102.25,lat:2.194,title:'Малакка — нидерландский порт',description:'В 1641 году город захвачен нидерландцами при поддержке Джохора. Точка отмечает порт, не установленную границу колонии.',url:'https://api.icj-cij.org/sites/default/files/case-related/130/14139.pdf'},
+ {group:'Малакка',id:'linggi-estuary',from:1641,to:1647,lon:101.97,lat:2.388,title:'Устье Лингги — предполагаемый северный предел',description:'Позднейшее описание относит северный прибрежный предел к соглашению 1641 года; досье ЮНЕСКО связывает чёткую линию Лингги — Кесанг с более поздним британским управлением. Точка — приблизительное устье, не доказанная граница 1641 года.',url:'https://gtwhi.com.my/ms/wp-content/uploads/2024/09/Nomination-Dossier-Historic-Cities-of-the-Straits-of-Malacca.pdf'},
+ {group:'Малакка',id:'kesang-estuary',from:1641,to:1647,lon:102.49,lat:2.096,title:'Устье Кесанг — предполагаемый южный предел',description:'Позднейшее описание относит южный прибрежный предел к соглашению 1641 года; досье ЮНЕСКО связывает чёткую линию Лингги — Кесанг с более поздним британским управлением. Точка — приблизительное устье, не доказанная граница 1641 года.',url:'https://gtwhi.com.my/ms/wp-content/uploads/2024/09/Nomination-Dossier-Historic-Cities-of-the-Straits-of-Malacca.pdf'},
+ {group:'Малакка',id:'malacca-fort',from:1641,to:1647,lon:102.2505,lat:2.1915,title:'Малакка — крепость под управлением VOC',description:'План крепости 1641 года показывает оборонительные сооружения захваченного португальского города. Точка обозначает район сохранившихся ворот Порта-де-Сантьягу; наличие крепости не устанавливает сухопутные границы колонии.',url:'https://hpip.org/en/heritage/details/1533'},
+ {group:'Малакка',id:'naning-1641',from:1641,to:1641,lon:102.1804,lat:2.468,title:'Нанинг — местная власть, вассальная зависимость от Малакки',description:'Отчёт Схаутена 1641 года сообщает о неполном подчинении Нанинга VOC и о местном правителе Радже Мерахе. Точка обозначает традиционный район Табох-Нанинг, а не границы владения или место заключения договора.',url:'https://www.dbnl.org/tekst/_ber002185901_01/_ber002185901_01_0004.php'},
+ {group:'Малакка',id:'rembau-1641',from:1641,to:1641,lon:102.0913,lat:2.5897,title:'Рембау — владение Джохора',description:'Отчёт Схаутена 1641 года описывает Рембау как соседнее владение, подчинённое джохорской короне, а не как непосредственно управляемую часть нидерландской Малакки. Точка — современный ориентир, границы владения не установлены.',url:'https://www.dbnl.org/tekst/_ber002185901_01/_ber002185901_01_0004.php'},
+ {group:'Малакка',id:'rembau-1646',from:1646,to:1646,lon:102.0913,lat:2.5897,title:'Рембау — договор с VOC',description:'Договор от 17 сентября 1646 года перечисляет местных представителей Рембау и Нанинга как стороны соглашения. Точка обозначает район Рембау, а не точное место подписания или границу владения.',url:'https://sejarah-nusantara.anri.go.id/corpusdiplomaticum_contracts_search/?areaName=Malakka'},
+ {group:'Неуточнённая принадлежность: Корсика — переход 1768 года',id:'corte-1768',from:1768,to:1768,lon:9.151,lat:42.306,title:'Корте — республика Паоли',description:'В 1768 году Корте оставался центром республики; договор между Генуей и Францией не прекратил сопротивление Паоли. Точка не определяет линию фронта.',url:'https://www.napoleon.org/en/magazine/itineraries/napoleon-and-corsica/'},
+ {group:'Неуточнённая принадлежность: Корсика — переход 1768 года',id:'bonifacio-1768',from:1768,to:1768,lon:9.16,lat:41.387,title:'Бонифачо — французская администрация с 27 июня',description:'Французская администрация вступила в управление городом 27 июня 1768 года. Точка обозначает город; сопротивление Паоли в остальных частях острова продолжалось.',url:'https://www.isula.corsica/assemblea/docs/rapports/2019E3219-annexes-Convention-obtention-label-Ville-art-histoire-commune-Bunifaziu.pdf'},
+ {group:'Неуточнённая принадлежность: Золотой Берег — область восточнее Кейп-Коста',id:'cape-coast-castle',from:1662,to:1664,lon:-1.241041,lat:5.103524,title:'Кейп-Кост — Каролусборг',description:'Шведский форт 1653 года переходил между европейскими и местными властями; музей Ганы датирует начало нидерландской оккупации 1660 годом. Точка находится западнее спорного контура, поэтому смена владельцев замка не устанавливает принадлежность всей области.',url:'https://gmmb.gov.gh/cape-coast-castle-cape-coast-1653/'},
+ {group:'Неуточнённая принадлежность: Золотой Берег — область восточнее Кейп-Коста',id:'mouri-fort',from:1662,to:1664,lon:-1.199809,lat:5.130398,title:'Мори — нидерландский форт Нассау',description:'Форт построен в 1612 году. Договор с Асебу от 21 марта 1657 года закрепил за Вест-Индской компанией права на береговую полосу у форта. Точка отмечает укрепление, не границу владений.',url:'https://dokumen.pub/trade-and-politics-on-the-gold-coast-1600-1720-a-study-of-the-african-reaction-to-european-trade-9780198216537.html'},
+ {group:'Неуточнённая принадлежность: Маскат — португальско-османское соперничество',id:'muscat-port',from:1552,to:1555,lon:58.5978,lat:23.6171,title:'Маскат — исторический порт',description:'В 1552 году порт захвачен Пири-реисом; после отхода его флота португальцы вновь заняли Маскат. Точка отмечает район современной крепости Аль-Джалали как ориентир старого порта, а не утверждение о существовании этой крепости в 1552 году.',url:'https://www.sabrizain.org/malaya/library/portrecords.pdf'},
+ {group:'Неуточнённая принадлежность: Южный Пьемонт — спорные владения',id:'bra-imperial',from:1529,to:1535,lon:7.85,lat:44.698,title:'Бра — после смены контроля в 1525 году',description:'Муниципальный архив отмечает перемену военного контроля города в 1525 году и новое французское занятие в 1536 году. Точка обозначает город, не границу округа.',url:'https://municipium-images-production.s3-eu-west-1.amazonaws.com/s3/874/allegati/archivio-storico.pdf'},
+ {group:'Неуточнённая принадлежность: Южный Пьемонт — спорные владения',id:'bra-french',from:1536,to:1539,lon:7.85,lat:44.698,title:'Бра — французское занятие 1536 года',description:'Муниципальный архив сообщает о возвращении города под французский контроль в 1536 году. Точка обозначает город, не границу французских владений.',url:'https://municipium-images-production.s3-eu-west-1.amazonaws.com/s3/874/allegati/archivio-storico.pdf'},
+ {group:'Неуточнённая принадлежность: Южный Пьемонт — спорные владения',id:'cherasco-before-1531',from:1529,to:1530,lon:7.858,lat:44.651,title:'Кераско — до передачи Савойскому дому',description:'Передача города Беатрисе Португальской и присяга горожан датированы 1531 годом. Точка отмечает историческое поселение, не территорию юрисдикции.',url:'https://archiviodistatotorino.beniculturali.it/inventari/?id=313532'},
+ {group:'Неуточнённая принадлежность: Южный Пьемонт — спорные владения',id:'cherasco-savoy',from:1531,to:1536,lon:7.858,lat:44.651,title:'Кераско — владение Беатрисы, имперский гарнизон',description:'Присяга Беатрисе Португальской в 1531 году закрепила юридическую связь с Савойским домом; военное присутствие имперских сил сохранялось. Точка отмечает город, не предел юридической или военной власти.',url:'https://www.cherasco1547.org/public/pdf/20190620153420_Gli_Ebrei_di_Cherasco.pdf'},
+ {group:'Неуточнённая принадлежность: Южный Пьемонт — спорные владения',id:'cherasco-war',from:1537,to:1537,lon:7.858,lat:44.651,title:'Кераско — смена военного контроля в 1537 году',description:'Французский отряд Фрегозо атаковал город; имперские силы вернули контроль в том же году. Точка не устанавливает территорию контроля за пределами города.',url:'https://cherascocultura.it/quando-cherasco-divento-sabauda/'},
+ {group:'Неуточнённая принадлежность: Южный Пьемонт — спорные владения',id:'cherasco-after-1537',from:1538,to:1539,lon:7.858,lat:44.651,title:'Кераско — после возвращения имперского контроля',description:'После французского нападения 1537 года контроль имперских сил был восстановлен. Точка показывает город; сухопутная граница остаётся неустановленной.',url:'https://cherascocultura.it/quando-cherasco-divento-sabauda/'},
+ {group:'Неуточнённая принадлежность: Хорезм — кидариты и эфталиты',id:'kath-afrighid',from:410,to:442,lon:60.726111,lat:41.681944,title:'Кят (Кас) — традиционная столица Хорезма',description:'По традиции аль-Бируни, династия Афригидов управляла из Кята. Археологическая датировка ранней столицы остаётся дискуссионной. Точка обозначает район современного Беруни, а не южную или восточную границу Хорезма.',url:'https://damast.geschichte.hu-berlin.de/place/472'},
+ {group:'Горе — материковый контур',id:'goree-british',from:1809,to:1816,lon:-17.398,lat:14.667,title:'Горе — британская оккупация',description:'Остров Горе находился под британским контролем до передачи Франции в 1817 году. Точка обозначает остров, а не материковый район Дакара.',url:'https://whc.unesco.org/en/list/26/'},
+ {group:'Горе — материковый контур',id:'goree-french',from:1817,to:1819,lon:-17.398,lat:14.667,title:'Горе — возвращение Франции',description:'В 1817 году остров возвращён под французское управление. Точка обозначает остров; границы прав на материке требуют отдельного исследования.',url:'https://www.cambridge.org/core/books/abs/political-history-of-the-gambia-18161994/merchants-and-recaptives-the-origins-of-modern-politics-181686/0343E946F8D5DFBB14438F4D2D8E2EA9'},
+ {group:'Цейлон — война VOC',id:'batticaloa-voc',from:1638,to:1641,lon:81.69,lat:7.71,title:'Баттикалоа — захват VOC в 1638 году',description:'Крепость захвачена нидерландской Ост-Индской компанией в мае 1638 года; передана Канди в марте 1642 года. Точка отмечает район форта, не границы оккупации.',url:'https://eprints.soas.ac.uk/33621/1/11010382.pdf'},
+ {group:'Цейлон — война VOC',id:'trincomalee-voc',from:1639,to:1639,lon:81.23,lat:8.58,title:'Тринкомале — захват VOC в 1639 году',description:'В 1639 году крепость захвачена VOC, в 1640 году передана Канди. Точка обозначает исторический порт, а не пределы его владений.',url:'https://www.sciencedirect.com/org/science/article/pii/S0006229480000093'},
+ {group:'Цейлон — война VOC',id:'galle-voc',from:1640,to:1658,lon:80.22,lat:6.03,title:'Галле — нидерландская крепость',description:'VOC захватила Галле в 1640 году. Договор 1645 года определил раздел владений у Бентоты, но точные внутренние границы по исходному контуру не восстановлены. Точка отмечает исторический порт.',url:'https://ccf.gov.lk/heritage-sites/galle-fort/'},
+ {group:'Цейлон — война VOC',id:'colombo-portuguese',from:1640,to:1655,lon:79.86,lat:6.93,title:'Коломбо — португальская крепость',description:'Коломбо оставался под португальским контролем до капитуляции в 1656 году. Точка отмечает город, а не границы португальских владений.',url:'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002'},
+ {group:'Цейлон — война VOC',id:'colombo-voc',from:1656,to:1658,lon:79.86,lat:6.93,title:'Коломбо — нидерландская крепость',description:'В 1656 году Коломбо капитулировал перед VOC. Точка показывает город, не полный контур новых владений.',url:'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002'},
+ {group:'Цейлон — война VOC',id:'jaffna-portuguese',from:1640,to:1657,lon:80.025,lat:9.66,title:'Джафна — португальское владение',description:'Джафна оставалась под португальским контролем до захвата в 1658 году. Точка обозначает крепость, не пределы владения.',url:'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002'},
+ {group:'Цейлон — война VOC',id:'jaffna-voc',from:1658,to:1658,lon:80.025,lat:9.66,title:'Джафна — захват VOC',description:'В 1658 году Джафна захвачена VOC; португальские владения на острове прекратили существование. Точка обозначает город, не точную границу.',url:'https://bulletin.rijksmuseum.nl/article/download/9736/10237/16002'},
+] as const;
+
+export function historicalUnresolvedCenters(year:number,issues:readonly {group:string;from:number;to:number}[]){
+ const groups=new Set(issues.filter(i=>i.from<=year&&year<=i.to).map(i=>i.group));
+ return [...(groups.has('Mindanao')?mindanaoCenters:[]),...regionalCenters.filter(c=>groups.has(c.group))].filter(c=>c.from<=year&&year<=c.to).map(c=>({...c,id:`historical-center-${c.id}`,year}));
+}
+
+// Establishment/recovery brackets: Sun et al. (2018), Table 1. Primary
+// diplomatic records correct Austrian/Russian administrative transitions and
+// distinguish occupation and legal relinquishment from postwar recovery.
+// An ending year is a transition; none of these are sovereign countries.
+export const tianjinConcessionChronology=[
+ {id:'british',nameRu:'британская',founded:1860,recovered:1945,administrationEnded:1941},
+ {id:'french',nameRu:'французская',founded:1861,recovered:1945,administrationEnded:1943},
+ {id:'german',nameRu:'германская',founded:1895,recovered:1917},
+ {id:'japanese',nameRu:'японская',founded:1898,recovered:1945},
+ {id:'russian',nameRu:'российская',founded:1901,recovered:1920,sourceRecovery:1924},
+ {id:'belgian',nameRu:'бельгийская',founded:1902,recovered:1931},
+ {id:'italian',nameRu:'итальянская',founded:1902,recovered:1945,administrationEnded:1943},
+ {id:'austrohungarian',nameRu:'австро-венгерская',founded:1902,recovered:1917,sourceRecovery:1919}
+] as const;
+
+const tianjinAdministrationEnd=(c:typeof tianjinConcessionChronology[number])=>
+ 'administrationEnded' in c?c.administrationEnded:c.recovered;
+export const tianjinDatedTransitions=[
+ {"from":1900,"to":1902,"description":"Военное международное временное управление Тяньцзинем в 1900–1902 годах не являлось суверенным государством; дипломатические документы предписывали рассматривать его действия как совершённые от имени имперского правительства Китая. На карте показана юридическая региональная подложка Цин, а не ложная китайская муниципальная администрация.","url":"https://history.state.gov/historicaldocuments/frus1902/d159"},
+ {"from":1928,"to":1928,"description":"В июне 1928 года после Северного похода муниципальное управление Тяньцзиня перешло к Националистическому правительству Китайской Республики. Гоминьдан не являлся отдельным государством.","url":"https://www.tandfonline.com/doi/abs/10.1080/02665433.2017.1408487"},
+ {"from":1937,"to":1937,"description":"30 июля 1937 года после боёв японские войска захватили Тяньцзинь; до этой даты в китайских районах действовало управление Китайской Республики. Год 1937 остаётся переходным, без единого годового контура военного контроля.","url":"https://history.state.gov/historicaldocuments/frus1937v03/ch1subch3"},
+ {"from":1945,"to":1945,"description":"Формальная капитуляция японских войск в Тяньцзине состоялась 6 октября 1945 года. Это не означает, что китайская администрация восстановила полный контроль 15 августа или что все иностранные муниципальные вопросы были урегулированы одновременно.","url":"https://history.state.gov/historicaldocuments/frus1945v07/d447"},
+ {from:1917,to:1919,description:'Австро-венгерская администрация прекратилась в 1917 году. Дипломатические документы октября 1917 года уже называют эту концессию бывшей; дата 1919 в сводной таблице не означает продолжения её управления до 1919 года.',url:'https://history.state.gov/historicaldocuments/frus1917Supp02v01/d614'},
+ {from:1920,to:1924,description:'Китайские власти приняли управление российской концессией 25 сентября 1920 года. Сохранение части муниципальных правил и последующее правовое урегулирование не означают российского административного контроля до 1924 года.',url:'https://history.state.gov/historicaldocuments/frus1920v01/d481'},
+ {from:1941,to:1945,description:'В декабре 1941 года японские силы заняли британскую концессию. Восстановление китайского управления после капитуляции Японии в 1945 году — отдельное событие.',url:'https://api.parliament.uk/historic-hansard/commons/1941/dec/11/china-british-residents'},
+ {from:1943,to:1945,description:'Британия подписала договор об отказе от экстерриториальных прав 11 января 1943 года; обмен ратификациями состоялся 20 мая. Это юридическая дата, а не восстановление китайской администрации на занятой японскими силами территории.',url:'https://treaties.fcdo.gov.uk/data/Library2/pdf/1943-TS0002.pdf'},
+ {from:1943,to:1945,description:'В мае 1943 года власти Виши передали французскую концессию под японский контроль. Это прекращение прежней администрации, а не признанная передача китайского суверенитета Японии.',url:'https://history.state.gov/historicaldocuments/frus1945v07/d99'},
+ {from:1943,to:1947,description:'После итальянского перемирия сентября 1943 года японские войска заняли итальянскую концессию. Поэтому она не показана как действующая итальянская администрация в 1944 году.',url:'https://doi.org/10.1080/1354571X.2010.501979'},
+ {from:1945,to:1947,description:'К ноябрю 1945 года китайские власти уже управляли бывшими муниципальными учреждениями; согласование передачи имущества и обязательств продолжалось отдельно.',url:'https://history.state.gov/historicaldocuments/frus1945v07/d1028'},
+ {from:1947,to:1947,description:'Статья 25 мирного договора с Италией отменяла аренду итальянской концессии. Договор подписан 10 февраля 1947 года и вступил в силу 15 сентября 1947 года. Эта юридическая дата не продлевает итальянское управление до 1947 года.',url:'https://treaties.un.org/doc/Publication/UNTS/Volume%2049/v49.pdf'}
+] as const;
+
+/** Calendar-year transitions never imply a full year under one authority. */
+export function tianjinConcessionStatus(year:number){
+ return {active:tianjinConcessionChronology.filter(c=>c.founded<=year&&year<tianjinAdministrationEnd(c)),
+  established:tianjinConcessionChronology.filter(c=>c.founded===year),
+  administrationChanges:tianjinConcessionChronology.filter(c=>tianjinAdministrationEnd(c)===year),
+  recovery:tianjinConcessionChronology.filter(c=>c.recovered===year),
+  transitions:tianjinDatedTransitions.filter(t=>t.from<=year&&year<=t.to)};
+}
+
+export function historicalCenterSources(center:{url?:string;sources?:readonly string[]}){
+ return [...new Set([...(center.url?[center.url]:[]),...(center.sources??[])])];
+}
+
+// At world-map scale keep a single city marker. This is a historical card,
+// not a replacement for missing georeferenced neighbourhood boundaries.
+export function historicalTreatyPortCenters(year:number){
+ if(year<1860||year>1947)return [];
+ const context=year<=1899?'После открытия порта в 1860 году иностранные концессии устраивались поэтапно в городской зоне вдоль реки Хайхэ.':year<=1902?'В 1900–1902 годах действовало временное международное правительство Тяньцзиня, контролировавшее город и часть прилегающего района около 25 месяцев. Согласно дипломатическим документам 1902 года, союзники рассматривали его действия как осуществлённые от имени китайского правительства: военная муниципальная администрация не означала прекращения китайского суверенитета. Возвращение китайского городского управления было поэтапным.':year<=1936?'В городе действовали иностранные муниципальные концессии; сроки их учреждения и фактического возвращения Китаю различались.':year===1937?'30 июля 1937 года японские войска захватили Тяньцзинь. До этого в китайских районах действовало управление Китайской Республики.':year<=1944?'Японская военная оккупация города не означала перехода китайского суверенитета; иностранные концессии имели различный статус.':year===1945?'6 октября 1945 года в Тяньцзине оформлена капитуляция японского гарнизона. Восстановление китайского управления после войны шло отдельно от юридической ликвидации концессий.':'После войны город находился под управлением Китайской Республики; юридическое оформление прекращения концессий и передача имущества продолжались отдельно.';
+ const status=tianjinConcessionStatus(year);
+ const names=(list:typeof status.active)=>list.map(c=>c.nameRu).join(', ');
+ const perYear=`${status.active.length?'Муниципальные администрации до зарегистрированного перехода (без утверждения о контроле над всем городом): '+names(status.active)+'. ':''}${status.established.length?'Учреждение/расширение в этом году: '+names(status.established)+'. ':''}${status.administrationChanges.length?'Смена прежней администрации в этом году: '+names(status.administrationChanges)+'. ':''}${status.recovery.length?'Восстановление китайского управления в течение года: '+names(status.recovery)+'. ':''}${status.transitions.map(t=>t.description).join(' ')} ${year>=1863&&year<=1902?'Американское поселение (отмечено в источнике как учреждённое после 1862 года) было включено в британскую южную часть в 1902 году; точный первый год здесь не установлен. ':''}`;
+ return [{id:'historical-center-tianjin-treaty-port',group:'Тяньцзинь — концессия',from:1860,to:1947,year,lon:117.2,lat:39.13,title:'Тяньцзинь — иностранные концессии',description:`${context} ${perYear}Сводные годы начала и возвращения не являются точными датами изменения международного правового статуса. Точка отмечает исторический город, не границы концессий и не отдельную государственную территорию.`,url:'https://journals.open.tudelft.nl/iphs/article/download/2751/2962/',sources:status.transitions.map(t=>t.url)}];
+}
+
+// Dated municipal-control gaps restored from independent historical evidence.
+// These are city-level events, NOT cloned political geometry. In particular,
+// neither a 1632 Brazilian outline nor a 1663 Hudson colony outline is
+// backdated to the year of conquest. Years of transition are mixed-control.
+const datedGapTransitions=[
+  {id:'recife-schans-de-bruyne-1630-1631',from:1630,to:1631,lon:-34.870895,lat:-8.053101,
+   group:'Ресифи — укрепления 1630–1631 годов',title:'Шанс-де-Брёйн — нидерландский редут Ресифи',
+   description:'В 1630 году нидерландцы укрепили захваченную позицию на перешейке между Ресифи и Олиндой. Точка отмечает нынешнее место памятника форт Брум по бразильскому реестру IPHAN. Позднее форт перестраивали: это не исторический контур стен 1630 года и не границы всей колонии.',
+   sources:['https://whc.unesco.org/en/tentativelists/5997','https://sicg.iphan.gov.br/sicg/bem/visualizar/1753','https://dutchportcities.globalasiaprogram.org/home/recife/']},
+  {id:'recife-frederik-hendrick-1630-1631',from:1630,to:1631,lon:-34.880833,lat:-8.071667,
+   group:'Ресифи — укрепления 1630–1631 годов',title:'Форт Фредерик-Хендрик — остров Антониу-Ваш',
+   description:'В 1630 году нидерландцы построили форт Фредерик-Хендрик на острове Антониу-Ваш, позднее известный как Синку-Понтас. Точка привязана к памятнику по заявке ЮНЕСКО, а не к точным границам бастионов 1630 года; после 1654 года укрепление перестраивали. Она не доказывает контроль VOC над всем Пернамбуку.',
+   sources:['https://whc.unesco.org/en/tentativelists/5997','https://dutchportcities.globalasiaprogram.org/home/recife/']},
+  {id:'recife-dutch-capture-1630',from:1630,to:1630,lon:-34.881,lat:-8.054,
+   group:'Ресифи — нидерландский захват 1630 года',title:'Ресифи — захват нидерландцами (1630)',
+   description:'В 1630 году войска Нидерландской Вест-Индской компании овладели укреплённым портом Ресифи. На карте этого года раньше не было отдельной датированной записи о захвате. Точка отмечает исторический порт, но не даёт права закрашивать всё Пернамбуку: контроль внутренних районов оставался спорным.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/','https://www.loc.gov/item/2021668315/']},
+  {id:'olinda-dutch-capture-1630',from:1630,to:1630,lon:-34.855,lat:-8.008,
+   group:'Олинда — нидерландский захват 1630 года',title:'Олинда — захват нидерландцами (1630)',
+   description:'В феврале 1630 года нидерландский десант захватил Олинду. Точка соответствует историческому городу, а не границе фактического контроля на протяжении всего года.',sources:['https://militarymaps.rct.uk/other-17th-century-conflicts/olinda-1630-olinda-pernambuco-brazil-08deg0032s-34deg5119w-0','https://dutchportcities.globalasiaprogram.org/home/recife/']},
+  {id:'recife-fortification-1631',from:1631,to:1631,lon:-34.881,lat:-8.054,
+   group:'Ресифи — укрепления 1631 года',title:'Ресифи — оборона нидерландского порта (1631)',
+   description:'К июлю 1631 года инженер Андреас Древиш составил план укреплений Ресифи и острова Антониу-Ваш. Внутренние районы Пернамбуку не следует автоматически считать покорёнными. Это точка документированного укреплённого порта, не исторический контур колонии.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/','https://www.loc.gov/item/2021668315/']},
+  {id:'olinda-abandoned-1631',from:1631,to:1631,lon:-34.855,lat:-8.008,
+   group:'Олинда — оставление 1631 года',title:'Олинда — отход нидерландского гарнизона (1631)',
+   description:'В конце 1631 года нидерландские силы оставили и разрушили часть Олинды, сосредоточив оборону в Ресифи. Поэтому захват 1630 года не означает неизменного контроля над Олиндой во все последующие годы. Точка обозначает город и событие, не границу.',sources:['https://dutchportcities.globalasiaprogram.org/home/recife/']},
+  {id:'new-orange-dutch-return-1673',from:1673,to:1673,lon:-74.013,lat:40.705,
+   group:'Новые Нидерланды — возвращение 1673 года',title:'Новый Оранж — восстановление нидерландского управления (1673)',
+   description:'В августе 1673 года нидерландский флот вновь занял Нью-Йорк. При Антони Колве город переименовали в Новый Оранж, форт Джеймс — в Вильгельм-Хендрик, а колонию вновь назвали Новыми Нидерландами. Это подтверждённый переход власти, отсутствовавший в прежнем годовом представлении. Точка обозначает городской центр, а не старую максимальную территорию Новых Нидерландов.',sources:['https://history.nycourts.gov/legal-history-by-era/new-york-under-dutch-rule/','https://history.nycourts.gov/figure/anthony-colve/','https://www.nyc.gov/assets/records/pdf/Dutch-NewAmsterdam_MSS0040_MASTER.pdf']},
+  {id:'new-orange-english-return-1674',from:1674,to:1674,lon:-74.013,lat:40.705,
+   group:'Новые Нидерланды — возврат Англии 1674 года',title:'Новый Оранж / Нью-Йорк — возвращение английского управления (1674)',
+   description:'Вестминстерский договор был заключён в феврале 1674 года, но Антони Колве передал Новый Оранж и зависимые территории английскому губернатору лишь 10 ноября 1674 года по новому стилю. Таким образом, 1674 год нельзя целиком считать английским или нидерландским; после передачи городу вернули название Нью-Йорк. Точка обозначает город, не точную линию между колониями.',sources:['https://history.nycourts.gov/legal-history-by-era/colonial-new-york-under-british-rule/','https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php','https://history.nycourts.gov/wp-content/uploads/2023/11/Illustrated-Essay-with-edits-and-endnotes.pdf']},
+  // Dated points identify islands whose source outlines are missing or unusable.
+  {id:'antilles-sint-maarten-1976-2009',from:1976,to:2009,lon:-63.047,lat:18.025,
+   group:'Нидерландские Антилы — отсутствующие островные детали',title:'Синт-Мартен — южная часть острова в составе Нидерландских Антил',
+   description:'До реформы 10 октября 2010 года Синт-Мартен входил в Нидерландские Антилы. Исходный полигон ошибочно захватывал французскую часть острова. Показан Филипсбург, точное прохождение исторической линии раздела остаётся открытым.',
+   sources:['https://treaties.un.org/pages/historicalinfo.aspx','https://www.loc.gov/item/2005631608/','https://verdragenbank.overheid.nl/en/Treaty/Details/013951']},
+  {id:'antilles-saba-1954-2009',from:1954,to:2009,lon:-63.24056,lat:17.63028,
+   group:'Нидерландские Антилы — отсутствующие островные детали',title:'Саба — Нидерландские Антилы',
+   description:'Саба входила в Нидерландские Антилы. Исходный полигон не содержит Сабы. Точка показывает географическое положение острова, береговая линия требует отдельной сверки.',
+   sources:['https://treatydatabase.overheid.nl/en/Treaty/Details/007234_p.html','https://assets.publishing.service.gov.uk/media/68aee36c960e2d135b4c8e76/Netherlands_Toponymic_Factfile.pdf']},
+  {id:'antilles-statia-1954-2009',from:1954,to:2009,lon:-62.97333,lat:17.485,
+   group:'Нидерландские Антилы — отсутствующие островные детали',title:'Синт-Эстатиус — Нидерландские Антилы',
+   description:'Синт-Эстатиус входил в Нидерландские Антилы. В годовом слое Cliopatria остров отсутствует. Точка показывает положение острова, береговая линия требует отдельной сверки.',
+   sources:['https://treatydatabase.overheid.nl/en/Treaty/Details/007234_p.html','https://assets.publishing.service.gov.uk/media/68aee36c960e2d135b4c8e76/Netherlands_Toponymic_Factfile.pdf']},
+  {id:'antilles-charter-1954',from:1954,to:1954,lon:-68.934,lat:12.105,
+   group:'Нидерландские Антилы — статус 1954 года',title:'Виллемстад — Нидерландские Антилы по Хартии Королевства',
+   description:'15 декабря 1954 года вступила в силу Хартия Королевства Нидерландов, закрепившая статус Нидерландских Антил, отдельно от Суринама. Сводный исходный полигон этих территорий не является границей единого государства. Точка обозначает Виллемстад, не картографический контур.',
+   sources:['https://www.government.nl/topics/caribbean-parts-of-the-kingdom','https://www.royal-house.nl/topics/monarchy/legislation/charter-for-the-kingdom-of-the-netherlands']},
+  {id:'aruba-status-aparte-1986',from:1986,to:2024,lon:-70.035,lat:12.520,
+   group:'Аруба — отдельная страна в составе Королевства',title:'Аруба — отдельная страна Королевства (с 1986)',
+   description:'1 января 1986 года Аруба вышла из Нидерландских Антил и получила статус отдельной страны в составе Королевства Нидерландов. Не следует продолжать закрашивать её как часть Антил в 1986–2009 годах. Точка — островной географический ориентир, не граница.',
+   sources:['https://verdragenbank.overheid.nl/en/Treaty/Details/003326_p.html','https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX%3A51994DC0538']},
+  {id:'curacao-2010-successor',from:2010,to:2024,lon:-68.934,lat:12.105,
+   group:'Нидерландские Антилы — преемники 2010 года',title:'Кюрасао — отдельная страна Королевства',
+   description:'С 10 октября 2010 года Кюрасао является отдельной страной Королевства Нидерландов, а не частью прекратившихся Нидерландских Антил. Точка обозначает остров, не восстановленную историческую границу; 2010 год включает переход статуса.',
+   sources:['https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom','https://treatydatabase.overheid.nl/en/Treaty/Details/007234_p.html']},
+  {id:'sint-maarten-2010-successor',from:2010,to:2024,lon:-63.047,lat:18.025,
+   group:'Нидерландские Антилы — преемники 2010 года',title:'Синт-Мартен — отдельная страна Королевства',
+   description:'С 10 октября 2010 года Синт-Мартен стал отдельной страной Королевства Нидерландов. Это южная часть острова Сен-Мартен, а не вся французско-нидерландская территория. Точка обозначает Филипсбург, не линию международной границы.',
+   sources:['https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom','https://treatydatabase.overheid.nl/en/Treaty/Details/007234_p.html']},
+  {id:'saint-martin-border-agreement-2023',from:2023,to:2023,lon:-63.022,lat:18.052,
+   group:'Сен-Мартен — договор о границе от 26 мая 2023 года',title:'Сен-Мартен — подписание соглашения Франции и Нидерландов',
+   description:'26 мая 2023 года Франция и Королевство Нидерландов подписали соглашение о делимитации границы на острове. Годовой слой не переносит договорную линию на годы до подписания. Точка обозначает район границы, участок остаётся без восстановленного контура.',
+   sources:['https://verdragenbank.overheid.nl/en/Treaty/Details/013951','https://www.interieur.gouv.fr/actualites/communiques-de-presse/signature-dun-accord-entre-france-et-pays-bas-relatif-a-frontiere-commune-a-saint-martin']},
+  {id:'bonaire-2010-successor',from:2010,to:2024,lon:-68.276,lat:12.151,
+   group:'Нидерландские Антилы — преемники 2010 года',title:'Бонайре — особый муниципалитет Нидерландов',
+   description:'С 10 октября 2010 года Бонайре стал особым муниципалитетом Нидерландов, а не самостоятельной страной. Точка показывает остров, не административную береговую границу. 2010 год переходный.',
+   sources:['https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom','https://www.cbs.nl/en-gb/news/2022/49/forecast-caribbean-netherlands-15-more-inhabitants-by-2030/caribbean-netherlands-and-dutch-caribbean']},
+  {id:'saba-2010-successor',from:2010,to:2024,lon:-63.24056,lat:17.63028,
+   group:'Нидерландские Антилы — преемники 2010 года',title:'Саба — особый муниципалитет Нидерландов',
+   description:'С 10 октября 2010 года Саба входит непосредственно в Нидерланды как особый муниципалитет. Точка обозначает остров, но не даёт вымышленную историческую линию его берега.',
+   sources:['https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom','https://assets.publishing.service.gov.uk/media/68aee36c960e2d135b4c8e76/Netherlands_Toponymic_Factfile.pdf']},
+  {id:'statia-2010-successor',from:2010,to:2024,lon:-62.97333,lat:17.485,
+   group:'Нидерландские Антилы — преемники 2010 года',title:'Синт-Эстатиус — особый муниципалитет Нидерландов',
+   description:'С 10 октября 2010 года Синт-Эстатиус входит в Нидерланды как особый муниципалитет, отдельно от Синт-Мартена. Точка не является историческим контуром острова.',
+   sources:['https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom','https://assets.publishing.service.gov.uk/media/68aee36c960e2d135b4c8e76/Netherlands_Toponymic_Factfile.pdf']},
+  {id:'teotihuacan-site-ancient',from:-100,to:700,lon:-98.84167,lat:19.69167,
+   group:'Теотиуакан — город и недоказанные политические границы',
+   title:'Теотиуакан — засвидетельствованный город, не граница государства',
+   description:'Точка отмечает археологический город Теотиуакан по координатам ЮНЕСКО. Это был центр настоящего государства, но площадь культурного влияния не совпадает с доказанным прямым управлением. Около 550–650 гг. центральная политическая система распалась; проживание на месте могло продолжаться. Импортированный большой полигон допускается только в тематическом слое, не как достоверная суверенная граница.',
+   sources:['https://whc.unesco.org/en/list/414/','https://www.annualreviews.org/content/journals/10.1146/annurev.anthro.26.1.129','https://www.sciencedirect.com/science/article/pii/S0278416519302119']},
+  // These events are sourced municipal/provincial control points. A town
+  // being occupied or a treaty being signed does NOT georeference an entire
+  // source polygon, certify province borders, or establish lasting pacification.
+  {id:'maguindanao-spanish-treaty-1837',from:1837,to:1837,lon:124.246,lat:7.223,
+   group:'Магинданао — договор, не прямая испанская граница',title:'Котабато — соглашение султана Магинданао с Испанией (1837)',
+   description:'22 мая 1837 года зафиксирован договор испанской короны с султаном Магинданао. Он не доказывает, что местные дату залива Давао подчинялись султану или Испании; границы прямого контроля не установлены. Точка отмечает район политического центра у Котабато, не место подписания.',
+   sources:['https://ovpaa.up.edu.ph/research/the-spanish-and-tausug-versions-of-the-landmark-sulu-spanish-treaty-of-1836-reflect-different-intentions/','https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf']},
+  {id:'davao-mandaya-treaties-1838',from:1838,to:1838,lon:125.61,lat:7.07,
+   group:'Давао — самостоятельные местные дату',title:'Давао — договоры с вождями мандая (1838)',
+   description:'Исследование архивных соглашений свидетельствует о договорах испанской администрации с вождями мандая в районе Давао в 1838 году. Наличие самостоятельных участников переговоров не позволяет закрасить весь залив как единый султанат Магинданао или испанскую колонию. Точка показывает район Давао, а не место договора и не границы владений.',
+   sources:['https://ovpaa.up.edu.ph/research/the-spanish-and-tausug-versions-of-the-landmark-sulu-spanish-treaty-of-1836-reflect-different-intentions/','https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf']},
+  {id:'davao-cession-disputed-1844',from:1844,to:1844,lon:125.61,lat:7.07,
+   group:'Давао — правовой титул и фактическая власть',title:'Давао — уступка султаном Котабато Испании (1844)',
+   description:'В 1844 году султан Котабато уступил Давао Испании, но местные дату не признавали его полномочий распоряжаться всем побережьем. Юридическая уступка не означает немедленного военного контроля. Точка — район Давао, не граница владения.',
+   sources:['https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf','https://publishing.cdlib.org/ucpressebooks/public/book/muslim-rulers-and-rebels-everyday-politics-and-armed-separatism-in-the-southern-philippines.html']},
+  {id:'davao-oyanguren-capture-1848',from:1848,to:1848,lon:125.61,lat:7.07,
+   group:'Давао — начало фактического испанского контроля',title:'Давао — кампания Оянгурена (1848)',
+   description:'В 1848 году экспедиция Хосе Оянгурена установила фактическое испанское присутствие в районе укреплённого поселения Давао после столкновения с местными правителями. Это не подтверждает испанский контроль над всем заливом уже с января 1848 года или точную границу колонии. Точка показывает район поселения.',
+   sources:['https://davaocity.gov.ph/wp-content/uploads/2018/09/Davao-History.pdf','https://cpdo.davaocity.gov.ph/wp-content/uploads/2016/10/Vol1CLUP2013-202220151215084007.pdf']},
+  {id:'mytho-french-capture-1861',from:1861,to:1861,lon:106.36,lat:10.36,
+   group:'Кохинхина — военная кампания 1861 года',title:'Митхо — захват в апреле 1861 года',
+   description:'В апреле 1861 года французские войска захватили Митхо в провинции Диньтыонг. Контроль этого города не означал уже в 1861 году международно признанного суверенитета Франции над всеми шестью провинциями Кохинхины. Точка — современный географический ориентир Митхо, не провинциальная граница.',
+   sources:['https://content.ucpress.edu/chapters/10448.ch01.pdf','https://mjp.univ-perp.fr/constit/vn1862.htm']},
+  {id:'bienhoa-french-capture-1861',from:1861,to:1861,lon:106.82,lat:10.95,
+   group:'Кохинхина — военная кампания 1861 года',title:'Бьенхоа — захват в декабре 1861 года',
+   description:'В декабре 1861 года войска Франции захватили укреплённый город Бьенхоа. Военное овладение городом не доказывает всей площади провинциального управления и не означает передачу остальных западных провинций. Точка обозначает Бьенхоа, не границу.',
+   sources:['https://hd.housedivided.dickinson.edu/index.php/node/38185','https://mjp.univ-perp.fr/constit/vn1862.htm']},
+  {id:'cochinchina-treaty-three-provinces-1862',from:1862,to:1862,lon:106.70,lat:10.78,
+   group:'Кохинхина — Саигонский договор 1862 года',title:'Сайгон — договор об уступке трёх восточных провинций',
+   description:'Договор 5 июня 1862 года закрепил уступку Франции провинций Зядинь, Диньтыонг и Бьенхоа, а также острова Пуло-Кондор. Виньлонг, Анзянг и Хатьен на тот момент не были уступлены. Точка отмечает Сайгон как географический ориентир, но не границу трёх провинций.',
+   sources:['https://mjp.univ-perp.fr/constit/vn1862.htm','https://www.cambridge.org/core/journals/journal-of-southeast-asian-history/article/abs/debate-on-a-legal-code-for-colonial-cochinchina-the-1869-commission/5A681F31D0CEA51953577CC21F8A6744']},
+  {id:'vinhlong-western-provinces-1867',from:1867,to:1867,lon:105.97,lat:10.25,
+   group:'Кохинхина — захват западных провинций 1867 года',title:'Виньлонг — вступление французских войск 20 июня 1867',
+   description:'20 июня 1867 года французские войска заняли Виньлонг. Это одна из трёх западных провинций, не уступленных Саигонским договором 1862 года. Точка обозначает административный центр, не весь контур провинции.',
+   sources:['https://lichsu.hnue.edu.vn/Ngaynaynamxua/tabid/230/event/129/Default.aspx','https://mjp.univ-perp.fr/constit/vn1862.htm']},
+  {id:'chaudoc-western-provinces-1867',from:1867,to:1867,lon:105.11,lat:10.70,
+   group:'Кохинхина — захват западных провинций 1867 года',title:'Тяудок (Анзянг) — смена власти в июне 1867',
+   description:'В июне 1867 года французская администрация получила контроль над провинцией Анзянг с центром в Тяудоке. Указание города не устанавливает точную историческую границу провинции. Даты отдельных капитуляций в источниках различаются; точка отмечает административный центр.',
+   sources:['https://mjp.univ-perp.fr/constit/vn1862.htm','https://www.historicvietnam.com/les-colonies-francaises-1889-part-1/']},
+  {id:'hatien-western-provinces-1867',from:1867,to:1867,lon:104.49,lat:10.38,
+   group:'Кохинхина — захват западных провинций 1867 года',title:'Хатьен — переход под французское управление в июне 1867',
+   description:'В июне 1867 года французские войска заняли Хатьен, третью западную провинцию Кохинхины. Указание административного центра и провинциальной принадлежности не восстанавливает её кадастровую границу. Точка обозначает Хатьен, а не весь регион.',
+   sources:['https://mjp.univ-perp.fr/constit/vn1862.htm','https://www.historicvietnam.com/les-colonies-francaises-1889-part-1/']},
+  {id:'tianjin-japanese-puppet-municipality-1938-1944',from:1938,to:1944,lon:117.205,lat:39.126,
+   group:'Тяньцзинь — оккупационная администрация, не суверенитет Японии',title:'Тяньцзинь — японская оккупация и подчинённая муниципальная администрация',
+   description:'После японского захвата Тяньцзиня в 1937 году в китайской части города действовала подконтрольная Японии муниципальная администрация. В 1938–1944 годах это фактический оккупационный режим, а не международно признанная передача всей территории Японской империи. Точка отмечает город и отличает власть гарнизона от юридического суверенитета Китая; она не изображает границу концессий.',
+   sources:['https://www.tandfonline.com/doi/full/10.1080/02665433.2017.1408487','https://journal.hep.com.cn/fhc/EN/10.3868/s020-009-020-0018-6','https://history.state.gov/historicaldocuments/frus1945v07/d447']},
+  {id:'kalmar-union-monarch-1500',from:1500,to:1500,lon:12.5683,lat:55.6761,
+   group:'Кальмарская уния — отдельные королевства',title:'Копенгаген — личная уния Дании, Норвегии и Швеции',
+   description:'В 1500 году Дания, Норвегия и Швеция сохраняли собственные институты при общем монархе; союз не был одним централизованным государством. Точка отмечает Копенгаген, не общую границу унии.',
+   sources:['https://cas.au.dk/en/danish-history/modules/module-3-the-late-middle-ages-1340-1523/4-from-mortgaged-kingdom-to-regional-great-power','https://www.medievalists.net/2021/01/medieval-scandinavia-downfall-kalmar-union/']},
+  {id:'dai-viet-trinh-thanglong',from:1600,to:1786,lon:105.8542,lat:21.0278,
+   group:'Дайвьет — Север / Юг',title:'Тханглонг — северное правление Тринь',
+   description:'Северный Дайвьет управлялся правителями Тринь под номинальной властью императоров Ле. Точка отмечает современный ориентир Ханоя; рубежи владений между Тринь и Нгуен менялись и здесь не реконструированы.',
+   sources:['https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf','https://www.viet-studies.com/kinhte/TrinhFinancialStructure_JSAS_June15.pdf']},
+  {id:'dai-viet-nguyen-phuxuan',from:1687,to:1774,lon:107.585,lat:16.467,
+   group:'Дайвьет — Север / Юг',title:'Фусуан — резиденция южных правителей Нгуен',
+   description:'В конце XVII–XVIII веков Фусуан (район современного Хюэ) служил политическим центром владений Нгуен, отделённых от правления Тринь. Точка отмечает город, а не фиксированную линию раздела двух властей.',
+   sources:['https://www.sav.sk/journals/uploads/05141107Antoschenko.pdf','https://www.viet-studies.com/kinhte/TrinhFinancialStructure_JSAS_June15.pdf']},
+  {id:'tay-son-phuxuan-1800',from:1800,to:1800,lon:107.585,lat:16.467,
+   group:'Дайвьет — противостояние Тэйшон и Нгуен',title:'Фусуан — администрация Тэйшон в 1800 году',
+   description:'В 1800 году династия Тэйшон и Нгуен Ань соперничали за власть; Фусуан оставался центром Тэйшон до завоевания Нгуен Анем в 1801 году. Точка показывает город, не границу военного контроля.',
+   sources:['https://dai.mun.ca/PDFs/radical/TraditionalVietnamSomeHistoricalStages.pdf','https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/']},
+  {id:'nguyen-gia-dinh-1800',from:1800,to:1800,lon:106.704,lat:10.823,
+   group:'Дайвьет — противостояние Тэйшон и Нгуен',title:'Зядинь — опорный район Нгуен Аня в 1800 году',
+   description:'Нгуен Ань управлял южными территориями и продолжал войну с Тэйшон до объединения в 1802 году. Точка отмечает район Зядиня (Сайгона), а не установленную историческую линию фронта.',
+   sources:['https://dai.mun.ca/PDFs/radical/TraditionalVietnamSomeHistoricalStages.pdf','https://www.ebsco.com/research-starters/history/vietnamese-civil-wars/']},
+] as const;
+
+export function historicalDatedGapCenters(year:number){
+  return datedGapTransitions.filter(event=>event.from<=year&&year<=event.to)
+   .map(event=>({...event,id:`historical-center-${event.id}`,year,url:event.sources[0]}));
+}
+
+// Corsica was liberated on 4 October 1943. The island was already a French
+// liberated territory throughout 1944, before mainland France's liberation.
+// A point at Bastia documents a dated event, NEVER a political boundary.
+export function historicalCorsicaLiberationCenters(year:number){
+ if(year!==1943&&year!==1944)return [];
+ const description=year===1943?
+  '4 октября 1943 года освобождена Бастия, завершилось освобождение Корсики от немецкой оккупации. В операции участвовали корсиканское Сопротивление, французские и союзные войска. Точка показывает город и событие, а не боевые позиции или границы отдельного государства.':
+  'В 1944 году Корсика уже находилась под французским управлением после освобождения 4 октября 1943 года. Остров служил базой союзных операций в Средиземноморье и высадки в Провансе. Это не повторное освобождение в 1944 году, а продолжение французского управления.';
+ return [{id:'historical-center-corsica-liberation',group:'Корсика — освобождение 1943 года',
+  from:1943,to:1944,year,lon:9.45,lat:42.697,
+  title:year===1943?'Бастия — завершение освобождения Корсики':'Корсика — освобождённая французская территория',
+  description,
+  url:'https://www.defense.gouv.fr/80-ans-liberation-corse-recit-trois-actes'}];
+}
+
+// A geographic footprint can have several erroneous source attributions.
+// Keep every original row, but show one selectable region, not two pretend states.
+const regionTitles:Record<string,string>={Mindanao:'Минданао — местные политические образования',Corsica:'Корсика — разделённое управление','Эльба':'Эльба — три владения','Коморы':'Нгазиджа (Гранд-Комор) — местные султанаты','Малакка':'Малакка — нидерландское владение и спорные пределы'};
+export function historicalUnresolvedRegions<T extends {hash:string;geometryId:string;group:string;from:number;to:number;reason:string;evidence:string;sources?:string[]}>(year:number,issues:readonly T[]){
+ const grouped=new Map<string,T[]>();
+ for(const issue of issues){
+  if(issue.from>year||issue.to<year)continue;
+  // The canonical component hash is invariant to vertex order/winding;
+  // a raw geometry ID is not, so matching outlines can have different IDs.
+  const key=issue.hash;
+  if(!grouped.has(key))grouped.set(key,[]);
+  grouped.get(key)!.push(issue);
+ }
+ return [...grouped.entries()].map(([hash,rows])=>{
+  const first=rows[0];
+  const description=first.group==='Corsica'?(year<=1760?'Паоли и Генуя: генуэзцы сохраняли Кап-Корс и укреплённые города; северная часть полуострова восстановлена отдельно, остальной остров требует уточнения.':year<=1762?'В 1761–1762 годах шли осада Мацинажо и переход местных общин на сторону Паоли. Точные линии контроля в эти годы не установлены.':year<=1764?'Паоли подчинил значительную часть Кап-Корса, но Мацинажо оставался генуэзским опорным пунктом до марта 1765 года. Точные линии контроля не установлены.':'Республика Паоли и приморские крепости: французские гарнизоны размещались по соглашению с Генуей; это не означало французской власти над всем островом. Северная часть Кап-Корса восстановлена отдельно.'):
+   first.group==='Mindanao'?(year<1521?'В начале XVI века на острове существовали местные центры власти. Даты их образования и территориальные пределы остаются неопределёнными.':year>=1605?'Соглашение 1605 года признавало претензии султана Буаяна на первенство; это не доказывает власть над всем островом. Магинданао сохранялось отдельным центром.':year>=1579?'Документы испанской экспедиции 1579 года различают поселения и местных правителей, включая Буайен. Магинданао и Буаян не следует сливать в единую островную державу.':'На острове существовали отдельные центры, в том числе Магинданао и Бутуан. Торговые и династические связи с Брунеем не доказывают суверенитет над всем островом.'):
+   first.group==='Коморы'?'На Нгазидже к XVI веку сложились местные султанаты. Итсандра и Нцуджини являлись историческими торговыми центрами, Икони — центром Бамбао. Взаимное подчинение и политическое влияние менялись. Схема бывших султанатов (карта 8 в диссертации Ю. Абдиллахи, 2012) основана на более поздних традиционных областях; это не подтверждённые ежегодные границы. Исторические медины отмечены точками по координатам ЮНЕСКО.':first.reason;
+  return {id:`historical-region-${hash}`,issue:first,rows,title:regionTitles[first.group]??first.group,description,year,sources:[...new Set([...rows.flatMap(r=>r.sources??[]),...rows.map(r=>r.evidence)])]};
+ });
+}

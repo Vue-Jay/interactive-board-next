@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-27",
+  "branch": "fix/atlas-exhaustive-browser-audit-20261116",
+  "kind": "historical-flag-provenance-and-year-transition-guard",
+  "status": "implemented; whole atlas CI/build and physical review pending; not deployed",
+  "affectedDisplayCases": {
+    "canadaRedEnsignYears": 97,
+    "documentedTransitionsAndColorUncertainty": 12,
+    "usNonStandardizedYears": 135,
+    "us1912MidYearFlagChange": 1,
+    "otherNewDatedTransitions": 4
+  },
+  "exclusions": [
+    "Canada's Red Ensign previously misclassified as a national flag for 1868–1964",
+    "A single flag used to depict a documented mid-year transition",
+    "A reconstructed, not uniquely mandatory pre-1912 US canton arrangement treated as the one federal national flag",
+    "False all-year display of 1946 Italian, 1947 Indian, 1960 Cypriot and 1981 Spanish transition symbols"
+  ],
+  "changedYearGuards": [
+    {
+      "code": "CA",
+      "from": 1868,
+      "to": 1964,
+      "reason": "national flag was not formally adopted"
+    },
+    {
+      "code": "US",
+      "years": [
+        1959,
+        1960
+      ]
+    },
+    {
+      "code": "CA",
+      "years": [
+        1965
+      ]
+    },
+    {
+      "code": "CN",
+      "years": [
+        1949
+      ]
+    },
+    {
+      "code": "RO",
+      "years": [
+        1989
+      ]
+    },
+    {
+      "code": "BY",
+      "years": [
+        1995
+      ]
+    },
+    {
+      "code": "MK",
+      "years": [
+        1995
+      ]
+    },
+    {
+      "code": "BA",
+      "years": [
+        1998
+      ]
+    },
+    {
+      "code": "GE",
+      "years": [
+        2004
+      ]
+    },
+    {
+      "code": "FR",
+      "from": 1974,
+      "to": 1976,
+      "reason": "shade-specific artwork unverified for precise year"
+    },
+    {
+      "code": "US",
+      "from": 1777,
+      "to": 1911,
+      "reason": "federal government did not standardize sole star arrangement and dimensions until 1912"
+    },
+    {
+      "code": "US",
+      "years": [
+        1912
+      ],
+      "reason": "48 star flag effective July 4"
+    },
+    {
+      "code": "ES",
+      "years": [
+        1981
+      ],
+      "reason": "official new coat of arms 1981, artwork adopted December"
+    },
+    {
+      "code": "IT",
+      "years": [
+        1946
+      ],
+      "reason": "republic flag after June 1946 transition"
+    },
+    {
+      "code": "IN",
+      "years": [
+        1947
+      ],
+      "reason": "flag adopted July 22, dominion independence August 15"
+    },
+    {
+      "code": "CY",
+      "years": [
+        1960
+      ],
+      "reason": "republic independence August 16"
+    }
+  ],
+  "sources": [
+    "https://www.canada.ca/en/canadian-heritage/services/flag-canada-history.html",
+    "https://www.si.edu/spotlight/flag-day/flag-facts",
+    "https://www.archives.gov/federal-register/codification/executive-order/10834.html",
+    "https://www.ohr.int/ohr_archive/ohr-bulletin-66-23-february-1998/",
+    "https://www.matsne.gov.ge/en/document/view/13270",
+    "https://heraldika.org.mk/en/drzhavni-simboli/",
+    "https://www.crwflags.com/fotw/Flags/fr.html",
+    "https://history.house.gov/Collection/Detail/15032411627",
+    "https://www.boe.es/eli/es/rd/1981/12/18/2964",
+    "https://www.quirinale.it/it/pagine/simboli-repubblica-tricolore",
+    "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=1749614&lang=1&reg=3",
+    "https://www.gov.cy/presidency/en/about/state-symbols/"
+  ],
+  "territorialOpenAfterExpectedPreviousPackage": 769,
+  "territorialCasesClosedByThisPackage": 0,
+  "notes": "These are user-facing symbol representation corrections and are not counted as territorial polygon adjudications; the 769 open cases remain open pending the full annual rebuild."
+}

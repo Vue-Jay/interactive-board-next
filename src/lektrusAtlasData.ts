@@ -1,11 +1,12 @@
 import {historicalSnapshots} from "./lektrusAtlasModel";
+import type {HistoricalCoverageGap, HistoricalTerritorialIssue, HistoricalGeometry} from "./lektrusHistoricalTimeline";
 import {regionDisplayNames} from "./regionDisplayNames";
 
 export type GeoPosition=[number,number];
 export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineString"|"Point"|"MultiPoint";
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null;bbox?:number[]};
-export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
+export type GeoCollection={type:"FeatureCollection";features:GeoFeature[];historicalCoverageGaps?:HistoricalCoverageGap[];historicalTerritorialIssues?:(HistoricalTerritorialIssue&{sourceIndex:number;name:string;geometry:HistoricalGeometry})[];historicalRejected?:{name:string;review?:{reason:string;reasonRu?:string;sources:string[]}}[];historicalUncoveredYear?:number};
 export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"rivers-ultra"|"lakes-ultra"|"cities-regional"|"cities-local"|"admin-regional"|"admin-world-overview"|"admin-world-lines"|"regions-regional"|"elevation-regional"|"glaciers-regional"|"marine"|"physical-labels";
 // Pin the dataset snapshots used by school lessons.
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/";
@@ -71,10 +72,11 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
     // lines contain one such New Zealand record; rejecting the whole dataset
     // would discard thousands of genuine borders. Never invent its line.
     const drawable={...body,features:body.features.filter(f=>f.geometry!==null)};
-    cache.set(key,drawable);
+    const corrected=key==="modern-countries-russian"?correctModernTerritoryLabels(drawable):drawable;
+    cache.set(key,corrected);
     // Keep memory bounded. Slow phones should not hold decades of geometry.
     if(cache.size>8)cache.delete(cache.keys().next().value!);
-    return drawable;
+    return corrected;
    }catch(error){errors.push(error instanceof Error?error.message:String(error))}
   }
   throw new Error("Не удалось получить геоданные: "+errors.join("; "));
@@ -276,6 +278,13 @@ export function historicalCountryName(rawName:string):string{
 /** Only real, meaningful Russian proper names may appear on the map.
  * Unnamed / placeholder entries must not acquire invented titles. */
 const atlasUnnamed=/^(?:unknown|unnamed|no[ -]?name|name[ -]?unknown|none|null|undefined|n.a|not applicable|unassigned|untitled|без названия|неизвестно|объект без названия|безымянн(?:ый|ая|ое)|[-?.\s]+)$/i;
+/** Original historical names can be browsed before a Russian translation has
+ * been verified. This is not a name to draw as a Russian map label. */
+export function historicalSourceName(value:unknown):string{
+ if(typeof value!=="string")return "";
+ const name=value.trim();
+ return name.length>1&&name.length<=160&&!atlasUnnamed.test(name)?name:"";
+}
 export function isRussianAtlasName(value:unknown):value is string{
  return typeof value==="string"&&value.trim().length>1&&
   /[А-ЯЁа-яё]/.test(value)&&!atlasUnnamed.test(value.trim());
@@ -316,7 +325,96 @@ export function historicalMapFeatures(source:GeoCollection|null):GeoFeature[]{
   feature.geometry?.type==="MultiPolygon")??[];
 }
 export const hasAtlasName=(feature:GeoFeature)=>geoFeatureName(feature).length>0;
+// Exact identities from the pinned RUS 2022 file. Its eight intentionally
+// unnamed polygons are geographical records, not additional sovereign states.
+// Require the exact archive code AND bbox before projecting a label onto them.
+type ModernTerritoryRecord={label?:string;bbox?:number[];note:string;url:string};
+const unGeorgia="https://www.un.org/pga/80/2026/06/04/pga-remarks-at-an-annual-meeting-on-guam-status-of-internally-displaced-persons-and-refugees-from-abkhazia-georgia-and-the-tskhinvali-region-south-ossetia-georgia/";
+const unUkraine="https://digitallibrary.un.org/record/3990400";
+const brazilUruguay="https://funag.gov.br/loja/download/685-O_estatuto_da_fronteira_brasil_uruguai.pdf";
+const southChinaArbitration="https://pca-cpa.org/en/cases/7/";
+const modernArchiveTerritories:Record<string,ModernTerritoryRecord>={
+ B38:{label:"Нагорный Карабах (архивный контур)",bbox:[46.291365,39.538156,47.203353,40.412728],note:"Архивный контур района Нагорного Карабаха, не независимое государство и не линия контроля на 2026 г. После событий сентября 2023 г. Международный суд ООН обязал Азербайджан обеспечить безопасное возвращение и выезд жителей.",url:"https://api.icj-cij.org/sites/default/files/press-releases/0/000-20240722-sta-01-00-en.pdf"},
+ C03:{label:"Луганская область (архивный участок)",bbox:[38.255732,47.811527,39.993248,48.705613],note:"Один архивный участок карты 2022 г., а не вся Луганская область или актуальная линия контроля. Резолюция ГА ООН ES-11/4 не признаёт изменение международно признанных границ Украины.",url:unUkraine},
+ C02:{label:"Донецкая область (архивный участок)",bbox:[37.49331,47.026353,39.055529,48.454614],note:"Один архивный участок карты 2022 г., а не вся Донецкая область или актуальная линия контроля. Резолюция ГА ООН ES-11/4 не признаёт изменение международно признанных границ Украины.",url:unUkraine},
+ "-99":{label:"Южное Патагонское ледниковое плато",bbox:[-73.588036,-49.759959,-73.057424,-49.272754],note:"Участок Южного Патагонского ледникового поля, идентифицирован по совпадающей геометрии нейтральной версии Natural Earth. Аргентина и Чили заключили соглашение о линии границы в 1998 г.; архивный участок не определяет суверенитет.",url:"https://www.argentina.gob.ar/normativa/nacional/resoluci%C3%B3n-142-2018-307629/texto"},
+ B92:{label:"Ринкон-де-Артигас (архивный участок)",bbox:[-56.02239,-31.082443,-55.816728,-30.856161],note:"Участок на границе Бразилии и Уругвая; картографическое сопоставление не разрешает разногласия по прохождению границы.",url:brazilUruguay},
+ PFA:{label:"Парасельские острова",bbox:[111.192882,15.775377,112.736827,16.933254],note:"Архипелаг в Южно-Китайском море. Вьетнам заявляет права на Хоангша (Парасельские острова), находящиеся под контролем Китая. Архивный контур не является решением вопроса о суверенитете.",url:"https://mofa.gov.vn/web/ministry-of-foreign-affairs/detail/chi-tiet/the-announcement-of-the-spokesperson-of-the-ministry-of-foreign-affairs-of-viet-nam-pham-thu-hang-on-viet-nam-s-position-concerning-china-s-invasion-of-the-hoang-sa-paracel-islands-in-1974--51.html"},
+ DEN:{label:"Остров Ханса (Тартупалук)",bbox:[-66.377919,80.820258,-66.297963,80.832831],note:"Канада и Дания подписали соглашение о разделении острова в июне 2022 г. По материалам правительства Канады от 16 июня 2026 г. работа над условиями доступа продолжалась в ожидании ратификации. Контур предшествует соглашению.",url:"https://international.canada.ca/en/global-affairs/corporate/transparency/briefing-documents/parliamentary-committee/2026-06-16-faae"},
+ KOD:{label:"Скалы Лианкур (Токто / Такэсима)",bbox:[131.860148,37.241606,131.862522,37.244006],note:"Островки находятся под управлением Республики Корея (Токто); Япония предъявляет претензии (Такэсима). Подпись не выражает признания претензий какой-либо стороны.",url:"https://www.mofa.go.jp/region/asia-paci/takeshima/"},
+ PGA:{label:"Острова Спратли",bbox:[114.02768,9.679511,115.848806,11.117987],note:"Архипелаг в Южно-Китайском море. Арбитраж 2016 г. касался морских прав и статуса отдельных объектов, а не определения суверенитета над островами. В архиве ошибочно записано Уэйк; это другой остров на Тихом океане.",url:southChinaArbitration},
+ SAH:{note:"Западная Сахара включена ООН в список несамоуправляющихся территорий. Отдельный контур не означает признания окончательного суверенитета.",url:"https://www.un.org/dppa/decolonization/en/nsgt"},
+ B35:{note:"Абхазия: де-факто отдельная администрация; ООН подтверждает территориальную целостность Грузии в международно признанных границах. Контур не определяет юридический статус.",url:unGeorgia},
+ B37:{note:"Южная Осетия: де-факто отдельная администрация; ООН подтверждает территориальную целостность Грузии в международно признанных границах. Контур не определяет юридический статус.",url:unGeorgia},
+ BRI:{note:"Остров Бразилера у устья реки Куараи; Бразилия и Уругвай расходятся в трактовке принадлежности острова.",url:brazilUruguay},
+ BRT:{note:"Бир-Тавиль — участок между Египтом и Суданом. Обозначение в Natural Earth не является юридическим подтверждением отсутствия суверенитета.",url:"https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-breakaway-disputed-areas/"},
+ ATA:{note:"Антарктида не является государством. Статья IV Договора об Антарктике сохраняет позиции сторон по территориальным претензиям и запрещает новые или расширенные претензии во время действия договора.",url:"https://www.ats.aq/e/peaceful.html"},
+ IOA:{note:"Архивная объединённая запись острова Рождества и Кокосовых (Килинг) островов. Это две отдельные внешние территории Австралии, а не одно государство.",url:"https://www.ga.gov.au/scientific-topics/national-location-information/geography/external-territories"},
+ SGS:{note:"Южная Георгия и Южные Сандвичевы острова управляются Великобританией; Аргентина заявляет права на них. Контур не разрешает спор о суверенитете.",url:"https://treaties.un.org/Pages/ViewDetails.aspx?chapter=19&clang=_en&mtdsg_no=XIX-41-a&src=IND"},
+ FLK:{note:"Фолклендские (Мальвинские) острова — несамоуправляющаяся территория в списке ООН, управляемая Великобританией; существует спор о суверенитете с Аргентиной.",url:"https://www.un.org/dppa/decolonization/en/content/falkland-islands-malvinas"},
+ CSI:{note:"Острова Кораллового моря — внешняя территория Австралии; разрозненные рифы и островки не следует считать сплошной сушей.",url:"https://www.ga.gov.au/scientific-topics/national-location-information/dimensions/remote-offshore-territories/coral-sea-islands"},
+ SCR:{note:"Риф Скарборо (Скарборо-Шол) — спорный морской объект. Арбитраж 2016 г. не определял суверенитет над ним.",url:southChinaArbitration},
+ FRA:{note:"Архивный полигон включает Французскую Гвиану, а источник ООН M49 выделяет её отдельно. Статистическая площадь Франции не обязана совпадать с контуром, включающим заморскую территорию.",url:"https://unstats.un.org/unsd/methodology/m49/overview"},
+ NOR:{note:"Архивный полигон включает Шпицберген и Ян-Майен. Статистическое управление Норвегии отдельно учитывает основную территорию, Шпицберген и Ян-Майен; их площади нельзя сравнивать без одинакового охвата.",url:"https://www.ssb.no/en/natur-og-miljo/areal/statistikk/areal-av-land-og-ferskvatn"},
+ SRB:{note:"Архивный контур включает Косово, в другой картографической базе оно выделено отдельно. Резолюция Совета Безопасности ООН 1244 определяет мандат международного присутствия; сравнение полигонов не устанавливает окончательный статус.",url:"https://digitallibrary.un.org/record/274488?ln=en"},
+ GEO:{note:"В архивной геометрии Абхазия и Южная Осетия выделены из контура Грузии. ООН подтверждает территориальную целостность Грузии в международно признанных границах; контуры отражают разные картографические подходы.",url:unGeorgia},
+};
+function modernArchiveTerritory(feature:GeoFeature):ModernTerritoryRecord|undefined{
+ if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
+ const p=feature.properties??{},code=String(p.ADM0_A3??p.ADM0_A3_RU??"");
+ if(!Object.hasOwn(modernArchiveTerritories,code))return undefined;
+ const record=modernArchiveTerritories[code];
+ if(!record)return undefined;
+ if(record.bbox&&(!feature.bbox||feature.bbox.length!==4||!record.bbox.every((value,i)=>Math.abs(value-feature.bbox![i])<1e-6)))return undefined;
+ return record;
+}
+export function correctModernTerritoryLabels(collection:GeoCollection):GeoCollection{
+ return {...collection,features:collection.features.map(f=>{
+  if(f.properties?.ATLAS_MODERN_TERRITORY_LABEL===true)return f;
+  const record=modernArchiveTerritory(f);
+  if(!record?.label)return f;
+  const p=f.properties??{};
+  // Preserve raw source identity, but never request unrelated Wake Island facts.
+  return {...f,properties:{...p,ATLAS_ORIGINAL_NAME_RU:p.NAME_RU??null,NAME_RU:record.label,
+   ...(p.ADM0_A3==="PGA"?{ATLAS_ORIGINAL_WIKIDATAID:p.WIKIDATAID,ATLAS_ORIGINAL_NAME_EN:p.NAME_EN,WIKIDATAID:null,NAME_EN:"Spratly Islands"}:{}),
+   ATLAS_MODERN_TERRITORY_LABEL:true}};
+ })};
+}
+/** Dated corrections for the modern overview. Do not apply to historical
+ * shapes or change geometry in the absence of an authoritative new layer. */
+export function modernAtlasTerritoryUpdate(feature:GeoFeature):{note:string;url:string}|undefined{
+ if(!["Polygon","MultiPolygon"].includes(feature.geometry?.type??""))return undefined;
+ const code=String(feature.properties?.ADM0_A3??"");
+ const reviewed=modernArchiveTerritory(feature);
+ if(reviewed)return {note:reviewed.note,url:reviewed.url};
+ if(code==="VAT")return {
+  note:"Территория Ватикана — 0,44 км² по данным государства. Контур Natural Earth 2022 г. является крайне условным (около 0,012 км² при сравнении в равновеликой проекции); непригоден для точного определения границы. Экстерриториальные объекты Святого Престола не следует считать территорией Ватикана.",
+  url:"https://www.vaticanstate.va/en/state-and-government/general-informations/geography.html"};
+ if(code==="MCO")return {
+  note:"Площадь суши Монако — 2,08 км² по справке ЕС за 2026 г. Архивный контур Natural Earth (около 18,84 км²) сильно преувеличивает размеры государства; необходима замена на согласованную геометрию границы с Францией и береговой линии.",
+  url:"https://data.consilium.europa.eu/doc/document/WK-3179-2026-INIT/en/pdf"};
+ if(code==="SGP")return {
+  note:"Площадь суши Сингапура в июне 2026 г. составляет 745,1 км² по кадастровым данным Singapore Land Authority. Намыв территорий изменяет береговую линию; архивная карта 2022 г. не подтверждает её современное положение.",
+  url:"https://data.gov.sg/datasets/d_d5472d7368d6547892138f779872bbff/view"};
+ if(code==="KGZ"||code==="TJK")return {
+  note:"13 марта 2025 г. Кыргызстан и Таджикистан подписали договор о государственной границе. 14 июля 2026 г. началась совместная установка первых пограничных столбов. Архивный контур Natural Earth 2022 г. не подтверждает новую договорную линию.",
+  url:"https://www.gov.kg/index.php/ru/post/s/26456-kyrgyzstan-menen-tazikstandyn-mamlekettik-cek-arasyn-demarkaciyaloo-isterinin-alkagynda-algacky-cek-ara-mamycalaryn-ornotuu-bastaldy"};
+ if(code==="IOT"||code==="MUS")return {
+  note:"Архипелаг Чагос: Великобритания и Маврикий подписали соглашение о суверенитете 22 мая 2025 г. По ответу правительства Великобритании от 6 ноября 2026 г. соглашение ещё не реализовано; архивный контур не заменяет описание спорного статуса.",
+  url:"https://questions-statements.parliament.uk/written-questions/detail/2026-10-19/35838"};
+ if(code==="ARM"||code==="AZE")return {
+  note:"15 мая 2024 г. комиссии Армении и Азербайджана согласовали описания четырёх участков государственной границы по геодезическим измерениям. Архивный контур 2022 г. не является подтверждением линии после этой делимитации.",
+  url:"https://www.mfa.am/en/press-releases/2024/05/15/arm_az/12644"};
+ if(code==="RUS"||code==="UKR")return {
+  note:"Архивный слой от 2 июня 2022 г. предшествует решениям России от сентября 2022 г. о статусе Донецкой, Луганской, Запорожской и Херсонской областей. Генеральная Ассамблея ООН в резолюции ES-11/4 от 12 октября 2022 г. не признала изменение международно признанных границ Украины. Картографическая позиция и фактический контроль территорий не равнозначны международному признанию.",
+  url:"https://digitallibrary.un.org/record/3990400"};
+ return undefined;
+}
 export const borderPrecision=(f:GeoFeature):number=>{
+ // Annual Cliopatria geometries remain candidate reconstructions even when
+ // their names or a component attribution was independently reviewed.
+ // A solid line would silently claim an exact historical political border.
+ if(f.properties?.historicalRole&&f.properties?.geometryStatus==="candidate")return 1;
  if(f.properties?.ATLAS_HISTORICAL_LABEL)return 1;
  const number=Number(f.properties?.BORDERPRECISION);
  return Number.isFinite(number)&&number>=1&&number<=3?number:0;
@@ -344,10 +442,107 @@ const unDecolonization="https://www.un.org/dppa/decolonization/history/former-tr
 const diplomaticHistory="https://history.state.gov/countries/";
 type HistoricalLabelCorrection=[label:string,affiliation:string,source:string];
 const colonialNames:Record<string,string>={Belize:"Британский Гондурас",Botswana:"Бечуаналенд",Lesotho:"Басутоленд",Guyana:"Британская Гвиана",Malawi:"Ньясаленд",Zambia:"Северная Родезия",Zimbabwe:"Южная Родезия",Namibia:"Юго-Западная Африка"};
-export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCollection{
- if(![1914,1920,1945,1960].includes(year))return source;
- const corrections:Record<string,HistoricalLabelCorrection>={};
- for(const [name,label] of Object.entries(colonialNames))corrections[name]=[label,name==="Namibia"?"Администрация Южно-Африканского Союза":"Британская империя",unDecolonization];
+const historicalCorrectionCache=new Map<number,Record<string,HistoricalLabelCorrection>>();
+function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabelCorrection>{
+ const cached=historicalCorrectionCache.get(year);
+ if(cached)return cached;
+ const corrections:Record<string,HistoricalLabelCorrection>=Object.create(null);
+ const colonial=(names:Record<string,string>,affiliation:string,from:number,to:number,sourceUrl=unDecolonization)=>{
+  if(year<from||year>to)return;
+  for(const [name,label] of Object.entries(names))corrections[name]=[label,affiliation,sourceUrl];
+ };
+ // Apply dated rules only to periods in which the documented administration
+ // actually existed. Modern geographic names alone are not evidence of statehood.
+ for(const [name,label] of Object.entries(colonialNames)){
+  if(year>=1920&&year<=1960||year===1914&&!["Namibia","Zambia","Zimbabwe"].includes(name))
+   corrections[name]=[label,name==="Namibia"?"Южно-Африканская администрация":"Британская империя",unDecolonization];
+ }
+ colonial({Belize:"Британский Гондурас",Guyana:"Британская Гвиана",Lesotho:"Басутоленд"},"Великобритания",1878,1960);
+ colonial({Botswana:"Бечуаналенд"},"Великобритания",1900,1960);
+ colonial({"Gambia, The":"Гамбия",Gambia:"Гамбия","Sierra Leone":"Сьерра-Леоне",Malta:"Мальта",Jamaica:"Ямайка",Barbados:"Барбадос",Grenada:"Гренада",Dominica:"Доминика",Montserrat:"Монтсеррат",Anguilla:"Ангилья","Saint Lucia":"Сент-Люсия","Saint Kitts and Nevis":"Сент-Китс и Невис","Saint Vincent and the Grenadines":"Сент-Винсент и Гренадины","Antigua and Barbuda":"Антигуа и Барбуда",Trinidad:"Тринидад",Bahamas:"Багамские острова","Turks and Caicos Islands":"Теркс и Кайкос",Fiji:"Фиджи"},"Великобритания",1878,1960);
+ colonial({Uganda:"Уганда",Kenya:"Кения",Swaziland:"Свазиленд",Brunei:"Бруней"},"Британский протекторат / колониальная администрация",1914,1960);
+ colonial({Ghana:"Золотой Берег"},"Великобритания",1900,1945);
+ colonial({Malaysia:"Малайские территории (условный контур)"},"Британская администрация; статус областей различался",1914,1945);
+ colonial({"Guinea-Bissau":"Португальская Гвинея",Angola:"Ангола",Mozambique:"Мозамбик"},"Португалия",1900,1960);
+ colonial({"Equatorial Guinea":"Испанская Гвинея"},"Испания",1914,1960);
+ colonial({"Western Sahara":"Испанская Сахара"},"Испания",1920,1960);
+ colonial({Djibouti:"Французский берег Сомали"},"Франция",1914,1960);
+ colonial({Algeria:"Алжир"},"Французская администрация; с 1954 г. война за независимость",1960,1960,"https://digitallibrary.un.org/record/860972/files/1963-E.pdf");
+ colonial({Algeria:"Алжир"},"Франция",1900,1945);
+ colonial({Tunisia:"Тунис"},"Французский протекторат",1900,1945);
+ colonial({Morocco:"Марокко (условный контур)"},"Французский и испанский протектораты; статус областей различался",1914,1945);
+ colonial({"French Guiana":"Французская Гвиана",Guadeloupe:"Гваделупа",Martinique:"Мартиника"},"Франция",1878,2010);
+ colonial({Greenland:"Гренландия"},"Дания",1878,2010);
+ colonial({"Netherlands Antilles":"Нидерландские владения в Карибском море"},"Нидерланды",1878,1945);
+ colonial({"Netherlands Antilles":"Нидерландские Антильские острова"},"Королевство Нидерландов",1960,2000);
+ colonial({"Netherlands Antilles":"Нидерландские Антильские острова (до 10 октября 2010 г.)"},"В течение 2010 года статус изменился",2010,2010,"https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom");
+ colonial({"United States Virgin Islands":"Датская Вест-Индия"},"Дания",1878,1914,"https://www.doi.gov/oia/islands/virgin-islands");
+ colonial({"United States Virgin Islands":"Американские Виргинские острова"},"США",1920,2010,"https://www.doi.gov/oia/islands/virgin-islands");
+ colonial({"American Samoa":"Самоанские острова (восточная часть)"},"Местные политические образования; контур условный",1878,1880,"https://www.doi.gov/sites/default/files/elips/documents/575-dm-1.pdf");
+ colonial({"American Samoa":"Американское Самоа"},"США; присоединение в 1900–1904 гг.",1900,2010,"https://www.doi.gov/sites/default/files/elips/documents/575-dm-1.pdf");
+ colonial({"Kingdom of Hawaii":"Гавайские острова"},"США (аннексия 1898 г.)",1900,1900,diplomaticHistory+"hawaii");
+ colonial({"Kingdom of Brazil":"Бразильская республика"},"Бразилия",1900,1900,"https://history.state.gov/historicaldocuments/frus1894app2/ch7subch1");
+ colonial({Iran:"Персия"},"Персия",1920,1930,"https://history.state.gov/historicaldocuments/frus1935v01/d338");
+ colonial({Israel:"Подмандатная Палестина (условный контур)"},"Британский мандат",1930,1945,"https://history.state.gov/milestones/1945-1952/creation-israel");
+ colonial({"Tanzania, United Republic of":"Танганьика и Занзибар (условный контур)"},"Британская администрация; отдельные территории",1920,1960);
+ colonial({Burundi:"Бурунди (часть Руанды-Урунди)",Rwanda:"Руанда (часть Руанды-Урунди)"},"Бельгийская администрация",1920,1960);
+ colonial({"Papua New Guinea":"Папуа и Новая Гвинея (условный контур)"},"Статус частей территории различался; австралийская администрация",1920,1960);
+ colonial({"Saar Protectorate":"Саарская область"},"Французская оккупационная зона; особый статус оформлен позднее",1945,1945,"https://www.saarland.de/stk/EN/service/downloads/Entstehung_Saarland.pdf?__blob=publicationFile&v=1");
+ colonial({Zaire:"Демократическая Республика Конго"},"Демократическая Республика Конго",2000,2010);
+ colonial({Burma:"Мьянма"},"Союз Мьянма; название в ООН изменено в июне 1989 г.",1994,2010,"https://www.un.org/en/about-us/member-states/myanmar");
+ colonial({Byelarus:"Беларусь"},"Республика Беларусь; название в ООН изменено 19 сентября 1991 г.",1994,2010,"https://research.un.org/en/unmembers/currentmembers");
+ colonial({Macedonia:"Республика Македония"},"В ООН в 1993–2019 гг. использовалось временное наименование «бывшая югославская Республика Македония»",1994,2010,"https://digitallibrary.un.org/record/914046");
+ colonial({"Puerto Rico":"Пуэрто-Рико"},"Территория США, не отдельное суверенное государство",1994,2010,"https://www.doi.gov/oia/islands/politicatypes");
+ colonial({Trinidad:"Тринидад и Тобаго (неполный контур)"},"Независимое государство с 1962 г.; исходный полигон не охватывает остров Тобаго",1994,2010,"https://digitallibrary.un.org/record/707403/files/A_HRC_WG.6_12_TTO_1-EN.pdf");
+ colonial({Italy:"Италия (условный контур)"},"В исходном контуре включено местоположение Сан-Марино; Сан-Марино — отдельное государство и член ООН с 1992 г.",1994,2010,"https://www.un.org/en/about-us/growth-in-un-membership");
+ colonial({Indonesia:"Индонезия (условный контур)"},"Восточный Тимор — независимое государство с 2002 г.; источник 2010 г. не выделяет его отдельной границей",2010,2010,"https://peacekeeping.un.org/sites/default/files/past/unmit/background.shtml");
+ colonial({Indonesia:"Индонезия (условный контур)"},"В Восточном Тиморе с 1999 г. действовала переходная администрация ООН; отдельная граница в слое 2000 г. отсутствует",2000,2000,"https://peacekeeping.un.org/sites/default/files/past/unmit/background.shtml");
+ colonial({Switzerland:"Швейцария"},"Швейцарская Конфедерация; основной исходный полигон восстановлен по проверенному идентификатору геометрии",1994,2010,"https://www.swisstopo.admin.ch/en/national-border");
+ colonial({"Hong Kong":"Гонконг"},"КНР, специальный административный район с 1 июля 1997 г.",2000,2010,"https://www.basiclaw.gov.hk/en/basiclaw/preamble.html");
+ colonial({"Saint Barthelemy":"Сен-Бартелеми"},"Франция; самостоятельная заморская общность с 2007 г.",1994,2000,"https://www.outre-mer.gouv.fr/territoires/saint-barthelemy");
+ colonial({"Saint Martin":"Сен-Мартен (французская часть)"},"Франция; самостоятельная заморская общность с 2007 г.",1994,2000,"https://www.outre-mer.gouv.fr/territoires/saint-martin");
+ colonial({"Saint Barthelemy":"Сен-Бартелеми"},"Заморская общность Франции",2010,2010,"https://www.outre-mer.gouv.fr/territoires/saint-barthelemy");
+ colonial({"Saint Martin":"Сен-Мартен (французская часть)"},"Заморская общность Франции",2010,2010,"https://www.outre-mer.gouv.fr/territoires/saint-martin");
+ const dutchCaribbeanTreaties="https://treaties.un.org/pages/historicalinfo.aspx";
+ colonial({"Sint Maarten":"Синт-Мартен (приближённый контур)"},"В составе Нидерландских Антил",1994,2009,dutchCaribbeanTreaties);
+ colonial({"Sint Maarten":"Синт-Мартен (приближённый контур)"},"Нидерландские Антилы до 10 октября; затем отдельная страна Королевства Нидерландов",2010,2010,dutchCaribbeanTreaties);
+ colonial({"Netherlands Antilles":"Бывшие Нидерландские Антилы (неполный архивный контур)"},"Распущены 10 октября 2010 г.; на архивном контуре Кюрасао, Бонайре и Синт-Эстатиус ещё объединены",2010,2010,dutchCaribbeanTreaties);
+ colonial({Serbia:"Сербия",Montenegro:"Черногория"},"Союзная Республика Югославия",1994,2000,diplomaticHistory+"serbia/summary");
+ // The following polygons explicitly use a polity name outside its known
+ // period. Their geometry is not evidence for a replacement polity; mark the
+ // territorial outline rather than assign a guessed successor to the shape.
+ const disputedContour=(name:string,label:string,period:number,reason:string,url:string)=>{
+  if(year===period)corrections[name]=[label+" (условный контур)",reason+"; принадлежность по этому контуру не установлена",url];
+ };
+ disputedContour("Mauryan Empire","Бывшие земли империи Маурьев",-100,"Империя распалась около 185 г. до н. э.","https://www.metmuseum.org/essays/mauryan-empire-ca-323-185-b-c");
+ disputedContour("Parthian Empire","Бывшие земли Парфянской державы",300,"Парфянская держава прекратила существование в 224 г.","https://www.metmuseum.org/toah/hd/paru/hd_paru.htm");
+ disputedContour("Sasanian Empire","Бывшие земли Сасанидов",700,"Держава Сасанидов пала к 651 г.","https://www.metmuseum.org/essays/the-sasanian-empire-224-651-a-d");
+ disputedContour("Sui Empire","Бывшие земли империи Суй",700,"Династия Суй прекратилась в 618 г.","https://www.metmuseum.org/toah/ht/06/eac.html");
+ disputedContour("Koguryo","Бывшие земли Когурё",700,"Когурё пало в 668 г.","https://www.metmuseum.org/toah/ht/06/eak.html");
+ disputedContour("Paekche","Бывшие земли Пэкче",700,"Пэкче пало в 660 г.","https://www.metmuseum.org/toah/ht/06/eak.html");
+ disputedContour("Xixia","Тангутские земли",1000,"Государство Си Ся сформировалось позже", "https://www.metmuseum.org/toah/ht/07/nc.html");
+ disputedContour("Mongol Empire","Монгольские земли",1200,"Монгольская империя образована в 1206 г.","https://www.metmuseum.org/toah/ht/07/nc.html");
+ disputedContour("Sultanate of Delhi","Земли будущего Делийского султаната",1200,"Делийский султанат основан в 1206 г.","https://www.metmuseum.org/toah/ht/07/ssn.html");
+ disputedContour("Fatimid Caliphate","Бывшие земли Фатимидов",1200,"Фатимидский халифат прекратил существование в 1171 г.","https://www.metmuseum.org/toah/ht/07/wae.html");
+ for(const period of [1300,1400])disputedContour("Chola Empire","Бывшие земли Чола",period,"Имперская династия Чола завершилась к 1279 г.","https://www.metmuseum.org/toah/ht/07/sss.html");
+ disputedContour("Inca Empire","Бывшие земли империи инков",1600,"Империя инков пала в 1530-х гг.; последнее государство инков в Вилькабамбе — в 1572 г.","https://www.metmuseum.org/toah/ht/08/sanc.html");
+ colonial({"Poland-Lithuania":"Королевство Польское и Великое княжество Литовское (условный контур)"},"Польско-литовская династическая уния; Речь Посполитая образована в 1569 г.",1400,1530,"https://pamiecpolski.archiwa.gov.pl/akt-unii-krewskiej/");
+ colonial({"United Kingdom":"Королевство Великобритания"},"Королевство Великобритания (1707–1800); уния с Ирландией с 1801 г.",1715,1800,"https://www.parliament.uk/about/living-heritage/evolutionofparliament/legislativescrutiny/act-of-union-1707/overview/the-articles-constitution-and-trade/");
+ colonial({"United Kingdom of Great Britain and Ireland":"Соединённое Королевство Великобритании и Северной Ирландии"},"Название Соединённого Королевства уточнено законом 1927 г.",1930,2010,"https://www.legislation.gov.uk/ukpga/1927/4/pdfs/ukpga_19270004_en.pdf");
+ colonial({Hail:"Хаиль (условный контур)",Hejaz:"Хиджаз (условный контур)"},"Королевство Хиджаза и Неджда; переименовано в Саудовскую Аравию в 1932 г.",1930,1930,"https://history.state.gov/historicaldocuments/frus1933v02/ch26subch1");
+ colonial({Kuwait:"Кувейт"},"Британская договорная защита до 19 июня 1961 г.",1900,1960,diplomaticHistory+"kuwait");
+ colonial({Qatar:"Катар"},"Британский протекторат до 1971 г.",1920,1960,diplomaticHistory+"qatar/recognition");
+ colonial({Egypt:"Египетское королевство"},"Египет; формальная независимость с 1922 г., сохранялось британское влияние",1930,1945,diplomaticHistory+"egypt");
+ colonial({Egypt:"Объединённая Арабская Республика (Египет)",Syria:"Объединённая Арабская Республика (Сирия)"},"Объединённая Арабская Республика, 1958–1961 гг. (союз Египта и Сирии)",1960,1960,diplomaticHistory+"egypt");
+ colonial({Vietnam:"Северный и Южный Вьетнам (общий условный контур)"},"После Женевских соглашений 1954 г. существовали ДРВ и Республика Вьетнам; временная военная линия разделения, не политическая граница, в исходном контуре отсутствует",1960,1960,"https://history.state.gov/historicaldocuments/frus1952-54v16/d1035");
+ colonial({Eritrea:"Эритрея"},"Автономная единица в федерации с Эфиопией под суверенитетом Эфиопской короны",1960,1960,"https://history.state.gov/historicaldocuments/frus1951v05/d701");
+ colonial({Philippines:"Филиппины"},"Под суверенитетом США; полная независимость с 1946 г.",1900,1938,diplomaticHistory+"philippines");
+ colonial({Philippines:"Филиппины (Содружество)"},"В 1945 г. завершалось освобождение от японской оккупации; полная независимость с 1946 г.",1945,1945,diplomaticHistory+"philippines");
+ const sovietConstitution="https://projects.rusarchives.ru/statehood/09-05-konstitution-project-1924.shtml";
+ colonial({"White Russia":"СССР (условный контур)","Far Eastern SSR":"СССР (Дальний Восток, условный контур)"},"СССР; исходная подпись и контур не соответствуют отдельной союзной республике",1930,1930,sovietConstitution);
+ colonial({Georgia:"Грузинская ССР",Armenia:"Армянская ССР",Azerbaijan:"Азербайджанская ССР"},"СССР, Закавказская СФСР",1930,1930,sovietConstitution);
+ colonial({Armenia:"Армянская ССР",Georgia:"Грузинская ССР",Azerbaijan:"Азербайджанская ССР"},"Союзная республика СССР",1938,1960,"https://guides.rusarchives.ru/node/1397");
+ colonial({India:"Британская Индия (условный контур)"},"Британская администрация; княжества имели особый статус",1900,1938,diplomaticHistory+"india");
  if(year===1914){
   delete corrections.Namibia;delete corrections.Zambia;delete corrections.Zimbabwe;
   for(const [n,label] of Object.entries({Armenia:"Армянские земли Закавказья",Azerbaijan:"Азербайджанские земли Закавказья",Georgia:"Грузинские земли Закавказья",Finland:"Великое княжество Финляндское"}))corrections[n]=[label,"Российская империя",diplomaticHistory+n.toLowerCase()];
@@ -356,6 +551,7 @@ export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCol
  }
  if(year===1920){
   corrections.USSR=["Советская Россия","Советская Россия",diplomaticHistory+"russia"];
+  corrections["Far Eastern SSR"]=["Дальневосточная республика (с апреля 1920 г.)","Образована 6 апреля 1920 г.; границы и контроль менялись в течение года","https://guides.rusarchives.ru/terms/74/11935/organy-vlasti-i-upravleniya-dalnevostochnoy-respubliki"];
   corrections.Georgia=["Грузинская демократическая республика","Грузия",diplomaticHistory+"georgia"];
   corrections.Azerbaijan=["Азербайджан (смена власти в 1920 г.)","Статус менялся в течение года",diplomaticHistory+"azerbaijan"];
   corrections.Armenia=["Армения (смена власти в 1920 г.)","Статус менялся в течение года",diplomaticHistory+"armenia"];
@@ -367,29 +563,92 @@ export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCol
   corrections.Israel=["Подмандатная Палестина (условный контур)","Британский мандат",diplomaticHistory+"israel"];
   corrections.Jordan=["Трансиордания","Британский мандат",diplomaticHistory+"jordan"];
   corrections.Zaire=["Бельгийское Конго","Бельгия",unDecolonization];
-  corrections.Malaysia=["Малайские территории","Британская империя",unDecolonization];
+  corrections.Malaysia=["Малайские территории","Британская администрация; японская оккупация завершилась в 1945 г.",unDecolonization];
  }
  if(year===1960){
-  corrections.Zaire=["Республика Конго (Леопольдвиль)","Республика Конго",unDecolonization];
-  corrections.Malaysia=["Малайская Федерация (условный контур)","Статус территорий неодинаков",diplomaticHistory+"malaysia"];
+  corrections.Zaire=["Республика Конго (Леопольдвиль)","Независимость Бельгийского Конго с 1960 г.; название Заир появилось в 1971 г.",unDecolonization];
+  corrections.Congo=["Республика Конго (Браззавиль)","Независимость от Франции в 1960 г.; не путать с Конго (Леопольдвиль)",unDecolonization];
+  corrections.Malaysia=["Малайская Федерация и британские территории (условный контур)","Малайская Федерация независима с 1957 г.; контур включает Северное Борнео и Саравак, вошедшие в Малайзию в 1963 г.",unDecolonization];
+  corrections.Yemen=["Йеменское королевство и британские владения (условный контур)","Север — Йеменское Мутаваккилийское королевство; юг — Аден и британские протектораты. Объединение Йемена произошло только в 1990 г.",diplomaticHistory+"yemen"];
+  corrections.Indonesia=["Индонезия (условный контур)","В западной части Новой Гвинеи сохранялась нидерландская администрация; переход под управление ООН начался в 1962 г., передача Индонезии — в 1963 г.","https://peacekeeping.un.org/sites/default/files/past/unsfbackgr.html"];
+  corrections.Pakistan=["Пакистан (Западный и Восточный)","В 1960 г. включал Восточный Пакистан (ныне Бангладеш); разделение произошло в 1971 г.","https://www.na.gov.pk/en/content.php?id=75"];
+  corrections.Cameroon=["Республика Камерун (условный контур)","Французский подопечный Камерун стал независимым в 1960 г.; британские подопечные территории разделены между Камеруном и Нигерией в 1961 г.",unDecolonization];
+  colonial({Chad:"Республика Чад","Central African Republic":"Центральноафриканская Республика",Gabon:"Габонская Республика","Ivory Coast":"Республика Берег Слоновой Кости",Niger:"Республика Нигер"},"Бывшая территория Французской Африки; независимость получена в течение 1960 г.",1960,1960);
+  colonial({Madagascar:"Малагасийская Республика"},"Независимость от Франции получена в течение 1960 г.",1960,1960);
+  colonial({Togo:"Тоголезская Республика"},"Бывшая подопечная территория ООН под управлением Франции; независимость получена в течение 1960 г.",1960,1960);
+  colonial({Cyprus:"Республика Кипр",Nigeria:"Федерация Нигерии"},"Независимость от Великобритании получена в течение 1960 г.",1960,1960);
+  colonial({Mauritania:"Исламская Республика Мавритания"},"Независимость от Франции получена в 1960 г.; в ООН принята в 1961 г.",1960,1960);
+  corrections.Somalia=["Сомалийская Республика", "В течение 1960 г. бывшие британская и итальянская территории стали независимыми и объединились",unDecolonization];
+  corrections.Mali=["Республика Мали (условный контур)","Федерация Мали получила независимость 20 июня 1960 г.; Республика Мали провозглашена 22 сентября 1960 г. после её распада","https://legal.un.org/ilc/publications/yearbooks/english/ilc_1962_v2.pdf"];
+  corrections.Senegal=["Республика Сенегал (условный контур)","В 1960 г. входил в Федерацию Мали; независимая Республика Сенегал провозглашена 20 августа 1960 г.","https://legal.un.org/ilc/publications/yearbooks/english/ilc_1962_v2.pdf"];
+  corrections.China=["Китайская Народная Республика","КНР на материке; в ООН место Китая в 1960 г. занимали представители Китайской Республики","https://history.state.gov/historicaldocuments/frus1969-76v17/d167"];
+  corrections.Taiwan=["Китайская Республика (Тайвань)","Правительство Китайской Республики на Тайване; представляло Китай в ООН до 1971 г.","https://history.state.gov/historicaldocuments/frus1969-76v17/d167"];
+  corrections.Tibet=["Тибет (условный контур)","Под фактическим контролем КНР после событий 1959 г.; отдельный контур не означает международно признанную независимость","https://history.state.gov/historicaldocuments/frus1958-60v19/d367"];
+  corrections["South Africa"]=["Южно-Африканский Союз","Название в голосовании ООН от 14 декабря 1960 г.; республика образована в 1961 г.","https://digitallibrary.un.org/record/662085"];
+  colonial({Niue:"Ниуэ"},"Администрация Новой Зеландии; самоуправление в свободной ассоциации с Новой Зеландией с 1974 г.",1960,1960);
+  colonial({Samoa:"Западное Самоа"},"Подопечная территория ООН под управлением Новой Зеландии; независимость с 1962 г.",1960,1960);
+  colonial({Suriname:"Суринам"},"Автономная часть Королевства Нидерландов; независимость с 1975 г.",1960,1960);
+  colonial({"Hong Kong":"Гонконг"},"Британская администрация",1960,1960);
+  colonial({"Puerto Rico":"Пуэрто-Рико"},"Территория США, не отдельное суверенное государство",1960,1960,"https://www.doi.gov/oia/islands/politicatypes");
+  colonial({Tonga:"Королевство Тонга"},"Государство под британской договорной защитой; не обычная британская колония",1960,1960,"https://treaties.un.org/PAGES/ViewDetails.aspx?chapter=14&clang=_en&mtdsg_no=XIV-2&src=TREATY");
+  colonial({"Rapa Nui":"Рапа-Нуи (остров Пасхи)"},"Чили",1960,1960,"https://whc.unesco.org/en/list/715/");
  }
  if(year===1945||year===1960){
   corrections["United Arab Emirates"]=["Договорный Оман","Британские договорные протектораты",diplomaticHistory+"united-arab-emirates"];
   corrections["Sri Lanka"]=["Цейлон",year===1945?"Британская империя":"Цейлон",unDecolonization];
-  corrections.Benin=["Дагомея",year===1945?"Французская Западная Африка":"Дагомея",unDecolonization];
-  corrections["Burkina Faso"]=[year===1945?"Территория будущей Верхней Вольты":"Верхняя Вольта (условный контур)",year===1945?"Французская Западная Африка":"Верхняя Вольта",unDecolonization];
+  corrections.Benin=["Дагомея",year===1945?"Французская Западная Африка":"Независимость с 1 августа 1960 г.",year===1945?unDecolonization:diplomaticHistory+"benin"];
+  corrections["Burkina Faso"]=[year===1945?"Территория будущей Верхней Вольты":"Верхняя Вольта (условный контур)",year===1945?"Французская Западная Африка":"Независимость с 5 августа 1960 г.",year===1945?unDecolonization:diplomaticHistory+"burkina-faso"];
  }
- if(year===1920||year===1945||year===1960)corrections["Tanzania, United Republic of"]=["Танганьика (условный контур)","Британская администрация",unDecolonization];
- return {...source,features:source.features.map(f=>{
-  const name=String(f.properties?.NAME??"").trim(), correction=corrections[name];
+ historicalCorrectionCache.set(year,corrections);
+ return corrections;
+}
+function historicalGeometryFingerprint(geometry:GeoGeometry|null):number{
+ let hash=2166136261;
+ for(const char of JSON.stringify(geometry))hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+ return hash;
+}
+export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCollection{
+ const corrections=historicalCorrectionsForYear(year);
+ const recentArchive=year===1994||year===2000||year===2010;
+ let changed=false;
+ const features=source.features.flatMap<GeoFeature>(f=>{
+  const name=String(f.properties?.NAME??"").trim();
+  if(year===2010&&name==="Guadeloupe"&&f.geometry?.type==="MultiPolygon"&&historicalGeometryFingerprint(f.geometry)===0xcc019430){
+   const islands=f.geometry.coordinates as number[][][][];
+   changed=true;
+   return [{...f,geometry:{...f.geometry,coordinates:islands.slice(0,3)}},
+    {type:"Feature",geometry:{type:"MultiPolygon",coordinates:[islands[3]]},properties:{NAME:"Saint Barthelemy",ATLAS_ORIGINAL_NAME:name,
+     ATLAS_HISTORICAL_LABEL:corrections["Saint Barthelemy"][0],ATLAS_HISTORICAL_AFFILIATION:corrections["Saint Barthelemy"][1],
+     ATLAS_HISTORICAL_SOURCE:"https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000465963",
+     ATLAS_HISTORICAL_NOTE:"С 2007 года Сен-Бартелеми — отдельная заморская общность Франции. Использован островной компонент архивного контура 2010 года."}}];
+  }
+  if(recentArchive&&name==="Saint Barthelemy"&&historicalGeometryFingerprint(f.geometry)===0xb8af8a5){
+   const [label,affiliation,reference]=corrections["Sint Maarten"];
+   changed=true;
+   return {...f,properties:{...f.properties,NAME:"Sint Maarten",ATLAS_ORIGINAL_NAME:name,ATLAS_HISTORICAL_LABEL:label,
+    ATLAS_HISTORICAL_AFFILIATION:affiliation,ATLAS_HISTORICAL_SOURCE:reference,
+    ATLAS_HISTORICAL_NOTE:"Архив подписал южную часть острова Сен-Мартен именем другого острова — Сен-Бартелеми. В архивном контуре остаются неточности линии раздела."}};
+  }
+  // The same pinned unnamed polygon occurs in all three late snapshots.
+  // Its geographic extent matches swisstopo and the Natural Earth layer;
+  // exact ring sizes and fingerprint prevent attributing arbitrary blanks.
+  let correctionName=name;
+  let restored=false;
+  if(!name&&recentArchive&&f.geometry?.type==="MultiPolygon"){
+   const p=f.geometry.coordinates as number[][][][];
+   if(p?.length===1&&p[0]?.length===3&&p[0][0]?.length===2857&&p[0][1]?.length===15&&p[0][2]?.length===16){
+    if(historicalGeometryFingerprint(f.geometry)===0x64809a59){correctionName="Switzerland";restored=true;}
+   }
+  }
+  const correction=corrections[correctionName];
   if(!correction)return f;
-  return {...f,properties:{...f.properties,ATLAS_HISTORICAL_LABEL:correction[0],ATLAS_HISTORICAL_AFFILIATION:correction[1],ATLAS_HISTORICAL_SOURCE:correction[2],ATLAS_HISTORICAL_NOTE:"Название и статус уточнены. Контур взят из исходной реконструкции и может содержать современные границы."}};
- })};
+  changed=true;
+  return {...f,properties:{...f.properties,...(restored?{NAME:correctionName,ATLAS_ORIGINAL_NAME:f.properties?.NAME??null}:{}),ATLAS_HISTORICAL_LABEL:correction[0],ATLAS_HISTORICAL_AFFILIATION:correction[1],ATLAS_HISTORICAL_SOURCE:correction[2],ATLAS_HISTORICAL_NOTE:restored?"Основной полигон присутствовал в источнике без имени. Восстановлена подпись, исходный контур не изменён.":"Название и статус уточнены. Контур взят из исходной реконструкции и может содержать современные границы."}};
+ });
+ return changed?{...source,features}:source;
 }
 export function correctedHistoricalIndexLabel(raw:string,year:number):string|undefined{
- const feature=correctHistoricalLabels({type:"FeatureCollection",features:[{type:"Feature",geometry:null,properties:{NAME:raw}}]},year).features[0];
- const label=feature?.properties?.ATLAS_HISTORICAL_LABEL;
- return typeof label==="string"?label:undefined;
+ return historicalCorrectionsForYear(year)[raw.trim()]?.[0];
 }
 export function loadHistoricalSnapshot(year:number){
  if(year===2026)return loadAtlasLayer("countries-russian"); // contemporary Russian POV, not a dated historical snapshot
@@ -487,7 +746,10 @@ function pathForRing(points:number[][],close:boolean,minDistance=.62,viewport?:M
   if(Math.abs(dx)>180){
    const edge=dx>0?-180:180;
    const adjusted=dx>0?b[0]-360:b[0]+360;
-   const t=(edge-a[0])/(adjusted-a[0]);
+   // +180 and -180 may describe the same meridian. The historical
+   // source includes consecutive points on opposite representations of
+   // that seam; a zero denominator must never produce NaN SVG vertices.
+   const t=adjusted===a[0]?1:(edge-a[0])/(adjusted-a[0]);
    const lat=a[1]+t*(b[1]-a[1]);
    fragment.push([edge,lat]);fragments.push(fragment);
    fragment=[[-edge,lat],b];
@@ -751,7 +1013,7 @@ export function historicalFeatureFacts(feature:GeoFeature):Array<{label:string;v
   ["SOURCE","Источник атрибута"],["NOTES","Примечания источника"]];
  return fields.flatMap(([key,label])=>{
   if(p.ATLAS_HISTORICAL_LABEL&&["SUBJECTO","PARTOF","BORDERPRECISION","BORDER_PRECISION"].includes(key))return [];
-  const value=p[key];
+  const value=key==="NAME"&&Object.hasOwn(p,"ATLAS_ORIGINAL_NAME")?p.ATLAS_ORIGINAL_NAME:p[key];
   if(typeof value==="number"&&Number.isFinite(value))
    return [{label,value:String(value)}];
   if(typeof value!=="string"||!value.trim())return [];

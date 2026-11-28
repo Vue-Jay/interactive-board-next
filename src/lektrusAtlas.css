@@ -116,6 +116,8 @@
 .lektrus-atlas-search-results small{padding:6px;color:#68849c;font-size:10px}
 .lektrus-atlas-layer-warning{margin:0;color:#8d5c2c;background:#fff5e4;border:1px solid #f0ddbe;
  border-radius:7px;padding:6px;font-size:10px;line-height:1.4}
+.lektrus-atlas-layer-warning>summary{cursor:pointer;font-weight:600}
+.lektrus-atlas-layer-warning>ul{margin:4px 0;padding-left:17px}
 .lektrus-atlas-compare{display:flex;gap:6px;align-items:center;font-size:10px;color:#4f7595;line-height:1.35}
 .lektrus-atlas-compare input{width:auto;min-width:13px;accent-color:#bc4d4d}
 .lektrus-atlas-compare small{display:block;color:#a46a63}
@@ -903,3 +905,20 @@
 /* Map chrome stays visually above the transient ink preview. */
 .lektrus-atlas-map-box .lektrus-atlas-zoom{z-index:8}
 .lektrus-atlas-map-box .lektrus-atlas-overlay{z-index:9}
+
+/* Historical gaps are explicit data states, not network errors or borrowed maps. */
+.lektrus-atlas-no-dated-source{
+ display:grid;gap:6px;padding:12px 14px;margin:8px 0 12px;
+ border:1px solid #d8b47b;border-radius:12px;
+ background:rgba(229,166,76,.10);color:inherit;
+}
+.lektrus-atlas-no-dated-source strong{font-size:13px;line-height:1.35}
+.lektrus-atlas-no-dated-source p{font-size:12px;line-height:1.5;margin:0}
+
+.lektrus-atlas-realm-context{margin:8px 0;padding:9px 10px;border:1px solid #ccdae7;border-radius:9px;background:#f7fafc;font-size:11px;line-height:1.5}
+.lektrus-atlas-realm-context strong{display:block;color:#315678;font-size:12px}
+.lektrus-atlas-realm-context p{margin:5px 0 6px}
+.lektrus-atlas-realm-context>div{display:flex;flex-wrap:wrap;gap:6px 12px}
+.lektrus-atlas-realm-context a{color:#286197;text-decoration:underline}
+
+.lektrus-atlas-realm-context[data-atlas-conflict-context]{border-style:dashed}
