@@ -31,6 +31,7 @@ export type SelfhostDocument = {
   board_id:string;document:Record<string,unknown>|null;version:number;
   updated_by:string|null;updated_at:string|null;
   ink_cursors?:SelfhostCommittedCursor[];
+  initial_subject?:string;
 };
 export type SelfhostAccess = {
   members:Array<{user_id:string;name:string;email:string;role:"editor"|"viewer";participant_role?:InvitedParticipantRole;added_at:string}>;

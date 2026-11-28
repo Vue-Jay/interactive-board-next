@@ -2,6 +2,6 @@
   "application": "lektrus",
   "source": "github-actions",
   "branch": "main",
-  "marker": "lektrus-sync-journal-v2-2026-11-28",
-  "board_change": "session-timing-revision-settlement-and-state-checkpoints"
+  "marker": "lektrus-board-metadata-permissions-2026-11-28",
+  "board_change": "owner-co-teacher-admin-metadata-permissions"
 }

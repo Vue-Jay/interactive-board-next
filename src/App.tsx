@@ -20,6 +20,7 @@ import { isSelfhostBackendEnabled, selfhostReadDocument, selfhostSaveDocument, S
 import { documentFingerprint } from "./boardSync";
 import { mergeBoardDocumentEdits } from "./lektrusBoardThreeWayMerge";
 import { parseDocument, type DocumentData } from "./boardModel";
+import {canEditBoardMetadata} from "./lektrusBoardRolePreview";
 import { ensureBoardAssets } from "./assetStore";
 import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
 import {ServiceUnavailableScreen} from "./ServiceUnavailableScreen";
@@ -479,6 +480,8 @@ export default function App() {
           }
         };
         if (!isCurrent()) return;
+        if(selfhost&&remote?.version===0&&"initial_subject" in remote&&typeof remote.initial_subject==="string")board={...board,initialSubject:remote.initial_subject};
+        const mayEditMetadata=canEditBoardMetadata(board.role,board.participantRole,false);
         const key = boardStorageKey(board.id);
         // A newly created board can carry a template. Apply it BEFORE the normal
         // remote-cache branch, which would otherwise replace it with an empty doc.
@@ -527,6 +530,7 @@ export default function App() {
                   const base=parseDocument(baseRaw);
                   const server=parsed;
                   parsed=mergeBoardDocumentEdits(base,local,server);
+                  if(selfhost&&!mayEditMetadata)parsed={...parsed,title:server.title,subject:server.subject};
                   localStorage.setItem(key+".pending-base",JSON.stringify(server));
                 }else{
                   // Older versions did not save a base. Preserve the local
@@ -560,7 +564,11 @@ export default function App() {
         } else {
           const raw = localStorage.getItem(key);
           if (!editingLayout && raw && board.role !== "viewer") {
-            const localDocument = parseDocument(raw);
+            let localDocument = parseDocument(raw);
+            if(selfhost&&!mayEditMetadata){
+              localDocument={...localDocument,title:board.title,subject:board.initialSubject??""};
+              localStorage.setItem(key,JSON.stringify(localDocument));
+            }
             try {
               await ensureBoardAssets(board.id, localDocument);
               const saved = await saveBoardDocument(localDocument, 0);

@@ -3,7 +3,7 @@ from pydantic import BaseModel,Field
 from uuid import UUID
 class BoardOrg(BaseModel): board_id:UUID; subject:str=Field(default='',max_length=80); group_name:str=Field(default='',max_length=80)
 class Category(BaseModel): kind:str; name:str=Field(min_length=1,max_length=80)
-def make_router(current_user,board_access):
+def make_router(current_user,board_access,board_participant,can_edit_board_metadata,set_shared_board_metadata):
  r=APIRouter()
  @r.get('/api/v1/organization')
  async def get(request:Request,user=Depends(current_user)):
@@ -14,9 +14,18 @@ def make_router(current_user,board_access):
  @r.put('/api/v1/organization/board')
  async def put_board(data:BoardOrg,request:Request,user=Depends(current_user)):
   async with request.app.state.pool.acquire() as c:
-   board,_=await board_access(c,data.board_id,user['id'])
-   if board['owner_id']!=user['id']: raise HTTPException(403,'Только владелец доски может менять её класс и предмет.')
-   await c.execute('insert into board_organization(board_id,subject,group_name,updated_at) values($1,$2,$3,now()) on conflict(board_id) do update set subject=$2,group_name=$3,updated_at=now()',data.board_id,data.subject.strip(),data.group_name.strip())
+   board,role=await board_access(c,data.board_id,user['id'])
+   participant=await board_participant(c,data.board_id,user,role)
+   if not can_edit_board_metadata(user,participant): raise HTTPException(403,'Название и предмет доступны владельцу, сопреподавателю и администратору.')
+  await set_shared_board_metadata(data.board_id,request,user,{'subject':data.subject.strip()})
+  # Preserve the owner's existing class/group when a co-teacher or administrator
+  # changes the subject. Never grant membership/organization rights implicitly.
+  if role=='owner':
+   async with request.app.state.pool.acquire() as c:
+    async with c.transaction():
+     board,current_role=await board_access(c,data.board_id,user['id'],lock=True)
+     if current_role!='owner': raise HTTPException(403,'Только владелец может менять класс и группу.')
+     await c.execute('insert into board_organization(board_id,group_name,updated_at) values($1,$2,now()) on conflict(board_id) do update set group_name=$2,updated_at=now()',data.board_id,data.group_name.strip())
   return {'ok':True}
  @r.post('/api/v1/organization/category')
  async def put_category(data:Category,request:Request,user=Depends(current_user)):

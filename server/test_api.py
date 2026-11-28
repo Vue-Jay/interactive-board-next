@@ -507,7 +507,7 @@ async def test_board_access_and_conflict_free_save(client):
     assert (await client.post(url+"/permanent-delete", headers=student,
                               json={"confirmation": "Урок химии: итог"})).status_code == 404
     assert (await client.post(url+"/restore", headers=teacher)).status_code == 200
-    assert (await client.get(url+"/document", headers=teacher)).json()["document"] == native_document
+    assert (await client.get(url+"/document", headers=teacher)).json()["document"] == {**native_document,"title":"Урок химии: итог"}
     assert (await client.post(url+"/permanent-delete", headers=teacher,
                               json={"confirmation": "Урок химии: итог"})).status_code == 404
     assert (await client.delete(url, headers=teacher)).status_code == 200
