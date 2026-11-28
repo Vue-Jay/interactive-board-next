@@ -13,6 +13,7 @@ import { chemistryBoardHasContent } from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import MobileBoardEditorPortal, { dismissEditorBackdropInput, fitMobileEditorViewport } from "./MobileBoardEditorPortal";
 import { useTouchBoardMenuViewport } from "./useTouchBoardMenuViewport";
+import { menuRoots, useTransientMenuDismissal } from "./useTransientMenuDismissal";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import { boardObjectAtInertPointerTarget } from "./boardObjectDragSurface";
 import { buildBoardDragSnapIndex, snapBoardDrag, type BoardDragSnapIndex } from "./boardDragSnapIndex";
@@ -3020,6 +3021,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
+  useTransientMenuDismissal(()=>[
+    ...(mobileToolsOpen?[{roots:menuRoots(".mobile-tools-more",".mobile-tools-sheet"),close:()=>setMobileToolsOpen(false)}]:[]),
+    ...(backgroundMenuOpen?[{roots:menuRoots(".lektrus-background-anchor"),close:()=>setBackgroundMenuOpen(false)}]:[]),
+    ...(colorMenuOpen?[{roots:menuRoots(".object-color-menu"),close:()=>setColorMenuOpen(false)}]:[]),
+    ...(contextMenu?[{roots:menuRoots("[data-context-menu]"),close:()=>setContextMenu(null)}]:[]),
+  ],true);
   const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}].map(group=>demoMode&&group.id==="media"?{...group,label:"Фото / PDF"}:group);
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection+":"+lectrisPinned.join(","));
   useEffect(()=>{if(!canEdit){setSelected([]);setEditing(null);setContextMenu(null);setMobileToolsOpen(false);setDesktopToolsExpanded(false);setLectrisCustomizeOpen(false);setLectrisInspectorOpen(false);setCommandPaletteOpen(false);setSpace(false)}},[canEdit]);
@@ -9153,7 +9160,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         <div className="topbar-right">
           {!layoutEditing&&!publicPresentation&&!canEdit&&<span className="board-access-status" role="status" aria-label="Только просмотр" title={boardSummary.planReadOnly?"Только просмотр · выберите эту доску в разделе «Тарифы»":"Только просмотр · наблюдатель"}><Icon name="eye" size={16}/><span>Только просмотр</span></span>}
           {!layoutEditing&&canEdit&&adminMaintenance&&rolePreview==="actual"&&<span className="board-access-status is-admin" role="status" title="Изменения сохраняются от вашего имени"><Icon name="settings" size={16}/><span>Администратор</span></span>}
-          <details className="lectris-layout-picker">
+          <details className="lectris-layout-picker" data-dismiss-outside>
             <summary title="Настройки и раскладка доски" aria-label="Настройки и раскладка доски"><Icon name="settings" size={17}/></summary>
             <div className="lectris-layout-menu">
               <strong>Рабочая раскладка</strong>
@@ -9183,7 +9190,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               <button type="button" className="lectris-interface-settings-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}><Icon name="settings" size={16}/>Управление и интерфейс<span aria-hidden="true">→</span></button>
             </div>
           </details>{installState.eligible&&installState.available&&!installState.installed&&<button type="button" className="install-app-button" disabled={installState.busy} onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
-          {documentSyncEnabled && <details className="presence-menu" ref={visitPresenceMenuRef}>
+          {documentSyncEnabled && <details className="presence-menu" data-dismiss-outside ref={visitPresenceMenuRef}>
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
               <span className="presence-count">{realtimeStatus==="online"?visiblePresenceUsers.length:"…"}</span>
@@ -9248,7 +9255,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           </span>}
           {!demoMode&&canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
           {discussionEnabled && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
-          <details className="topbar-more-menu">
+          <details className="topbar-more-menu" data-dismiss-outside>
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
               <div className="lektrus-board-menu-pager" aria-label="Прокрутка действий доски">
@@ -11573,11 +11580,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 </span>
               )}
               {singleSelected?.kind==="connector"&&!selectionLocked&&<span className="lektrus-connector-quick">
-                  <details className="connector-quick-menu"><summary title="Тип линии и направление" aria-label="Тип линии и направление"><Icon name={(singleSelected.connectorStyle??"arrow")==="line"?"line":singleSelected.connectorStyle==="double"?"arrow-double":"arrow-one"} size={16}/><span>Тип</span></summary><div className="connector-quick-popover"><strong>Тип линии</strong><div className="connector-quick-choices">{(["line","arrow","double"] as ConnectorStyle[]).map(v=><button key={v} type="button" className={(singleSelected.connectorStyle??"arrow")===v?"active":""} onClick={()=>setSelectedConnectorStyle(v)} title={v==="line"?"Линия":v==="arrow"?"Стрелка":"Двусторонняя"}><Icon name={v==="line"?"line":v==="arrow"?"arrow-one":"arrow-double"} size={17}/></button>)}</div><label>Направление<select value={singleSelected.connectorRouting??"straight"} onChange={e=>setSelectedConnectorRouting(e.target.value as ConnectorRouting)}><option value="straight">Прямая</option><option value="elbow">Ломаная</option></select></label></div></details>
-                  <details className="connector-quick-menu"><summary title="Цвет линии" aria-label="Цвет линии"><span className="connector-quick-swatch" style={{background:singleSelected.color??"#5355c9"}}/><span>Цвет</span></summary><div className="connector-quick-popover"><strong>Цвет линии</strong><LektrusColorPicker userId={authUser.id} compact label="Цвет линии" value={singleSelected.color??"#5355c9"} onChange={recolorSelected}/></div></details>
-                  <details className="connector-quick-menu"><summary title="Толщина линии" aria-label="Толщина линии"><Icon name="line" size={16}/><span>{singleSelected.weight??3}px</span></summary><div className="connector-quick-popover"><strong>Толщина линии</strong><label><input type="range" min={1} max={16} value={singleSelected.weight??3} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,weight:Number(e.target.value)}:item))}/><output>{singleSelected.weight??3}px</output></label></div></details>
-                  {singleSelected.connectorStyle!=="line"&&<><details className="connector-quick-menu"><summary title="Форма наконечника" aria-label="Форма наконечника"><Icon name="arrow-one" size={16}/><span>Конец</span></summary><div className="connector-quick-popover"><strong>Форма наконечника</strong><select value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></div></details>
-                  <details className="connector-quick-menu"><summary title="Размер наконечника" aria-label="Размер наконечника"><Icon name="arrow-double" size={16}/><span>Размер</span></summary><div className="connector-quick-popover"><strong>Размер наконечника</strong><label><input type="range" min={4} max={24} value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/><output>{singleSelected.arrowHeadSize??8}px</output></label></div></details></>}
+                  <details className="connector-quick-menu" data-dismiss-outside><summary title="Тип линии и направление" aria-label="Тип линии и направление"><Icon name={(singleSelected.connectorStyle??"arrow")==="line"?"line":singleSelected.connectorStyle==="double"?"arrow-double":"arrow-one"} size={16}/><span>Тип</span></summary><div className="connector-quick-popover"><strong>Тип линии</strong><div className="connector-quick-choices">{(["line","arrow","double"] as ConnectorStyle[]).map(v=><button key={v} type="button" className={(singleSelected.connectorStyle??"arrow")===v?"active":""} onClick={()=>setSelectedConnectorStyle(v)} title={v==="line"?"Линия":v==="arrow"?"Стрелка":"Двусторонняя"}><Icon name={v==="line"?"line":v==="arrow"?"arrow-one":"arrow-double"} size={17}/></button>)}</div><label>Направление<select value={singleSelected.connectorRouting??"straight"} onChange={e=>setSelectedConnectorRouting(e.target.value as ConnectorRouting)}><option value="straight">Прямая</option><option value="elbow">Ломаная</option></select></label></div></details>
+                  <details className="connector-quick-menu" data-dismiss-outside><summary title="Цвет линии" aria-label="Цвет линии"><span className="connector-quick-swatch" style={{background:singleSelected.color??"#5355c9"}}/><span>Цвет</span></summary><div className="connector-quick-popover"><strong>Цвет линии</strong><LektrusColorPicker userId={authUser.id} compact label="Цвет линии" value={singleSelected.color??"#5355c9"} onChange={recolorSelected}/></div></details>
+                  <details className="connector-quick-menu" data-dismiss-outside><summary title="Толщина линии" aria-label="Толщина линии"><Icon name="line" size={16}/><span>{singleSelected.weight??3}px</span></summary><div className="connector-quick-popover"><strong>Толщина линии</strong><label><input type="range" min={1} max={16} value={singleSelected.weight??3} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,weight:Number(e.target.value)}:item))}/><output>{singleSelected.weight??3}px</output></label></div></details>
+                  {singleSelected.connectorStyle!=="line"&&<><details className="connector-quick-menu" data-dismiss-outside><summary title="Форма наконечника" aria-label="Форма наконечника"><Icon name="arrow-one" size={16}/><span>Конец</span></summary><div className="connector-quick-popover"><strong>Форма наконечника</strong><select value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></div></details>
+                  <details className="connector-quick-menu" data-dismiss-outside><summary title="Размер наконечника" aria-label="Размер наконечника"><Icon name="arrow-double" size={16}/><span>Размер</span></summary><div className="connector-quick-popover"><strong>Размер наконечника</strong><label><input type="range" min={4} max={24} value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/><output>{singleSelected.arrowHeadSize??8}px</output></label></div></details></>}
                 </span>}
               {(singleSelected?.kind === "image" || singleSelected?.kind === "pdf") && (
                 <span className="media-selection-controls">
@@ -11606,7 +11613,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 </>
               )}
 
-              <details className="selection-more" onToggle={event=>{
+              <details className="selection-more" data-dismiss-outside onToggle={event=>{
                 const details=event.currentTarget;
                 details.closest(".selection-toolbar-screen")?.classList.toggle("is-more-open",details.open);
               }}>

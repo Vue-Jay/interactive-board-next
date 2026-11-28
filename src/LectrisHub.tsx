@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { navigateWorkspaceSection as navigate } from "./routes";
+import { menuRoots,useTransientMenuDismissal } from "./useTransientMenuDismissal";
 import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import UserAvatar from "./UserAvatar";
 import type { AccountRole } from "./accountRoleStore";
@@ -54,6 +55,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   const [organization,setOrganization]=useState<Record<string,Organization>>(()=>readLectrisLocalOrganization(user.id));
   const [editing,setEditing]=useState<string|null>(null);
   const [boardMenu,setBoardMenu]=useState<string|null>(null);
+  useTransientMenuDismissal(()=>boardMenu?[{roots:menuRoots(".lektrus-recent-board.is-menu-open .lektrus-home-board-menu"),close:()=>setBoardMenu(null)}]:[]);
   const [subjectDraft,setSubjectDraft]=useState("");
   const [groupDraft,setGroupDraft]=useState("");
   const [scope,setScope]=useState<string|null>(null);

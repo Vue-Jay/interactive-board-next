@@ -45,7 +45,7 @@ export default function LektrusToolOverflow({
     const outside=(event:PointerEvent)=>{
       const target=event.target;
       if(!(target instanceof Node))return;
-      if(dialogRef.current?.contains(target)||anchor?.contains(target))return;
+      if(dialogRef.current?.contains(target)||(anchor?.contains(target)&&target instanceof Element&&target.closest(".toolbar-more,.lektrus-desktop-sections .tool-button")))return;
       onClose();
     };
     document.addEventListener("keydown",key,true);

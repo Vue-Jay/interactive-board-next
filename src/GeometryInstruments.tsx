@@ -1,6 +1,7 @@
 import {useEffect,useId,useRef,useState,type RefObject,type PointerEvent} from "react";
 import "./lektrusMeasurementInstruments.css";
 import {createPortal} from "react-dom";
+import {useTransientMenuDismissal} from "./useTransientMenuDismissal";
 import type {Item} from "./boardModel";
 import {instrumentPivot,rotateInstrumentAboutPivot} from "./instrumentPivot";
 
@@ -217,6 +218,9 @@ export default function GeometryInstruments({
  editable?:boolean;renderOverlays?:boolean;
 }){
  const [open,setOpen]=useState(false);
+ const menuTrigger=useRef<HTMLButtonElement>(null);
+ const menuPanel=useRef<HTMLDivElement>(null);
+ useTransientMenuDismissal(()=>open?[{roots:[menuTrigger.current,menuPanel.current],close:()=>setOpen(false)}]:[]);
  const [selectedInstrumentId,setSelectedInstrumentId]=useState<string|null>(null);
  useEffect(()=>{
   if(!renderOverlays)return;
@@ -259,7 +263,7 @@ export default function GeometryInstruments({
  return <>
   <div className={`geometry-tools ${mobile?"geometry-tools-mobile":""}`}
     onPointerDown={event=>event.stopPropagation()}>
-    <button type="button" className={`geometry-trigger ${open||instruments.length?"active":""}`}
+    <button ref={menuTrigger} type="button" className={`geometry-trigger ${open||instruments.length?"active":""}`}
       title="Добавить линейку, угольник или транспортир"
       aria-label="Добавить измерительный инструмент"
       aria-expanded={open} disabled={!editable}
@@ -270,7 +274,7 @@ export default function GeometryInstruments({
         <path d="m13 9 2 2M10 12l2 2M7 15l2 2"/>
       </svg>
     </button>
-    {open&&createPortal(<div className="geometry-picker geometry-picker-portal"
+    {open&&createPortal(<div ref={menuPanel} className="geometry-picker geometry-picker-portal"
       style={{left:menuPosition.left,top:menuPosition.top}}
       role="group" aria-label="Добавить измерительный инструмент">
       {(["ruler","triangle","protractor"] as const).map(type=>
