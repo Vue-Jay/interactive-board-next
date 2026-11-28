@@ -315,3 +315,15 @@ assert.match(board,/\(isStudent&&!isBoardOwner&&blockedStudentObjectEdits\(items
  assert.equal(undo.items[0].subjectBoardEntries[0].answer,"");
  assert.deepEqual(undo.items[0].subjectBoardEntries[0].workedSolution,{given:"peer"});
 }
+
+{
+ const undo=exports.undoCollaborativeValue;
+ const before={contourMarks:[{id:"a",lon:10,lat:20}],contourStrokes:[],paintedCountries:{}};
+ const after={...before,contourMarks:[{id:"a",lon:11,lat:20}]};
+ const peer={...after,contourMarks:[{id:"a",lon:12,lat:25},{id:"b",lon:20,lat:30}]};
+ assert.deepEqual(undo(after,before,peer),peer,"Contour undo must preserve peer's subsequent move");
+ const independent={...after,contourMarks:[{id:"a",lon:11,lat:25},{id:"b",lon:20,lat:30}]};
+ assert.deepEqual(undo(after,before,independent).contourMarks,[{id:"a",lon:10,lat:25},{id:"b",lon:20,lat:30}]);
+ const erased={...after,contourMarks:[]};
+ assert.deepEqual(undo(after,before,erased),erased,"Undo must not resurrect a deleted mark");
+}

@@ -12,9 +12,9 @@ type WordPreview={id:string;left:number;top:number;width:number};
 
 type SentenceDiagram=Extract<LanguageSocialDiagram,{kind:"sentence-builder"}>;
 function SentenceBoard({d,onChange}:{d:SentenceDiagram;onChange?:(next:SentenceDiagram)=>void}){
- const key=d.parts.map(p=>p.id+"="+p.text).join("|");
+ const key=JSON.stringify(d.parts.map(p=>[p.id,p.text]));
  const initial=useMemo(()=>initialScramble(d.parts),[key]);
- const sharedKey=d.answerOrder?.join("\u0000")??"";
+ const sharedKey=JSON.stringify(d.answerOrder??null);
  const [order,setOrder]=useState<string[]>(d.answerOrder??initial);
  const [checked,setChecked]=useState(d.answerChecked===true);
  const orderRef=useRef(order);
@@ -54,7 +54,6 @@ function SentenceBoard({d,onChange}:{d:SentenceDiagram;onChange?:(next:SentenceD
     .filter(element=>element.dataset.sentenceWord!==gesture.id);
    dropSlotRef.current=sentenceWordDropSlot(event.clientX,event.clientY,
     siblings.map(element=>element.getBoundingClientRect()));
-   setChecked(false);
   };
   const finish=(event:PointerEvent)=>{
    const gesture=gestureRef.current;
@@ -105,7 +104,6 @@ function SentenceBoard({d,onChange}:{d:SentenceDiagram;onChange?:(next:SentenceD
   // can dispatch lostpointercapture before pointerup. Keep the DOM stable
   // until release, then apply the insertion exactly once.
   dropSlotRef.current=slot;
-  setChecked(false);
  };
  const endDrag=(event:ReactPointerEvent<HTMLButtonElement>,cancel=false)=>{
   const gesture=gestureRef.current;
@@ -155,8 +153,9 @@ function SentenceBoard({d,onChange}:{d:SentenceDiagram;onChange?:(next:SentenceD
     </button>)}
    </div>
    <div className="lektrus-sentence-status" role="status" aria-live="polite">
-    {checked?(correct?"Правильно! Порядок совпадает с заданным преподавателем.":"Есть неточности. Попробуйте ещё раз."):
-     preview?"Переместите слово на нужное место и отпустите.":"Перетаскивайте слова, чтобы собрать предложение. Можно использовать стрелки клавиатуры."}
+    {preview?"Переместите слово на нужное место и отпустите.":
+     checked?(correct?"Правильно! Порядок совпадает с заданным преподавателем.":"Есть неточности. Попробуйте ещё раз."):
+     "Перетаскивайте слова, чтобы собрать предложение. Можно использовать стрелки клавиатуры."}
    </div>
    <div className="lektrus-sentence-actions">
     <button type="button" onClick={reset}>Заново</button>

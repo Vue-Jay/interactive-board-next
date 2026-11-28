@@ -257,3 +257,9 @@ export function rebaseTextEdit(session:TextEditSession,acknowledged:string|undef
   return {...session,before:remote,draft:merged,changed:merged!==remote};
  return {...session,draft:merged};
 }
+
+// Nested tool-local Undo uses the same conflict rule as board Undo, not a
+// last-writer-wins forward merge that can overwrite a collaborator's edit.
+export function undoCollaborativeValue<T>(expected:T,desired:T,live:T):T{
+ return inverseValue(expected,desired,live).value as T;
+}

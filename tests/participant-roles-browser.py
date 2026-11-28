@@ -2237,14 +2237,137 @@ def check_undo_reconnect_sync(browser):
     finally:
         for ctx in contexts:ctx.close()
 
+
+def check_final_subject_gestures(browser):
+    """Finite final subject gate: shared sentence pointer/cancel, contour undo/ink, lab vessel movement."""
+    ident=setup_board()
+    url=f"/api/v1/boards/{ident}/document"
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
+    teacher,pupil=[ctx.new_page() for ctx in contexts]
+    async def owner_id():
+        conn=await asyncpg.connect(os.environ["DATABASE_URL"])
+        try:return await conn.fetchval("select id::text from account_users where email='owner@roles.example'")
+        finally:await conn.close()
+    author=asyncio.run(owner_id())
+    try:
+        login(teacher,"owner")
+        login(pupil,"learner")
+        assert_board(teacher,ident,True,True)
+        assert_board(pupil,ident,False,False)
+        with httpx.Client(base_url=API,headers=headers("owner")) as client:
+            def read():
+                r=client.get(url);r.raise_for_status()
+                return r.json()
+            def wait(predicate,label):
+                for _ in range(160):
+                    row=read()
+                    if predicate(row["document"]["items"]):return row
+                    teacher.wait_for_timeout(100)
+                raise AssertionError(label)
+            def replace(obj):
+                row=read()
+                client.put(url,json={"expected_version":row["version"],"document":{**row["document"],"items":[obj]}}).raise_for_status()
+                for page in (teacher,pupil):
+                    page.wait_for_function("""({ident,id})=>{
+                        const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                        return raw&&JSON.parse(raw).items.length===1&&JSON.parse(raw).items[0].id===id;
+                    }""",arg={"ident":ident,"id":obj["id"]},timeout=30000)
+                    page.locator('[data-interface-control="select"]:visible').first.click()
+            base={"kind":"graph","graphPurpose":"geometry","graphAxisMode":"none","x":120,"y":100,"width":820,"height":500,"createdBy":author}
+            sentence={**base,"id":"qa-final-sentence","graphFigureId":"language-sentence-builder","text":"Final sentence",
+                      "schoolDiagram":{"kind":"sentence-builder","title":"Final sentence","instructions":"Arrange","parts":[{"id":"a","text":"I"},{"id":"b","text":"read"},{"id":"c","text":"books"}],"showKey":False,"showHint":False,"patternId":""}}
+            replace(sentence)
+            pupil.get_by_role("button",name="Проверить",exact=True).click()
+            checked=wait(lambda items:items[0]["schoolDiagram"].get("answerChecked") is True,"Sentence check not persisted")
+            status=re.compile("Правильно|Есть неточности")
+            expect(teacher.locator(".lektrus-sentence-status")).to_contain_text(status,timeout=15000)
+            words=pupil.locator("[data-sentence-word]")
+            first=words.first.bounding_box()
+            last=words.last.bounding_box()
+            x=first["x"]+first["width"]/2;y=first["y"]+first["height"]/2
+            cdp=pupil.context.new_cdp_session(pupil)
+            cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":True,"maxTouchPoints":1})
+            cdp.send("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":[{"x":x,"y":y}]})
+            cdp.send("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":[{"x":x+20,"y":y}]})
+            expect(pupil.locator(".lektrus-sentence-drag-preview")).to_be_visible()
+            cdp.send("Input.dispatchTouchEvent",{"type":"touchCancel","touchPoints":[]})
+            expect(pupil.locator(".lektrus-sentence-drag-preview")).to_have_count(0)
+            expect(pupil.locator(".lektrus-sentence-status")).to_contain_text(status)
+            assert read()["version"]==checked["version"],"Cancelled drag must not persist a change"
+            cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":False})
+            order=words.evaluate_all("els=>els.map(e=>e.dataset.sentenceWord)")
+            pupil.mouse.move(x,y);pupil.mouse.down()
+            pupil.mouse.move(last["x"]+last["width"]+12,last["y"]+last["height"]/2,steps=8);pupil.mouse.up()
+            moved=wait(lambda items:items[0]["schoolDiagram"].get("answerOrder")==order[1:]+order[:1] and items[0]["schoolDiagram"].get("answerChecked") is False,"Sentence mouse move not persisted")
+            teacher.wait_for_function("order=>JSON.stringify(Array.from(document.querySelectorAll('[data-sentence-word]'),e=>e.dataset.sentenceWord))===JSON.stringify(order)",arg=moved["document"]["items"][0]["schoolDiagram"]["answerOrder"],timeout=15000)
+            print("Final shared sentence: cancelled touch preserves checked result, real mouse reorder converges.")
+
+            contour={**base,"id":"qa-final-contour","graphFigureId":"contour-atlas","text":"Контурная карта",
+                     "schoolDiagram":{"kind":"atlas","scope":"geography","title":"Контурная карта","mode":"contour","year":1914,"showLabels":True,"showGrid":False,"showEvents":False,"markers":[],"regionId":"world","borderView":"russian","contourTask":"Обозначьте точку",
+                     "contourMarks":[{"id":"qa-a","lat":30,"lon":20,"text":"QA A","kind":"point","color":"#334455"}],"contourStrokes":[],"paintedCountries":{}}}
+            replace(contour)
+            editor=".lektrus-contour-editor-fullscreen"
+            for page in (teacher,pupil):
+                page.keyboard.press("Control+a")
+                page.get_by_role("button",name="Настроить учебный объект",exact=True).click()
+                expect(page.locator(editor)).to_be_visible(timeout=30000)
+            mark="Передвинуть обозначение: QA A"
+            ta=teacher.locator(editor).get_by_role("button",name=mark,exact=True)
+            pa=pupil.locator(editor).get_by_role("button",name=mark,exact=True)
+            def lon(items):return items[0]["schoolDiagram"]["contourMarks"][0]["lon"]
+            ta.press("ArrowRight")
+            first_move=wait(lambda items:lon(items)>20,"First contour move missing")
+            first_lon=lon(first_move["document"]["items"])
+            pupil.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":first_lon},timeout=30000)
+            pa.press("ArrowRight")
+            second=wait(lambda items:lon(items)>first_lon,"Peer contour move missing")
+            second_lon=lon(second["document"]["items"])
+            teacher.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":second_lon},timeout=30000)
+            teacher.locator(editor).get_by_role("button",name="Отменить",exact=True).click()
+            teacher.wait_for_timeout(1200)
+            assert lon(read()["document"]["items"])==second_lon,"Contour Undo overwrote peer's later move"
+            for page in (teacher,pupil):
+                page.locator(editor).get_by_role("button",name="Карандаш",exact=True).click()
+                svg=page.locator(editor+" svg[data-contour-brush=pen]")
+                expect(svg).to_be_visible()
+                box=svg.bounding_box();x=box["x"]+box["width"]*.45;y=box["y"]+box["height"]*(.45 if page==teacher else .60)
+                count=len(read()["document"]["items"][0]["schoolDiagram"]["contourStrokes"])
+                page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+35,y+8,steps=8);page.mouse.up()
+                wait(lambda items:len(items[0]["schoolDiagram"]["contourStrokes"])>count,"Contour ink not persisted")
+            for page in (teacher,pupil):
+                page.wait_for_function("""ident=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourStrokes.length===2""",arg=ident,timeout=30000)
+                page.locator(editor).get_by_role("button",name="Закрыть общий редактор",exact=True).click()
+            print("Final contour: conflicting Undo preserves peer mark and two real ink gestures converge.")
+
+            lab={**base,"id":"qa-final-lab","graphFigureId":"chem-experiment-free","width":960,"height":580,"text":"Химическая лаборатория",
+                 "scienceLabBench":{"vessels":[{"id":"v1","kind":"beaker","x":48,"y":70,"reagents":[],"environment":"aqueous","observed":False}],"selectedId":"v1","event":0,"mode":"reactions","simulationPaused":True}}
+            replace(lab)
+            vessel=pupil.locator('[data-lab-vessel-id="v1"]')
+            expect(vessel).to_be_visible(timeout=15000)
+            box=vessel.bounding_box();x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
+            pupil.mouse.move(x,y);pupil.mouse.down();pupil.mouse.move(x+38,y,steps=10);pupil.mouse.up()
+            saved=wait(lambda items:abs(items[0]["scienceLabBench"]["vessels"][0]["x"]-48)>0.5,"Lab vessel drag not persisted")
+            px=saved["document"]["items"][0]["scienceLabBench"]["vessels"][0]["x"]
+            teacher.wait_for_function("""({ident,x})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].scienceLabBench.vessels[0].x===x""",arg={"ident":ident,"x":px},timeout=30000)
+            print("Final lab: pupil vessel motion persists and converges.")
+    finally:
+        for ctx in contexts:ctx.close()
+
 def main():
     asyncio.run(seed())
+    if "--subject-final-only" in sys.argv:
+        with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True)
+            try:check_final_subject_gestures(browser)
+            finally:browser.close()
+        return
     if "--sync-only" in sys.argv:
         with sync_playwright() as p:
             browser=p.chromium.launch(headless=True)
             try:
                 check_shared_eraser_sync(browser)
                 check_undo_reconnect_sync(browser)
+                check_final_subject_gestures(browser)
             finally:
                 browser.close()
         return

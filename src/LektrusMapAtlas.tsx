@@ -1,7 +1,7 @@
 import {useEffect,useId,useLayoutEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode,ContourMark,ContourStroke} from "./lektrusAtlasModel";
 import {moveContourMark} from "./lektrusContourInteractions";
-import {mergeEditedValue} from "./lektrusLiveEditorMerge";
+import {undoCollaborativeValue} from "./lektrusPersonalBoardHistory";
 import {eraseContourInkAlongPath} from "./lektrusContourInk";
 import {defaultContourAssignment} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
@@ -236,7 +236,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   // Reverse only this user's last action, not a later line/label/fill
   // added by another collaborator while the editor stayed open.
   const after=last.after??last.before;
-  const restored=mergeEditedValue(after,last.before,currentContour());
+  const restored=undoCollaborativeValue(after,last.before,currentContour());
   onChange({...d,contourMarks:restored.contourMarks,
    contourStrokes:restored.contourStrokes,paintedCountries:restored.paintedCountries});
   setContourHistory(history=>history.slice(0,-1));
