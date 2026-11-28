@@ -40,7 +40,13 @@ const receivedEnd=app.indexOf("  useEffect(() => demoMode||layoutEditing||!board
 assert.ok(receivedStart>=0 && receivedEnd>receivedStart);
 const receiver=app.slice(receivedStart,receivedEnd);
 assert.ok(receiver.indexOf('if (preliminary === "ignore"){publishCommittedCursors();return;}')>=0);
-assert.ok(receiver.indexOf('if (preliminary === "defer")')>=0);
+// Geometry gestures and in-flight saves both defer incoming revisions before hashing.
+const deferGuard=receiver.indexOf('if (preliminary === "defer"||gestureDefers)');
+assert.ok(deferGuard>=0,"Both save and geometry gesture guards must defer the remote revision");
+const localHash=receiver.indexOf("sharedBoardFingerprint(currentDocument())");
+assert.ok(localHash>deferGuard,"Deferred revisions must not hash the local board");
+assert.match(receiver.slice(deferGuard,localHash),/if \(!deferredRemote\.current \|\| row\.version > deferredRemote\.current\.version\) deferredRemote\.current = row;\s*return;/,
+ "Defer only the newest revision and exit before document hashing");
 assert.ok(receiver.indexOf('if (preliminary === "ignore")')<
           receiver.indexOf("sharedBoardFingerprint(currentDocument())"),
  "Stale Realtime echoes must be discarded before hashing the local board");
