@@ -2663,7 +2663,7 @@
           "file": "world-2025-adm0-candidate.geojson",
           "source": "https://data.source.coop/geographyis/wb-gad/WB_GAD_ADM0.geojson",
           "sourceSHA256": "0e88acdd3732a8261e9b6572599f1f6438c6963c13ffca9a25b9eaceee083bf3",
-          "candidateSHA256": "bc375eb7872ded4a9341425b8094fb5e12ee6226c1e13fc4dda17d1e285ce22f",
+          "candidateSHA256": "bc004a2e3baadbb8f969a1cce5419496d8937818664d79cc9896e611f95f9114",
           "features": 260,
           "membershipCounts": {
             "members": 193,
@@ -2718,6 +2718,16 @@
               "after": "Curaçao (Neth.)"
             }
           ],
+          "antimeridianNormalizations": [
+            {
+              "index": 4,
+              "iso": "RUS"
+            },
+            {
+              "index": 155,
+              "iso": "FJI"
+            }
+          ],
           "unresolvedOverlaps": [],
           "coverageGaps": [
             {
@@ -2732,7 +2742,7 @@
           "file": "world-2025-ndlsa-candidate.geojson",
           "source": "https://data.source.coop/geographyis/wb-gad/WB_GAD_ADM0_NDLSA.geojson",
           "sourceSHA256": "3ff2a1aead884d470d260720b7a62673c619cccebc66473614837ee5e7a57166",
-          "candidateSHA256": "52dfeec5bc646429357f604cb6c4c4c78f5626b0dd6f8f3a11d8b2057e396d65",
+          "candidateSHA256": "682b00fd198b6330070404a2ca7b754241b456c8de8977040ca7a89bed5653a9",
           "features": 24,
           "membershipCounts": {
             "members": 0,
@@ -2741,6 +2751,7 @@
           },
           "topologyRepairs": [],
           "labelCorrections": [],
+          "antimeridianNormalizations": [],
           "unresolvedOverlaps": [],
           "coverageGaps": []
         }

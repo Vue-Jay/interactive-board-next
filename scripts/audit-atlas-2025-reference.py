@@ -77,6 +77,13 @@ def candidate(layer, source_file, roster):
     # pinned bytes and must never be used to match records across editions.
     indexed = [{**feature, "id": index} for index, feature in enumerate(features)]
     normalized, repairs = boundaries.normalize_source_topology(indexed)
+    repaired_ids = {repair["sourceId"] for repair in repairs}
+    normalized_at_dateline = [
+        {"index": before["id"], "iso": before["properties"]["ISO_A3"]}
+        for before, after in zip(indexed, normalized, strict=True)
+        if before["id"] not in repaired_ids and boundaries.geometry_digest(before) != boundaries.geometry_digest(after)
+    ]
+    assert normalized_at_dateline == ([{"index": 4, "iso": "RUS"}, {"index": 155, "iso": "FJI"}] if layer == "ADM0" else [])
     reviewed = boundaries.annotate_reference_identity(normalized, [code for code in roster if code not in SPLIT_ROSTER], EDITION, layer)
     corrections = []
     if layer == "ADM0":
@@ -97,6 +104,7 @@ def candidate(layer, source_file, roster):
         "sourceSHA256": expected_hash,
         "license": "CC BY 4.0",
         "topologyRepairs": repairs,
+        "antimeridianNormalizations": normalized_at_dateline,
         "labelCorrections": corrections,
         "notice": "Published administrative reference; application and historical acceptance pending. NDLSA is a separate layer.",
         "features": reviewed,
@@ -130,6 +138,7 @@ def audit(adm0_file, ndlsa_file, output):
                                   "membershipCounts": {"members": len(members), "observers": len(observers),
                                                        "outsideRosterFeatures": len(by_status["outside-roster"])},
                                   "topologyRepairs": snapshot["topologyRepairs"], "labelCorrections": snapshot["labelCorrections"],
+                                  "antimeridianNormalizations": snapshot["antimeridianNormalizations"],
                                   "unresolvedOverlaps": overlaps, "coverageGaps": coverage_gaps}
         print(f"{layer} {EDITION}: {len(features)} records, {len(overlaps)} positive-area overlaps above 0.001 km²", flush=True)
     (output / "2025-reference-audit.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
