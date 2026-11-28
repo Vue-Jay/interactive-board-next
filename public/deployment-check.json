@@ -2,6 +2,6 @@
   "application": "lektrus",
   "source": "github-actions",
   "branch": "main",
-  "marker": "lektrus-board-identity-inline-2026-11-28",
-  "board_change": "inline-board-title-and-static-subject-tag"
+  "marker": "lektrus-board-identity-natural-width-2026-11-28",
+  "board_change": "header-scale-title-and-unclipped-subject"
 }
