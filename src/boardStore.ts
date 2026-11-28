@@ -4,7 +4,7 @@ import { getUserByEmail, getUserById, retrySelfhostInvitations, type AuthUser, t
 import { claimRemoteInvitations, deleteRemoteStorageObjects, isRemoteBackendEnabled, listRemoteStorageObjects, remoteRequest } from "./backend";
 import { isSelfhostBackendEnabled, selfhostRequest, SelfhostHttpError, type SelfhostBoard, selfhostBoards, selfhostCreateBoard, selfhostRenameBoard, selfhostDeleteBoard, selfhostAccess, selfhostInvite, selfhostChangeMemberRole, selfhostRemoveMember, selfhostRevokeInvitation, selfhostAdminBoards, selfhostAdminUserWorkspace } from "./selfhostApi";
 
-export type BoardSummary={id:string;title:string;ownerId:string;role:BoardRole;participantRole?:BoardParticipantRole;planReadOnly?:boolean;createdAt:string;updatedAt:string;deletedAt?:string|null;purgeAfter?:string|null;purgeQueued?:boolean;purgeAssetCount?:number};
+export type BoardSummary={id:string;title:string;initialSubject?:string;ownerId:string;role:BoardRole;participantRole?:BoardParticipantRole;planReadOnly?:boolean;createdAt:string;updatedAt:string;deletedAt?:string|null;purgeAfter?:string|null;purgeQueued?:boolean;purgeAssetCount?:number};
 export type BoardMember={boardId:string;userId:string;role:Exclude<BoardRole,"owner">;participantRole?:InvitedParticipantRole;addedAt:string};
 export type BoardInvitation={id:string;boardId:string;email:string;role:Exclude<BoardRole,"owner">;participantRole?:InvitedParticipantRole;createdAt:string};
 export type BoardAccessMember=BoardMember&{user:AuthUser|null};

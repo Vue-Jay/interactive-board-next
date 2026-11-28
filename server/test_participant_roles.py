@@ -307,3 +307,30 @@ async def test_board_metadata_permissions_are_role_local_on_all_write_paths(clie
     assert (await client.get(root,headers=pupil)).json()["title"]=="Owner"
     organization=(await client.get("/api/v1/organization",headers=owner)).json()["boards"]
     assert next(x for x in organization if x["board_id"]==board_id)=={"board_id":board_id,"subject":"biology","group_name":"9A"}
+
+
+@pytest.mark.asyncio
+async def test_metadata_permissions_before_first_document_revision(client):
+    _, owner = await sign_in(client,"teacher@example.test")
+    _, pupil = await sign_in(client,"student@example.test")
+    board_id=(await client.post("/api/v1/boards",headers=owner,json={"title":"Empty lesson"})).json()["id"]
+    root="/api/v1/boards/"+board_id
+    org="/api/v1/organization/board"
+    assert (await client.post(root+"/invitations",headers=owner,json={"email":"student@example.test","role":"editor","participant_role":"student"})).status_code==200
+    assert (await client.put(org,headers=owner,json={"board_id":board_id,"subject":"Математика","group_name":"9A"})).status_code==200
+    row=(await client.get(root+"/document",headers=pupil)).json()
+    assert row["version"]==0 and row["document"] is None and row["initial_subject"]=="Математика"
+    doc={"version":1,"title":"Empty lesson","subject":"Математика","items":[]}
+    assert (await client.put(root+"/document",headers=pupil,json={"expected_version":0,"document":{**doc,"subject":"Физика"}})).status_code==403
+    saved=await client.put(root+"/document",headers=pupil,json={"expected_version":0,"document":doc})
+    assert saved.status_code==200,saved.text
+    assert (await client.get(root+"/document",headers=owner)).json()["document"]["subject"]=="Математика"
+    link=(await client.post(root+"/share-links",headers=owner,json={"role":"editor","participant_role":"student"})).json()
+    guest=(await client.post("/api/v1/auth/guest",json={"token":link["token"],"name":"Guest"})).json()
+    guest_headers={"Authorization":"Bearer "+guest["access_token"]}
+    assert (await client.patch(root,headers=guest_headers,json={"title":"Guest title"})).status_code==403
+    assert (await client.put(org,headers=guest_headers,json={"board_id":board_id,"subject":"Guest subject"})).status_code==403
+    assert (await client.patch(root+"/document",headers=guest_headers,json={"expected_version":1,"delta":{"set":{"title":"Guest title"}}})).status_code==403
+    async with app.state.pool.acquire() as conn:
+        await conn.execute("UPDATE board_members SET participant_role=NULL WHERE board_id=$1 AND user_id=$2",UUID(board_id),STUDENT)
+    assert (await client.patch(root+"/document",headers=pupil,json={"expected_version":1,"delta":{"set":{"subject":"Legacy bypass"}}})).status_code==403

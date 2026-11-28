@@ -656,7 +656,13 @@ async def get_document(board_id: UUID, request: Request, version_only: bool = Fa
             "SELECT lektrus_board_document(d) AS document,version,updated_at,updated_by FROM board_documents d WHERE board_id=$1",
             board_id,
         )
-        return {**document_view(row, board_id), **({"ink_point_deltas": True} if ink_point_deltas else {})}
+        initial_subject = {}
+        if row is None:
+            # A catalogue assignment can exist before the first document revision.
+            subject = await conn.fetchval("SELECT subject FROM board_organization WHERE board_id=$1",board_id)
+            if subject is not None:
+                initial_subject["initial_subject"] = subject
+        return {**document_view(row, board_id), **initial_subject, **({"ink_point_deltas": True} if ink_point_deltas else {})}
 
 _subscribers: dict[UUID, dict[WebSocket, str]] = defaultdict(dict)
 from board_presence_policy import TEACHER_COLOR, participant_color, valid_idle_age, idle_deadline, background_deadline
@@ -1095,6 +1101,8 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
             # allowed to change shared metadata, even with a teacher account.
             previous_title = (base or {}).get("title", board["title"])
             previous_subject = (base or {}).get("subject", "")
+            if base is None:
+                previous_subject = await conn.fetchval("SELECT subject FROM board_organization WHERE board_id=$1",board_id) or ""
             if not metadata_allowed and (
                 document.get("title", board["title"]) != previous_title or
                 ("title" in (base or {}) and "title" not in document) or
@@ -1106,7 +1114,7 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
                 # An empty new board permits student ink and own objects, not teacher metadata.
                 student_base = base
                 if student_base is None:
-                    if document.get("title", board["title"]) != board["title"] or document.get("subject", "") != "" or document.get("backgroundShared", True) is not True or document.get("background", {"mode":"dots","color":"#f7f7f8","opacity":100}) != {"mode":"dots","color":"#f7f7f8","opacity":100}:
+                    if document.get("title", board["title"]) != board["title"] or document.get("subject", "") != previous_subject or document.get("backgroundShared", True) is not True or document.get("background", {"mode":"dots","color":"#f7f7f8","opacity":100}) != {"mode":"dots","color":"#f7f7f8","opacity":100}:
                         error(403, "Ученик не может менять настройки новой доски.")
                     student_base = {key: value for key, value in document.items() if key in ("version", "title", "subject", "view", "preview", "background", "backgroundShared")}
                     student_base["items"] = []
@@ -1174,7 +1182,7 @@ async def _persist_document(board_id: UUID, expected_version: int, request: Requ
             await conn.execute(
                 "UPDATE boards SET updated_at=now(),title=COALESCE($2,title) WHERE id=$1", board_id,new_title,
             )
-            new_subject = document.get("subject","")
+            new_subject = document.get("subject",previous_subject if base is None else "")
             if metadata_allowed and isinstance(new_subject,str) and len(new_subject)<=80 and (
                 new_subject!=previous_subject or (delta and "subject" in delta.get("set",{}))
             ):

@@ -2759,6 +2759,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     // Legacy labels are migrated only by the board owner.
     const assigned=initial.data.subject;
     if(typeof assigned==="string")return {subject:normalizeLektrusSubject(assigned),group:""};
+    if(selfhostMode&&initialRemoteVersion===null&&typeof boardSummary.initialSubject==="string")return {subject:normalizeLektrusSubject(boardSummary.initialSubject),group:""};
     if(boardSummary.role!=="owner")return {subject:"",group:""};
     try{
       const raw=JSON.parse(localStorage.getItem("lectris.board-organization.v1."+authUser.id)||"{}") as Record<string,{subject?:string;group?:string}>;
@@ -4079,6 +4080,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       setNotice("Замена всей доски доступна только преподавателю");
       return;
     }
+    if(!fromRemote&&!canChangeBoardMetadata)data={...data,title,subject:lectrisBoardOrganization.subject};
     end(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     textEditSession.current=null;

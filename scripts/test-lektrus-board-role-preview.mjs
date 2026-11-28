@@ -264,8 +264,11 @@ assert.equal(restrictStudentDiagramChange(spelling,{...spelling,response:{index:
 assert.equal(restrictStudentDiagramChange(spelling,{...spelling,response:{index:0,picked:2,checked:false}}),null);
 assert.match(app,/const merged=mergeEditedValue\(base,diagram,before.schoolDiagram\);\s*const allowed=isStudent\?restrictStudentDiagramChange\(before.schoolDiagram,merged\):merged;\s*if\(!allowed\|\|!isSchoolDiagram\(allowed\)\)return;/,
  "student edits are merged against the current assignment, restricted and validated before commit");
-assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,
- "only actual board owner can change the subject");
+assert.match(app,/const canChangeBoardMetadata=canEdit&&!isStudent&&!boardSummary.planReadOnly&&canEditBoardMetadata\(/,
+ "shared metadata permission must be independent of assignment authoring and ownership-only membership management");
+assert.match(app,/const changeBoardSubject=\(subject:string\)=>\{\s*if\(!canChangeBoardMetadata\)return;/);
+assert.match(app,/readOnly=\{!canChangeBoardMetadata\}/);
+assert.match(app,/canChangeSubject=\{canChangeBoardMetadata\}/);
 assert.match(app,/if\(!canCreateAssignments\)\{setNotice\("Создавать задания может только преподаватель/,
  "students cannot generate assignments");
 for(const trigger of ["lektrus-mobile-subject-trigger","lektrus-desktop-subject-trigger"]){
