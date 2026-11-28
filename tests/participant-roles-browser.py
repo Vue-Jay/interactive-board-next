@@ -24,9 +24,11 @@ async def seed():
     conn=await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
         hashed=bcrypt.hashpw(PASSWORD.encode(),bcrypt.gensalt(rounds=4)).decode()
+        owner_id=uuid4()
         for name,role in [("owner","teacher"),("learner","student"),("colleague","teacher"),("observer","student")]:
             await conn.execute("""INSERT INTO account_users(id,email,password_hash,display_name,account_role,teacher_status,email_confirmed_at)
-                VALUES($1,$2,$3,$4,$5,$6,now())""",uuid4(),name+"@roles.example",hashed,name,role,"approved" if role=="teacher" else "none")
+                VALUES($1,$2,$3,$4,$5,$6,now())""",owner_id if name=="owner" else uuid4(),name+"@roles.example",hashed,name,role,"approved" if role=="teacher" else "none")
+        return str(owner_id)
     finally:
         await conn.close()
 
@@ -2238,17 +2240,12 @@ def check_undo_reconnect_sync(browser):
         for ctx in contexts:ctx.close()
 
 
-def check_final_subject_gestures(browser):
+def check_final_subject_gestures(browser,author):
     """Finite final subject gate: shared sentence pointer/cancel, contour undo/ink, lab vessel movement."""
     ident=setup_board()
     url=f"/api/v1/boards/{ident}/document"
     contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
     teacher,pupil=[ctx.new_page() for ctx in contexts]
-    async def owner_id():
-        conn=await asyncpg.connect(os.environ["DATABASE_URL"])
-        try:return await conn.fetchval("select id::text from account_users where email='owner@roles.example'")
-        finally:await conn.close()
-    author=asyncio.run(owner_id())
     try:
         login(teacher,"owner")
         login(pupil,"learner")
@@ -2363,11 +2360,11 @@ def check_final_subject_gestures(browser):
         for ctx in contexts:ctx.close()
 
 def main():
-    asyncio.run(seed())
+    seed_owner=asyncio.run(seed())
     if "--subject-final-only" in sys.argv:
         with sync_playwright() as p:
             browser=p.chromium.launch(headless=True)
-            try:check_final_subject_gestures(browser)
+            try:check_final_subject_gestures(browser,seed_owner)
             finally:browser.close()
         return
     if "--sync-only" in sys.argv:
@@ -2376,7 +2373,7 @@ def main():
             try:
                 check_shared_eraser_sync(browser)
                 check_undo_reconnect_sync(browser)
-                check_final_subject_gestures(browser)
+                check_final_subject_gestures(browser,seed_owner)
             finally:
                 browser.close()
         return
