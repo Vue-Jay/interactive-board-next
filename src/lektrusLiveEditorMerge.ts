@@ -6,6 +6,15 @@
  */
 const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
+// PostgreSQL JSONB can reorder object keys. That is not a change in the
+// exercise source, and must never clear a pupil's answer.
+const sameContent=(a:unknown,b:unknown):boolean=>{
+ if(a===b)return true;
+ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((v,i)=>sameContent(v,b[i]));
+ if(!record(a)||!record(b))return false;
+ const keys=Object.keys(a).filter(k=>a[k]!==undefined);
+ return keys.length===Object.keys(b).filter(k=>b[k]!==undefined).length&&keys.every(k=>sameContent(a[k],b[k]));
+};
 // Old saved motion graphs used positional points. Assign a stable identity
 // on both sides before merging, so the first live edit upgrades safely.
 export function withMotionPointIds<T extends {id:string;graphPoints?:{id?:string}[]}>(item:T):T{
@@ -73,7 +82,7 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
     ["sentence-builder","geo-training","flashcards","orthography"].includes(String(base.kind))){
   const source=base.kind==="sentence-builder"?["parts"]:base.kind==="geo-training"?["exercise","relation","reverse","countryCodes"]:base.kind==="flashcards"?["cards","direction"]:["questions"];
   const answers=base.kind==="sentence-builder"?["answerOrder","answerChecked"]:base.kind==="geo-training"?["practice"]:["response"];
-  const changed=(a:Record<string,unknown>,b:Record<string,unknown>,fields:string[])=>fields.some(f=>!same(a[f],b[f]));
+  const changed=(a:Record<string,unknown>,b:Record<string,unknown>,fields:string[])=>fields.some(f=>!sameContent(a[f],b[f]));
   const localSource=changed(base,edit,source),remoteSource=changed(base,latest,source);
   const result:Record<string,unknown>={...latest};
   const copy=(from:Record<string,unknown>,field:string)=>{
@@ -136,18 +145,56 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  // the teacher changes the task. Never carry an old response across it.
  if(key==="subjectBoardEntries"&&record(base)&&record(edit)&&record(latest)&&
     base.id===edit.id&&base.id===latest.id&&base.kind==="task"&&edit.kind==="task"&&latest.kind==="task"){
-  const source=["format","activity"],answer="activityResponse";
-  const changed=(a:Record<string,unknown>,b:Record<string,unknown>)=>source.some(k=>!same(a[k],b[k]));
+  const source=["format","activity","prompt","details"],answers=["activityResponse","answer","russianWork","workedSolution"];
+  const changed=(a:Record<string,unknown>,b:Record<string,unknown>)=>source.some(k=>!sameContent(a[k],b[k]));
   const result:Record<string,unknown>={...latest};
   const copy=(from:Record<string,unknown>,k:string)=>{if(from[k]===undefined)delete result[k];else result[k]=from[k];};
   for(const field of new Set([...Object.keys(base),...Object.keys(edit)])){
-   if(source.includes(field)||field===answer||same(base[field],edit[field]))continue;
+   if(source.includes(field)||answers.includes(field)||sameContent(base[field],edit[field]))continue;
    if(!(field in edit))delete result[field];else result[field]=mergeEditedValue(base[field],edit[field],latest[field],field);
   }
-  if(changed(base,edit)){
-   for(const field of source)copy(edit,field);
-   if(changed(edit,latest))delete result[answer];
-  }else if(!changed(base,latest)&&!same(base[answer],edit[answer]))copy(edit,answer);
+  const localSource=changed(base,edit),remoteSource=changed(base,latest);
+  if(localSource){
+   // The format and authored activity are a coherent pair; details from
+   // the previous format are not valid in a replacement assignment.
+   if(!sameContent(base.format,edit.format)){
+    for(const field of source)copy(edit,field);
+   }else if(sameContent(base.format,latest.format)){
+    for(const field of source){
+     if(sameContent(base[field],edit[field]))continue;
+     if(field==="details"&&record(base[field])&&record(edit[field])&&record(latest[field]))
+      result[field]=mergeEditedValue(base[field],edit[field],latest[field],field);
+     else copy(edit,field);
+    }
+   }
+   if(changed(result,latest)){
+    delete result.activityResponse;delete result.russianWork;delete result.workedSolution;
+    result.answer="";
+   }
+  }else if(!remoteSource){
+   for(const field of answers){
+    if(sameContent(base[field],edit[field]))continue;
+    if(field==="activityResponse"||edit[field]===undefined){copy(edit,field);continue;}
+    // Foreign grammar and reading store one answer per row in a string.
+    // Two people typing in different rows must not overwrite each other.
+    if(field==="answer"&&(base.format==="grammar"||base.format==="reading")&&
+       typeof base.answer==="string"&&typeof edit.answer==="string"&&typeof latest.answer==="string"&&
+       (base.subject==="languages"||record(base.details))){
+     const detail=record(base.details)?base.details:{};
+     const material=base.format==="grammar"?detail.material:detail.questions;
+     const rows=typeof material==="string"?material.split(/\r?\n/).filter(s=>s.trim()).slice(0,base.format==="grammar"?12:15).length:0;
+     if(rows>0){
+      const a=base.answer.split("\n"),b=edit.answer.split("\n"),c=latest.answer.split("\n");
+      const combined=Array.from({length:rows},(_,i)=>(a[i]??"")!==(b[i]??"")?(b[i]??""):(c[i]??"")).join("\n");
+      // Respect the persisted text limit even under concurrent input.
+      result.answer=combined.length<=2000?combined:latest.answer;continue;
+     }
+    }
+    const original=base[field]??{},local=edit[field],remote=latest[field]??{};
+    result[field]=record(original)&&record(local)&&record(remote)?
+     mergeEditedValue(original,local,remote,field):local;
+   }
+  }
   return result as T;
  }
  if(same(base,latest))return edit;

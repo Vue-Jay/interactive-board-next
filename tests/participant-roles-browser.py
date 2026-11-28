@@ -1804,6 +1804,32 @@ def check_undo_reconnect_sync(browser):
             print("Subject-board shared answers preserved across task reordering.")
             replace_items([])
 
+            # Actual foreign-language authoring: replacing the source must
+            # clear the previous answer on both sides, not merely hide it.
+            grammar={"id":"qa-language-task","kind":"task","subject":"languages","format":"grammar","title":"QA grammar","prompt":"Transform","answer":"","solution":"","revealed":False,
+                     "details":{"material":"I read.\nWe write.","instruction":"Past tense"}}
+            language={**worksheet,"id":"qa-language-board","graphFigureId":"subject-board-languages","text":"QA language","subjectBoardEntries":[grammar]}
+            replace_items([language])
+            first_answer="Преобразованное предложение 1"
+            second_answer="Преобразованное предложение 2"
+            pupil.get_by_label(first_answer,exact=True).fill("I read yesterday.")
+            wait_api(pupil,lambda d:any(i["id"]==language["id"] and i["subjectBoardEntries"][0]["answer"].startswith("I read yesterday.") for i in d["items"]),"Written answer not saved")
+            expect(teacher.get_by_label(first_answer,exact=True)).to_have_value("I read yesterday.",timeout=15000)
+            teacher.get_by_label(second_answer,exact=True).fill("We wrote.")
+            wait_api(teacher,lambda d:any(i["id"]==language["id"] and i["subjectBoardEntries"][0]["answer"]=="I read yesterday.\nWe wrote." for i in d["items"]),"Independent written answer not saved")
+            expect(pupil.get_by_label(second_answer,exact=True)).to_have_value("We wrote.",timeout=15000)
+            teacher.locator(".lektrus-subject-board-entry").get_by_role("button",name="Изменить",exact=True).click()
+            dialog=teacher.get_by_role("dialog",name="Создание задания",exact=True)
+            expect(dialog).to_be_visible(timeout=15000)
+            dialog.get_by_label("Предложение 1",exact=True).fill("They play.")
+            wait_api(teacher,lambda d:any(i["id"]==language["id"] and i["subjectBoardEntries"][0].get("details",{}).get("material","").startswith("They play.") and i["subjectBoardEntries"][0]["answer"]=="" for i in d["items"]),"Replacement source retained obsolete answer")
+            expect(pupil.get_by_label(first_answer,exact=True)).to_have_value("",timeout=15000)
+            expect(pupil.get_by_label(second_answer,exact=True)).to_have_value("",timeout=15000)
+            teacher.keyboard.press("Escape")
+            expect(dialog).to_have_count(0)
+            print("Foreign-language written responses and teacher source replacement converged.")
+            replace_items([])
+
             # Save on an open chart after a co-teacher deletes it: do not
             # reinterpret the absent existing object as a new draft.
             chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],

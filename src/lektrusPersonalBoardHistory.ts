@@ -37,9 +37,12 @@ function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResu
   if(expected.kind===desired.kind&&expected.kind===live.kind){
    const kind=expected.kind;
    const subjectTask=kind==="task"&&typeof expected.id==="string"&&expected.id===desired.id&&expected.id===live.id;
-   const source=subjectTask?["format","activity"]:kind==="sentence-builder"?["parts"]:kind==="geo-training"?["exercise","relation","reverse","countryCodes"]:
+   const taskSource=["format","activity","prompt","details"];
+   const taskResponses=["activityResponse","answer","russianWork","workedSolution"];
+   const taskSourceChanged=subjectTask&&taskSource.some(k=>!same(expected[k],desired[k])||!same(expected[k],live[k]));
+   const source=subjectTask?taskSourceChanged?taskSource:[]:kind==="sentence-builder"?["parts"]:kind==="geo-training"?["exercise","relation","reverse","countryCodes"]:
      kind==="flashcards"?["cards","direction"]:kind==="orthography"?["questions"]:kind==="place-value"?["base"]:[];
-   const answer=subjectTask?["activityResponse"]:kind==="sentence-builder"?["answerOrder","answerChecked"]:kind==="geo-training"?["practice"]:
+   const answer=subjectTask?taskResponses:kind==="sentence-builder"?["answerOrder","answerChecked"]:kind==="geo-training"?["practice"]:
      kind==="flashcards"||kind==="orthography"?["response"]:kind==="place-value"?["digits"]:[];
    if(source.length&&answer.length){
     const keys=[...source,...answer];keys.forEach(k=>grouped.add(k));
@@ -49,6 +52,18 @@ function inverseValue(expected:unknown,desired:unknown,live:unknown):InverseResu
        if(desired[k]===undefined)delete result[k];else result[k]=desired[k];
        changed=true;
       }
+     }else conflicts++;
+    }
+   }
+   // When the task source is unchanged, independent written fields can
+   // still be undone separately. Interactive check and selection stay atomic.
+   if(subjectTask&&!taskSourceChanged){
+    grouped.add("activityResponse");
+    if(!same(expected.activityResponse,desired.activityResponse)){
+     if(same(expected.activityResponse,live.activityResponse)){
+      if(desired.activityResponse===undefined)delete result.activityResponse;
+      else result.activityResponse=desired.activityResponse;
+      changed=true;
      }else conflicts++;
     }
    }

@@ -383,3 +383,26 @@ for(const [base,source,response] of [
  assert.deepEqual(applyEditorOps(remote,editorDiff(base,local)),remote,"Delayed preview cannot recreate deleted task");
  assert.deepEqual(editorDiff(base,{subjectBoardEntries:[b,a]}),[],"Reorder uses durable revision");
 }
+
+{
+ const task={id:"language",kind:"task",subject:"languages",format:"grammar",prompt:"Transform",details:{material:"I read.\nWe write.",instruction:"Past"},answer:""};
+ const first={...task,answer:"I read yesterday.\n"},second={...task,answer:"\nWe wrote."};
+ const combined=mergeEditedValue(task,first,second,"subjectBoardEntries");
+ assert.equal(combined.answer,"I read yesterday.\nWe wrote.","Independent written rows survive");
+ const revised={...task,details:{...task.details,material:"They play.\nShe walks."}};
+ assert.deepEqual(mergeEditedValue(task,first,revised,"subjectBoardEntries"),revised,"Old written response cannot cross changed source");
+ assert.deepEqual(mergeEditedValue(task,revised,first,"subjectBoardEntries"),revised,"Teacher replacement clears stale response");
+ const renamed={...task,title:"Renamed"};
+ assert.equal(mergeEditedValue(task,first,renamed,"subjectBoardEntries").answer,first.answer);
+ const reorderedKeys={...task,details:{instruction:"Past",material:task.details.material}};
+ assert.equal(mergeEditedValue(task,first,reorderedKeys,"subjectBoardEntries").answer,first.answer,"JSONB key order is not source replacement");
+ const ru={id:"r",kind:"task",subject:"russian",format:"syntax",prompt:"Mark",details:{material:"Мама читает"},answer:""};
+ const marked={...ru,russianWork:{source:"Мама читает",syntaxRoles:["subject","none"]}};
+ const changed={...ru,details:{material:"Папа пишет"}};
+ assert.deepEqual(mergeEditedValue(ru,marked,changed,"subjectBoardEntries"),changed);
+ assert.deepEqual(mergeEditedValue(ru,changed,marked,"subjectBoardEntries"),changed);
+ const math={id:"m",kind:"task",format:"problem",prompt:"2+3",details:{},answer:""};
+ const given={...math,workedSolution:{given:"2 and 3"}},work={...math,workedSolution:{work:"2+3=5"}};
+ assert.deepEqual(mergeEditedValue(math,given,work,"subjectBoardEntries").workedSolution,{work:"2+3=5",given:"2 and 3"});
+ assert.equal(mergeEditedValue(math,{...math,prompt:"3+4"},work,"subjectBoardEntries").workedSolution,undefined);
+}

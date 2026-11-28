@@ -303,3 +303,15 @@ assert.match(board,/\(isStudent&&!isBoardOwner&&blockedStudentObjectEdits\(items
  const replacement={...after,subjectBoardEntries:[{...after.subjectBoardEntries[0],activity:{mode:"choice",options:["three","four"]}}]};
  assert.equal(applyPersonalBoardEdit([replacement],choose([before],[after]),"undo").changed,false,"Old answer cannot undo into new task");
 }
+
+{
+ const task={id:"q",kind:"task",subject:"languages",format:"grammar",prompt:"Transform",details:{material:"I read"},answer:""};
+ const before={...object("language"),kind:"graph",subjectBoardEntries:[task]};
+ const after={...before,subjectBoardEntries:[{...task,answer:"I read yesterday"}]};
+ const replacement={...after,subjectBoardEntries:[{...after.subjectBoardEntries[0],details:{material:"She writes"}}]};
+ assert.equal(applyPersonalBoardEdit([replacement],choose([before],[after]),"undo").changed,false,"Written answer undo cannot cross replacement text");
+ const withSolution={...after,subjectBoardEntries:[{...after.subjectBoardEntries[0],workedSolution:{given:"peer"}}]};
+ const undo=applyPersonalBoardEdit([withSolution],choose([before],[after]),"undo");
+ assert.equal(undo.items[0].subjectBoardEntries[0].answer,"");
+ assert.deepEqual(undo.items[0].subjectBoardEntries[0].workedSolution,{given:"peer"});
+}
