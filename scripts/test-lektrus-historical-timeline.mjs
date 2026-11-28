@@ -48,7 +48,7 @@ const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY',componen
 
 // Modern political chronology: do not confuse internal administration,
 // constitutional reform, military occupation or a dispute with a new border.
-for(const [name,qid,from,to,x] of [['Barbados','Q244',2019,2024,0],['Netherlands','Q55',2008,2012,3],['Montenegro','Q236',1999,2008,6],['Kuwait','Q817',1989,1995,9],['Belize','Q242',1999,2020,12],['Saint Lucia','Q760',1977,1981,15],['Lebanon','Q822',1993,2024,18],['New Zealand','Q664',1993,2024,21],['Malaysia','Q833',1993,2024,24],['Sri Lanka','Q854',1993,2024,27]]){
+for(const [name,qid,from,to,x] of [['Barbados','Q244',2019,2024,0],['Netherlands','Q55',2008,2012,3],['Montenegro','Q236',1999,2008,6],['Kuwait','Q817',1989,1995,9],['Belize','Q242',1999,2020,12],['Saint Lucia','Q760',1977,1981,15],['Lebanon','Q822',1993,2024,18],['New Zealand','Q664',1993,2024,21],['Malaysia','Q833',1993,2024,24],['Sri Lanka','Q854',1993,2024,27],['Japan','Q17',1993,2024,30],['United Arab Emirates','Q878',1993,2024,33],['Malawi','Q1020',1993,2024,36],['Dominican Republic','Q786',1993,2024,39],['Equatorial Guinea','Q983',1993,2024,42],['Papua New Guinea','Q691',1993,2024,45]]){
  const input=feature(name,from,to,square(x),qid);
  const output=normalizeHistoricalSource({type:'FeatureCollection',features:[input]});
  const relevant=output.records.filter(r=>r.sourceName===name);
@@ -61,6 +61,21 @@ for(const [name,qid,from,to,x] of [['Barbados','Q244',2019,2024,0],['Netherlands
  }
 }
 assert.equal(modernStatusRulesFor({sourceName:'Montenegro',sourceWikidata:'Q999999',role:'polity',from:2000,to:2006}).length,0);
+
+// Explicit transition expectations independent of the rule table.
+for(const [name,qid,year,phrase] of [
+ ['Papua New Guinea','Q691',2000,'конфликт'],['Papua New Guinea','Q691',2001,'30 августа 2001'],['Papua New Guinea','Q691',2005,'Автономное правительство'],['Papua New Guinea','Q691',2019,'97,7%'],['Papua New Guinea','Q691',2020,'консультации'],
+ ['Equatorial Guinea','Q983',2016,'15 ноября 2016'],['Equatorial Guinea','Q983',2021,'19 мая 2025'],
+ ['Malawi','Q1020',2012,'2012'],['Dominican Republic','Q786',2023,'водопользования'],
+ ['Japan','Q17',1994,'Сэнкаку'],['United Arab Emirates','Q878',2024,'Абу-Мусе']
+]){
+ const selected=modernStatusRulesFor({sourceName:name,sourceWikidata:qid,role:'polity',from:1993,to:2025});
+ assert.ok(modernStatusAt(selected,year,year)?.reasonRu.toLowerCase().includes(phrase.toLowerCase()),name+'/'+year);
+ assert.equal(modernStatusAt(selected,1993,1993),undefined);
+ assert.equal(modernStatusAt(selected,2025,2025),undefined);
+ assert.equal(modernStatusRulesFor({sourceName:name,sourceWikidata:'Q999999',role:'polity',from:1994,to:2024}).length,0);
+ assert.equal(modernStatusRulesFor({sourceName:name,sourceWikidata:qid,role:'composite',from:1994,to:2024}).length,0);
+}
 
 const duplicateSource=[feature('Old rule',1800,1806,{type:'MultiPolygon',coordinates:[square().coordinates,square(3).coordinates]}),feature('New rule',1802,1803,square()),feature('New rule',1805,1806,square()),feature('New rule',1802,1806,square(3))];
 const derived=deriveConfirmedOverlapExclusions(duplicateSource,[{index:0,loser:/Old rule/,winner:/New rule/,from:1801,to:1805,boxes:[[-1,-1,2,2]],reason:'evidence',ru:'evidence',source:'https://example.com'}]);

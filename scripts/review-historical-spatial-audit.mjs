@@ -78,3 +78,29 @@ assert.ok(source.includes("sourceAliasOnly"));
 assert.ok(source.includes("retrospectiveAliasWithoutEffectiveMatch"));
 assert.ok(source.includes("rawSourceAliasOnlyArchiveFeatures"));
 console.log("Atlas spatial comparison: 13 false historical name matches corrected, 95 mismatches explained, 381 awaiting review; geometry unverified.");
+
+// Preserve the previous frozen acceptance checks above, and validate the current
+// snapshot as well. A documented political context is not a certified boundary.
+const latest=fetchJson("docs/historical-atlas-spatial-adjudications-20261128.json");
+const latestIds=new Set();
+for(const r of latest.cases){
+ assert.ok(!latestIds.has(r.id),"Duplicate current adjudication "+r.id);latestIds.add(r.id);
+ const f=byId.get(r.id);assert.ok(f,"Unknown current archival result "+r.id);
+ const c=f.candidates.find(c=>c.geometryId===r.candidateGeometryId);assert.ok(c);
+ assert.equal(r.archiveName,f.archiveName);assert.equal(r.archiveSha256,f.archiveSha256);
+ assert.equal(r.year,f.year);assert.equal(r.iou,c.iou);
+ assert.equal(r.geometryHistoricallyConfirmed,false);
+ assert.ok(r.sources.length>0&&r.sources.every(s=>s.startsWith("https://")));
+ if(r.proposedMainlandApproxIoU!==undefined){
+  assert.ok(Number.isFinite(r.proposedMainlandApproxIoU)&&r.proposedMainlandApproxIoU>=0&&r.proposedMainlandApproxIoU<=1);
+ }
+}
+for(const r of current.cases)assert.ok(latestIds.has(r.id),"Prior case disappeared "+r.id);
+assert.equal(latest.counts.archivedNamedDisagreements,byId.size);
+assert.equal(latest.counts.explainedComparisonCases,latestIds.size);
+assert.equal(latest.counts.remainingWithoutExplanation,byId.size-latestIds.size);
+assert.equal(latest.counts.historicallyVerifiedGeometries,0);
+assert.equal(latest.counts.unverifiedArchiveGeometries,byId.size);
+assert.equal(latest.counts.territorialComponentYearsStillOpenExpected,769);
+assert.equal(latestIds.size,136);
+console.log("Current snapshot: 136 classified, 340 unclassified, all 476 geometries unverified.");

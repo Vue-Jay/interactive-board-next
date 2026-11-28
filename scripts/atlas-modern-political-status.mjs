@@ -525,6 +525,218 @@ export const modernPoliticalStatusRules = [
     "https://commonslibrary.parliament.uk/research-briefings/sn06097/",
     "https://treaties.un.org/pages/Declarations.aspx?chapter=4&index=Sri+Lanka&lang=_en&treaty=335"
   ]
+},
+{
+  "sourceName": "Japan",
+  "qid": "Q17",
+  "from": 1994,
+  "to": 2024,
+  "name": "Japan",
+  "nameRu": "Япония",
+  "role": "polity",
+  "reason": "The source outline is not an adjudication of sovereignty: the four southern Kuril islands claimed by Japan are administered by Russia; Dokdo/Takeshima is administered by South Korea and claimed by Japan; Senkaku/Diaoyu is administered by Japan and claimed by China and Taiwan. No claim is converted into a surveyed boundary.",
+  "reasonRu": "Исходный контур не разрешает споры о суверенитете: четыре южнокурильские территории, на которые претендует Япония, находятся под управлением России; Токто (Такэсима) — под управлением Республики Корея при японской претензии; Сэнкаку (Дяоюйдао) — под управлением Японии при претензиях Китая и Тайваня. Притязания не превращаются в подтверждённые границы.",
+  "sources": [
+    "https://www.mofa.go.jp/territory/page1we_000007.html",
+    "https://www.everycrsreport.com/files/2023-01-06_RL33436_71f12a010f02f9321b51ffe9edb91bfcb1c043f5.html",
+    "https://www.cas.go.jp/jp/ryodo_eg/taiou/index.html"
+  ]
+},
+{
+  "sourceName": "United Arab Emirates",
+  "qid": "Q878",
+  "from": 1994,
+  "to": 2024,
+  "name": "United Arab Emirates",
+  "nameRu": "Объединённые Арабские Эмираты",
+  "role": "polity",
+  "reason": "Iran took the Greater and Lesser Tunbs in 1971 and entered Abu Musa under a distinct arrangement; the UAE contests Iranian sovereignty over all three islands. The generalized polygon does not settle the claims or reconstruct maritime limits.",
+  "reasonRu": "В 1971 году Иран занял Большой и Малый Томб и разместился на Абу-Мусе на основании отдельной договорённости; ОАЭ оспаривают иранский суверенитет над всеми тремя островами. Генерализованный контур не разрешает спор и не восстанавливает морские границы.",
+  "sources": [
+    "https://history.state.gov/historicaldocuments/frus1969-76v24/d110",
+    "https://www.uae-embassy.org/foreign-policy/occupied-uae-islands"
+  ]
+},
+{
+  "sourceName": "Malawi",
+  "qid": "Q1020",
+  "from": 1994,
+  "to": 2011,
+  "name": "Malawi",
+  "nameRu": "Малави",
+  "role": "polity",
+  "reason": "The boundary in Lake Malawi/Nyasa is disputed with Tanzania; a land outline or lake mask does not settle the competing shoreline and median-line interpretations.",
+  "reasonRu": "Граница по озеру Малави (Ньяса) оспаривается Танзанией; сухопутный контур или маска озера не разрешает конкурирующие трактовки линии берега и срединной линии.",
+  "sources": [
+    "https://www.cambridge.org/core/journals/journal-of-modern-african-studies/article/abs/malawitanzania-boundary-dispute/E752189685196A67E9C83E04A1B555B9",
+    "https://www.everycrsreport.com/files/20171006_R44271_993ff1c2b3a000cba0a42d32b2b79f8dd583af21.html"
+  ]
+},
+{
+  "sourceName": "Malawi",
+  "qid": "Q1020",
+  "from": 2012,
+  "to": 2024,
+  "name": "Malawi",
+  "nameRu": "Малави",
+  "role": "polity",
+  "reason": "The long-running Lake Malawi/Nyasa boundary dispute with Tanzania resurfaced in 2012. No agreed lake boundary is inferred from a land outline.",
+  "reasonRu": "В 2012 году вновь обострился давний спор с Танзанией о границе на озере Малави (Ньяса). Из сухопутного контура не выводится согласованная граница по озеру.",
+  "sources": [
+    "https://www.cambridge.org/core/journals/journal-of-modern-african-studies/article/abs/malawitanzania-boundary-dispute/E752189685196A67E9C83E04A1B555B9",
+    "https://www.everycrsreport.com/files/20171006_R44271_993ff1c2b3a000cba0a42d32b2b79f8dd583af21.html"
+  ]
+},
+{
+  "sourceName": "Dominican Republic",
+  "qid": "Q786",
+  "from": 1994,
+  "to": 2022,
+  "name": "Dominican Republic",
+  "nameRu": "Доминиканская Республика",
+  "role": "polity",
+  "reason": "The land frontier with Haiti is governed by the 1929 treaty and 1935–1936 boundary agreements. A generalized source polygon is not a reconstruction of the demarcated line.",
+  "reasonRu": "Сухопутная граница с Гаити определяется договором 1929 года и пограничными соглашениями 1935–1936 годов. Генерализованный исходный полигон не восстанавливает демаркированную линию.",
+  "sources": [
+    "https://journals.law.harvard.edu/ilj/2023/12/the-republic-of-haiti-and-the-dominican-republic-a-relationship-in-troubled-waters/"
+  ]
+},
+{
+  "sourceName": "Dominican Republic",
+  "qid": "Q786",
+  "from": 2023,
+  "to": 2024,
+  "name": "Dominican Republic",
+  "nameRu": "Доминиканская Республика",
+  "role": "polity",
+  "reason": "The 2023 Dajabón/Massacre River canal dispute concerns water use; it is not evidence of a transfer of sovereignty or a new surveyed frontier.",
+  "reasonRu": "Спор 2023 года о канале на реке Дахабон (Массакр) касается водопользования и не доказывает передачу суверенитета или установление новой демаркированной границы.",
+  "sources": [
+    "https://journals.law.harvard.edu/ilj/2023/12/the-republic-of-haiti-and-the-dominican-republic-a-relationship-in-troubled-waters/",
+    "https://www.oas.org/en/media_center/press_release.asp?sCodigo=E-060%2F23"
+  ]
+},
+{
+  "sourceName": "Equatorial Guinea",
+  "qid": "Q983",
+  "from": 1994,
+  "to": 2015,
+  "name": "Equatorial Guinea",
+  "nameRu": "Экваториальная Гвинея",
+  "role": "polity",
+  "reason": "The boundary and sovereignty dispute with Gabon includes Mbanié, Cocotiers and Conga; the later special agreement and judgment must not be retrojected into these years.",
+  "reasonRu": "Пограничный спор с Габоном включает принадлежность островов Мбанье, Кокотье и Конга; последующие специальное соглашение и судебное решение нельзя переносить на эти годы.",
+  "sources": [
+    "https://www.un.org/ola/en/news/ceremony-concerning-special-agreement-border-dispute-between-gabon-and-equatorial-guinea",
+    "https://icj-web.leman.un-icc.cloud/case/179"
+  ]
+},
+{
+  "sourceName": "Equatorial Guinea",
+  "qid": "Q983",
+  "from": 2016,
+  "to": 2020,
+  "name": "Equatorial Guinea",
+  "nameRu": "Экваториальная Гвинея",
+  "role": "polity",
+  "reason": "On 15 November 2016 a special agreement was concluded to submit the dispute with Gabon to the ICJ; it was not a final boundary judgment.",
+  "reasonRu": "15 ноября 2016 года заключено специальное соглашение о передаче спора с Габоном в Международный суд ООН; оно не являлось окончательным судебным решением о границе.",
+  "sources": [
+    "https://www.un.org/ola/en/news/ceremony-concerning-special-agreement-border-dispute-between-gabon-and-equatorial-guinea",
+    "https://icj-web.leman.un-icc.cloud/case/179"
+  ]
+},
+{
+  "sourceName": "Equatorial Guinea",
+  "qid": "Q983",
+  "from": 2021,
+  "to": 2024,
+  "name": "Equatorial Guinea",
+  "nameRu": "Экваториальная Гвинея",
+  "role": "polity",
+  "reason": "The ICJ was seised in 2021; the judgment was delivered only on 19 May 2025, outside this source interval. Do not backdate the decision or infer a maritime boundary.",
+  "reasonRu": "Дело передано в Международный суд ООН в 2021 году; решение вынесено лишь 19 мая 2025 года, за пределами данного интервала источника. Нельзя переносить решение назад или выводить из него морскую границу.",
+  "sources": [
+    "https://icj-web.leman.un-icc.cloud/case/179",
+    "https://icj-web.leman.un-icc.cloud/case/179/judgments"
+  ]
+},
+{
+  "sourceName": "Papua New Guinea",
+  "qid": "Q691",
+  "from": 1994,
+  "to": 2000,
+  "name": "Papua New Guinea",
+  "nameRu": "Папуа — Новая Гвинея",
+  "role": "polity",
+  "reason": "The Bougainville conflict and peace process affected effective control; a sovereign outline does not show the parties’ annual control zones.",
+  "reasonRu": "Конфликт и мирный процесс на Бугенвиле влияли на фактический контроль; государственный контур не показывает ежегодные зоны контроля сторон.",
+  "sources": [
+    "https://www.un.org/peacebuilding/en/content/papua-new-guinea",
+    "https://abg.gov.pg/peace-agreement"
+  ]
+},
+{
+  "sourceName": "Papua New Guinea",
+  "qid": "Q691",
+  "from": 2001,
+  "to": 2004,
+  "name": "Papua New Guinea",
+  "nameRu": "Папуа — Новая Гвинея",
+  "role": "polity",
+  "reason": "The Bougainville Peace Agreement was signed on 30 August 2001, providing for autonomy and a future referendum; it did not create an independent state.",
+  "reasonRu": "30 августа 2001 года подписано мирное соглашение по Бугенвилю, предусматривающее автономию и будущий референдум; независимое государство не возникло.",
+  "sources": [
+    "https://www.un.org/peacebuilding/en/content/papua-new-guinea",
+    "https://abg.gov.pg/peace-agreement"
+  ]
+},
+{
+  "sourceName": "Papua New Guinea",
+  "qid": "Q691",
+  "from": 2005,
+  "to": 2018,
+  "name": "Papua New Guinea",
+  "nameRu": "Папуа — Новая Гвинея",
+  "role": "polity",
+  "reason": "The Autonomous Bougainville Government was established in 2005 within Papua New Guinea. Autonomy is not international independence.",
+  "reasonRu": "В 2005 году создано Автономное правительство Бугенвиля в составе Папуа — Новой Гвинеи. Автономия не означает международной независимости.",
+  "sources": [
+    "https://abg.gov.pg/peace-agreement/autonomy",
+    "https://www.un.org/peacebuilding/en/content/papua-new-guinea",
+    "https://abg.gov.pg/peace-agreement"
+  ]
+},
+{
+  "sourceName": "Papua New Guinea",
+  "qid": "Q691",
+  "from": 2019,
+  "to": 2019,
+  "name": "Papua New Guinea",
+  "nameRu": "Папуа — Новая Гвинея",
+  "role": "polity",
+  "reason": "The December 2019 referendum returned 97.7% for independence; the result was non-binding and subject to the national parliamentary process, not an immediate territorial transfer.",
+  "reasonRu": "В декабре 2019 года 97,7% участников референдума поддержали независимость; результат не был обязательным и подлежал парламентской процедуре, а не немедленной передаче территории.",
+  "sources": [
+    "https://www.un.org/peacebuilding/en/content/papua-new-guinea",
+    "https://bougainville-referendum.org/what-is-the-referendum/index.html"
+  ]
+},
+{
+  "sourceName": "Papua New Guinea",
+  "qid": "Q691",
+  "from": 2020,
+  "to": 2024,
+  "name": "Papua New Guinea",
+  "nameRu": "Папуа — Новая Гвинея",
+  "role": "polity",
+  "reason": "Post-referendum consultations continued; the 2019 vote did not itself establish a sovereign Bougainville. Annual control boundaries remain unverified.",
+  "reasonRu": "Продолжались консультации по итогам референдума; голосование 2019 года само по себе не создало суверенного Бугенвиля. Ежегодные границы контроля не подтверждены.",
+  "sources": [
+    "https://abg.gov.pg/index.php/news/read/joint-media-statement-by-png-prime-minister-and-abg-president",
+    "https://bougainville-referendum.org/what-is-the-referendum/index.html",
+    "https://www.abc.net.au/news/2024-09-09/png-selects-former-governor-general-for-bougainville-talks/104328676"
+  ]
 }
 ];
 export function modernStatusRulesFor(base){
