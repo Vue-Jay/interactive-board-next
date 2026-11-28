@@ -13,8 +13,8 @@ export function pointerInsideMenu(event: Event, roots: readonly (Element|null)[]
  while(node&&!seen.has(node)){
   seen.add(node);
   if(roots.some(root=>root&&(root.contains(node)||path.includes(root))))return true;
-  const element=node instanceof Element?node:node.parentElement;
-  const owner=element?.closest<HTMLElement>("[data-menu-owner]")?.dataset.menuOwner;
+  const element:Element|null=node instanceof Element?node:node.parentElement;
+  const owner:string|undefined=element?.closest<HTMLElement>("[data-menu-owner]")?.dataset.menuOwner;
   node=owner?document.getElementById(owner):null;
  }
  return false;
