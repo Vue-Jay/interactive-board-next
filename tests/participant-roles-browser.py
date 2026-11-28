@@ -223,19 +223,34 @@ def assert_board(page,ident,can_author,owner,*,navigate=True,embedded=False):
         expect(identity).to_be_visible()
         expect(static_title).to_be_visible()
         expect(static_subject).to_be_visible()
-        # Title and static subject tag share a centerline, without overlapping.
+        # Header-scale identity: natural text widths, one centered row, no controls.
         geometry=identity.evaluate("""el => {
           const title=el.querySelector('h1'), tag=el.querySelector('.lektrus-board-subject-static'),
+                value=tag.querySelector('.lektrus-board-subject-value'), nav=el.closest('.topbar').querySelector('.board-home-button'),
                 a=title.getBoundingClientRect(), b=tag.getBoundingClientRect(),
                 g=el.getBoundingClientRect(), h=el.closest('.topbar').getBoundingClientRect(),
-                style=getComputedStyle(tag), theme=getComputedStyle(document.documentElement);
-          return {alignment:Math.abs((a.top+a.bottom-b.top-b.bottom)/2),gap:b.left-a.right,
+                style=getComputedStyle(tag);
+          const result={alignment:Math.abs((a.top+a.bottom-b.top-b.bottom)/2),gap:b.left-a.right,
                   center:Math.abs((g.top+g.bottom-h.top-h.bottom)/2),fits:g.top>=h.top-1&&g.bottom<=h.bottom+1&&a.left>=g.left-1&&b.right<=g.right+1,
-                  width:g.width,titleWidth:a.width,tagWidth:b.width,tagHeight:b.height,
-                  background:style.backgroundColor,cursor:style.cursor,themeColor:theme.getPropertyValue('--lt-selected').trim()};
+                  width:g.width,titleWidth:a.width,tagWidth:b.width,tagHeight:b.height,navHeight:nav.getBoundingClientRect().height,
+                  titleSize:parseFloat(getComputedStyle(title).fontSize),tagSize:parseFloat(style.fontSize),
+                  background:style.backgroundColor,cursor:style.cursor,viewport:innerWidth};
+          // Reproduce the production screenshot with a short title and a common
+          // subject. A percentage cap on a shrink-to-fit group must not clip it.
+          const oldTitle=title.textContent, oldValue=value.textContent;
+          try {
+            title.textContent='Новая доска';value.textContent='Математика';
+            result.sampleTitleClipped=title.scrollWidth>title.clientWidth+1;
+            result.sampleSubjectClipped=value.scrollWidth>value.clientWidth+1;
+            result.sampleWidth=el.getBoundingClientRect().width;
+          } finally {title.textContent=oldTitle;value.textContent=oldValue;}
+          return result;
         }""")
-        assert geometry["alignment"]<=1 and 0<=geometry["gap"]<=11 and geometry["center"]<=4 and geometry["fits"] and geometry["width"]>0 and geometry["titleWidth"]>0 and geometry["tagWidth"]>0 and 21<=geometry["tagHeight"]<=25, geometry
+        assert geometry["alignment"]<=1 and 0<=geometry["gap"]<=13 and geometry["center"]<=4 and geometry["fits"] and geometry["width"]>0 and geometry["titleWidth"]>0 and geometry["tagWidth"]>0 and 27<=geometry["tagHeight"]<=33, geometry
         assert geometry["background"] not in ("transparent","rgba(0, 0, 0, 0)") and geometry["cursor"]=="default", geometry
+        if geometry["viewport"]>=1000:
+            assert not geometry["sampleTitleClipped"] and not geometry["sampleSubjectClipped"], geometry
+            assert geometry["titleSize"]>=15 and geometry["tagSize"]>=12 and abs(geometry["navHeight"]-geometry["tagHeight"])<=4, geometry
         expect(identity.locator('input,button,select,[tabindex],[contenteditable="true"]')).to_have_count(0)
         assert static_title.evaluate("el => el.tabIndex === -1 && !el.isContentEditable")
         expect(scope.locator('#lektrus-subject-options')).to_have_count(0)
