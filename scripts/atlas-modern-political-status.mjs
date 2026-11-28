@@ -301,7 +301,231 @@ export const modernPoliticalStatusRules = [
     "sources": [
       "https://caricom.org/country_profiles/saint-lucia"
     ]
-  }
+  },
+{
+  "sourceName": "Lebanon",
+  "qid": "Q822",
+  "from": 1994,
+  "to": 1999,
+  "name": "Lebanon",
+  "nameRu": "Ливан",
+  "role": "polity",
+  "reason": "Israeli military occupation of parts of southern Lebanon did not erase Lebanese sovereignty. A sovereign outline is not an occupation map.",
+  "reasonRu": "Израильская оккупация части юга Ливана не прекращала его суверенитета. Государственный контур не показывает линию фактического контроля.",
+  "sources": [
+    "https://digitallibrary.un.org/record/416349",
+    "https://unifil.unmissions.org/en/background"
+  ]
+},
+{
+  "sourceName": "Lebanon",
+  "qid": "Q822",
+  "from": 2000,
+  "to": 2000,
+  "name": "Lebanon",
+  "nameRu": "Ливан",
+  "role": "polity",
+  "reason": "The UN confirmed Israeli withdrawal on 16 June 2000; the Blue Line was identified for verification, not as an agreed international boundary.",
+  "reasonRu": "16 июня 2000 года ООН подтвердила вывод израильских войск. Голубая линия установлена для проверки вывода, а не как согласованная международная граница.",
+  "sources": [
+    "https://digitallibrary.un.org/record/416349",
+    "https://unifil.unmissions.org/en/unifil-operations"
+  ]
+},
+{
+  "sourceName": "Lebanon",
+  "qid": "Q822",
+  "from": 2001,
+  "to": 2005,
+  "name": "Lebanon",
+  "nameRu": "Ливан",
+  "role": "polity",
+  "reason": "The Blue Line was not an internationally agreed boundary; disputed areas, including Shebaa Farms, require separate treatment.",
+  "reasonRu": "Голубая линия не являлась согласованной международной границей. Спорные участки, в том числе фермы Шебаа, требуют отдельного отображения.",
+  "sources": [
+    "https://unifil.unmissions.org/en/unifil-operations",
+    "https://mandates.un.org/mandate/S/RES/1701%282006%29?end_year=2006&start_year=2006"
+  ]
+},
+{
+  "sourceName": "Lebanon",
+  "qid": "Q822",
+  "from": 2006,
+  "to": 2006,
+  "name": "Lebanon",
+  "nameRu": "Ливан",
+  "role": "polity",
+  "reason": "Security Council resolution 1701 of 11 August 2006 addressed the cessation of hostilities, not a transfer of sovereignty; disputed boundary areas remain separate.",
+  "reasonRu": "Резолюция СБ ООН 1701 от 11 августа 2006 года касается прекращения боевых действий, а не передачи суверенитета. Спорные участки требуют отдельной геометрии.",
+  "sources": [
+    "https://mandates.un.org/mandate/S/RES/1701%282006%29?end_year=2006&start_year=2006",
+    "https://unifil.unmissions.org/en/unifil-operations"
+  ]
+},
+{
+  "sourceName": "Lebanon",
+  "qid": "Q822",
+  "from": 2007,
+  "to": 2024,
+  "name": "Lebanon",
+  "nameRu": "Ливан",
+  "role": "polity",
+  "reason": "The Blue Line remains a withdrawal line, not a settled state border. The source polygon is not an annual map of military control.",
+  "reasonRu": "Голубая линия остаётся линией вывода войск, а не окончательной государственной границей. Исходный полигон не является ежегодной картой фактического контроля.",
+  "sources": [
+    "https://unifil.unmissions.org/en/unifil-operations",
+    "https://mandates.un.org/mandate/S/RES/1701%282006%29?end_year=2006&start_year=2006"
+  ]
+},
+{
+  "sourceName": "New Zealand",
+  "qid": "Q664",
+  "from": 1994,
+  "to": 2024,
+  "name": "New Zealand",
+  "nameRu": "Новая Зеландия",
+  "role": "polity",
+  "reason": "New Zealand is distinct from the wider Realm, which also includes Tokelau, the Ross Dependency, and the self-governing Cook Islands and Niue. Free association does not make Cook Islands or Niue domestic provinces. Antarctic claims require separate treaty context.",
+  "reasonRu": "Новая Зеландия отличается от более широкого Королевства Новой Зеландии, включающего Токелау, зависимую территорию Росса и самоуправляющиеся Острова Кука и Ниуэ. Свободная ассоциация не делает Острова Кука и Ниуэ внутренними провинциями. Антарктическая претензия требует отдельного договорного контекста.",
+  "sources": [
+    "https://www.dpmc.govt.nz/our-business-units/cabinet-office/supporting-work-cabinet/cabinet-manual/appendix-b-letters-patent",
+    "https://gg.govt.nz/office-governor-general/roles-and-functions-governor-general/constitutional-role/constitution/constitution",
+    "https://treaties.un.org/pages/HistoricalInfo.aspx"
+  ]
+},
+{
+  "sourceName": "Malaysia",
+  "qid": "Q833",
+  "from": 1994,
+  "to": 2001,
+  "name": "Malaysia",
+  "nameRu": "Малайзия",
+  "role": "polity",
+  "reason": "Sovereignty over Ligitan and Sipadan was disputed by Indonesia; the 2002 judgment must not be backdated. The Pedra Branca dispute was also unresolved.",
+  "reasonRu": "Суверенитет над Лигитаном и Сипаданом оспаривала Индонезия; решение 2002 года нельзя переносить на предшествующие годы. Спор о Педра-Бранка также не был разрешён.",
+  "sources": [
+    "https://icj-web.leman.un-icc.cloud/case/102",
+    "https://icj-web.leman.un-icc.cloud/case/130"
+  ]
+},
+{
+  "sourceName": "Malaysia",
+  "qid": "Q833",
+  "from": 2002,
+  "to": 2002,
+  "name": "Malaysia",
+  "nameRu": "Малайзия",
+  "role": "polity",
+  "reason": "The ICJ judgment of 17 December 2002 determined Malaysian sovereignty over Ligitan and Sipadan. It was not a settlement of all maritime boundaries.",
+  "reasonRu": "17 декабря 2002 года Международный суд ООН установил суверенитет Малайзии над Лигитаном и Сипаданом. Это не решение всех морских пограничных споров.",
+  "sources": [
+    "https://icj-web.leman.un-icc.cloud/case/102"
+  ]
+},
+{
+  "sourceName": "Malaysia",
+  "qid": "Q833",
+  "from": 2003,
+  "to": 2007,
+  "name": "Malaysia",
+  "nameRu": "Малайзия",
+  "role": "polity",
+  "reason": "The Ligitan/Sipadan judgment was in force; sovereignty over Pedra Branca, Middle Rocks and South Ledge had not yet been adjudicated.",
+  "reasonRu": "Решение по Лигитану и Сипадану уже действовало; спор о Педра-Бранка, Мидл-Рокс и Саут-Ледж ещё не был разрешён судом.",
+  "sources": [
+    "https://icj-web.leman.un-icc.cloud/case/102",
+    "https://icj-web.leman.un-icc.cloud/case/130"
+  ]
+},
+{
+  "sourceName": "Malaysia",
+  "qid": "Q833",
+  "from": 2008,
+  "to": 2008,
+  "name": "Malaysia",
+  "nameRu": "Малайзия",
+  "role": "polity",
+  "reason": "On 23 May 2008 the ICJ determined that Pedra Branca belongs to Singapore, Middle Rocks to Malaysia, and South Ledge to the state in whose territorial waters it lies.",
+  "reasonRu": "23 мая 2008 года Международный суд ООН установил: Педра-Бранка принадлежит Сингапуру, Мидл-Рокс — Малайзии, а Саут-Ледж — государству, в территориальных водах которого он расположен.",
+  "sources": [
+    "https://icj-web.leman.un-icc.cloud/case/130"
+  ]
+},
+{
+  "sourceName": "Malaysia",
+  "qid": "Q833",
+  "from": 2009,
+  "to": 2024,
+  "name": "Malaysia",
+  "nameRu": "Малайзия",
+  "role": "polity",
+  "reason": "The 2002 and 2008 judgments establish the specified island sovereignties; they do not determine every maritime boundary. No transfer or coordinates are inferred for South Ledge.",
+  "reasonRu": "Решения 2002 и 2008 годов устанавливают принадлежность указанных островов, но не всех морских границ. Для Саут-Ледж не выводятся неподтверждённые координаты или принадлежность.",
+  "sources": [
+    "https://icj-web.leman.un-icc.cloud/case/102",
+    "https://icj-web.leman.un-icc.cloud/case/130"
+  ]
+},
+{
+  "sourceName": "Sri Lanka",
+  "qid": "Q854",
+  "from": 1994,
+  "to": 2001,
+  "name": "Sri Lanka",
+  "nameRu": "Шри-Ланка",
+  "role": "polity",
+  "reason": "The civil war involved LTTE control in parts of the north and east; the sovereign land outline is not an annual map of effective government or LTTE control.",
+  "reasonRu": "В ходе гражданской войны часть севера и востока находилась под контролем ТОТИ. Государственный сухопутный контур не показывает ежегодные зоны фактического контроля правительства или ТОТИ.",
+  "sources": [
+    "https://2001-2009.state.gov/g/drl/rls/hrrpt/2003/27951.htm",
+    "https://commonslibrary.parliament.uk/research-briefings/sn06097/"
+  ]
+},
+{
+  "sourceName": "Sri Lanka",
+  "qid": "Q854",
+  "from": 2002,
+  "to": 2008,
+  "name": "Sri Lanka",
+  "nameRu": "Шри-Ланка",
+  "role": "polity",
+  "reason": "A formal ceasefire was signed in February 2002; the conflict subsequently resumed. This did not establish an internationally recognized separate Tamil state or surveyed internal frontiers.",
+  "reasonRu": "В феврале 2002 года подписано соглашение о прекращении огня; позднее боевые действия возобновились. Международно признанное отдельное тамильское государство и установленные внутренние границы из этого не следуют.",
+  "sources": [
+    "https://2001-2009.state.gov/g/drl/rls/hrrpt/2003/27951.htm",
+    "https://commonslibrary.parliament.uk/research-briefings/sn06097/"
+  ]
+},
+{
+  "sourceName": "Sri Lanka",
+  "qid": "Q854",
+  "from": 2009,
+  "to": 2009,
+  "name": "Sri Lanka",
+  "nameRu": "Шри-Ланка",
+  "role": "polity",
+  "reason": "The civil war ended in May 2009. Do not backdate the post-war effective-control situation to the entire transition year.",
+  "reasonRu": "В мае 2009 года гражданская война завершилась. Послевоенное положение фактического контроля нельзя переносить на весь переходный год.",
+  "sources": [
+    "https://commonslibrary.parliament.uk/research-briefings/sn06097/",
+    "https://treaties.un.org/pages/Declarations.aspx?chapter=4&index=Sri+Lanka&lang=_en&treaty=335"
+  ]
+},
+{
+  "sourceName": "Sri Lanka",
+  "qid": "Q854",
+  "from": 2010,
+  "to": 2024,
+  "name": "Sri Lanka",
+  "nameRu": "Шри-Ланка",
+  "role": "polity",
+  "reason": "Post-war sovereign state; the generalized land outline does not prove historic shorelines or internal control in earlier years.",
+  "reasonRu": "Послевоенное суверенное государство. Генерализованный контур суши не подтверждает датированные береговые линии или фактический контроль предшествующих лет.",
+  "sources": [
+    "https://commonslibrary.parliament.uk/research-briefings/sn06097/",
+    "https://treaties.un.org/pages/Declarations.aspx?chapter=4&index=Sri+Lanka&lang=_en&treaty=335"
+  ]
+}
 ];
 export function modernStatusRulesFor(base){
  return base.role==='polity' ? modernPoliticalStatusRules.filter(r=>r.sourceName===base.sourceName&&r.qid===base.sourceWikidata&&r.from<=base.to&&r.to>=base.from):[];

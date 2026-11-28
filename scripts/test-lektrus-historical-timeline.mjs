@@ -48,7 +48,7 @@ const feature=(name,from,to,geometry=square(),wikidata='',type='POLITY',componen
 
 // Modern political chronology: do not confuse internal administration,
 // constitutional reform, military occupation or a dispute with a new border.
-for(const [name,qid,from,to,x] of [['Barbados','Q244',2019,2024,0],['Netherlands','Q55',2008,2012,3],['Montenegro','Q236',1999,2008,6],['Kuwait','Q817',1989,1995,9],['Belize','Q242',1999,2020,12],['Saint Lucia','Q760',1977,1981,15]]){
+for(const [name,qid,from,to,x] of [['Barbados','Q244',2019,2024,0],['Netherlands','Q55',2008,2012,3],['Montenegro','Q236',1999,2008,6],['Kuwait','Q817',1989,1995,9],['Belize','Q242',1999,2020,12],['Saint Lucia','Q760',1977,1981,15],['Lebanon','Q822',1993,2024,18],['New Zealand','Q664',1993,2024,21],['Malaysia','Q833',1993,2024,24],['Sri Lanka','Q854',1993,2024,27]]){
  const input=feature(name,from,to,square(x),qid);
  const output=normalizeHistoricalSource({type:'FeatureCollection',features:[input]});
  const relevant=output.records.filter(r=>r.sourceName===name);
@@ -111,7 +111,7 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  // Independent recent island geometry fixes must be tied to the frozen
  // 1994, 2000 and 2010 archive rows, not a nearby country with the same name.
  const frozenModernReview=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-spatial-findings-20261124.json',import.meta.url),'utf8'));
- assert.equal(modernIslandGeography.entries.length,7);
+ assert.equal(modernIslandGeography.entries.length,8);
  assert.equal(modernIslandGeography.source.sha256,independentIslands.source.sha256);
  for(const d of modernIslandGeography.entries){
   assert.deepEqual(d.snapshots.map(x=>x.year),[1994,2000,2010]);
@@ -147,20 +147,24 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  const syntheticMorant=square(-75.98,17.40).coordinates.map(r=>r.map(([x,y])=>[-75.98+(x+75.98)*.002,17.40+(y-17.40)*.002]));
  const syntheticForeign=square(-74.1,19.1).coordinates;
  modernOriginals.get(jamaicanModern.originalGeometryId).coordinates.push(syntheticPedro,syntheticMorant,syntheticForeign);
+ const sriModern=modernIslandGeography.entries.find(d=>d.iso==='LKA');
+ const syntheticPalkForeign=[[[79.60,9.22],[79.61,9.22],[79.61,9.23],[79.60,9.23],[79.60,9.22]]];
+ modernOriginals.get(sriModern.originalGeometryId).coordinates.push(syntheticPalkForeign);
  const modernTallies=applyReviewedModernIslandGeographies(modernSyntheticRecords,modernOriginals);
+ assert.equal(modernTallies.find(x=>x.iso==='LKA').retainedLegacyIslets,0,'Unattributed Palk Strait component retained');
  assert.equal(modernTallies.find(x=>x.iso==='JAM').retainedLegacyIslets,2,'Distant Jamaican cays lost or foreign component retained');
  const jamaicaRepair=modernSyntheticRecords.find(r=>r.name==='Jamaica'&&r.from===1994);
  assert.ok(!capitalInsideCountry([-73.8,19.4],modernOriginals.get(jamaicaRepair.geometryId)));
  const latestSpatial=JSON.parse(fs.readFileSync(new URL('../docs/historical-atlas-spatial-adjudications-20261128.json',import.meta.url),'utf8'));
- assert.equal(latestSpatial.cases.length,133);assert.equal(new Set(latestSpatial.cases.map(c=>c.id)).size,133);
- assert.equal(latestSpatial.counts.remainingWithoutExplanation,343);
- for(const d of modernIslandGeography.entries.filter(d=>['BRB','LCA','JAM'].includes(d.iso)))for(const snap of d.snapshots){
+ assert.equal(latestSpatial.cases.length,136);assert.equal(new Set(latestSpatial.cases.map(c=>c.id)).size,136);
+ assert.equal(latestSpatial.counts.remainingWithoutExplanation,340);
+ for(const d of modernIslandGeography.entries.filter(d=>['BRB','LCA','JAM','LKA'].includes(d.iso)))for(const snap of d.snapshots){
   const c=latestSpatial.cases.find(c=>c.id===snap.id);
   assert.equal(c.geometryHistoricallyConfirmed,false);assert.equal(c.proposedMainlandApproxIoU,snap.proposedMainlandApproxIoU);
   assert.ok(c.proposedMainlandApproxIoU>c.iou);assert.equal(c.candidateGeometryId,d.originalGeometryId);
  }
- assert.equal(modernTallies.length,7);
- assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT','BRB','LCA','JAM']);
+ assert.equal(modernTallies.length,8);
+ assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT','BRB','LCA','JAM','LKA']);
  assert.equal(modernTallies.find(x=>x.iso==='MLT').retainedLegacyIslets,1,'Tiny legacy island silently lost');
  for(const d of modernIslandGeography.entries){
   const newer=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1994&&r.to===2024);

@@ -2623,7 +2623,7 @@ export function normalizeHistoricalSource(source) {
 export function applyReviewedModernIslandGeographies(records,geometries,policy=modernIslandGeography){
  assert.equal(policy.schemaVersion,1);
  assert.equal(policy.source.sha256,independentIslands.source.sha256);
- assert.equal(policy.entries.length,7);
+ assert.equal(policy.entries.length,8);
  const polys=g=>g.type==='Polygon'?[g.coordinates]:g.coordinates;
  const bbox=p=>{let x=Infinity,y=Infinity,X=-Infinity,Y=-Infinity;
   for(const ring of p)for(const [lon,lat] of ring){x=Math.min(x,lon);y=Math.min(y,lat);X=Math.max(X,lon);Y=Math.max(Y,lat);}
@@ -2646,7 +2646,7 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
    Math.max(...boxes.map(b=>b[2]))+.1,Math.max(...boxes.map(b=>b[3]))+.1];
   const legacyExtras=polys(raw).filter(p=>{
    const b=bbox(p);
-   const allowed=[cluster,...(d.legacyIslandBoxes??[])];
+   const allowed=[...(d.legacyIslandBoxesOnly?[]:[cluster]),...(d.legacyIslandBoxes??[])];
    return allowed.some(box=>b[0]>=box[0]&&b[1]>=box[1]&&b[2]<=box[2]&&b[3]<=box[3])&&!boxes.some(n=>overlaps(b,n));
   });
   const repaired={type:'MultiPolygon',coordinates:[...main,...legacyExtras]};
