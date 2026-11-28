@@ -2660,7 +2660,7 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
   const legacyExtras=polys(raw).filter(p=>{
    const b=bbox(p);
    const allowed=[...(d.legacyIslandBoxesOnly?[]:[cluster]),...(d.legacyIslandBoxes??[])];
-   return allowed.some(box=>b[0]>=box[0]&&b[1]>=box[1]&&b[2]<=box[2]&&b[3]<=box[3])&&!boxes.some(n=>overlaps(b,n));
+   return allowed.some(box=>b[0]>=box[0]&&b[1]>=box[1]&&b[2]<=box[2]&&b[3]<=box[3])&&!main.some((n,i)=>overlaps(b,boxes[i])&&polygonClipping.intersection(p,n).length);
   });
   const repaired={type:'MultiPolygon',coordinates:[...main,...legacyExtras]};
   validateGeometry(repaired);

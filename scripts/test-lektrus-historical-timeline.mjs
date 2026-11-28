@@ -154,6 +154,7 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  // survive as a duplicate, while a disjoint nearby source islet must survive.
  const malteseModern=modernIslandGeography.entries.find(d=>d.iso==='MLT');
  const simulatedComino=[[[14.334,36.010],[14.335,36.010],[14.335,36.011],[14.334,36.011],[14.334,36.010]]];
+ // Its bounding box overlaps Gozo's, but the actual land polygons are disjoint.
  const simulatedDisjointMalteseIslet=[[[14.317,36.013],[14.318,36.013],[14.318,36.014],[14.317,36.014],[14.317,36.013]]];
  modernOriginals.get(malteseModern.originalGeometryId).coordinates.push(simulatedComino,simulatedDisjointMalteseIslet);
  // Synthetic components only: ensure documented distant Jamaican cays
