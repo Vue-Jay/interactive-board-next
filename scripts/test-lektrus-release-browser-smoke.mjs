@@ -393,6 +393,13 @@ try{
    const phone=await catalogue();
    assert.equal(phone.length,7,JSON.stringify(phone));
    await tap(close);
+   await tap(plus);
+   await boardWait("!!d.querySelector('.mobile-tools-sheet')",'Phone catalogue did not reopen');
+   await tap('.topbar-more-menu>summary');
+   await boardWait("!d.querySelector('.mobile-tools-sheet')&&!!d.querySelector('.topbar-more-menu[open]')",'Outside touch must close catalogue and activate the next menu');
+   await tap(plus);
+   await boardWait("!d.querySelector('.topbar-more-menu[open]')&&!!d.querySelector('.mobile-tools-sheet')",'Outside touch must close board actions and reopen catalogue');
+   await tap(close);
    const assertSubjectSize=async()=>{
     const geometry=await boardEval(`(()=>{const s=d.querySelector('nav.mobile-board-tools>.lektrus-mobile-subject-trigger'),p=d.querySelector('${plus}'),a=s.getBoundingClientRect(),b=p.getBoundingClientRect(),i=s.querySelector('svg').getBoundingClientRect();return {subject:[a.width,a.height],plus:[b.width,b.height],icon:[i.width,i.height]}})()`);
     assert.ok(geometry.subject.every((v,i)=>Math.abs(v-geometry.plus[i])<=1),'Subject button differs from other buttons: '+JSON.stringify(geometry));
@@ -1372,6 +1379,28 @@ try{
  await key("Escape");
  await click('.zoom-value');
  console.log("✓ Board camera: selection fits visible dock area, native focus cannot scroll the canvas");
+ await click('.topbar-more-trigger');
+ await wait('!!document.querySelector(".topbar-more-menu[open]")',"Board actions menu did not open");
+ await click('.lectris-layout-picker summary');
+ await wait('!document.querySelector(".topbar-more-menu[open]")&&!!document.querySelector(".lectris-layout-picker[open]")',"Opening a second menu must dismiss the first");
+ await click('.zoom-value');
+ await wait('!document.querySelector(".lectris-layout-picker[open]")',"Outside activation did not close layout menu");
+ await click('button[aria-label="Настройки фона доски"]');
+ await wait('!!document.querySelector("#lektrus-background-settings")',"Background menu did not open");
+ await click('#lektrus-background-settings .lektrus-color-current');
+ await wait('!!document.querySelector(".lektrus-colors-popup")',"Nested palette did not open");
+ await evaluate(`document.querySelector('.lektrus-colors-popup header').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,isPrimary:true,pointerType:'mouse'}))`);
+ assert.ok(await evaluate('!!document.querySelector("#lektrus-background-settings")&&!!document.querySelector(".lektrus-colors-popup")'),"Nested portaled palette dismissed its parent");
+ await click('.topbar-more-trigger');
+ await wait('!document.querySelector("#lektrus-background-settings")&&!!document.querySelector(".topbar-more-menu[open]")',"Outside activation did not close background menu");
+ await click('.topbar-more-trigger');
+ await click('.toolbar .geometry-trigger');
+ await wait('!!document.querySelector(".geometry-picker-portal")',"Measurement tools did not open");
+ const outsideMenuPoint=await rect('.zoom-value');
+ await mouse('mousePressed',outsideMenuPoint.x,outsideMenuPoint.y,{pressed:true});
+ await mouse('mouseReleased',outsideMenuPoint.x,outsideMenuPoint.y);
+ await wait('!document.querySelector(".geometry-picker-portal")',"Real outside mouse click did not close ruler selection");
+ console.log("✓ Transient menus: exclusive toolbar menus, nested palette, outside ruler dismissal");
  await call("Emulation.clearDeviceMetricsOverride");
  console.log("✓ Board notice: compact at 960px, repeated timer restarts, fades after three seconds, manual close");
 

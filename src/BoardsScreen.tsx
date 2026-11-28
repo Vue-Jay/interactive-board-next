@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { menuRoots,useTransientMenuDismissal } from "./useTransientMenuDismissal";
 import LectrisHub from "./LectrisHub";
 import LektrusCreateBoardDialog, {type NewBoardOptions} from "./LektrusCreateBoardDialog";
 import ShareDialog from "./ShareDialog";
@@ -57,6 +58,10 @@ export default function BoardsScreen({user,accountRole,workspaceMode,onOpenBoard
  const [filter,setFilter]=useState<BoardFilter>("all"); const [sort,setSort]=useState<BoardSort>("recent"); const [trashOpen,setTrashOpen]=useState(false); const [trash,setTrash]=useState<BoardSummary[]>([]);
  const [boardActionsOpen,setBoardActionsOpen]=useState(false);
  const [cardActionsId,setCardActionsId]=useState<string|null>(null);
+ useTransientMenuDismissal(()=>[
+  ...(boardActionsOpen?[{roots:menuRoots(".lectris-library-actions-toggle","#library-board-actions"),close:()=>setBoardActionsOpen(false)}]:[]),
+  ...(cardActionsId?[{roots:[document.getElementById("board-actions-"+cardActionsId),...menuRoots(".lectris-card-menu-toggle[aria-expanded='true']")],close:()=>setCardActionsId(null)}]:[]),
+ ]);
  const [createOpen,setCreateOpen]=useState(false); const [createAssociation,setCreateAssociation]=useState<{subject?:string;group?:string}>({});
  const [manage,setManage]=useState<BoardSummary|null>(null); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
  const [importPreview,setImportPreview]=useState<BoardImportPreview|null>(null); const [importFileName,setImportFileName]=useState(""); const [importProgress,setImportProgress]=useState("");

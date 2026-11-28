@@ -36,11 +36,11 @@ export default function LektrusSubjectPicker({value,options,disabled=false,onCha
       setDraft(value);
       setFilter("");
     };
-    document.addEventListener("pointerdown",dismiss);
+    document.addEventListener("pointerdown",dismiss,true);
     window.addEventListener("resize",placeMenu);
     window.addEventListener("scroll",placeMenu,true);
     return()=>{
-      document.removeEventListener("pointerdown",dismiss);
+      document.removeEventListener("pointerdown",dismiss,true);
       window.removeEventListener("resize",placeMenu);
       window.removeEventListener("scroll",placeMenu,true);
     };

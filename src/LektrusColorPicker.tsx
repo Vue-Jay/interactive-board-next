@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import { DEFAULT_COLORS, MAX_SAVED_COLORS, validHexColor, colorLibraryKey,
@@ -42,6 +42,7 @@ export default function LektrusColorPicker({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0, above: false });
+  const menuOwnerId=useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const raw = useSyncExternalStore(subscribe, () => readRaw(userId), () => "");
@@ -93,7 +94,7 @@ export default function LektrusColorPicker({
   return <div className={`lektrus-color-picker ${compact?"is-compact":""}`} onPointerDown={e=>e.stopPropagation()}>
     {label&&<span className="lektrus-color-caption">{label}</span>}
     <div className="lektrus-color-controls">
-      <button ref={trigger} type="button" className="lektrus-color-current"
+      <button ref={trigger} id={menuOwnerId} type="button" className="lektrus-color-current"
         style={{"--selected-color":current} as React.CSSProperties}
         aria-label="Избранные цвета" title="Быстрый выбор цвета" aria-haspopup="dialog"
         aria-expanded={open} disabled={disabled} onClick={()=>setOpen(!open)}>
@@ -114,7 +115,7 @@ export default function LektrusColorPicker({
       </label>}
     </div>
     {open&&!disabled&&createPortal(
-      <div ref={popup} role="dialog" aria-label="Избранные цвета" className="lektrus-colors-popup"
+      <div ref={popup} data-menu-owner={menuOwnerId} role="dialog" aria-label="Избранные цвета" className="lektrus-colors-popup"
         style={{left:position.left,top:position.top,width:Math.min(302,Math.max(200,window.innerWidth-20))}}
         data-placement={position.above?"above":"below"}
         onPointerDown={e=>e.stopPropagation()}>
