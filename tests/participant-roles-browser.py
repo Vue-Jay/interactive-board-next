@@ -6,6 +6,7 @@ import os
 import sys
 import struct
 import time
+import traceback
 import zlib
 import re
 from pathlib import Path
@@ -2271,91 +2272,132 @@ def check_final_subject_gestures(browser,author):
                     }""",arg={"ident":ident,"id":obj["id"]},timeout=30000)
                     page.locator('[data-interface-control="select"]:visible').first.click()
             base={"kind":"graph","graphPurpose":"geometry","graphAxisMode":"none","x":120,"y":100,"width":820,"height":500,"createdBy":author}
-            sentence={**base,"id":"qa-final-sentence","graphFigureId":"language-sentence-builder","text":"Final sentence",
-                      "schoolDiagram":{"kind":"sentence-builder","title":"Final sentence","instructions":"Arrange","parts":[{"id":"a","text":"I"},{"id":"b","text":"read"},{"id":"c","text":"books"}],"showKey":False,"showHint":False,"patternId":""}}
-            replace(sentence)
-            pupil.get_by_role("button",name="Проверить",exact=True).click()
-            checked=wait(lambda items:items[0]["schoolDiagram"].get("answerChecked") is True,"Sentence check not persisted")
-            status=re.compile("Правильно|Есть неточности")
-            expect(teacher.locator(".lektrus-sentence-status")).to_contain_text(status,timeout=15000)
-            words=pupil.locator("[data-sentence-word]")
-            expect(words).to_have_count(3)
-            expect(words.first).to_be_visible()
-            first=words.first.bounding_box()
-            last=words.last.bounding_box()
-            x=first["x"]+first["width"]/2;y=first["y"]+first["height"]/2
-            cdp=pupil.context.new_cdp_session(pupil)
-            cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":True,"maxTouchPoints":1})
-            cdp.send("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":[{"x":x,"y":y}]})
-            cdp.send("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":[{"x":x+20,"y":y}]})
-            expect(pupil.locator(".lektrus-sentence-drag-preview")).to_be_visible()
-            cdp.send("Input.dispatchTouchEvent",{"type":"touchCancel","touchPoints":[]})
-            expect(pupil.locator(".lektrus-sentence-drag-preview")).to_have_count(0)
-            expect(pupil.locator(".lektrus-sentence-status")).to_contain_text(status)
-            # Unrelated autosizing/presence revisions may advance the board
-            # version; verify the exact answer fields rather than that counter.
-            pupil.wait_for_timeout(700)
-            after_cancel=read()["document"]["items"][0]["schoolDiagram"]
-            before_cancel=checked["document"]["items"][0]["schoolDiagram"]
-            assert after_cancel.get("answerOrder")==before_cancel.get("answerOrder") and after_cancel.get("answerChecked") is True,"Cancelled drag must not persist an answer change"
-            cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":False})
-            order=words.evaluate_all("els=>els.map(e=>e.dataset.sentenceWord)")
-            pupil.mouse.move(x,y);pupil.mouse.down()
-            pupil.mouse.move(last["x"]+last["width"]+12,last["y"]+last["height"]/2,steps=8);pupil.mouse.up()
-            moved=wait(lambda items:items[0]["schoolDiagram"].get("answerOrder")==order[1:]+order[:1] and items[0]["schoolDiagram"].get("answerChecked") is False,"Sentence mouse move not persisted")
-            teacher.wait_for_function("order=>JSON.stringify(Array.from(document.querySelectorAll('[data-sentence-word]'),e=>e.dataset.sentenceWord))===JSON.stringify(order)",arg=moved["document"]["items"][0]["schoolDiagram"]["answerOrder"],timeout=15000)
-            print("Final shared sentence: cancelled touch preserves checked result, real mouse reorder converges.")
+            failures=[]
+            try:
+                sentence={**base,"id":"qa-final-sentence","graphFigureId":"language-sentence-builder","text":"Final sentence",
+                          "schoolDiagram":{"kind":"sentence-builder","title":"Final sentence","instructions":"Arrange","parts":[{"id":"a","text":"I"},{"id":"b","text":"read"},{"id":"c","text":"books"}],"showKey":False,"showHint":False,"patternId":""}}
+                replace(sentence)
+                pupil.get_by_role("button",name="Проверить",exact=True).click()
+                checked=wait(lambda items:items[0]["schoolDiagram"].get("answerChecked") is True,"Sentence check not persisted")
+                status=re.compile("Правильно|Есть неточности")
+                expect(teacher.locator(".lektrus-sentence-status")).to_contain_text(status,timeout=15000)
+                words=pupil.locator("[data-sentence-word]")
+                expect(words).to_have_count(3)
+                expect(words.first).to_be_visible()
+                cdp=pupil.context.new_cdp_session(pupil)
+                def word_center(word):
+                    word.scroll_into_view_if_needed()
+                    box=word.bounding_box()
+                    assert box,"Sentence word has no bounds"
+                    x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
+                    hit=pupil.evaluate("""({x,y})=>document.elementFromPoint(x,y)?.closest('[data-sentence-word]')?.dataset.sentenceWord""",{"x":x,"y":y})
+                    assert hit==word.get_attribute("data-sentence-word"),("Unexpected pointer target",hit,x,y)
+                    return x,y
+                # The real board reacts to coarse-pointer changes (toolbar and
+                # viewport layout). Measure after enabling touch, not before.
+                pupil.evaluate("""()=>{window.__qaSentenceEvents=[];for(const type of ['pointerdown','pointermove','pointercancel','pointerup'])window.addEventListener(type,e=>window.__qaSentenceEvents.push({type:e.type,pointer:e.pointerType,x:e.clientX,y:e.clientY,target:e.target?.closest?.('[data-sentence-word]')?.dataset.sentenceWord}),true)}""")
+                try:
+                    cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":True,"maxTouchPoints":1})
+                    pupil.wait_for_timeout(500)
+                    x,y=word_center(words.first)
+                    cdp.send("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":[{"x":x,"y":y,"id":1}]})
+                    for offset in (12,24,36):
+                        cdp.send("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":[{"x":x+offset,"y":y,"id":1}]})
+                    expect(pupil.locator(".lektrus-sentence-drag-preview")).to_be_visible()
+                    cdp.send("Input.dispatchTouchEvent",{"type":"touchCancel","touchPoints":[]})
+                    expect(pupil.locator(".lektrus-sentence-drag-preview")).to_have_count(0)
+                    expect(pupil.locator(".lektrus-sentence-status")).to_contain_text(status)
+                except Exception:
+                    print("Sentence pointer trace:",pupil.evaluate("window.__qaSentenceEvents"),flush=True)
+                    raise
+                finally:
+                    cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":False})
+                    pupil.wait_for_timeout(500)
+                # Unrelated autosizing/presence revisions may advance the board
+                # version; verify the exact answer fields rather than that counter.
+                pupil.wait_for_timeout(700)
+                after_cancel=read()["document"]["items"][0]["schoolDiagram"]
+                before_cancel=checked["document"]["items"][0]["schoolDiagram"]
+                assert after_cancel.get("answerOrder")==before_cancel.get("answerOrder") and after_cancel.get("answerChecked") is True,"Cancelled drag must not persist an answer change"
+                order=words.evaluate_all("els=>els.map(e=>e.dataset.sentenceWord)")
+                x,y=word_center(words.first)
+                last=words.last.bounding_box()
+                pupil.mouse.move(x,y);pupil.mouse.down()
+                pupil.mouse.move(last["x"]+last["width"]+12,last["y"]+last["height"]/2,steps=8);pupil.mouse.up()
+                moved=wait(lambda items:items[0]["schoolDiagram"].get("answerOrder")==order[1:]+order[:1] and items[0]["schoolDiagram"].get("answerChecked") is False,"Sentence mouse move not persisted")
+                teacher.wait_for_function("order=>JSON.stringify(Array.from(document.querySelectorAll('[data-sentence-word]'),e=>e.dataset.sentenceWord))===JSON.stringify(order)",arg=moved["document"]["items"][0]["schoolDiagram"]["answerOrder"],timeout=15000)
+                print("Final shared sentence: cancelled touch preserves checked result, real mouse reorder converges.")
+            except Exception as error:
+                failures.append("sentence: "+str(error))
+                traceback.print_exc()
+                for page in (teacher,pupil):
+                    page.screenshot(path=str(OUT/("sentence-"+("teacher" if page==teacher else "pupil")+"-failure.png")))
+            try:
+                contour={**base,"id":"qa-final-contour","graphFigureId":"contour-atlas","text":"Контурная карта",
+                         "schoolDiagram":{"kind":"atlas","scope":"geography","title":"Контурная карта","mode":"contour","year":1914,"showLabels":True,"showGrid":False,"showEvents":False,"markers":[],"regionId":"world","borderView":"russian","contourTask":"Обозначьте точку",
+                         "contourMarks":[{"id":"qa-a","lat":30,"lon":20,"text":"QA A","kind":"point","color":"#334455"}],"contourStrokes":[],"paintedCountries":{}}}
+                replace(contour)
+                editor=".lektrus-contour-editor-fullscreen"
+                for page in (teacher,pupil):
+                    page.keyboard.press("Control+a")
+                    page.get_by_role("button",name="Настроить учебный объект",exact=True).click()
+                    expect(page.locator(editor)).to_be_visible(timeout=30000)
+                mark="Передвинуть обозначение: QA A"
+                ta=teacher.locator(editor).get_by_role("button",name=mark,exact=True)
+                pa=pupil.locator(editor).get_by_role("button",name=mark,exact=True)
+                def lon(items):return items[0]["schoolDiagram"]["contourMarks"][0]["lon"]
+                expect(ta).to_be_visible(timeout=30000)
+                expect(pa).to_be_visible(timeout=30000)
+                ta.press("ArrowRight")
+                first_move=wait(lambda items:lon(items)>20,"First contour move missing")
+                first_lon=lon(first_move["document"]["items"])
+                pupil.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":first_lon},timeout=30000)
+                pa.press("ArrowRight")
+                second=wait(lambda items:lon(items)>first_lon,"Peer contour move missing")
+                second_lon=lon(second["document"]["items"])
+                teacher.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":second_lon},timeout=30000)
+                teacher.locator(editor).get_by_role("button",name="Отменить",exact=True).click()
+                teacher.wait_for_timeout(1200)
+                assert lon(read()["document"]["items"])==second_lon,"Contour Undo overwrote peer's later move"
+                for page in (teacher,pupil):
+                    page.locator(editor).get_by_role("button",name="Карандаш",exact=True).click()
+                    svg=page.locator(editor+" svg[data-contour-brush=pen]")
+                    expect(svg).to_be_visible()
+                    box=svg.bounding_box();x=box["x"]+box["width"]*.45;y=box["y"]+box["height"]*(.45 if page==teacher else .60)
+                    count=len(read()["document"]["items"][0]["schoolDiagram"]["contourStrokes"])
+                    page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+35,y+8,steps=8);page.mouse.up()
+                    wait(lambda items:len(items[0]["schoolDiagram"]["contourStrokes"])>count,"Contour ink not persisted")
+                for page in (teacher,pupil):
+                    page.wait_for_function("""ident=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourStrokes.length===2""",arg=ident,timeout=30000)
+                    page.locator(editor).get_by_role("button",name="Закрыть общий редактор",exact=True).click()
+                print("Final contour: conflicting Undo preserves peer mark and two real ink gestures converge.")
+            except Exception as error:
+                failures.append("contour: "+str(error))
+                traceback.print_exc()
+                for page in (teacher,pupil):
+                    page.screenshot(path=str(OUT/("contour-"+("teacher" if page==teacher else "pupil")+"-failure.png")))
+                for page in (teacher,pupil):
+                    close=page.locator(".lektrus-contour-editor-fullscreen").get_by_role("button",name="Закрыть общий редактор",exact=True)
+                    if close.count():close.click()
+            try:
+                lab={**base,"id":"qa-final-lab","graphFigureId":"chem-experiment-free","width":960,"height":580,"text":"Химическая лаборатория",
+                     "scienceLabBench":{"vessels":[{"id":"v1","kind":"beaker","x":48,"y":70,"reagents":[],"environment":"aqueous","observed":False}],"selectedId":"v1","event":0,"mode":"reactions","simulationPaused":True}}
+                replace(lab)
+                vessel=pupil.locator('[data-lab-vessel-id="v1"]')
+                expect(vessel).to_be_visible(timeout=15000)
+                box=vessel.bounding_box();x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
+                pupil.mouse.move(x,y);pupil.mouse.down();pupil.mouse.move(x+38,y,steps=10);pupil.mouse.up()
+                saved=wait(lambda items:abs(items[0]["scienceLabBench"]["vessels"][0]["x"]-48)>0.5,"Lab vessel drag not persisted")
+                px=saved["document"]["items"][0]["scienceLabBench"]["vessels"][0]["x"]
+                teacher.wait_for_function("""({ident,x})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].scienceLabBench.vessels[0].x===x""",arg={"ident":ident,"x":px},timeout=30000)
+                print("Final lab: pupil vessel motion persists and converges.")
+            except Exception as error:
+                failures.append("lab: "+str(error))
+                traceback.print_exc()
+                for page in (teacher,pupil):
+                    page.screenshot(path=str(OUT/("lab-"+("teacher" if page==teacher else "pupil")+"-failure.png")))
+            assert not failures,"Focused subject scenarios failed: "+"; ".join(failures)
 
-            contour={**base,"id":"qa-final-contour","graphFigureId":"contour-atlas","text":"Контурная карта",
-                     "schoolDiagram":{"kind":"atlas","scope":"geography","title":"Контурная карта","mode":"contour","year":1914,"showLabels":True,"showGrid":False,"showEvents":False,"markers":[],"regionId":"world","borderView":"russian","contourTask":"Обозначьте точку",
-                     "contourMarks":[{"id":"qa-a","lat":30,"lon":20,"text":"QA A","kind":"point","color":"#334455"}],"contourStrokes":[],"paintedCountries":{}}}
-            replace(contour)
-            editor=".lektrus-contour-editor-fullscreen"
-            for page in (teacher,pupil):
-                page.keyboard.press("Control+a")
-                page.get_by_role("button",name="Настроить учебный объект",exact=True).click()
-                expect(page.locator(editor)).to_be_visible(timeout=30000)
-            mark="Передвинуть обозначение: QA A"
-            ta=teacher.locator(editor).get_by_role("button",name=mark,exact=True)
-            pa=pupil.locator(editor).get_by_role("button",name=mark,exact=True)
-            def lon(items):return items[0]["schoolDiagram"]["contourMarks"][0]["lon"]
-            expect(ta).to_be_visible(timeout=30000)
-            expect(pa).to_be_visible(timeout=30000)
-            ta.press("ArrowRight")
-            first_move=wait(lambda items:lon(items)>20,"First contour move missing")
-            first_lon=lon(first_move["document"]["items"])
-            pupil.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":first_lon},timeout=30000)
-            pa.press("ArrowRight")
-            second=wait(lambda items:lon(items)>first_lon,"Peer contour move missing")
-            second_lon=lon(second["document"]["items"])
-            teacher.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":second_lon},timeout=30000)
-            teacher.locator(editor).get_by_role("button",name="Отменить",exact=True).click()
-            teacher.wait_for_timeout(1200)
-            assert lon(read()["document"]["items"])==second_lon,"Contour Undo overwrote peer's later move"
-            for page in (teacher,pupil):
-                page.locator(editor).get_by_role("button",name="Карандаш",exact=True).click()
-                svg=page.locator(editor+" svg[data-contour-brush=pen]")
-                expect(svg).to_be_visible()
-                box=svg.bounding_box();x=box["x"]+box["width"]*.45;y=box["y"]+box["height"]*(.45 if page==teacher else .60)
-                count=len(read()["document"]["items"][0]["schoolDiagram"]["contourStrokes"])
-                page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+35,y+8,steps=8);page.mouse.up()
-                wait(lambda items:len(items[0]["schoolDiagram"]["contourStrokes"])>count,"Contour ink not persisted")
-            for page in (teacher,pupil):
-                page.wait_for_function("""ident=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourStrokes.length===2""",arg=ident,timeout=30000)
-                page.locator(editor).get_by_role("button",name="Закрыть общий редактор",exact=True).click()
-            print("Final contour: conflicting Undo preserves peer mark and two real ink gestures converge.")
-
-            lab={**base,"id":"qa-final-lab","graphFigureId":"chem-experiment-free","width":960,"height":580,"text":"Химическая лаборатория",
-                 "scienceLabBench":{"vessels":[{"id":"v1","kind":"beaker","x":48,"y":70,"reagents":[],"environment":"aqueous","observed":False}],"selectedId":"v1","event":0,"mode":"reactions","simulationPaused":True}}
-            replace(lab)
-            vessel=pupil.locator('[data-lab-vessel-id="v1"]')
-            expect(vessel).to_be_visible(timeout=15000)
-            box=vessel.bounding_box();x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
-            pupil.mouse.move(x,y);pupil.mouse.down();pupil.mouse.move(x+38,y,steps=10);pupil.mouse.up()
-            saved=wait(lambda items:abs(items[0]["scienceLabBench"]["vessels"][0]["x"]-48)>0.5,"Lab vessel drag not persisted")
-            px=saved["document"]["items"][0]["scienceLabBench"]["vessels"][0]["x"]
-            teacher.wait_for_function("""({ident,x})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].scienceLabBench.vessels[0].x===x""",arg={"ident":ident,"x":px},timeout=30000)
-            print("Final lab: pupil vessel motion persists and converges.")
     finally:
         for ctx in contexts:ctx.close()
 
