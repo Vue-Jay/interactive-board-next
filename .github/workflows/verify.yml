@@ -35,6 +35,7 @@ jobs:
           node scripts/test-lektrus-collaborative-editors.mjs
           node scripts/test-lektrus-attachment-delivery.mjs
           node scripts/test-lektrus-student-undo-idle.mjs
+          node scripts/test-lektrus-runtime-hotpaths.mjs
           node scripts/test-lektrus-peer-ink-browser.mjs
       - name: Typecheck and build
         run: npm run build
