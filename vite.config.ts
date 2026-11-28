@@ -27,7 +27,10 @@ window.addEventListener('error',function(event){
 },true);
 </script>`
 
+// Identify the loaded bundle, not a version fetched from the current server.
+const journalBuild=process.env.GITHUB_SHA || JSON.parse(readFileSync(new URL('./public/deployment-check.json',import.meta.url),'utf8')).marker;
 export default defineConfig({
+  define: {'import.meta.env.VITE_LEKTRUS_JOURNAL_BUILD':JSON.stringify(journalBuild)},
   plugins: [react(), {
     name: 'lektrus-service-recovery',
     transformIndexHtml: {order:'pre',handler(html){

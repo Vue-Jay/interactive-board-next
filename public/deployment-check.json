@@ -2,6 +2,6 @@
   "application": "lektrus",
   "source": "github-actions",
   "branch": "main",
-  "marker": "lektrus-transient-menu-dismiss-2026-11-28",
-  "board_change": "outside-pointer-dismissal-with-nested-portals"
+  "marker": "lektrus-sync-journal-v2-2026-11-28",
+  "board_change": "session-timing-revision-settlement-and-state-checkpoints"
 }

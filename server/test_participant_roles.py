@@ -216,14 +216,21 @@ async def test_student_all_allowed_object_kinds_and_admin_sync_journal(client):
     assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==[original,*changed]
     assert (await client.patch(root+"/document",headers=pupil,json={"expected_version":3,"delta":{"items":{"remove":[item["id"] for item in changed]}}})).status_code==200
     assert (await client.get(root+"/document",headers=owner)).json()["document"]["items"]==[original]
-    assert (await client.post(root+"/sync-journal",headers=pupil,json={"events":[{"event":"object_change","added":len(objects),"version":1}]})).status_code==200
+    assert (await client.post(root+"/sync-journal",headers=pupil,json={"events":[{"event":"object_change","added":len(objects),"version":1,"session_id":"a"*32,"sequence":1,"occurred_at_ms":123456789,"session_elapsed_ms":12,"build_id":"journal-test","platform":"web"},{"event":"state_checkpoint","version":4,"fingerprint":"a"*16,"local_fingerprint":"a"*16,"pending":False,"session_id":"a"*32,"sequence":2}]})).status_code==200
     assert (await client.post(root+"/sync-journal",headers=pupil,json={"events":[{"event":"object_change","text":"private lesson"}]})).status_code==422
+    assert (await client.post(root+"/sync-journal",headers=pupil,json={"events":[{"event":"state_checkpoint","fingerprint":"raw lesson content"}]})).status_code==422
     assert (await client.get(root+"/sync-journal",headers=pupil)).status_code==403
     async with app.state.pool.acquire() as conn:
         await conn.execute("UPDATE account_users SET is_admin=true WHERE id=$1",TEACHER)
     exported=await client.get(root+"/sync-journal",headers=owner)
     assert exported.status_code==200,exported.text
-    rows=exported.json()["events"]
+    payload=exported.json()
+    assert payload["schema_version"]==2 and payload["latest_server_version"]==4
+    assert payload["client_batch_interval_ms"]==15000 and not payload["possibly_truncated"]
+    rows=payload["events"]
+    assert any(row.get("occurred_at_ms")==123456789 and row.get("session_id")=="a"*32 and row.get("sequence")==1 for row in rows)
+    assert any(row["event"]=="state_checkpoint" and row["fingerprint"]==row["local_fingerprint"] and not row["pending"] for row in rows)
+    assert any(row["source"]=="server" and row.get("version")==4 and "pool_ms" in row["timings_ms"] and "broadcast_ms" in row["timings_ms"] for row in rows)
     assert any(row["source"]=="client" and row["event"]=="object_change" and row["actor_id"]==str(STUDENT) for row in rows)
     assert any(row["source"]=="server" and row["event"]=="save_ack" and row["version"]==4 for row in rows)
 
