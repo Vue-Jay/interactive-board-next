@@ -806,7 +806,12 @@ try{
   await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   await click('.lektrus-recent-board .lectris-hub-board-edit');
   assert.ok(await evaluate(`(()=>{const m=document.querySelector('.lektrus-home-board-actions');if(!m)return false;m.scrollIntoView({block:'center'});const b=m.lastElementChild.getBoundingClientRect();return b.width>0&&m.contains(document.elementFromPoint(b.x+b.width/2,b.y+b.height/2))})()`),'Recent-board action menu must not be clipped by its card');
+  await evaluate(`document.querySelector('.lectris-hub').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,isPrimary:true,pointerType:'touch'}))`);
+  await wait('!document.querySelector(".lektrus-home-board-actions")',"Outside touch did not dismiss recent-board menu");
   await click('.lektrus-recent-board .lectris-hub-board-edit');
+  await wait('!!document.querySelector(".lektrus-home-board-actions")',"Recent-board menu did not reopen");
+  await click('.lektrus-recent-board .lectris-hub-board-edit');
+  await wait('!document.querySelector(".lektrus-home-board-actions")',"Recent-board trigger did not toggle closed");
   console.log('✓ Long title pans in both directions, reduced motion wraps, owner actions remain accessible');
   const snapshot=()=>evaluate(`(() => {
    const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};

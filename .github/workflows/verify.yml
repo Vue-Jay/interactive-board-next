@@ -51,6 +51,11 @@ jobs:
         run: |
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           CHROME_PATH="$CHROME_BIN" node scripts/test-lektrus-release-browser-smoke.mjs
+      - name: Check outside touch dismissal on the mobile board and home
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          CHROME_PATH="$CHROME_BIN" node scripts/test-lektrus-release-browser-smoke.mjs --tablet-tools-only
+          CHROME_PATH="$CHROME_BIN" node scripts/test-lektrus-release-browser-smoke.mjs --home-only
       - name: Check admin user board expansion in Chrome
         run: |
           CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
