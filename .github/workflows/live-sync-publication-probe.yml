@@ -1,0 +1,61 @@
+name: Verify live sync publication (read only)
+on:
+  push:
+    branches: ['verify/live-sync-publication-20261128']
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify current public application and new sync API
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, re, time, urllib.request, urllib.error, urllib.parse
+          origin = 'https://lektrus.ru'
+          def get(path, limit=12000000):
+              request=urllib.request.Request(origin+path, headers={'Cache-Control':'no-cache','User-Agent':'Lektrus read-only deployment verification'})
+              try:
+                  with urllib.request.urlopen(request, timeout=15) as response:
+                      data=response.read(limit+1)
+                      assert len(data)<=limit, 'Response exceeded verification limit'
+                      return response.status, data
+              except urllib.error.HTTPError as exc:
+                  return exc.code, exc.read(4096)
+          def check():
+              status, data=get('/api/v1/health')
+              assert status==200 and json.loads(data).get('ok') is True, 'API not healthy'
+              status, data=get('/api/v1/boards/00000000-0000-4000-8000-000000000004/attachment-requests')
+              assert status in (401,403), f'New protected attachment approval endpoint returned {status}'
+              status, data=get('/app')
+              assert status==200, f'Application shell returned {status}'
+              html=data.decode('utf-8')
+              names=re.findall(r'/assets/([A-Za-z0-9_.-]+\.js)',html)
+              assert names, 'No JavaScript modules in current shell'
+              pending=list(dict.fromkeys(names))
+              visited=set()
+              while pending and len(visited)<60:
+                  name=pending.pop(0)
+                  if name in visited: continue
+                  visited.add(name)
+                  status, payload=get('/assets/'+urllib.parse.quote(name,safe='.-_'))
+                  assert status==200, f'Current asset {name} returned {status}'
+                  source=payload.decode('utf-8',errors='replace')
+                  if '/attachment-requests' in source:
+                      print('LIVE_SYNC_VERIFIED: healthy API, new protected approval endpoint and current frontend asset '+name,flush=True)
+                      return
+                  for candidate in re.findall(r'(?:\./|/assets/|assets/)([A-Za-z0-9_.-]+-[A-Za-z0-9_-]{6,}\.js)',source):
+                      if candidate not in visited and candidate not in pending:
+                          pending.append(candidate)
+              raise AssertionError('New approval client not found in the current shell asset graph')
+          for attempt in range(7):
+              try:
+                  check()
+                  break
+              except Exception as exc:
+                  print(f'Attempt {attempt+1}: {exc}',flush=True)
+                  if attempt==6: raise
+                  time.sleep(30)
+          PY
