@@ -124,4 +124,14 @@ for(const m of minorFindings){
  for(const id of m.archiveCaseIds)assert.ok(latestIds.has(id),"Unlinked coverage finding "+m.id);
  assert.ok(m.sources.length>0&&m.sources.every(s=>s.startsWith("https://")));
 }
+const followUp=latest.followUpFindings;
+assert.equal(followUp.length,latest.counts.followUpFindings);
+assert.equal(new Set(followUp.map(f=>f.id)).size,followUp.length);
+assert.equal(followUp.filter(f=>f.status.startsWith('corrected-')).length,latest.counts.followUpFindingsCorrected);
+assert.equal(followUp.filter(f=>f.status==='open').length,latest.counts.followUpFindingsOpen);
+for(const finding of followUp){
+ assert.ok(finding.sources.length&&finding.sources.every(s=>s.startsWith('https://')));
+ if(finding.sourceYears!==undefined)assert.equal(finding.sourceYears,finding.to-finding.from+1);
+}
+assert.equal(latest.cases.filter(c=>c.classification==='modern-independent-island-coastline-candidate-withheld-dated-reclamation').length,3);
 console.log("Current snapshot: 136 classified, 340 unclassified, all 476 geometries unverified.");

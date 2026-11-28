@@ -101,7 +101,9 @@ try{
   if(year!==2026){
    const source=JSON.parse(fs.readFileSync(path.join(dir,`world_${year<0?"bc"+(-year):year}.geojson`),"utf8"));
    const expected=source.features.filter(feature=>["Polygon","MultiPolygon"].includes(feature.geometry?.type)).length;
-   assert.equal(ids.length,expected,`${year}: map has missing source polygons`);
+   // The 2010 archive bundles Saint Barthélemy into Guadeloupe; both dated
+   // geometries are retained as distinct cards after the administrative split.
+   assert.equal(ids.length,expected+(year===2010?1:0),`${year}: map has missing source polygons`);
   }else{
    const source=JSON.parse(fs.readFileSync(path.join(dir,"ne_10m_admin_0_countries_rus.geojson"),"utf8"));
    // Eight previously anonymous archive polygons now have source-reviewed
@@ -140,7 +142,7 @@ try{
      verifiedStats.add(iso);
     }
    }
-   if(missingCount&&id===(year===1994?"179":"180")){
+   if(missingCount&&id===({1994:"179",2000:"180",2010:"181"})[year]){
     assert.equal(title.trim(),"Швейцария",`${year}: main Swiss polygon not restored in UI`);
     await selected.locator(`[data-atlas-missing-members="${missingCount}"]`).waitFor({state:"visible",timeout:6000});
    }

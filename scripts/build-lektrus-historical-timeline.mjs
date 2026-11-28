@@ -44,6 +44,10 @@ const UK_DEPENDENCIES='https://www.gov.uk/government/publications/crown-dependen
 const COMMONWEALTH='https://thecommonwealth.org/our-member-countries';
 const DUTCH_SOURCE='https://www.government.nl/themes/government-and-democracy/caribbean-parts-of-the-kingdom';
 const DUTCH_TRANSITIONS='https://treaties.un.org/pages/historicalinfo.aspx';
+const ANTILLES_MAP_1989='https://www.loc.gov/item/2005631608/';
+const SAINT_MARTIN_BORDER='https://verdragenbank.overheid.nl/en/Treaty/Details/013951';
+const KALMAR_LABEL='Kalmar Union (dynastic union of distinct kingdoms)';
+const KALMAR_SOURCE='https://cas.au.dk/en/danish-history/modules/module-3-the-late-middle-ages-1340-1523/4-from-mortgaged-kingdom-to-regional-great-power';
 const SURINAME_SOURCE='https://www.un.org/dppa/decolonization/en/history/former-trust-and-nsgts';
 const PORTUGAL_SOURCE='https://www.parlamento.pt/Parlamento/Paginas/EstadoNovo.aspx';
 const PORTUGAL_CONSTITUTION='https://www.parlamento.pt/Legislacao/Paginas/ConstituicaorepublicaPortuguesa.aspx';
@@ -514,6 +518,7 @@ const reviewedNames=[
 const ukName=year=>year<1927?'United Kingdom of Great Britain and Ireland':'United Kingdom of Great Britain and Northern Ireland';
 const GREEK_REGIMES='https://www.presidency.gr/en/mansion/history/';
 const DENMARK_SEPARATION='https://www.kongehuset.dk/nyheder/1814-spillet-om-danmark-og-norge';
+const KIEL_TREATY='https://www.stortinget.no/globalassets/pdf/grunnlovsjubileet/brosjyre-engelsk.pdf';
 const EGYPT_UAR='https://history.state.gov/countries/egypt';
 const FRENCH_CESSIONS='https://history.state.gov/milestones/1750-1775/treaty-of-paris';
 const TANZANIA_UN='https://www.un.org/en/about-us/member-states/tanzania';
@@ -538,7 +543,7 @@ export const historicalTitleCorrections=[
  ["Samoa","Q683",1962,1996,"Western Samoa","Западное Самоа","https://history.state.gov/countries/samoa","The name Western Samoa remained until the act of July 1997.","До принятия закона в июле 1997 года независимое государство называлось Западное Самоа."],
  ["Independent State of Samoa","Q683",1962,1996,"Independent State of Western Samoa","Независимое Государство Западное Самоа","https://www.legislation.govt.nz/act/public/1961/0068/latest/whole.html","The independent state's constitutional name included Western Samoa until July 1997.","При независимости в 1962 году официальное название включало Западное Самоа."],
  ["Western Samoa","Q683",1997,2024,"Samoa","Самоа","https://history.state.gov/countries/samoa","The name changed from Western Samoa to Samoa in 1997.","Название Западное Самоа изменено на Самоа в июле 1997 года."],
- ["Republic of Cameroon","Q1009",1962,1971,"Federal Republic of Cameroon","Федеративная Республика Камерун","https://www.archontology.org/nations/cameroon/01_polity.php","Cameroon was a federation from 1 October 1961 until June 1972.","Камерун был федерацией с октября 1961 до июня 1972 года."],
+ ["Republic of Cameroon","Q1009",1961,1971,"Federal Republic of Cameroon","Федеративная Республика Камерун","https://digitallibrary.un.org/record/860970/files/1961-E.pdf","Cameroon was a federation from 1 October 1961 until June 1972; the annual label reflects its year-end status.","Камерун стал федерацией 1 октября 1961 года. Для переходного года показан статус на конец года; исходный контур остаётся приближённым."],
  ["Republic of Cameroon","Q1009",1972,1983,"United Republic of Cameroon","Объединённая Республика Камерун","https://treaties.un.org/pages/HistoricalInfo.aspx","The 1972 unitary constitution led to the United Republic title until 1984.","Название Объединённая Республика Камерун действовало с 1972 по февраль 1984 года."],
  ["Federal Republic of Cameroon","Q1009",1972,1983,"United Republic of Cameroon","Объединённая Республика Камерун","https://www.archontology.org/nations/cameroon/01_polity.php","The federal name is obsolete after 2 June 1972.","Федеративная Республика преобразована в Объединённую в июне 1972 года."],
  ["United Republic of Cameroon","Q1009",1984,2024,"Republic of Cameroon","Республика Камерун","https://treaties.un.org/pages/HistoricalInfo.aspx","The country's name returned to Republic of Cameroon on 4 February 1984.","4 февраля 1984 года Камерун вновь стал называться Республикой Камерун."],
@@ -1066,11 +1071,11 @@ function editorialSegments(base,derived=[]){
   }
   if(base.role==='polity'&&base.sourceName==='Kalmar Union'){
    r={...r,role:'settlement',sourceRole:'polity',
-    name:'Kalmar Union (dynastic union of distinct kingdoms)',
+    name:KALMAR_LABEL,
     nameRu:'Кальмарская уния (династический союз трёх королевств)',
     nameStatus:'reviewed'};
    note('Denmark, Norway and Sweden retained distinct political institutions within the Kalmar personal union; Swedish regency and intermittent separation also changed actual power. The original union outline must not substitute a single sovereign country border in 1500.',
-    ['https://cas.au.dk/en/danish-history/modules/module-3-the-late-middle-ages-1340-1523/4-from-mortgaged-kingdom-to-regional-great-power','https://www.medievalists.net/2021/01/medieval-scandinavia-downfall-kalmar-union/'],
+    [KALMAR_SOURCE,'https://www.medievalists.net/2021/01/medieval-scandinavia-downfall-kalmar-union/'],
     'Дания, Норвегия и Швеция сохраняли самостоятельные королевские институты в личной унии; шведские регентства меняли фактическое управление. Исходный общий контур не должен закрашиваться как граница одной суверенной страны.');
   }
   if(base.role==='polity'&&base.sourceName==='Đại Việt'){
@@ -1185,7 +1190,7 @@ function editorialSegments(base,derived=[]){
   }
   if(base.sourceName==='Denmark-Norway'&&base.sourceWikidata==='Q62651'&&from>=1814){
    r={...r,name:base.sourceIndex===12846?'Faroe Islands (Danish territory)':'Denmark',nameRu:base.sourceIndex===12846?'Фарерские острова (территория Дании)':'Дания',nameStatus:'reviewed',entityId:base.sourceIndex===12846?identity('reviewed-polity','faroe-islands-danish-territory'):identity('source-polity','Denmark','Q350186')};
-   note('Denmark and Norway separated in 1814; the source geometry is not the former dual monarchy.'+(base.sourceIndex===12846?' This record contains only the Faroe Islands, not mainland Denmark.':''),[DENMARK_SEPARATION],'Датско-норвежская уния распалась в 1814 году. Исходный контур не представляет прежнюю двойную монархию.'+(base.sourceIndex===12846?' Здесь только Фарерские острова, без материковой Дании.':''));
+   note('Denmark and Norway separated in 1814; the source geometry is not the former dual monarchy.'+(base.sourceIndex===12846?' This record contains only the Faroe Islands, not mainland Denmark.':''),[DENMARK_SEPARATION,KIEL_TREATY],'Датско-норвежская уния распалась в 1814 году. Исходный контур не представляет прежнюю двойную монархию.'+(base.sourceIndex===12846?' Здесь только Фарерские острова, без материковой Дании.':''));
   }
   if(base.sourceName==='United Arab Republic'&&base.sourceWikidata==='Q170468'&&from>=1971){
    r={...r,name:'Arab Republic of Egypt',nameRu:'Арабская Республика Египет',nameStatus:'reviewed',entityId:identity('source-polity','Arab Republic of Egypt','Q79')};
@@ -1286,10 +1291,10 @@ function editorialSegments(base,derived=[]){
   if(base.sourceName==='Netherlands Antilles'&&base.sourceWikidata==='Q25227'){
    if(to<1976){r={...r,name:base.sourceIndex===11004?'Dutch Caribbean possessions':'Dutch Caribbean possessions and Suriname (source aggregate)',nameRu:base.sourceIndex===11004?'Нидерландские владения в Карибском море':'Нидерландские владения в Карибском море и Суринам (сводный контур)',nameStatus:'reviewed'};note('Source combines distinct Dutch territories; it cannot be identified as the Netherlands Antilles alone. Source extent remains unverified.',[SURINAME_SOURCE])}
    else if(from<2010){
-    if(from>=1986){r={...r,nameRu:'Нидерландские Антилы (неполный островной контур)',nameStatus:'reviewed'};}
-    note('Source component for Suriname excluded after its 1975 independence. '+(from>=1986?'Aruba became a separate constituent country on 1 January 1986. The surviving source has only three island polygons for the five constituent islands (Curaçao, Bonaire, Sint Maarten, Sint Eustatius and Saba); absent coastal polygons are not silently invented. ':'')+'Source island coverage remains incomplete and cannot be treated as a verified national outline.',
-      [SURINAME_SOURCE,DUTCH_TRANSITIONS,'https://treatydatabase.overheid.nl/en/Treaty/Details/007234_p.html'],
-      'Суринам исключён после независимости в 1975 году. '+(from>=1986?'С 1986 года Аруба — отдельная страна Королевства; исходный контур содержит лишь три полигона для пяти входивших в Антилы островов. Отсутствующие береговые линии не дорисованы. ':'')+'Геометрия неполная и не является подтверждённой государственной границей.');
+    r={...r,nameRu:'Нидерландские Антилы (неполный островной контур)',nameStatus:'reviewed'};
+    note('Suriname was independent from 1975. The source Saint Martin polygon crosses into French Saint-Martin and is excluded. Curaçao and Bonaire remain as generalized source outlines. '+(from>=1986?'Aruba is shown separately after its withdrawal on 1 January 1986.':'Aruba remains in this group through 1985.')+' Sint Maarten, Saba and Sint Eustatius have geographical markers pending usable dated outlines.',
+      [SURINAME_SOURCE,DUTCH_TRANSITIONS,ANTILLES_MAP_1989,SAINT_MARTIN_BORDER],
+      'В заливке сохранены генерализованные исходные контуры Кюрасао и Бонайре. '+(from>=1986?'Аруба показана отдельно после выхода из Антил 1 января 1986 года.':'Аруба входит в эту запись по 1985 год включительно.')+' Контур Сен-Мартена заходил на французскую территорию. Синт-Мартен, Саба и Синт-Эстатиус обозначены ориентирами до восстановления датированных контуров. Суринам получил независимость в 1975 году.');
    }
    else {r={...r,geometryStatus:'rejected'};note('Netherlands Antilles dissolved on 10 October 2010. A single former-country polygon is not a valid reconstruction of the successor territories; the 2010 transition and later years need separate dated polygons.',[DUTCH_SOURCE,DUTCH_TRANSITIONS],'Нидерландские Антильские острова распущены 10 октября 2010 года. Нужны отдельные датированные контуры территорий-преемников.')}
   }
@@ -1304,6 +1309,10 @@ function editorialSegments(base,derived=[]){
   const replaceComponent=(old,next)=>{r={...r,sourceComponents:base.components,components:r.components.map(n=>n===old?next:n)};note('Component label aligned with the simultaneously active record, without inferring territorial changes.',[CHINA_GROUP_SOURCE])};
   if(base.sourceIndex===7783&&from>=1516)replaceComponent('House of Habsburg','Habsburg Monarchy');
   if(base.sourceIndex===5295&&from>=1210)replaceComponent('Angevin Empire','Kingdom of England');
+  if(base.role==='composite'&&base.sourceName==='(Kalmar Union)'&&base.components.includes('Kalmar Union')){
+   r={...r,sourceComponents:base.components,components:r.components.map(n=>n==='Kalmar Union'?KALMAR_LABEL:n)};
+   note('Link to the year-effective thematic record of the union, without changing its geographical extent.',[KALMAR_SOURCE]);
+  }
   if(base.sourceIndex===4776&&from>=1126)replaceComponent('County of Anjou','Angevins');
   if(base.sourceIndex===4678&&from>=1094){r={...r,sourceComponents:base.components,components:[...r.components,'County of Champagne']};note('Active County of Champagne explicitly identifies this composite in the source; its reciprocal component label was missing. Geometry is unchanged.',[CHINA_GROUP_SOURCE])}
   if(base.components.includes('British Cape Colony')&&from>=1797&&to<=1884){
@@ -1335,7 +1344,7 @@ export function reviewedGeometryParts(r,derived=[]){
  }
  if(r.sourceIndex===13305&&r.sourceName==='Kingdom of Great Britain')return [2,3,4,5,6,7,13,14].map(part=>({index:13305,part}));
  if(r.sourceIndex===13684&&r.sourceName==='Kingdom of Great Britain')return [1,2,3,4,5,6,7,8].map(part=>({index:13684,part}));
- if(r.sourceIndex===11956&&r.sourceName==='Netherlands Antilles'&&r.from>=1976&&r.to<2010)return (r.from<1986?[1,2,3,4]:[1,2,4]).map(part=>({index:11956,part}));
+ if(r.sourceIndex===11956&&r.sourceName==='Netherlands Antilles'&&r.from>=1976&&r.to<2010)return (r.from<1986?[1,2,3]:[1,2]).map(part=>({index:11956,part}));
  if(r.sourceIndex===13659&&r.sourceName==="People's Republic of Angola")return [{index:13659,part:0},{index:13753,part:0}];
  if(r.sourceIndex===13277&&r.sourceName==='Estado Novo'&&r.from>=1974)return [7,8,9,10,20,21].map(part=>({index:13277,part}));
  if(r.sourceIndex===13399&&r.sourceName==='Portugal'&&r.from>=2000)return [1,2,3,4,5,6].map(part=>({index:13399,part}));
@@ -2302,6 +2311,38 @@ const comoroColony=comoroDecision('comoros-colonial','Comoros (Madagascar depend
  return {exclusions,transfers,restorations,subtractions,pending,groupLinks};
 }
 
+export const dutchCaribbeanPolygons = [
+ {entity:'aruba',name:'Aruba',nameRu:'Аруба — страна Королевства Нидерландов',from:1986,part:3,
+  hash:'a52ce20e0c58a974a7d62d29b521b8b21d584a5d7781dd91745aa58e6bc786e6',
+  reason:'Aruba became a separate constituent country of the Kingdom of the Netherlands on 1 January 1986.',
+  reasonRu:'1 января 1986 года Аруба вышла из Нидерландских Антил и стала отдельной страной в составе Королевства Нидерландов.'},
+ {entity:'curacao',name:'Curaçao',nameRu:'Кюрасао — страна Королевства Нидерландов',from:2010,part:1,
+  hash:'c8464b2cdb143b23c76bf71ab4eeed26d74413ec287ac14657e6e50213f46837',
+  reason:'On 10 October 2010 Curaçao became a constituent country of the Kingdom of the Netherlands.',
+  reasonRu:'С 10 октября 2010 года Кюрасао — отдельная страна в составе Королевства Нидерландов.'},
+ {entity:'bonaire',name:'Bonaire',nameRu:'Бонайре — особый муниципалитет Нидерландов',from:2010,part:2,
+  hash:'b7039b0c37dfb66e0127c65baf073d8bb33a1faad692265b5af48e3f9ac29c8d',
+  reason:'Bonaire became a public body (special municipality) of the Netherlands on 10 October 2010.',
+  reasonRu:'С 10 октября 2010 года Бонайре входит в Нидерланды как особый муниципалитет.'},
+];
+
+function restoreDutchCaribbeanPolygons(features) {
+ const sources=[DUTCH_TRANSITIONS,DUTCH_SOURCE,ANTILLES_MAP_1989];
+ return dutchCaribbeanPolygons.flatMap(d=>[[11956,d.part,d.from,2023],[13642,d.part-1,2024,2024]].map(([source,part,from,to])=>{
+  const feature=features[source];
+  assert.equal(feature.properties.Name,'Netherlands Antilles');
+  assert.equal(feature.properties.Wikidata,'Q25227');
+  assert.ok(feature.properties.FromYear<=from&&feature.properties.ToYear>=to);
+  const polygon=rawParts(feature)[part];
+  assert.equal(componentHash(polygon),d.hash);
+  return {source,part,from,to,hash:d.hash,geometry:{type:'MultiPolygon',coordinates:[polygon]},decision:{
+   ...d,sources,
+   reason:`${d.reason} The map depicts the status at year end with the same year's generalized source component.`,
+   reasonRu:`${d.reasonRu} Показан статус на конец года. Сохранён приближённый островной контур источника за тот же год.`,
+  }};
+ }));
+}
+
 export function normalizeHistoricalSource(source) {
   assert.equal(source.type,'FeatureCollection');
   const indochinaLabel=year=>year<=1866?['French campaign in Cochinchina','Французская кампания в Кохинхине']:year===1867?['French Cochinchina','Французская Кохинхина']:year<=1884?['French Cochinchina and Cambodia (source aggregate)','Французская Кохинхина и протекторат Камбоджа (сводный контур)']:year<=1886?['French possessions in Indochina (source aggregate)','Французские владения и протектораты в Индокитае (сводный контур)']:['French Indochina','Французский Индокитай'];
@@ -2315,6 +2356,7 @@ export function normalizeHistoricalSource(source) {
    const war=deriveCeylonWarReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','restorations','transfers','pending'])batch[key].push(...war[key]);
    const medieval=deriveMedievalAndUnionReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','pending'])batch[key].push(...medieval[key]);batch.groupRebuilds=medieval.groupRebuilds;
    const colonies=deriveColonialAndSalonaReviews(source.features,[...derivedExclusions,...batch.exclusions]);for(const key of ['exclusions','transfers','restorations','subtractions','pending'])batch[key].push(...colonies[key]);batch.groupLinks=colonies.groupLinks;
+   batch.restorations.push(...restoreDutchCaribbeanPolygons(source.features));
    // The old opposing claims remain excluded; the reconstructed three-part
    // island replaces the unresolved footprint, not either original owner.
    assert.equal(batch.pending.filter(p=>p.group==='Эльба'&&p.from===1797&&p.to===1798).length,2);
@@ -2631,6 +2673,8 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
  const overlaps=(a,b)=>a[0]<=b[2]&&a[1]<=b[3]&&b[0]<=a[2]&&b[1]<=a[3];
  const tally=[];
  for(const d of policy.entries){
+  // A verified physical change makes this outline useful for comparison only.
+  if(d.holdSources?.length)continue;
   assert.equal(d.snapshots.length,3);
   const raw=geometries.get(d.originalGeometryId);
   assert.ok(raw,'Pinned original coastlines unavailable: '+d.iso);
@@ -2682,9 +2726,8 @@ export function applyReviewedModernIslandGeographies(records,geometries,policy=m
    const repairedRecord={...r,id:identity('reviewed-modern-island-outline',r.id,d.iso,start,end,newId),
     from:start,to:end,geometryId:newId,geometryRepair:'reviewed-modern-island-outline',
     sourceGeometryId:r.sourceGeometryId??d.originalGeometryId,
-    externalGeography:{iso:d.iso,neId:d.neId,datasetHash:policy.source.sha256,url:policy.source.url,
-     kind:'modern-generalized-island-outline',originalGeometryId:d.originalGeometryId,
-     keptDisjointSourceIslands:legacyExtras.length,unrepresentedTinyIslands:d.limitations},
+    modernCoastline:{iso:d.iso,neId:d.neId,datasetHash:policy.source.sha256,url:policy.source.url,
+     keptDisjointSourceIslands:legacyExtras.length},
     review:{reason:[r.review?.reason,'Modern Natural Earth generalized island geometry supersedes the mismatched archived outline; tiny islands and dated historical coastlines require separate validation.'].filter(Boolean).join(' '),
      reasonRu:[r.review?.reasonRu,'Исторически устойчивые острова страны уточнены по современной генерализованной геометрии Natural Earth. Это не датированная береговая съёмка; '+d.limitations].filter(Boolean).join(' '),
      sources:[...new Set([...(r.review?.sources??[]),d.sourceUrl,...(d.extraSources??[]),policy.source.url])]}};

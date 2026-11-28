@@ -68,7 +68,7 @@ def audit(folder, archive, output, original_source):
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     registry = json.loads((folder / 'change-review-registry.json').read_text(encoding='utf-8'))
     assert registry['source']['sha256'] == manifest['source']['sha256']
-    geom, topology, records, repaired, selections, partitions, adjustments = {}, {}, {}, {}, {}, {}, {}
+    geom, topology, records, repaired, selections, partitions, adjustments, coastlines = {}, {}, {}, {}, {}, {}, {}, {}
     for block in manifest['blocks']:
         data = (folder / block['file']).read_bytes()
         assert hash_bytes(data) == block['sha256']
@@ -94,6 +94,8 @@ def audit(folder, archive, output, original_source):
                                        pack['geometries'][r['mapPartition']['outlineGeometryId']])
             elif r.get('geometryRepair') in ('reviewed-source-components', 'reviewed-union-source-components', 'reviewed-difference-source-components'):
                 selections[r['id']] = (r, pack['geometries'][base_id])
+            elif r.get('modernCoastline'):
+                coastlines[r['geometryId']] = (r, pack['geometries'][base_id])
             elif r.get('sourceGeometryId'):
                 repaired[r['sourceIndex']] = pack['geometries'][base_id]
     assert len(topology) == manifest['counts']['uniqueGeometries']
@@ -104,6 +106,23 @@ def audit(folder, archive, output, original_source):
     assert hash_bytes(original_bytes) == manifest['source']['sha256']
     original = json.loads(original_bytes)
     from shapely.ops import unary_union
+    if coastlines:
+        coastline_file = pathlib.Path(__file__).resolve().parents[1] / 'docs/historical-atlas-modern-island-geometries-20261128.json'
+        policy = json.loads(coastline_file.read_text(encoding='utf-8'))
+        entries = {d['iso']: d for d in policy['entries']}
+        for revision, raw in coastlines.values():
+            e = revision['modernCoastline']
+            assert e['datasetHash'] == policy['source']['sha256'] and e['url'] == policy['source']['url']
+            entry = entries[e['iso']]
+            assert revision['sourceGeometryId'] == entry['originalGeometryId'] and e['neId'] == entry['neId']
+            before = polygons(shape(original['features'][revision['sourceIndex']]['geometry']))
+            after = shape(raw)
+            external = shape(entry['geometry'])
+            assert after.is_valid and external.is_valid and after.covers(external), f'Invalid generalized coastline {e["iso"]}'
+            extras = polygons(after)[len(polygons(external)):]
+            assert len(extras) == e['keptDisjointSourceIslands']
+            for part in extras:
+                assert any(part.equals(p) for p in before) and part.intersection(external).area == 0
     for index, raw in repaired.items():
         before = shape(original['features'][index]['geometry'])
         after = shape(raw)
@@ -291,7 +310,7 @@ def audit(folder, archive, output, original_source):
         'ambiguousSameNameNameYears': sum(sum(x['ambiguousAtlasIdentities'] for x in s['namedUnionComparisons']) for s in snapshots),
     }
     report = {'source': manifest['source'], 'method': 'EPSG:6933; legacy per-feature IoU plus independent both-sided year-effective exact-name polygon unions; neither is historical proof of territorial borders; invalid source repairs are diagnostic only',
-              'counts': {'uniqueGeometries': len(topology), 'invalidGeometries': sum(t['invalid'] is not None for t in topology.values()), 'excludedGeometries': sum(bool(t['comparisonExcluded']) for t in topology.values()), 'equivalentRepairs': len(repaired), 'reviewedComponentSelections': len(selections), 'reviewedMapPartitions': len(partitions), 'partitionSubsetChecks': subset_checks, 'datedCoastlinePartitions': dated_coastlines, 'completeThreeWayPartitions': len(partition_groups), 'affectedReviewUnits': sum(map(len, affected.values())), 'snapshots': len(snapshots), 'archivePolygons': sum(len(s['rows']) for s in snapshots), 'uniqueSpatialPairs': len(pairs)},
+              'counts': {'uniqueGeometries': len(topology), 'invalidGeometries': sum(t['invalid'] is not None for t in topology.values()), 'excludedGeometries': sum(bool(t['comparisonExcluded']) for t in topology.values()), 'equivalentRepairs': len(repaired), 'reviewedComponentSelections': len(selections), 'reviewedModernIslandOutlines': len(coastlines), 'reviewedMapPartitions': len(partitions), 'partitionSubsetChecks': subset_checks, 'datedCoastlinePartitions': dated_coastlines, 'completeThreeWayPartitions': len(partition_groups), 'affectedReviewUnits': sum(map(len, affected.values())), 'snapshots': len(snapshots), 'archivePolygons': sum(len(s['rows']) for s in snapshots), 'uniqueSpatialPairs': len(pairs)},
               'topology': topology, 'affectedReviewUnits': affected, 'namedUnionDiagnostics': union_diagnostics, 'snapshots': snapshots}
     output.write_text(json.dumps(report, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print(json.dumps({'counts': report['counts'], 'namedUnionDiagnostics': union_diagnostics}), flush=True)

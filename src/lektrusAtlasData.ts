@@ -503,6 +503,10 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  colonial({"Saint Martin":"Сен-Мартен (французская часть)"},"Франция; самостоятельная заморская общность с 2007 г.",1994,2000,"https://www.outre-mer.gouv.fr/territoires/saint-martin");
  colonial({"Saint Barthelemy":"Сен-Бартелеми"},"Заморская общность Франции",2010,2010,"https://www.outre-mer.gouv.fr/territoires/saint-barthelemy");
  colonial({"Saint Martin":"Сен-Мартен (французская часть)"},"Заморская общность Франции",2010,2010,"https://www.outre-mer.gouv.fr/territoires/saint-martin");
+ const dutchCaribbeanTreaties="https://treaties.un.org/pages/historicalinfo.aspx";
+ colonial({"Sint Maarten":"Синт-Мартен (приближённый контур)"},"В составе Нидерландских Антил",1994,2009,dutchCaribbeanTreaties);
+ colonial({"Sint Maarten":"Синт-Мартен (приближённый контур)"},"Нидерландские Антилы до 10 октября; затем отдельная страна Королевства Нидерландов",2010,2010,dutchCaribbeanTreaties);
+ colonial({"Netherlands Antilles":"Бывшие Нидерландские Антилы (неполный архивный контур)"},"Распущены 10 октября 2010 г.; на архивном контуре Кюрасао, Бонайре и Синт-Эстатиус ещё объединены",2010,2010,dutchCaribbeanTreaties);
  colonial({Serbia:"Сербия",Montenegro:"Черногория"},"Союзная Республика Югославия",1994,2000,diplomaticHistory+"serbia/summary");
  // The following polygons explicitly use a polity name outside its known
  // period. Their geometry is not evidence for a replacement polity; mark the
@@ -598,27 +602,50 @@ function historicalCorrectionsForYear(year:number):Record<string,HistoricalLabel
  historicalCorrectionCache.set(year,corrections);
  return corrections;
 }
+function historicalGeometryFingerprint(geometry:GeoGeometry|null):number{
+ let hash=2166136261;
+ for(const char of JSON.stringify(geometry))hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
+ return hash;
+}
 export function correctHistoricalLabels(source:GeoCollection,year:number):GeoCollection{
  const corrections=historicalCorrectionsForYear(year);
- if(!Object.keys(corrections).length||!source.features.some(f=>Boolean(corrections[String(f.properties?.NAME??"").trim()])))return source;
- return {...source,features:source.features.map(f=>{
+ const recentArchive=year===1994||year===2000||year===2010;
+ let changed=false;
+ const features=source.features.flatMap<GeoFeature>(f=>{
+  const name=String(f.properties?.NAME??"").trim();
+  if(year===2010&&name==="Guadeloupe"&&f.geometry?.type==="MultiPolygon"&&historicalGeometryFingerprint(f.geometry)===0xcc019430){
+   const islands=f.geometry.coordinates as number[][][][];
+   changed=true;
+   return [{...f,geometry:{...f.geometry,coordinates:islands.slice(0,3)}},
+    {type:"Feature",geometry:{type:"MultiPolygon",coordinates:[islands[3]]},properties:{NAME:"Saint Barthelemy",ATLAS_ORIGINAL_NAME:name,
+     ATLAS_HISTORICAL_LABEL:corrections["Saint Barthelemy"][0],ATLAS_HISTORICAL_AFFILIATION:corrections["Saint Barthelemy"][1],
+     ATLAS_HISTORICAL_SOURCE:"https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000465963",
+     ATLAS_HISTORICAL_NOTE:"С 2007 года Сен-Бартелеми — отдельная заморская общность Франции. Использован островной компонент архивного контура 2010 года."}}];
+  }
+  if(recentArchive&&name==="Saint Barthelemy"&&historicalGeometryFingerprint(f.geometry)===0xb8af8a5){
+   const [label,affiliation,reference]=corrections["Sint Maarten"];
+   changed=true;
+   return {...f,properties:{...f.properties,NAME:"Sint Maarten",ATLAS_ORIGINAL_NAME:name,ATLAS_HISTORICAL_LABEL:label,
+    ATLAS_HISTORICAL_AFFILIATION:affiliation,ATLAS_HISTORICAL_SOURCE:reference,
+    ATLAS_HISTORICAL_NOTE:"Архив подписал южную часть острова Сен-Мартен именем другого острова — Сен-Бартелеми. В архивном контуре остаются неточности линии раздела."}};
+  }
   // The same pinned unnamed polygon occurs in all three late snapshots.
   // Its geographic extent matches swisstopo and the Natural Earth layer;
   // exact ring sizes and fingerprint prevent attributing arbitrary blanks.
-  let name=String(f.properties?.NAME??"").trim();
+  let correctionName=name;
   let restored=false;
-  if(!name&&[1994,2000,2010].includes(year)&&f.geometry?.type==="MultiPolygon"){
+  if(!name&&recentArchive&&f.geometry?.type==="MultiPolygon"){
    const p=f.geometry.coordinates as number[][][][];
    if(p?.length===1&&p[0]?.length===3&&p[0][0]?.length===2857&&p[0][1]?.length===15&&p[0][2]?.length===16){
-    let hash=2166136261;
-    for(const char of JSON.stringify(f.geometry))hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0;
-    if(hash===0x64809a59){name="Switzerland";restored=true;}
+    if(historicalGeometryFingerprint(f.geometry)===0x64809a59){correctionName="Switzerland";restored=true;}
    }
   }
-  const correction=corrections[name];
+  const correction=corrections[correctionName];
   if(!correction)return f;
-  return {...f,properties:{...f.properties,...(restored?{NAME:name,ATLAS_ORIGINAL_NAME:f.properties?.NAME??null}:{}),ATLAS_HISTORICAL_LABEL:correction[0],ATLAS_HISTORICAL_AFFILIATION:correction[1],ATLAS_HISTORICAL_SOURCE:correction[2],ATLAS_HISTORICAL_NOTE:restored?"Основной полигон присутствовал в источнике без имени. Восстановлена подпись, исходный контур не изменён.":"Название и статус уточнены. Контур взят из исходной реконструкции и может содержать современные границы."}};
- })};
+  changed=true;
+  return {...f,properties:{...f.properties,...(restored?{NAME:correctionName,ATLAS_ORIGINAL_NAME:f.properties?.NAME??null}:{}),ATLAS_HISTORICAL_LABEL:correction[0],ATLAS_HISTORICAL_AFFILIATION:correction[1],ATLAS_HISTORICAL_SOURCE:correction[2],ATLAS_HISTORICAL_NOTE:restored?"Основной полигон присутствовал в источнике без имени. Восстановлена подпись, исходный контур не изменён.":"Название и статус уточнены. Контур взят из исходной реконструкции и может содержать современные границы."}};
+ });
+ return changed?{...source,features}:source;
 }
 export function correctedHistoricalIndexLabel(raw:string,year:number):string|undefined{
  return historicalCorrectionsForYear(year)[raw.trim()]?.[0];

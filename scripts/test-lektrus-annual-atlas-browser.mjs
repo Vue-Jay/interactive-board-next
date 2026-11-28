@@ -10,7 +10,7 @@ import {createHash} from 'node:crypto';
 import {historicalBlockForYear,historicalYearState} from '../src/lektrusHistoricalTimeline.ts';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
 import {auditPhysicalTerritories} from './atlas-physical-input.mjs';
-import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
+import {historicalUnresolvedCenters,historicalUnresolvedRegions,historicalTreatyPortCenters,historicalCorsicaLiberationCenters,historicalDatedGapCenters,historicalCenterSources} from '../src/lektrusHistoricalUnresolvedCenters.ts';
 function planAnnualYears(registry,shard,shards){
  const years=[];
  for(const period of registry.periods)for(let year=period.to;year>=period.from;year--)if(year!==0)years.push({year,weight:20+period.records});
@@ -38,7 +38,7 @@ async function main(){
  const physicalInput=process.env.LEKTRUS_ATLAS_PHYSICAL_INPUT==='1';
  const allYears=planAnnualYears(registry,shard,shards);
  const years=focused?[...new Set(focused.split(',').map(Number))].sort((a,b)=>b-a):allYears;
- if(focused){assert.ok(shard===0&&shards===1&&years.length&&years.every(y=>allYears.includes(y)), 'Invalid focused annual audit years');}
+ if(focused){assert.ok(shard===0&&shards===1&&years.length&&years.every(y=>y===2025||y===2026||allYears.includes(y)), 'Invalid focused annual audit years');}
  const output=process.env.LEKTRUS_ATLAS_AUDIT_OUTPUT||path.resolve('atlas-browser-audit');
  fs.mkdirSync(output,{recursive:true});
  const file=path.join(output,focused?`focused-year-audit-${createHash('sha256').update(years.join(',')).digest('hex').slice(0,12)}.jsonl`:`year-audit-${shard}.jsonl`);
@@ -212,7 +212,7 @@ async function main(){
      const expectedLocators=state.coverageGaps.flatMap(g=>historicalGapLocators[g.name]?[historicalGapLocators[g.name].iso]:[]).sort();
      const actualLocators=await page.locator('[data-atlas-gap-locator]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasGapLocator).sort());
      if(JSON.stringify(actualLocators)!==JSON.stringify(expectedLocators))row.issues.push({kind:'wrong-gap-locators',expected:expectedLocators,actual:actualLocators});
-     const centers=[...historicalUnresolvedCenters(year,state.territorialIssues),...historicalTreatyPortCenters(year),...historicalCorsicaLiberationCenters(year)];
+     const centers=[...historicalUnresolvedCenters(year,state.territorialIssues),...historicalTreatyPortCenters(year),...historicalCorsicaLiberationCenters(year),...historicalDatedGapCenters(year)];
      const actualCenters=await page.locator('[data-atlas-historical-center]').evaluateAll(nodes=>nodes.map(n=>n.dataset.atlasHistoricalCenter).sort());
      if(JSON.stringify(actualCenters)!==JSON.stringify(centers.map(c=>c.id).sort()))row.issues.push({kind:'wrong-historical-center-locators',expected:centers.map(c=>c.id),actual:actualCenters});
      row.historicalCenters=[];

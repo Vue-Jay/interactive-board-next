@@ -14,6 +14,7 @@ import {referenceAdmissionWarnings} from './audit-lektrus-atlas-annual.mjs';
 import {buildChangeRegistry,componentHash,exactComponentConflicts,sourceComponentEvidence} from './audit-lektrus-historical-changes.mjs';
 import {historicalGapLocators} from '../src/lektrusHistoricalGapLocators.ts';
 import {componentHash as sourceComponentHash,documentedCores,buildDocumentedCore,ceylonFortCores,saintMartinSpanish,tobagoDutch,ceylonCoastalRoutes,ceylonEarlyRoutes,ceylonWarRoutes,capeTerritoryRoutes,capeTerritories,songAnnexations} from './build-lektrus-historical-timeline.mjs';
+import {dutchCaribbeanPolygons} from './build-lektrus-historical-timeline.mjs';
 
 const square = (x=0,y=0)=>({type:'Polygon',coordinates:[[[x,y],[x+1,y],[x+1,y+1],[x,y+1],[x,y]]]});
 const elbaParts=buildElbaPartition().map(g=>g.coordinates),elbaUnion=polygonClipping.union(...elbaParts);
@@ -96,7 +97,7 @@ for(const [name,from,to,segments,ru,wikidata] of [
  ['Bolivia',1878,1940,[[1878,1878],[1879,1903],[1904,1937],[1938,1938],[1939,1940]],'Чако',''],
  ['Czechoslovakia',1937,1939,[[1937,1937],[1938,1938],[1939,1939]],'Мюнхенское',''],
  ['New Hebrides',1905,1908,[[1905,1905],[1906,1908]],'кондоминиум',''],
- ['Rattanakosin Kingdom',1892,1900,[[1892,1892],[1893,1900]],'даннические','']
+ ['Rattanakosin Kingdom',1892,1900,[[1892,1892],[1893,1900]],'Даннические связи','']
 ]){
  const original=square();
  const items=normalizeHistoricalSource({type:'FeatureCollection',features:[feature(name,from,to,original,wikidata)]}).records;
@@ -168,7 +169,9 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  const syntheticPalkForeign=[[[79.60,9.22],[79.61,9.22],[79.61,9.23],[79.60,9.23],[79.60,9.22]]];
  modernOriginals.get(sriModern.originalGeometryId).coordinates.push(syntheticPalkForeign);
  const modernTallies=applyReviewedModernIslandGeographies(modernSyntheticRecords,modernOriginals);
- assert.equal(modernTallies.find(x=>x.iso==='LKA').retainedLegacyIslets,0,'Unattributed Palk Strait component retained');
+ assert.equal(modernSyntheticRecords.filter(r=>r.name===sriModern.name).length,1);
+ assert.equal(modernSyntheticRecords.find(r=>r.name===sriModern.name).geometryId,sriModern.originalGeometryId,'Undated shore substituted despite documented land reclamation');
+ assert.ok(sriModern.holdSources.length>=2);
  assert.equal(modernTallies.find(x=>x.iso==='JAM').retainedLegacyIslets,2,'Distant Jamaican cays lost or foreign component retained');
  const jamaicaRepair=modernSyntheticRecords.find(r=>r.name==='Jamaica'&&r.from===1994);
  assert.ok(!capitalInsideCountry([-73.8,19.4],modernOriginals.get(jamaicaRepair.geometryId)));
@@ -180,8 +183,8 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
   assert.equal(c.geometryHistoricallyConfirmed,false);assert.equal(c.proposedMainlandApproxIoU,snap.proposedMainlandApproxIoU);
   assert.ok(c.proposedMainlandApproxIoU>c.iou);assert.equal(c.candidateGeometryId,d.originalGeometryId);
  }
- assert.equal(modernTallies.length,8);
- assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT','BRB','LCA','JAM','LKA']);
+ assert.equal(modernTallies.length,7);
+ assert.deepEqual(modernTallies.map(x=>x.iso),['ATG','VCT','GRD','MLT','BRB','LCA','JAM']);
  assert.equal(modernTallies.find(x=>x.iso==='MLT').retainedLegacyIslets,1,'Old Comino duplicated or disjoint legacy islet lost');
  const minorParts=modernIslandGeography.entries.flatMap(d=>(d.minorIslandEvidence??[]).map(m=>({d,m})));
  assert.equal(minorParts.length,6);
@@ -197,7 +200,7 @@ assert.ok(papalRevolutionary[1].review?.reasonRu.includes('Авиньон'));
  const fakeGeometries=new Map(modernIslandGeography.entries.map(d=>[d.originalGeometryId,{type:'MultiPolygon',coordinates:[d.geometry.type==='Polygon'?d.geometry.coordinates:d.geometry.coordinates[0]]}]));
  fakeGeometries.set(fakeId,fakeForeign);
  assert.throws(()=>applyReviewedModernIslandGeographies(fakeRecords,fakeGeometries),/Minor island overlaps a competing polity/);
- for(const d of modernIslandGeography.entries){
+ for(const d of modernIslandGeography.entries.filter(d=>!d.holdSources?.length)){
   const newer=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1994&&r.to===2024);
   const earlier=modernSyntheticRecords.find(r=>r.name===d.name&&r.from===1990&&r.to===1993);
   assert.ok(newer&&earlier,'Modern island year split '+d.iso);
@@ -439,7 +442,7 @@ assert.equal(historicalTreatyPortCenters(1948).length,0);
 // Dutch reconquest appear as sourced year-specific atlas content, never as
 // fabricated polygons or imported 1632/1663 outlines.
 for(const [year,count] of [[1629,0],[1630,4],[1631,4],[1632,0],[1672,0],[1673,1],[1674,1],[1675,0]]){
-  const entries=historicalDatedGapCenters(year);
+  const entries=historicalDatedGapCenters(year).filter(x=>/^historical-center-(recife-|olinda-|new-orange-)/.test(x.id));
   assert.equal(entries.length,count,`dated gap transition ${year}`);
   for(const entry of entries){
     assert.equal(entry.year,year);
@@ -456,14 +459,16 @@ for(const year of [1630,1631]){
  assert.ok(fortMarkers.every(x=>/не исторический контур|не к точным границам/.test(x.description)));
  assert.ok(fortMarkers.every(x=>x.lon>-35&&x.lon<-34.8&&x.lat>-8.2&&x.lat<-8));
 }
-assert.ok(historicalDatedGapCenters(1673)[0].description.includes('Антони Колве'));
-assert.ok(historicalDatedGapCenters(1674)[0].description.includes('10 ноября 1674 года'));
-assert.ok(historicalDatedGapCenters(1674)[0].sources.includes('https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php'));
+const orangeReturn=historicalDatedGapCenters(1673).find(x=>x.id==='historical-center-new-orange-dutch-return-1673');
+const orangeTransfer=historicalDatedGapCenters(1674).find(x=>x.id==='historical-center-new-orange-english-return-1674');
+assert.ok(orangeReturn.description.includes('Антони Колве'));
+assert.ok(orangeTransfer.description.includes('10 ноября 1674 года'));
+assert.ok(orangeTransfer.sources.includes('https://www.archontology.org/nations/us/new_york/01_polity_1673_74.php'));
 assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Ресифи')));
 assert.ok(historicalDatedGapCenters(1630).some(x=>x.title.includes('Олинда')));
-assert.ok(historicalDatedGapCenters(1673)[0].title.includes('Новый Оранж'));
-assert.ok(historicalDatedGapCenters(1674)[0].description.includes('Вестминстерскому'));
-assert.ok(historicalCenterSources(historicalDatedGapCenters(1673)[0]).length>=2);
+assert.ok(orangeReturn.title.includes('Новый Оранж'));
+assert.ok(orangeTransfer.description.includes('Вестминстерский договор'));
+assert.ok(historicalCenterSources(orangeReturn).length>=2);
 // Date-scoped documentary control markers are independently sourced; they
 // never replace unresolved boundaries or overstate conquest as sovereignty.
 const eventById=new Map([
@@ -514,8 +519,14 @@ for(const [year,expected] of [
  [2025,[]]
 ]){
  const markers=historicalDatedGapCenters(year).filter(m=>/antilles|aruba|curacao|sint-maarten|bonaire|saba|statia/.test(m.id));
- assert.deepEqual(markers.map(m=>m.id).sort(),expected.map(id=>'historical-center-'+id).sort(), 'Caribbean year '+year);
- assert.ok(markers.every(m=>m.description.includes('Точка')&&m.sources.length>=1&&m.sources.every(x=>x.startsWith('https://'))));
+ const expectedIds=year>=1976&&year<=2009?[...expected,'antilles-sint-maarten-1976-2009']:expected;
+ assert.deepEqual(markers.map(m=>m.id).sort(),expectedIds.map(id=>'historical-center-'+id).sort(), 'Caribbean year '+year);
+ assert.ok(markers.every(m=>m.description.match(/точк|показан Филипсбург/i)&&m.sources.length>=1&&m.sources.every(x=>x.startsWith('https://'))));
+}
+for(const year of [2022,2023,2024]){
+ const treaty=historicalDatedGapCenters(year).filter(m=>m.id.endsWith('saint-martin-border-agreement-2023'));
+ assert.equal(treaty.length,year===2023?1:0);
+ if(treaty.length)assert.ok(treaty[0].sources.includes('https://verdragenbank.overheid.nl/en/Treaty/Details/013951'));
 }
 for(const [year,expected] of [[-101,false],[-100,true],[-1,true],[1,true],[500,true],[600,true],[650,true],[651,true],[700,true],[701,false]]){
  const site=historicalDatedGapCenters(year).filter(m=>m.id==='historical-center-teotihuacan-site-ancient');
@@ -768,7 +779,10 @@ if(outDir&&sourceFile){
       }
       const f=input.features[r.sourceIndex];
       assert.equal(r.sourceRole??r.role,f.properties.Type==='RELATION'?'relation':f.properties.Components?'composite':'polity');assert.equal(r.sourceName,f.properties.Name.trim());
-      if(r.role==='settlement'){assert.equal(r.sourceName,'Viking settlements');assert.ok(r.review?.sources.length);}
+      if(r.role==='settlement'){
+        assert.ok(['Viking settlements','Indus Valley Civilization','Greek City-States','Teotihuacan','Saxons','Shan States','Kalmar Union','Golden Horde','Đại Việt','Kingdom of Sardinia','Papal States','Montenegro','Ottoman Empire'].includes(r.sourceName),r.sourceName);
+        assert.equal(r.sourceRole,'polity');assert.ok(r.review?.sources.length);
+      }
       const list=v=>String(v??'').split(';').map(s=>s.trim()).filter(Boolean);
       assert.deepEqual(r.sourceComponents??r.components,list(f.properties.Components));assert.deepEqual(r.sourceMemberOf??r.memberOf,list(f.properties.MemberOf));
       assert.equal(r.sourceFrom,f.properties.FromYear);assert.equal(r.sourceTo,f.properties.ToYear);
@@ -777,7 +791,19 @@ if(outDir&&sourceFile){
       assert.equal(r.sourceGeometryId??r.boundaryAdjustment?.baseGeometryId??r.geometryId,sourceHashes.get(r.sourceIndex));
       if(r.sourceGeometryId){
         const orig=f.geometry,repaired=pack.geometries[r.boundaryAdjustment?.baseGeometryId??r.geometryId];
-        if(r.mapPartition?.kind==='documented-core'){
+        if(r.modernCoastline){
+          const e=r.modernCoastline,d=modernIslandGeography.entries.find(x=>x.iso===e.iso);
+          assert.ok(d);assert.equal(e.neId,d.neId);assert.equal(e.datasetHash,modernIslandGeography.source.sha256);
+          assert.equal(r.sourceGeometryId,d.originalGeometryId);
+          assert.ok(r.from>=modernIslandGeography.from&&r.to<=modernIslandGeography.to);
+          const main=d.geometry.type==='Polygon'?[d.geometry.coordinates]:d.geometry.coordinates;
+          const originalParts=orig.type==='Polygon'?[orig.coordinates]:orig.coordinates;
+          assert.deepEqual(repaired.coordinates.slice(0,main.length),main);
+          const retained=repaired.coordinates.slice(main.length);
+          assert.equal(retained.length,e.keptDisjointSourceIslands);
+          for(const p of retained){assert.ok(originalParts.some(q=>sourceComponentHash(q)===sourceComponentHash(p)));assert.equal(polygonClipping.intersection(p,main).length,0);}
+        }
+        else if(r.mapPartition?.kind==='documented-core'){
           const definition=documentedCores.find(c=>c.periods.some(p=>p.source===r.sourceIndex&&p.from===r.from&&p.to===r.to));
           assert.ok(definition);const d=definition.periods.find(p=>p.source===r.sourceIndex&&p.from===r.from&&p.to===r.to),index=d.part??definition.part,outline=(f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates)[index];
           if(definition.hash)assert.equal(sourceComponentHash(outline),definition.hash);
@@ -826,6 +852,24 @@ if(outDir&&sourceFile){
       assert.equal(historicalYearFeatureCollection(state).features.length,state.drawable.length);
       assert.equal(historicalYearFeatureCollection(state,true).features.length,state.drawable.length+state.overlays.length);
       const activeRecords=new Map(sourceRecords.map(r=>[r.sourceIndex,r]));
+      if(year>=1975){
+        for(const island of dutchCaribbeanPolygons){
+          const matches=state.drawable.filter(({record})=>record.name===island.name);
+          assert.equal(matches.length,year>=island.from?1:0,`${island.name}/${year}`);
+          if(!matches.length)continue;
+          const [{record,geometry}]=matches;
+          assert.equal(record.sourceIndex,year===2024?13642:11956);
+          assert.equal(geometry.coordinates.length,1);
+          assert.equal(sourceComponentHash(geometry.coordinates[0]),island.hash);
+          assert.ok(record.review.sources.includes('https://treaties.un.org/pages/historicalinfo.aspx'));
+        }
+        if(year>=1976&&year<2010){
+          const antilles=state.drawable.find(({record})=>record.name==='Netherlands Antilles');
+          assert.deepEqual(antilles.record.geometryParts.map(p=>p.part),year<1986?[1,2,3]:[1,2]);
+          assert.ok(!capitalInsideCountry([-63.082,18.067],antilles.geometry));
+        }
+        if(year>=2010)assert.ok(!state.drawable.some(({record})=>record.name==='Netherlands Antilles'));
+      }
       for(const d of independentIslands.states){
         const candidates=state.drawable.filter(({record})=>record.externalGeography?.iso===d.iso);
         assert.equal(candidates.length,year>=d.from?1:0,`${d.iso}/${year}`);
@@ -1212,7 +1256,7 @@ if(outDir&&sourceFile){
       for(const issue of state.territorialIssues.filter(i=>['Corsica','Эльба','Коморы','Малакка'].includes(i.group)))assert.ok(issue.sources?.length&&issue.sources.every(s=>s.startsWith('https://')));
       for(const c of centers){assert.ok(c.url.startsWith('https://'));assert.ok(c.description.includes('Точка'));assert.ok(Number.isFinite(c.lon)&&Math.abs(c.lon)<=180&&Number.isFinite(c.lat)&&Math.abs(c.lat)<=90);assert.equal(c.year,year);}
       assert.deepEqual(historicalUnresolvedCenters(year,[]),[]);
-      const treatyPorts=historicalTreatyPortCenters(year);assert.equal(treatyPorts.length,year>=1860&&year<=1946?1:0);if(treatyPorts.length){assert.equal(treatyPorts[0].id,'historical-center-tianjin-treaty-port');assert.ok(treatyPorts[0].description.includes('Точка'));assert.equal(treatyPorts[0].year,year);}
+      const treatyPorts=historicalTreatyPortCenters(year);assert.equal(treatyPorts.length,year>=1860&&year<=1947?1:0);if(treatyPorts.length){assert.equal(treatyPorts[0].id,'historical-center-tianjin-treaty-port');assert.ok(treatyPorts[0].description.includes('Точка'));assert.equal(treatyPorts[0].year,year);}
       if(year>=1629&&year<=1814){const kandy=state.drawable.filter(({record})=>record.name==='Kingdom of Kandy');assert.equal(kandy.length,1);assert.equal(kandy[0].record.nameRu,'Королевство Канди');assert.deepEqual(kandy[0].record.memberOf,[]);assert.ok(kandy[0].record.sourceMemberOf.length);}
       if(year>=1797&&year<=1884){
         const route=capeTerritoryRoutes.find(([source])=>input.features[source].properties.FromYear<=year&&input.features[source].properties.ToYear>=year);assert.ok(route);const [source,sierra,seychelles,gambia,goree]=route;
@@ -1378,7 +1422,7 @@ if(outDir&&sourceFile){
   }
   assert.equal(years,5424);
   assert.equal(batchReady,293);assert.equal(batchResolved,541);assert.equal(batchPending,155);
-  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2201);assert.equal(externalRecordYears,477);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
+  assert.equal(sourceRecordYears,254984);assert.equal(restoredRecordYears,2270);assert.equal(externalRecordYears,477);assert.equal(extended,693);assert.equal([...pendingExtensionsByYear.values()].flat().length,43);
   assert.equal(tianjinClosed,397);assert.equal(tianjinOpen,8);
   assert.equal(unresolvedSourceYears,769);assert.equal(unresolvedRegionYears,690);
   assert.equal(fifthExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0),18);
@@ -1387,7 +1431,7 @@ if(outDir&&sourceFile){
   assert.equal(unresolvedExactComponentYears,94);assert.equal(unresolvedExactSourceYears,188);
   const provisionalComponentYears=provisionalExactReviews.reduce((sum,[,,from,to,parts])=>sum+(to-from+1)*parts.length,0);
   assert.equal(provisionalExactReviews.length,1);assert.equal(provisionalComponentYears,3);
-  assert.deepEqual(Object.fromEntries(Object.entries(territorialOpenByGroup).map(([g,v])=>[g,v.sourceYears])),{Mindanao:158,Corsica:22,'Коморы':213,'Малакка':10,'Горе — материковый контур':11,'Цейлон — война VOC':24,'Дения — материковый контур':9,'Сен-Мартен — раздел острова':33,'Тобаго — колониальные поселения':12,'Тяньцзинь — концессия':98,'Кохинхина — кампания 1859 года':2,'Луайоте — местные вождества':17,'Кохинхина — поэтапная уступка':14,'Давао — местные правители':236});
+  assert.deepEqual(Object.fromEntries(Object.entries(territorialOpenByGroup).map(([g,v])=>[g,v.sourceYears])),{Mindanao:158,Corsica:22,'Коморы':213,'Малакка':10,'Горе — материковый контур':11,'Цейлон — война VOC':24,'Дения — материковый контур':9,'Сен-Мартен — раздел острова':33,'Тобаго — колониальные поселения':12,'Тяньцзинь — концессия':8,'Кохинхина — кампания 1859 года':2,'Луайоте — местные вождества':17,'Кохинхина — поэтапная уступка':14,'Давао — местные правители':236});
   assert.equal(Object.values(exactOpenByGroup).reduce((sum,v)=>sum+v.componentYears,0),unresolvedExactComponentYears);
   assert.deepEqual(documentedCoreByGroup,{'cap-corse':8,'malacca-fort':7,'ceylon-batticaloa-fort':4,'ceylon-trincomalee-fort':1,'ceylon-galle-fort':19,'ceylon-colombo-fort':3,'ceylon-jaffna-fort':1});
   const groupLinkIssues=rows.flatMap(r=>r.groupLinkWarnings??[]);
@@ -1410,8 +1454,8 @@ if(outDir&&sourceFile){
   assert.equal(revisionAt(1927,12623).name,'United Kingdom of Great Britain and Northern Ireland');
   assert.deepEqual(revisionAt(1969,13305).geometryParts.map(p=>p.part),[2,3,4,5,6,7,13,14]);
   assert.deepEqual(revisionAt(2024,13684).geometryParts.map(p=>p.part),[1,2,3,4,5,6,7,8]);
-  assert.deepEqual(revisionAt(1985,11956).geometryParts.map(p=>p.part),[1,2,3,4]);
-  assert.deepEqual(revisionAt(1986,11956).geometryParts.map(p=>p.part),[1,2,4]);
+  assert.deepEqual(revisionAt(1985,11956).geometryParts.map(p=>p.part),[1,2,3]);
+  assert.deepEqual(revisionAt(1986,11956).geometryParts.map(p=>p.part),[1,2]);
   assert.equal(revisionAt(2009,11956).geometryStatus,'candidate');
   assert.equal(revisionAt(2010,11956).geometryStatus,'rejected');
   assert.equal(revisionAt(2024,13642).geometryStatus,'rejected');
@@ -1552,8 +1596,14 @@ if(outDir&&sourceFile){
   assert.equal(revisionAt(1960,13206).geometryStatus,'rejected');
   assert.equal(revisionAt(1962,13227).geometryStatus,'rejected');
   for(const [year,index,name] of [[1961,13244,'Republic of Dahomey'],[1974,13307,'Republic of Dahomey'],[1975,13307,"People's Republic of Benin"],[1990,13307,'Republic of Benin'],[1983,13249,'Republic of Upper Volta'],[1984,13249,'Burkina Faso'],[1965,13267,'Kingdom of Burundi'],[1966,13267,'Republic of Burundi'],[1962,13245,'Federation of Nigeria'],[1963,13245,'Federal Republic of Nigeria'],[1969,13306,"People's Republic of Southern Yemen"],[1970,13306,"People's Democratic Republic of Yemen"],[1989,13371,"People's Republic of Mozambique"],[1990,13371,'Mozambique']])assert.equal(revisionAt(year,index).name,name,`${year}/${index}`);
-  assert.equal(revisionAt(1813,10758).name,'Denmark-Norway');
+  assert.equal(revisionAt(1813,10758).name,'Denmark–Norway (composite realm, source extent unverified)');
   assert.equal(revisionAt(1814,10923).name,'Denmark');
+  assert.equal(revisionAt(1960,13222).name,'Republic of Cameroon');
+  assert.equal(revisionAt(1961,13243).name,'Federal Republic of Cameroon');
+  assert.ok(revisionAt(1961,13243).review.reasonRu.includes('1 октября 1961'));
+  assert.equal(revisionAt(1975,13372).name,'Republic of Cape Verde');
+  assert.equal(revisionAt(2012,13372).name,'Republic of Cape Verde');
+  assert.equal(revisionAt(2013,13372).name,'Republic of Cabo Verde');
   assert.deepEqual(partsAt(1918,11752),[0,1,2,3,4,5]);
   assert.equal(revisionAt(1940,12846).name,'Faroe Islands (Danish territory)');
   assert.ok(!partsAt(1865,11633).includes(9)&&partsAt(1865,11633).includes(8));

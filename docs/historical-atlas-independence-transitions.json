@@ -24,7 +24,7 @@
   {"index":13306,"from":1967,"name":"People's Republic of Southern Yemen","nameRu":"Народная Республика Южного Йемена","iso":"YEM","owners":[13161,13232],"sources":["https://history.state.gov/countries/yemen"]},
   {"index":13334,"from":1971,"name":"Sultanate of Oman","nameRu":"Султанат Оман","iso":"OMN","owners":[]},
   {"index":13350,"from":1972,"name":"United Arab Emirates","nameRu":"Объединённые Арабские Эмираты","iso":"ARE","owners":[],"sources":["https://www.mofa.gov.ae/en/the-uae/history"],"note":"Рас-эль-Хайма присоединилась к федерации 10 февраля 1972 года; этот контур не используется для 1971 года."},
-  {"index":13372,"from":1975,"name":"Republic of Cabo Verde","nameRu":"Республика Кабо-Верде","iso":"CPV","owners":[],"parts":[0,1,2,3,4,5,10]},
+  {"index":13372,"from":1975,"name":"Republic of Cape Verde","nameRu":"Республика Кабо-Верде","iso":"CPV","owners":[],"parts":[0,1,2,3,4,5,10],"sources":["https://treaties.un.org/pages/historicalinfo.aspx"]},
   {"index":13371,"from":1975,"name":"People's Republic of Mozambique","nameRu":"Народная Республика Мозамбик","iso":"MOZ","owners":[]},
   {"index":13438,"from":1984,"name":"Sultanate of Brunei","nameRu":"Султанат Бруней","iso":"BRN","owners":[13318],"sources":["https://history.state.gov/countries/brunei/1000"]},
   {"index":13475,"from":1990,"name":"State of Kuwait","nameRu":"Государство Кувейт","iso":"KWT","owners":[13463],"sources":["https://digitallibrary.un.org/record/94573?ln=en"],"note":"Показан юридический суверенитет Кувейта; в 1990 году была фактическая оккупация Ираком, аннексия не признана Советом Безопасности ООН."},

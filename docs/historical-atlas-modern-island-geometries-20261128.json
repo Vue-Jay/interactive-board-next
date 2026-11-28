@@ -3507,6 +3507,10 @@
     },
     {
       "iso": "LKA",
+      "holdSources": [
+        "https://www.cabinetoffice.gov.lk/cab/index.php?Itemid=49&dID=10295&id=16&lang=en&option=com_content&view=article",
+        "https://www.cabinetoffice.gov.lk/cab/index.php?Itemid=49&dID=10060&id=16&lang=en&option=com_content&view=article"
+      ],
       "name": "Sri Lanka",
       "neId": 1159321025,
       "originalGeometryId": "ffcd8732dca22402545d14d938261811f5bf82e0553e67c9a902dcedccb5ae01",

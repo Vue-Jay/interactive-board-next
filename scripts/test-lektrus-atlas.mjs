@@ -707,6 +707,20 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
   assert.equal(restored.length,1,`${year}: missing main Swiss contour`);
   assert.ok(raw.features.some(f=>!f.properties.NAME?.trim()&&f.geometry===restored[0].geometry),"Swiss geometry must be original, not recreated");
   assert.equal(restored[0].geometry.coordinates[0][0].length,2857);
+  const mislabeled=raw.features.find(f=>f.properties?.NAME==='Saint Barthelemy');
+  const fixed=geoExports.correctHistoricalLabels(raw,year).features.find(f=>f.properties?.NAME==='Sint Maarten');
+  assert.ok(mislabeled&&fixed&&fixed.geometry===mislabeled.geometry,`${year}: missing correction of the archived South Saint Martin polygon`);
+  assert.equal(fixed.properties.ATLAS_ORIGINAL_NAME,'Saint Barthelemy');
+  assert.match(fixed.properties.ATLAS_HISTORICAL_AFFILIATION,year===2010?/до 10 октября/:/В составе Нидерландских Антил/);
+  const historicalGuadeloupe=raw.features.find(f=>f.properties?.NAME==='Guadeloupe');
+  const correctedCaribbean=geoExports.correctHistoricalLabels(raw,year).features;
+  const correctedGuadeloupe=correctedCaribbean.find(f=>f.properties?.NAME==='Guadeloupe');
+  const saintBarthelemy=correctedCaribbean.filter(f=>f.properties?.NAME==='Saint Barthelemy');
+  assert.equal(saintBarthelemy.length,year===2010?1:0);
+  if(year===2010){
+   assert.deepEqual(saintBarthelemy[0].geometry.coordinates,[historicalGuadeloupe.geometry.coordinates[3]]);
+   assert.deepEqual(correctedGuadeloupe.geometry.coordinates,historicalGuadeloupe.geometry.coordinates.slice(0,3));
+  }else assert.equal(correctedGuadeloupe.geometry,historicalGuadeloupe.geometry);
   console.log(`${year}: ${expected-missingCount}/${expected} UN roster entries have named outlines; ${missingCount} missing; main Swiss contour identified.`);
  }
  for(const iso of [...unMembers,"PSE","VAT"]){
@@ -783,7 +797,7 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
  for(const snapshot of historicalSnapshots.filter(s=>s.year!==2026).slice().reverse()){
   const actual=JSON.parse(fs.readFileSync(process.env.LEKTRUS_ATLAS_DATA_DIR+"/"+snapshot.file,"utf8"));
   const result=geoExports.correctHistoricalLabels(actual,snapshot.year);
-  assert.equal(result.features.length,actual.features.length);
+  assert.equal(result.features.length,actual.features.length+(snapshot.year===2010?1:0));
   const drawable=geoExports.historicalMapFeatures(result);
   const names=new Set();
   for(const feature of drawable){
@@ -807,7 +821,7 @@ if(process.env.LEKTRUS_ATLAS_DATA_DIR){
   namedPairs+=names.size;
  }
  assert.equal(emptyPaths,0,"every historical polygon must render at overview scale");
- assert.equal(featureCount,17769,"actual pinned source polygon coverage changed");
+ assert.equal(featureCount,17770,"all 17769 archived features and the separate Saint Barthélemy component must render");
  console.log(`Actual historical dataset: ${featureCount} polygons, ${namedPairs} distinct name/year pairs, ${correctedCount} corrected polygons, ${emptyPaths} empty paths at overview scale.`);
 }
 assert.equal(geoExports.historicalCountryName("Japan"),"Япония");

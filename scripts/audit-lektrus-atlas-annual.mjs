@@ -58,7 +58,7 @@ const laterAdmissions=[
  [1974,"Bangladesh","People's Republic of Bangladesh|Bangladesh"],
  [1974,"Grenada","Grenada"],
  [1974,"Guinea-Bissau","Republic of Guinea-Bissau|Guinea-Bissau"],
- [1975,"Cabo Verde","Republic of Cabo Verde|Cape Verde|Cabo Verde"],
+ [1975,"Cabo Verde","Republic of Cabo Verde|Republic of Cape Verde|Cape Verde|Cabo Verde"],
  [1975,"Comoros","Comoros|Union of the Comoros|Federal Islamic Republic of the Comoros"],
  [1975,"Mozambique","Mozambique|Republic of Mozambique|People's Republic of Mozambique"],
  [1975,"Papua New Guinea","Papua New Guinea|Independent State of Papua New Guinea"],
@@ -128,7 +128,7 @@ const admissionAnchors=[
  ...[
   ["Benin",["Republic of Benin","Benin","Dahomey","Republic of Dahomey","People's Republic of Benin"]],
   ["Burkina Faso",["Burkina Faso","Upper Volta","Republic of Upper Volta"]],
-  ["Cameroon",["Republic of Cameroon","Cameroon","Cameroun"]],
+  ["Cameroon",["Republic of Cameroon","Federal Republic of Cameroon","United Republic of Cameroon","Cameroon","Cameroun"]],
   ["Central African Republic",["Central African Republic","Central African Empire"]],
   ["Chad",["Republic of Chad","Chad"]],
   ["Congo (Brazzaville)",["Republic of the Congo","Congo (Brazzaville)","People's Republic of the Congo"]],
@@ -254,6 +254,10 @@ function selfTest(){
  assert.ok(!referenceAdmissionWarnings(1990,[]).some(w=>w.name==="South Yemen"||w.name==="German Democratic Republic"));
  assert.ok(referenceAdmissionWarnings(1960,["Mali Federation"]).some(w=>w.name==="Mali"),"the dissolved federation is not the Republic of Mali");
  assert.ok(!referenceAdmissionWarnings(1960,["Republic of Senegal"]).some(w=>w.name==="Senegal"));
+ assert.ok(!referenceAdmissionWarnings(1961,["Federal Republic of Cameroon"]).some(w=>w.name==="Cameroon"));
+ assert.ok(!referenceAdmissionWarnings(1972,["United Republic of Cameroon"]).some(w=>w.name==="Cameroon"));
+ assert.ok(!referenceAdmissionWarnings(1975,["Republic of Cape Verde"]).some(w=>w.name==="Cabo Verde"));
+ assert.ok(referenceAdmissionWarnings(1975,["Portuguese Cape Verde"]).some(w=>w.name==="Cabo Verde"));
  const gaps=extractHistoricalGapCandidates({features:[f("East Timor",2006,2013)]});
  assert.equal(gaps.features.length,1);
  assert.equal(gaps.features[0].properties.year,2010);
