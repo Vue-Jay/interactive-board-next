@@ -186,10 +186,10 @@ export default function LektrusSchoolDiagramView({diagram,onChange,editorMode,us
   case "timeline":return <TimelineGraphic diagram={diagram}/>;
   case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram} onChange={onChange} studentMode={studentMode}/>;
   case "organs":case "relief":return <LektrusFurtherSchoolView diagram={diagram}/>;
-  case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
-  case "geo-training":return <LektrusGeographyTrainingView diagram={diagram} onMatchingSize={onMatchingSize}/>;
+  case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram} onChange={onChange}/>;
+  case "geo-training":return <LektrusGeographyTrainingView diagram={diagram} onMatchingSize={onMatchingSize} onChange={onChange}/>;
   case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram} onChange={onChange} studentMode={studentMode}/>;
-  case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram}/>;
+  case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram} onChange={onChange}/>;
   case "atlas":return <LektrusMapAtlas diagram={diagram} onChange={onChange} editorMode={editorMode} userId={userId}/>;
  }
 }

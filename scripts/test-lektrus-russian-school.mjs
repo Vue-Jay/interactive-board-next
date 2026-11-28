@@ -40,7 +40,7 @@ assert.equal(validateRussianSchoolDiagram({...o,questions:[...o.questions,o.ques
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 for(const id of russianToolIds)assert.ok(registry.includes('id:"'+id+'"'),id+" missing legacy schema");
 const view=fs.readFileSync(new URL("../src/LektrusRussianSchoolView.tsx",import.meta.url),"utf8");
-assert.match(view,/onClick=\{\(\)=>setChecked\(true\)\}/,"exercise must have check button");
+assert.match(view,/onClick=\{\(\)=>publish\(\{index,picked,checked:true\}\)\}/,"exercise check button must publish the shared checked response");
 assert.match(view,/picked===question\.correct/,"exercise evaluates teacher's correct answer");
 assert.match(view,/onPointerDown=\{stop\}/,"answer interactions must not paint the board");
 const controls=fs.readFileSync(new URL("../src/LektrusRussianSchoolControls.tsx",import.meta.url),"utf8");
@@ -57,8 +57,12 @@ assert.ok(!controls.includes('prompt:"Сл□во"'),"No example must be inserte
 assert.ok(!controls.includes('feature:"Новый признак"'),"No fake grammatical labels");
 assert.ok(russianView.includes('question.options.every(option=>option.trim().length>0)'),
  "Pupils are not offered unfinished spelling questions");
-assert.ok(russianView.includes('const signature=question?'),
- "Editing another question does not reset a pupil's current progress");
+assert.ok(russianView.includes('responseKey=JSON.stringify(d.response)')&&russianView.includes('setState(d.response??'),
+ "Shared progress follows the persisted response and resets when a teacher replaces the source");
+assert.equal(validateRussianSchoolDiagram({...o,response:{index:0,picked:0,checked:true}}),true);
+assert.equal(validateRussianSchoolDiagram({...o,response:{index:0,picked:null,checked:true}}),false);
+assert.equal(validateRussianSchoolDiagram({...o,response:{index:0,picked:2,checked:false}}),false);
+assert.equal(validateRussianSchoolDiagram({...o,response:{index:1,picked:0,checked:false}}),false);
 assert.ok(nextView.includes('onMark={onChange?'),"Standalone syntax diagram supports marking words directly");
 assert.ok(approvedModel.includes('!okString(m.id,64)||!okString(m.text,24,true)'),
  "Blank morpheme drafts can be edited");

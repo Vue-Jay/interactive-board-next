@@ -87,6 +87,7 @@ import ViewerInkLayer from "./ViewerInkLayer";
 import {createInkMotionLedger,createInkMotionSender,INK_MOTION_CHECKPOINT_MS} from "./boardInkMotion";
 import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
 import { placeImageCrop } from "./imageCropGeometry";
+import {resolvePdfAction,nextPdfPage} from "./boardPdfActions";
 import { detectImageContentCropFromElement, fitImageFrameAspect } from "./imageAutoCrop";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
@@ -104,7 +105,7 @@ import { Capacitor } from "@capacitor/core";
 import { BOARD_ROLE_LABELS, PARTICIPANT_ROLE_LABELS, type AuthUser } from "./authStore";
 import { boardStorageKey, touchBoard, type BoardSummary } from "./boardStore";
 import { isRemoteBackendEnabled, getRemoteBoardDocument, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
-import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostExportBoardSync, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
+import { selfhostReadDocument, selfhostReadDocumentVersion, selfhostSaveDocument, selfhostStartInkPipeline, selfhostWatchDocument, selfhostSubscribeBoard, selfhostSetBoardBackground, selfhostLogBoardSync, selfhostExportBoardSync, selfhostDecideAttachment, SelfhostHttpError, type InkCommitCursor, type SelfhostCommittedCursor } from "./selfhostApi";
 import { setSelfhostBoardMode } from "./assetStore";
 import { savePersonalBoardTemplate } from "./templatesStore";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
@@ -122,14 +123,14 @@ import { DURABLE_INK_SYNC_MS, hasDurableInk, peerRemovedDurableInk, removeDurabl
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState, type BoardObjectPose } from "./boardWorkSync";
 import { objectPoseOrigin, objectPoseMatches, createCurrentItemIndex } from "./boardObjectMotion";
-import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
+import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest, type AttachmentApprovalResult } from "./boardAttachmentApprovalSync";
 import { documentFingerprint as fingerprintDocument, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import { mergeEditedValue, editorDiff, applyEditorOps, withMotionPointIds } from "./lektrusLiveEditorMerge";
-import {boardObjectLiveOps,boardDraftLiveOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
+import {boardObjectLiveOps,boardDraftLiveOps,boardModalDraftOps,isLiveBoardObjectField,boardLiveContent} from "./boardLiveObjectEdits";
 import { labLiveEditorDiff, applyLabLivePreview } from "./lektrusLabLiveSync";
 import { labSimulationCheckpointDelayMs } from "./lektrusLabPersistence";
-import { mergeBoardDocumentEdits, mergeBoardItems } from "./lektrusBoardThreeWayMerge";
-import {personalBoardEdit,applyPersonalBoardEdit, reattributeRestoredSharedInk,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
+import { mergeBoardDocumentEdits, mergeBoardItems, mergeDetachedBoardItem } from "./lektrusBoardThreeWayMerge";
+import {personalBoardEdit,applyPersonalBoardEdit, reattributeRestoredSharedInk,beginTextEdit,updateTextEdit,rebaseTextEdit,type TextEditSession,type PersonalBoardEdit} from "./lektrusPersonalBoardHistory";
 import { stampNewBoardItemAuthors, canRemoveBoardItem, blockedBoardItemRemovals, isLockableBoardItem, canCropBoardImage, blockedBoardImageCrops, blockedStudentObjectEdits } from "./lektrusBoardObjectAuth";
 import { parseDocument, parseRealtimeDocument, type RealtimeItemCache, packDocumentInk, expandDocumentInk, isInkItem, graphPointLimit, type ShapeType, type ConnectorStyle, type ArrowHeadStyle, type ConnectorRouting, type ConnectorBinding, type Point, type View, type Item, type DocumentData, type BoardBackground, normalizeBoardBackground } from "./boardModel";
 import { boardBackgroundAppearance } from "./boardBackground";
@@ -2206,33 +2207,65 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
   const attachmentApprovalRef=useRef<AttachmentApprovalChannel|null>(null);
   const [attachmentRequests,setAttachmentRequests]=useState<AttachmentApprovalRequest[]>([]);
-  const [pendingAttachmentRequests,setPendingAttachmentRequests]=useState<AttachmentApprovalRequest[]>([]);
+  const attachmentPendingKey="lektrus.attachment.pending."+boardSummary.id+"."+authUser.id;
+  const attachmentDecisionKey="lektrus.attachment.decisions."+boardSummary.id+"."+authUser.id;
+  const [pendingAttachmentRequests,setPendingAttachmentRequests]=useState<AttachmentApprovalRequest[]>(()=>{
+    try{
+      const rows=JSON.parse(localStorage.getItem(attachmentPendingKey)??"[]");
+      return Array.isArray(rows)?rows.filter((r:AttachmentApprovalRequest)=>r&&typeof r.requestId==="string"&&r.studentId===authUser.id&&
+        typeof r.assetId==="string"&&Number.isFinite(r.sentAt)&&Date.now()-r.sentAt<86400000).slice(-100):[];
+    }catch{return []}
+  });
+  const pendingAttachmentRef=useRef(new Map(pendingAttachmentRequests.map(r=>[r.requestId,r])));
+  const [attachmentDecisions]=useState(()=>{
+    try{
+      const rows=JSON.parse(localStorage.getItem(attachmentDecisionKey)??"[]");
+      return new Map<string,AttachmentApprovalResult>(Array.isArray(rows)?rows.slice(-200):[]);
+    }catch{return new Map<string,AttachmentApprovalResult>()}
+  });
+  const pendingApprovals=useRef(new Map<string,AttachmentApprovalRequest>());
+  const pendingApprovalHistory=useRef(new Map<string,Item>());
   const [attachmentRequestIndex,setAttachmentRequestIndex]=useState(0);
   useEffect(()=>{setAttachmentRequestIndex(index=>Math.max(0,Math.min(index,attachmentRequests.length-1)))},[attachmentRequests.length]);
-  const pendingAttachmentTimers=useRef(new Map<string,ReturnType<typeof setInterval>>());
   const pendingAttachmentStarted=useRef(new Map<string,number>());
+  const updatePendingAttachments=()=>{
+    const rows=[...pendingAttachmentRef.current.values()];
+    setPendingAttachmentRequests(rows);
+    try{localStorage.setItem(attachmentPendingKey,JSON.stringify(rows))}catch{}
+  };
   const sendAttachmentRequest=(request:AttachmentApprovalRequest)=>{
-    attachmentApprovalRef.current?.request(request);
-    setPendingAttachmentRequests(current=>current.some(x=>x.requestId===request.requestId)?current:[...current,request]);
-    const old=pendingAttachmentTimers.current.get(request.requestId);if(old)clearInterval(old);
+    pendingAttachmentRef.current.set(request.requestId,request);
     pendingAttachmentStarted.current.set(request.requestId,Date.now());
-    const timer=setInterval(()=>{
-      const started=pendingAttachmentStarted.current.get(request.requestId)??Date.now();
-      if(Date.now()-started>10*60*1000){
-        clearInterval(timer);
-        pendingAttachmentTimers.current.delete(request.requestId);
-        pendingAttachmentStarted.current.delete(request.requestId);
-        return;
-      }
-      attachmentApprovalRef.current?.request(request);
-    },4000);
-    pendingAttachmentTimers.current.set(request.requestId,timer);
+    updatePendingAttachments();
+    attachmentApprovalRef.current?.request(request);
   };
   const cancelPendingAttachmentRequest=(requestId:string)=>{
-    const timer=pendingAttachmentTimers.current.get(requestId);if(timer)clearInterval(timer);
-    pendingAttachmentTimers.current.delete(requestId);
     pendingAttachmentStarted.current.delete(requestId);
-    setPendingAttachmentRequests(current=>current.filter(x=>x.requestId!==requestId));
+    if(pendingAttachmentRef.current.delete(requestId))updatePendingAttachments();
+  };
+  const attachmentExists=(data:DocumentData|null,request:AttachmentApprovalRequest)=>
+    !!data&&data.items.some(item=>(item.kind==="image"||item.kind==="pdf")&&item.assetId===request.assetId);
+  const cacheAttachmentDecision=(result:AttachmentApprovalResult)=>{
+    attachmentDecisions.set(result.requestId,result);
+    while(attachmentDecisions.size>200){const oldest=attachmentDecisions.keys().next().value;if(oldest===undefined)break;attachmentDecisions.delete(oldest)}
+    try{localStorage.setItem(attachmentDecisionKey,JSON.stringify([...attachmentDecisions]))}catch{}
+  };
+  const rememberAttachmentDecision=(request:AttachmentApprovalRequest,approved:boolean)=>{
+    const result={requestId:request.requestId,studentId:request.studentId,approved,name:request.name};
+    cacheAttachmentDecision(result);
+    attachmentApprovalRef.current?.result(result);
+  };
+  const confirmAttachmentDecisions=(data:DocumentData)=>{
+    // A lost result cannot leave an already visible, committed upload pending.
+    for(const request of pendingAttachmentRef.current.values())
+      if(attachmentExists(data,request))cancelPendingAttachmentRequest(request.requestId);
+    for(const request of pendingApprovals.current.values()){
+      if(request.durable||!attachmentExists(data,request))continue; // Native decisions are resolved by the server transaction.
+      pendingApprovals.current.delete(request.requestId);
+      rememberAttachmentDecision(request,true);
+      setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+      setNotice(`Вложение «${request.name}» одобрено и добавлено на доску`);
+    }
   };
 
   const [boardAiOpen,setBoardAiOpen]=useState(false);
@@ -2405,6 +2438,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const [linkMediaUrl,setLinkMediaUrl]=useState("");
   const [linkMediaTitle,setLinkMediaTitle]=useState("");
   const [linkMediaEditId,setLinkMediaEditId]=useState<string|null>(null);
+  const linkMediaBase=useRef<Item|null>(null);
   const [imageCropEditorId,setImageCropEditorId]=useState<string|null>(null);
   const imageCropApplyRef=useRef<(()=>Promise<void>)|null>(null);
   const imageCropApplyingRef=useRef(false);
@@ -2883,11 +2917,35 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const pendingEditorBases=useRef(new Map<string,Item>());
   const modalEditorBase=useRef<Item|null>(null);
   const mergeModalPatch=(latest:Item,patch:Partial<Item>)=>{
+    if(!canEdit||latest.locked||structurallyLockedForStudent(latest))return latest;
     const base=modalEditorBase.current;
     return base?.id===latest.id?mergeEditedValue(base,{...base,...patch},latest):{...latest,...patch};
   };
   const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
   const itemsRef = useRef(items);
+  const detachedEditorOrigin=useRef<{base:Item;existing:boolean}|null>(null);
+  const markDetachedEditor=(item:Item)=>{
+    const stored=itemsRef.current.find(candidate=>candidate.id===item.id);
+    const base=stored??item;
+    detachedEditorOrigin.current={base,existing:!!stored};
+    return base;
+  };
+  const openFractionEditor=(item:Item)=>{markDetachedEditor(item);setFractionEditorId(item.id);};
+  const detachedEditorResult=(base:Item,next:Item,create:boolean,fields:readonly (keyof Item)[])=>{
+    const origin=detachedEditorOrigin.current;
+    const latest=itemsRef.current.find(candidate=>candidate.id===base.id);
+    return mergeDetachedBoardItem(origin?.base.id===base.id?origin.base:base,next,latest,
+      create&&origin?.base.id===base.id&&!origin.existing,fields);
+  };
+  const saveDetachedEditor=(base:Item,next:Item,create:boolean,fields:readonly (keyof Item)[])=>{
+    const result=detachedEditorResult(base,next,create,fields);
+    if(!result){setNotice("Объект удалён или заблокирован другим участником");return false;}
+    const current=itemsRef.current;
+    commit(current.some(item=>item.id===result.id)?current.map(item=>item.id===result.id?result:item):[...current,result]);
+    return true;
+  };
+  const scienceEditorFields=(base:Item,next:Item)=>
+    [...new Set([...Object.keys(base),...Object.keys(next)])].filter(key=>key==="text"||key.startsWith("graph")||key.startsWith("science")) as (keyof Item)[];
   const [inkMotionLedger]=useState(createInkMotionLedger);
   const [inkMotionRevision,setInkMotionRevision]=useState(0);
   const inkMotionSender=useRef<ReturnType<typeof createInkMotionSender>|null>(null);
@@ -2943,6 +3001,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   );
   const [draft, setDraft] = useState("");
   const draftRef = useRef("");
+  const textEditSession=useRef<TextEditSession|null>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
   const [space, setSpace] = useState(false);
   const [path, setPath] = useState<Point[]>([]);
@@ -3089,6 +3148,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
   const index = useRef(0);
   // The pupil's own operations survive incoming collaborator snapshots.
+  // Every participant on a shared board needs a local action history that
+  // survives server revisions; snapshot history remains for offline/demo.
+  const usePersonalUndo=documentSyncEnabled||(isStudent&&!isBoardOwner);
   const personalHistory=useRef<{entries:PersonalBoardEdit[];cursor:number}>({entries:[],cursor:0});
   const personalUndoAvailable=()=>personalHistory.current.cursor>0;
   const personalRedoAvailable=()=>personalHistory.current.cursor<personalHistory.current.entries.length;
@@ -3277,6 +3339,19 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         queuedRemoteSnapshot.current=null;
       return;
     }
+    // A peer revision deferred by a gesture must be applied before a queued
+    // local write uses its expected version. Never race the pointer-up timer.
+    const pendingRevision=deferredRemote.current;
+    if(pendingRevision&&pendingRevision.version>(remoteVersion.current??-1)){
+      deferredRemote.current=null;
+      receiveRemote.current(pendingRevision);
+      if(pendingRevision.version>(remoteVersion.current??-1)){
+        queuedRemoteSnapshot.current=snapshot.current??data;
+        return;
+      }
+      data=snapshot.current??data;
+      knownFingerprint=undefined;
+    }
     let fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current ||
         fingerprint === acknowledgedSharedContent.current) return;
@@ -3317,6 +3392,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             acknowledgedDocument.current=fingerprint;
             acknowledgedSharedContent.current=fingerprint;
             acknowledgedBoardData.current=accepted;
+            confirmAttachmentDecisions(accepted);
             if(inkMotionLedger.reconcile(accepted.items,version,authUser.id))setInkMotionRevision(n=>n+1);
             inkMotionSender.current?.ack(accepted.items,version);
             lastAttempt.current={version,fingerprint};
@@ -3376,6 +3452,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       // Reusing this hash avoids a second full document traversal per save.
       acknowledgedSharedContent.current = fingerprint;
       acknowledgedBoardData.current = data;
+      confirmAttachmentDecisions(data);
       if(inkMotionLedger.reconcile(data.items,result.version,authUser.id))setInkMotionRevision(n=>n+1);
       inkMotionSender.current?.ack(data.items,result.version);
       // A newer local edit may already be queued. Never clear its pending flag
@@ -3435,9 +3512,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       const deferred = deferredRemote.current;
       deferredRemote.current = null;
       const needsRebase=!!deferred&&deferred.version>(remoteVersion.current??-1);
-      if (boardMounted.current && deferred) receiveRemote.current(deferred);
       const queued = queuedRemoteSnapshot.current;
       queuedRemoteSnapshot.current = null;
+      if (boardMounted.current && deferred) {
+        receiveRemote.current(deferred);
+        if(needsRebase&&deferred.version>(remoteVersion.current??-1)&&queued)
+          queuedRemoteSnapshot.current=snapshot.current??queued;
+      }
       // A competing server revision must be rebased BEFORE starting another
       // save. Sending a previously queued, unrebased document overwrites ink.
       // An own/stale notification can be deferred during a save too. It is
@@ -3903,7 +3984,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!remoteSaveInFlight.current && deferredRemote.current) {
       const delayed = deferredRemote.current;
       deferredRemote.current = null;
-      window.setTimeout(() => receiveRemote.current(delayed), 0);
+      // Pointer-up/cancel already finalized the gesture. Reconcile now,
+      // before any queued microtask can save with the old expected version.
+      receiveRemote.current(delayed);
     }
   };
   const cancelEraser=()=>{
@@ -3973,6 +4056,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     end(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
+    textEditSession.current=null;
     setEditing(null);
     setSelected([]);
     setSpace(false);
@@ -3986,6 +4070,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     display(allItems);
     history.current = [allItems];
     index.current = 0;
+    personalHistory.current={entries:[],cursor:0};
     snapshot.current = data;
     setSaveBlocked(false);
     if (!fromRemote) flushSave();
@@ -4067,7 +4152,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       );
     }
   };
-  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];objectBaseline?:Item[];publishLiveEdits?:boolean}) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean;immediatePaint?:boolean;previousItems?:Item[];objectBaseline?:Item[];historyBaseline?:Item[];publishLiveEdits?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     if(boardResumePendingRef.current){setNotice("Сверяем изменения с сервером. Повторите действие после подключения.");return;}
     if(!options?.previousItems){lastInkGesture.current=null;lastInkCursor.current=null;}
@@ -4089,14 +4174,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     // Most drawing gestures only add/remove strokes. Compare identities first,
     // and serialize only genuinely changed items instead of megabytes of ink.
-    const baseline = history.current[index.current];
-    if (baseline?.length === normalized.length &&
+    const baseline = options?.previousItems??options?.objectBaseline??(usePersonalUndo?current:history.current[index.current]);
+    const unchanged=baseline?.length === normalized.length &&
         normalized.every((item, pos) => item === baseline[pos] ||
-          JSON.stringify(item) === JSON.stringify(baseline[pos])))
-      return;
+          JSON.stringify(item) === JSON.stringify(baseline[pos]));
+    if(unchanged&&!options?.historyBaseline)return;
     const isLabSimulation=options?.labSimulation===true;
-    if(isStudent&&!isBoardOwner&&!isLabSimulation){
-      const own=personalBoardEdit(current,normalized);
+    if(usePersonalUndo&&!isLabSimulation){
+      const own=options?.historyBaseline?personalBoardEdit(options.historyBaseline,normalized):personalBoardEdit(current,normalized);
+      if(unchanged&&!own)return;
       if(own){
         const stack=personalHistory.current;
         stack.entries=[...stack.entries.slice(0,stack.cursor),own].slice(-80);
@@ -4238,17 +4324,25 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       ...item,...fitted,imageSourceAspect:sourceAspect
     }:item));
   };
-  const finishEdit = () => {
+  const finishEdit = (cancel=false) => {
     if (!editing) return;
+    const session=textEditSession.current;
+    if(!session||session.id!==editing)return;
     const editedItem = itemsRef.current.find((item) => item.id === editing);
-    const nextText = editedItem?.kind === "frame"
-      ? draftRef.current.replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 120)
-      : draftRef.current;
-    commit(
-      itemsRef.current.map((item) =>
-        item.id === editing ? { ...item, text: nextText } : item,
-      ),
-    );
+    textEditSession.current=null;
+    if(!editedItem||editedItem.locked||!canEdit){setEditing(null);return;}
+    const value=cancel?session.before:draftRef.current;
+    const nextText = editedItem.kind === "frame"
+      ? value.replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 120)
+      : value;
+    const next=itemsRef.current.map(item=>item.id===editing?{...item,text:nextText}:item);
+    // A peer revision may already have folded our autosaved draft into
+    // itemsRef. Still record one inverse for the entire local typing action,
+    // using the latest geometry/metadata and the pre-action text only.
+    const historyBaseline=cancel||!session.changed?next:itemsRef.current.map(item=>
+      item.id===editing?{...item,text:session.before}:item);
+    if(cancel)workChannel.current?.publishEdit(editing,[{path:["text"],kind:"set",value:nextText}]);
+    commit(next,usePersonalUndo?{historyBaseline}:undefined);
     draftRef.current = nextText;
     setDraft(nextText);
     setEditing(null);
@@ -4263,29 +4357,49 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setSelected([item.id]);
     setTool("select");
     setSpace(false);
-    draftRef.current = item.text;
-    setDraft(item.text);
-    setEditing(item.id);
+    if(editing===item.id&&textEditSession.current?.id===item.id)return;
+    textEditSession.current=beginTextEdit(stored.id,stored.text);
+    draftRef.current = stored.text;
+    setDraft(stored.text);
+    setEditing(stored.id);
   };
   const undo = (direction: number) => {
     if (gesture.current || !canEdit || boardResumePendingRef.current) return;
-    if(isStudent&&!isBoardOwner){
+    if(usePersonalUndo){
       const stack=personalHistory.current;
       const step=direction<0?stack.cursor-1:stack.cursor;
       if(step<0||step>=stack.entries.length)return;
-      const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo");
+      const before=itemsRef.current;
+      const normalizeHistoryItem=(item:Item):Item=>{
+        try{
+          // The reader inserts defaults and canonicalizes nested fields.
+          // Preserve any additional locally stored fields, while comparing
+          // history against the same normalized values as the server.
+          return {...item,...parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[item]})).items[0]};
+        }catch{return item;}
+      };
+      const outcome=applyPersonalBoardEdit(itemsRef.current,stack.entries[step],direction<0?"undo":"redo",normalizeHistoryItem);
       if(!outcome.changed){
+        // A superseded action cannot block every earlier undo or later redo.
+        stack.entries.splice(step,1);
+        if(direction<0)stack.cursor=step;
         setNotice("Это действие уже изменено другим участником. Чужие правки не затронуты.");
         return;
       }
-      const restored=reattributeRestoredSharedInk(itemsRef.current,outcome.items,stack.entries[step],authUser.id);
+      const restored=isStudent&&!isBoardOwner
+        ?reattributeRestoredSharedInk(before,outcome.items,stack.entries[step],authUser.id)
+        :{items:outcome.items,edit:stack.entries[step]};
       if(blockedBoardItemRemovals(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
          blockedBoardImageCrops(itemsRef.current,restored.items,authUser.id,isStudent,isBoardOwner).length||
-         blockedStudentObjectEdits(itemsRef.current,restored.items,authUser.id).length){
+         (isStudent&&!isBoardOwner&&blockedStudentObjectEdits(itemsRef.current,restored.items,authUser.id).length)){
         setNotice("Отмена не может изменить защищённую работу другого участника.");
         return;
       }
-      stack.entries[step]=restored.edit;
+      // Redo/undo must contain only the fields that actually changed now;
+      // a partially conflicted inverse must not later replay a peer edit.
+      const actual=direction<0?personalBoardEdit(restored.items,before):personalBoardEdit(before,restored.items);
+      if(!actual)return;
+      stack.entries[step]=actual;
       stack.cursor=direction<0?step:step+1;
       display(restored.items);
       if(snapshot.current&&!saveBlocked){
@@ -4517,9 +4631,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           respond(`Серверная история недоступна офлайн. В локальной истории отмены ${localSteps} шагов. Последний шаг: добавлено ${added}, изменено ${changed}, удалено ${removed}; сейчас на доске ${current.length} элементов.`);
         }
       }else if(command.kind==="undo"||command.kind==="redo"){
-        const before=index.current;
+        const before=usePersonalUndo?personalHistory.current.cursor:index.current;
         undo(command.kind==="undo"?-1:1);
-        respond(index.current===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
+        respond((usePersonalUndo?personalHistory.current.cursor:index.current)===before?"Дальше в этом направлении действий нет.":command.kind==="undo"?"Последнее действие отменено.":"Действие повторено.");
       }else if(command.kind==="pick-media"){
         const input=mediaInput.current;
         if(!input)respond("Не удалось открыть выбор файла. Используйте кнопку загрузки фото или PDF на панели инструментов.");
@@ -4574,23 +4688,51 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
       request=>{
-        if(isStudent)return;
+        if(isStudent){
+          // A server snapshot restores pending uploads on a different device.
+          if(request.durable&&request.studentId===authUser.id&&!attachmentExists(acknowledgedBoardData.current,request)&&!pendingAttachmentRef.current.has(request.requestId)){
+            pendingAttachmentRef.current.set(request.requestId,request);
+            updatePendingAttachments();
+          }
+          return;
+        }
+        const decided=attachmentDecisions.get(request.requestId);
+        if(!request.durable&&decided&&decided.studentId===request.studentId){attachmentApprovalRef.current?.result(decided);return;}
+        if(attachmentExists(acknowledgedBoardData.current,request)){rememberAttachmentDecision(request,true);return;}
+        if(pendingApprovals.current.has(request.requestId))return;
         setAttachmentRequests(current=>current.some(x=>x.requestId===request.requestId)?current:[...current,request]);
         setNotice(`Новое вложение от ${request.studentName}`);
       },
       result=>{
+        if(!isStudent&&result.durable){
+          cacheAttachmentDecision(result);
+          pendingApprovals.current.delete(result.requestId);
+          setAttachmentRequests(current=>current.filter(x=>x.requestId!==result.requestId));
+          return;
+        }
         if(result.studentId!==authUser.id)return;
+        const wasPending=pendingAttachmentRef.current.has(result.requestId);
         cancelPendingAttachmentRequest(result.requestId);
-        setNotice(result.approved?`Преподаватель одобрил «${result.name}»`:`Преподаватель отклонил «${result.name}»`);
+        if(wasPending)setNotice(result.approved?`Преподаватель одобрил «${result.name}»`:`Преподаватель отклонил «${result.name}»`);
       },
     );
     attachmentApprovalRef.current=channel;
+    if(acknowledgedBoardData.current)confirmAttachmentDecisions(acknowledgedBoardData.current);
+    // Channel teardown after a long background interval must not discard
+    // pending uploads. Resume their delivery as soon as this board wakes.
+    const replayPending=(restart=false)=>{
+      const now=Date.now();
+      for(const request of pendingAttachmentRef.current.values()){
+        if(restart||!pendingAttachmentStarted.current.has(request.requestId))pendingAttachmentStarted.current.set(request.requestId,now);
+        if(now-(pendingAttachmentStarted.current.get(request.requestId)??now)<=10*60*1000)channel.request(request);
+      }
+    };
+    replayPending(true);
+    const timer=setInterval(()=>replayPending(),4000);
     return()=>{
+      clearInterval(timer);
       channel.close();
       if(attachmentApprovalRef.current===channel)attachmentApprovalRef.current=null;
-      for(const timer of pendingAttachmentTimers.current.values())clearInterval(timer);
-      pendingAttachmentTimers.current.clear();
-      pendingAttachmentStarted.current.clear();
     };
   },[boardSummary.id,authUser.id,authUser.name,isStudent,demoMode,boardRealtimeAwake]);
 
@@ -4666,30 +4808,98 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     return item;
   };
 
-  const openLinkMediaEditor=(item?:Item)=>{if(demoMode)return;setLinkMediaEditId(item?.kind==="linkmedia"?item.id:null);setLinkMediaUrl(item?.kind==="linkmedia"?item.mediaUrl??"":"");setLinkMediaTitle(item?.kind==="linkmedia"?item.mediaTitle??"":"");setLinkMediaOpen(true)};
-  const saveLinkMedia=()=>{if(demoMode||!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){commit(itemsRef.current.map(i=>i.id===linkMediaEditId?{...i,mediaUrl:info.sourceUrl,mediaTitle:title}:i));setNotice("Ссылка мультимедиа обновлена")}else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
+  const openLinkMediaEditor=(item?:Item)=>{
+    if(demoMode||!canEdit)return;
+    const current=item?itemsRef.current.find(candidate=>candidate.id===item.id):undefined;
+    if(item&&(!current||current.kind!=="linkmedia"||current.locked||structurallyLockedForStudent(current)))return;
+    linkMediaBase.current=current??null;
+    setLinkMediaEditId(current?.id??null);setLinkMediaUrl(current?.mediaUrl??"");setLinkMediaTitle(current?.mediaTitle??"");setLinkMediaOpen(true);
+  };
+  const saveLinkMedia=()=>{if(demoMode||!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){
+    const base=linkMediaBase.current,latest=itemsRef.current.find(i=>i.id===linkMediaEditId);
+    const result=base?.id===linkMediaEditId&&!structurallyLockedForStudent(latest)?mergeDetachedBoardItem(base,{...base,mediaUrl:info.sourceUrl,mediaTitle:title},latest,false,["mediaUrl","mediaTitle"]):null;
+    if(result){commit(itemsRef.current.map(i=>i.id===result.id?result:i));setNotice("Ссылка мультимедиа обновлена")}
+    else setNotice("Объект удалён или заблокирован другим участником");
+    }else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
 
   useEffect(()=>{if(demoMode||!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit,demoMode]);
 
+  const recordServerApprovalHistory=()=>{
+    if(!usePersonalUndo)return;
+    for(const [id,item] of pendingApprovalHistory.current){
+      if(!itemsRef.current.some(candidate=>candidate.id===id))continue;
+      pendingApprovalHistory.current.delete(id);
+      const edit=personalBoardEdit([],[item]);
+      if(edit){
+        const stack=personalHistory.current;
+        stack.entries=[...stack.entries.slice(0,stack.cursor),edit].slice(-80);
+        stack.cursor=stack.entries.length;
+        if(!gesture.current)setSelected([id]);
+      }
+    }
+  };
+  useEffect(()=>{recordServerApprovalHistory()},[items]);
+  const decideServerAttachment=(request:AttachmentApprovalRequest,approved:boolean,position?:Point)=>{
+    if(pendingApprovals.current.has(request.requestId))return;
+    pendingApprovals.current.set(request.requestId,request);
+    setNotice("Сохраняем решение преподавателя…");
+    void selfhostDecideAttachment(boardSummary.id,request.requestId,approved,position).then(response=>{
+      if(!boardMounted.current)return;
+      const decision=response.result;
+      cacheAttachmentDecision({requestId:decision.request_id,studentId:decision.target_user_id,
+        approved:decision.approved,name:decision.attachment_name,durable:true});
+      setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+      // Only the teacher whose transaction inserted the item gets a personal
+      // undo step. Another teacher's successful decision is not our action.
+      if(response.inserted_item){
+        const item=parseDocument(JSON.stringify({version:1,title:"",view:{x:0,y:0,zoom:1},items:[response.inserted_item]})).items[0];
+        pendingApprovalHistory.current.set(item.id,item);
+        recordServerApprovalHistory();
+      }
+      setNotice(decision.approved?`Вложение «${decision.attachment_name}» одобрено`:`Вложение «${decision.attachment_name}» отклонено`);
+    }).catch(error=>{
+      if(boardMounted.current)setNotice(error instanceof Error?error.message:"Не удалось сохранить решение");
+    }).finally(()=>pendingApprovals.current.delete(request.requestId));
+  };
   const approveAttachmentRequest=(request:AttachmentApprovalRequest)=>{
-    if(isStudent)return;
+    if(isStudent||!canEdit||boardResumePendingRef.current)return;
+    if(selfhostMode&&request.durable){
+      const rect=board.current?.getBoundingClientRect();
+      const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});
+      decideServerAttachment(request,true,{x:center.x-request.width/2,y:center.y-request.height/2});
+      return;
+    }
+    if(attachmentExists(acknowledgedBoardData.current,request)){
+      rememberAttachmentDecision(request,true);
+      setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+      return;
+    }
+    if(itemsRef.current.some(item=>item.assetId===request.assetId)){
+      pendingApprovals.current.set(request.requestId,request);
+      flushSave();return;
+    }
     const rect=board.current?.getBoundingClientRect();
     const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});
     const item:Item={
-      id:createId(),kind:request.kind,x:center.x-request.width/2,y:center.y-request.height/2,
+      id:"approved-media-"+request.requestId,kind:request.kind,x:center.x-request.width/2,y:center.y-request.height/2,
       width:request.width,height:request.height,text:"",assetId:request.assetId,name:request.name,mime:request.mime,
       ...(request.kind==="image"?{imageSourceAspect:request.width/request.height}:{}),
     };
+    pendingApprovals.current.set(request.requestId,request);
     commit([...itemsRef.current,item]);
+    if(!itemsRef.current.some(candidate=>candidate.id===item.id)){
+      pendingApprovals.current.delete(request.requestId);return;
+    }
     setSelected([item.id]);setTool("select");
-    setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
-    attachmentApprovalRef.current?.result({requestId:request.requestId,studentId:request.studentId,approved:true,name:request.name});
-    setNotice(`Вложение «${request.name}» одобрено и добавлено на доску`);
+    if(!documentSyncEnabled)confirmAttachmentDecisions(currentDocument());
+    else setNotice("Вложение сохраняется на сервере…");
   };
   const rejectAttachmentRequest=(request:AttachmentApprovalRequest)=>{
-    if(isStudent)return;
+    if(isStudent||!canEdit)return;
+    if(selfhostMode&&request.durable){decideServerAttachment(request,false);return;}
+    if(pendingApprovals.current.has(request.requestId)){setNotice("Вложение уже сохраняется на сервере");return;}
     setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
-    attachmentApprovalRef.current?.result({requestId:request.requestId,studentId:request.studentId,approved:false,name:request.name});
+    rememberAttachmentDecision(request,false);
     setNotice(`Вложение «${request.name}» отклонено`);
   };
   const openAttachmentRequest=async(request:AttachmentApprovalRequest)=>{
@@ -4724,18 +4934,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     } catch (error) { setNotice(error instanceof Error ? error.message : "Не удалось сохранить исходный файл"); }
   };
 
-  const setPdfPage = (item: Item, page: number) => {
-    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount) return;
-    const nextPage = Math.max(1, Math.min(pdfPageCount, Math.round(Number.isFinite(page) ? page : 1)));
+  const setPdfPage = (rendered: Item, page: number) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(!item||!pdfPageCount)return;
+    const nextPage = nextPdfPage(page,pdfPageCount);
     if (nextPage === (item.pdfPage ?? 1)) return nextPage;
     commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, pdfPage: nextPage } : candidate));
     setNotice(`PDF · страница ${nextPage}`);
     return nextPage;
   };
 
-  const changePdfPage = (item: Item, delta: number) => setPdfPage(item, (item.pdfPage ?? 1) + delta);
-  const duplicateNextPdfPage = (item: Item) => {
-    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount || (item.pdfPage??1)>=pdfPageCount) return;
+  const changePdfPage = (rendered: Item, delta: number) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(item)setPdfPage(item,(item.pdfPage??1)+delta);
+  };
+  const duplicateNextPdfPage = (rendered: Item) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(!item||!pdfPageCount||(item.pdfPage??1)>=pdfPageCount)return;
     const copy: Item = {
       ...deepItem(item),
       id: createId(),
@@ -4750,8 +4965,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     setNotice(`Добавлена страница PDF ${copy.pdfPage} рядом`);
   };
 
-  const spreadPdfPages = (item: Item, count: 3 | 5) => {
-    if (item.kind !== "pdf" || item.locked || !canEdit || !pdfPageCount) return;
+  const spreadPdfPages = (rendered: Item, count: 3 | 5) => {
+    const item=resolvePdfAction(itemsRef.current,rendered,canEdit,pdfPageCount);
+    if(!item||!pdfPageCount)return;
     const gap = 28, cols = count <= 3 ? count : 3;
     const copies: Item[] = [];
     for (let n = 1; n < count && (item.pdfPage??1)+n<=pdfPageCount; n++) {
@@ -5054,7 +5270,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if (!remoteSaveInFlight.current && deferredRemote.current) {
       const delayed = deferredRemote.current;
       deferredRemote.current = null;
-      window.setTimeout(() => receiveRemote.current(delayed), 0);
+      // Pointer-up/cancel already finalized the gesture. Reconcile now,
+      // before any queued microtask can save with the old expected version.
+      receiveRemote.current(delayed);
     }
   };
   // Switching tools invalidates every in-flight gesture and capture.
@@ -5378,6 +5596,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       commit([...itemsRef.current, item]);
       setSelected([item.id]);
       setTool("select");
+      modalEditorBase.current=itemsRef.current.find(candidate=>candidate.id===item.id)??item;
       setTableEditorId(item.id);
       setTableDraft({ rows, cols, cells: [...cells], header: true, fontSize: 13, align: "left", stripe: false, compact: false });
       return;
@@ -6066,7 +6285,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }
       if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.code) && selected.length) {
         e.preventDefault();
-        if (selectionLocked || rejectStudentStructuralEdit()) return;
+        // Placement is allowed for every unlocked lesson object, including
+        // teacher-built assignments. The commit guard still protects content.
+        if (!canEdit || selectionLocked || selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
         const step=e.shiftKey?10:1;
         const dx=e.code==="ArrowLeft"?-step:e.code==="ArrowRight"?step:0;
         const dy=e.code==="ArrowUp"?-step:e.code==="ArrowDown"?step:0;
@@ -6268,7 +6489,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       case "text": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
       case "graph": openGraphEditor(singleSelected); break;
-      case "fraction": setFractionEditorId(singleSelected.id); break;
+      case "fraction": openFractionEditor(singleSelected); break;
       case "table": openTableEditor(singleSelected); break;
       case "checklist": openChecklistEditor(singleSelected); break;
       case "quiz": openQuizEditor(singleSelected); break;
@@ -6677,8 +6898,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const alignSelected = (mode: "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom") => {
-    if (rejectStudentStructuralEdit()) return;
-    if (selectionLocked) return;
+    if (!canEdit || selectionLocked ||
+        selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
     const chosen = itemsRef.current.filter((i) => selected.includes(i.id));
     const bounds = boundsOf(chosen);
     if (!bounds || chosen.length < 2) return;
@@ -6732,8 +6953,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const rotateSelected = (degrees: number) => {
-    if (rejectStudentStructuralEdit()) return;
-    if (!selected.length || selectionLocked) return;
+    if (!canEdit || !selected.length || selectionLocked ||
+        selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
     const chosen = itemsRef.current.filter((item) => selected.includes(item.id));
     const bounds = boundsOf(chosen);
     if (!bounds) return;
@@ -6765,7 +6986,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const resetRotationSelected = () => {
-    if (!selected.length || selectionLocked) return;
+    if (!canEdit || !selected.length || selectionLocked ||
+        selected.some(id=>!canTransformBoardObject(itemsRef.current.find(item=>item.id===id)))) return;
     commit(itemsRef.current.map((item) => selected.includes(item.id) ? { ...item, rotation: 0 } : item));
   };
 
@@ -6852,17 +7074,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const finalizePhysicalEditor=(next:Item,create:boolean)=>{
-    const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
-    if(!latest){
-      if(create)commit([...itemsRef.current,next]);
-      return;
-    }
-    // Component changes have already been merged live. Never write the
-    // editor's potentially older full document over another user's edits.
-    if(latest.text!==next.text){
-      commit(itemsRef.current.map(candidate=>candidate.id===latest.id?
-        {...candidate,text:next.text}:candidate));
-    }
+    const origin=detachedEditorOrigin.current;
+    if(origin?.base.id!==next.id)return;
+    // Existing component changes are committed live. Finalize only the title,
+    // never restore old geometry or resurrect an existing deleted object.
+    if(!create&&!origin.existing&&!itemsRef.current.some(item=>item.id===next.id))return;
+    saveDetachedEditor(origin.base,next,create,["text"]);
   };
   const isMotionGraph=(id:string|undefined)=>[
     "physics-motion","physics-speed","physics-accelerated-speed",
@@ -6928,7 +7145,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
      commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry) ,{publishLiveEdits:false});
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
-   const patchSubjectBoardEntry=(boardId:string,entryId:string,changes:Partial<import("./boardModel").SubjectBoardEntry>,teacherOnly=false)=>{
+   const patchSubjectBoardEntry=(boardId:string,entryId:string,changes:Partial<import("./boardModel").SubjectBoardEntry>,teacherOnly=false,base?:import("./boardModel").SubjectBoardEntry)=>{
      const latest=itemsRef.current.find(value=>value.id===boardId);
      if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||(teacherOnly&&!roleCapabilities.canUseTeacherTools))return;
      const entries=latest.subjectBoardEntries??[];
@@ -6941,8 +7158,11 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
        !subjectTaskTypeAllowed(tone,changes.format))return;
      if(changes.format&&changes.format!==current.format&&!roleCapabilities.canUseTeacherTools)return;
      if(!roleCapabilities.canUseTeacherTools&&Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse","russianWork"].includes(key)))return;
-     const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{
-       ...entry,...changes,subject:boardTone(latest)}:entry)};
+     if(base&&base.id!==current.id)return;
+     const origin=base??current;
+     const updated=mergeEditedValue(origin,{...origin,...changes,subject:tone},current,"subjectBoardEntries");
+     if(JSON.stringify(updated)===JSON.stringify(current))return;
+     const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?updated:entry)};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
      // Controlled worksheet inputs and editor buttons must observe the latest
      // entry before the next input event. Frame-batched painting is for
@@ -7125,6 +7345,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     }
     setGraphPointEditId(null);setBoardGeometryMode(null);setBoardGeometryError("");
     if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
+    item=markDetachedEditor(item);
     if(item.graphFigureId==="lektrus-chart"){setChartEditorItem(item);return;}
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
@@ -7546,6 +7767,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   };
 
   const lastModalLiveDraft=useRef<Item|null>(null);
+  const lastModalLiveBase=useRef<Item|null>(null);
+  const lastModalLiveFields=useRef<string[]>([]);
+  const lastModalLiveTouched=useRef(new Set<string>());
+  const lastModalLiveStatus=useRef<RealtimeStatus|null>(null);
   useEffect(()=>{
     if(!canEdit)return;
     let id:string|null=null,patch:Partial<Item>|null=null;
@@ -7565,17 +7790,40 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     if(previous&&(!latest||previous.id!==latest.id)){
       const stored=getCurrentItemIndex(itemsRef.current).get(previous.id);
       if(stored){
-        const rollback=boardDraftLiveOps(previous,stored);
+        const rollback=boardModalDraftOps(stored,previous,stored,lastModalLiveFields.current,[...lastModalLiveTouched.current]);
         if(rollback.length)workChannel.current?.publishEdit(stored.id,rollback);
       }
-      lastModalLiveDraft.current=null;
+      lastModalLiveDraft.current=null;lastModalLiveBase.current=null;lastModalLiveFields.current=[];lastModalLiveTouched.current.clear();
     }
     if(!latest||!patch||latest.locked)return;
+    const fields=Object.keys(patch);
     const next=mergeModalPatch(latest,patch);
-    const ops=boardDraftLiveOps(previous?.id===latest.id?previous:latest,next);
-    if(ops.length)workChannel.current?.publishEdit(latest.id,ops);
-    lastModalLiveDraft.current=next;
-  },[canEdit,canCreateAssignments,formulaEditorId,formulaDraft,tableEditorId,tableDraft,checklistEditorId,checklistDraft,quizEditorId,quizDraft,flashcardEditorId,flashcardDraft]);
+    const prior=previous?.id===latest.id?previous:undefined;
+    const base=lastModalLiveBase.current;
+    const changed=!prior||boardDraftLiveOps(prior,next).some(op=>fields.includes(String(op.path[0])));
+    const rebased=!base||base.id!==latest.id||boardDraftLiveOps(base,latest).some(op=>fields.includes(String(op.path[0])));
+    const reconnected=realtimeStatus==="online"&&lastModalLiveStatus.current!=="online";
+    const ops=boardModalDraftOps(latest,prior,next,fields,[...lastModalLiveTouched.current]);
+    if(ops.length&&(changed||rebased||reconnected)){
+      for(const op of ops)lastModalLiveTouched.current.add(String(op.path[0]));
+      workChannel.current?.publishEdit(latest.id,ops);
+    }
+    lastModalLiveDraft.current=next;lastModalLiveBase.current=latest;
+    lastModalLiveFields.current=fields;lastModalLiveStatus.current=realtimeStatus;
+    // Active unsaved drafts should not disappear after the receiver's 15 s
+    // expiry, or after a packet lost to a revision race. Small snapshots
+    // refresh at a modest rate; large drafts still save durably on completion.
+    const refresh=boardModalDraftOps(latest,undefined,next,fields,[...lastModalLiveTouched.current]);
+    if(!refresh.length||JSON.stringify(refresh).length>16000||!boardRealtimeAwake)return;
+    const timer=setInterval(()=>{
+      if(document.hidden||!boardMounted.current)return;
+      const stored=itemsRef.current.find(item=>item.id===latest.id);
+      if(!stored||stored.locked)return;
+      const retry=boardModalDraftOps(stored,undefined,mergeModalPatch(stored,patch),fields,[...lastModalLiveTouched.current]);
+      if(retry.length&&JSON.stringify(retry).length<=16000)workChannel.current?.publishEdit(stored.id,retry);
+    },5000);
+    return ()=>clearInterval(timer);
+  },[canEdit,canCreateAssignments,items,realtimeStatus,boardRealtimeAwake,formulaEditorId,formulaDraft,tableEditorId,tableDraft,checklistEditorId,checklistDraft,quizEditorId,quizDraft,flashcardEditorId,flashcardDraft]);
 
   // An educational task is a draft until Save, not a half-built board object.
   const cancelStudyEditor=(kind:"checklist"|"quiz"|"flashcard")=>{
@@ -7615,9 +7863,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   const createDataChart=()=>{
     if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания диаграммы");return}
     const p=elementsCenter();
-    setChartEditorItem({id:createId(),kind:"graph",graphFigureId:"lektrus-chart",
+    setChartEditorItem(markDetachedEditor({id:createId(),kind:"graph",graphFigureId:"lektrus-chart",
       text:"",x:p.x-240,y:p.y-170,width:480,height:340,
-      chartStyle:"bar",chartEntries:[],color:"#4774d7"});
+      chartStyle:"bar",chartEntries:[],color:"#4774d7"}));
     setSelected([]);setTool("select");closeElementsMenu();
   };
   const createSolidElement=(id:import("./lektrusSolid3d").SolidFigureId)=>{
@@ -7886,10 +8134,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     commit([...itemsRef.current,instrument]);
   };
   const updateSharedInstrument=(id:string,patch:Partial<Item>)=>{
-    commit(itemsRef.current.map(item=>item.id===id&&item.kind==="instrument"?{...item,...patch}:item));
+    const current=itemsRef.current;
+    const item=current.find(candidate=>candidate.id===id&&candidate.kind==="instrument");
+    // A peer can lock or remove an instrument while its pointer is captured.
+    // Re-check the current authoritative item, not the rendered gesture prop.
+    if(!canEdit||!item||item.locked)return;
+    commit(current.map(candidate=>candidate.id===id?{...candidate,...patch}:candidate));
   };
   const removeSharedInstrument=(id:string)=>{
-    commit(itemsRef.current.filter(item=>item.id!==id));
+    const current=itemsRef.current;
+    const item=current.find(candidate=>candidate.id===id&&candidate.kind==="instrument");
+    if(!canEdit||!item||item.locked)return;
+    commit(current.filter(candidate=>candidate.id!==id));
   };
   const visibleItems = useMemo(() => items.filter((item) => !item.hidden && item.kind !== "instrument"), [items]);
   // Same IDs, same z-order runs and same Canvas/DOM renderer. The network
@@ -8211,6 +8467,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     acknowledgedDocument.current = incomingFingerprint;
     acknowledgedSharedContent.current = incomingFingerprint;
     acknowledgedBoardData.current = data;
+    confirmAttachmentDecisions(data);
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
     remoteSaveFailures.current = 0;
@@ -8259,19 +8516,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         pendingCommittedCursors.current.delete(id);
       }
     };
-    // Real ink may reconcile while drawing or erasing; other gesture geometry
-    // still depends on its initial snapshot and must wait until release.
-    if (gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode)) {
-      if (!deferredRemote.current || row.version > deferredRemote.current.version)
-        deferredRemote.current = row;
-      return;
-    }
-    // Most live notifications echo a revision that the RPC has already ACKed.
-    // Reject stale/own versions and defer in-flight saves BEFORE calculating a
-    // full-board fingerprint or reconstructing its entire ink collection.
+    // Stale/own echoes cannot occupy the deferred slot during a gesture.
     const preliminary = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, false);
     if (preliminary === "ignore"){publishCommittedCursors();return;}
-    if (preliminary === "defer") {
+    // Real ink may reconcile while drawing or erasing; other gesture geometry
+    // still depends on its initial snapshot and must wait until release.
+    const gestureDefers=gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode);
+    if (preliminary === "defer"||gestureDefers) {
       if (!deferredRemote.current || row.version > deferredRemote.current.version) deferredRemote.current = row;
       return;
     }
@@ -8295,6 +8546,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         acknowledgedBoardData.current = data;
+        confirmAttachmentDecisions(data);
         return;
       }
       // Rebase the pre-erase undo snapshot as well as the visible model.
@@ -8311,6 +8563,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           remoteFingerprint === acknowledgedSharedContent.current) {
         remoteVersion.current = row.version;
         acknowledgedDocument.current = remoteFingerprint;
+        acknowledgedBoardData.current=data;
+        confirmAttachmentDecisions(data);
         return;
       }
       if (decision === "conflict") {
@@ -8321,6 +8575,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         // Rebase every unsaved local change on the last ACKNOWLEDGED version,
         // not just the special editors. This preserves fresh ink, eraser
         // deletions and moves while accepting independent remote changes.
+        const previousAcknowledgedItems=acknowledgedBoardData.current?expandDocumentInk(acknowledgedBoardData.current):[];
+        // If a peer locked the object while we were typing, discard only the
+        // unsaved text rather than send a new write to that locked object.
+        if(editing){
+          const locked=expandDocumentInk(remote).find(item=>item.id===editing&&item.locked);
+          if(locked)local.items=local.items.map(item=>item.id===editing?{...item,text:locked.text}:item);
+        }
         const merged=mergeBoardDocumentEdits(acknowledgedBoardData.current,local,remote);
         const mergedItems=expandDocumentInk(merged);
         for(const item of expandDocumentInk(remote))
@@ -8330,6 +8591,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         acknowledgedDocument.current = remoteFingerprint;
         acknowledgedSharedContent.current = remoteFingerprint;
         acknowledgedBoardData.current = remote;
+        confirmAttachmentDecisions(remote);
         pendingRemote.current = null;
         setRemoteConflict(null);
         setConflictLocalBackup(null);
@@ -8341,8 +8603,15 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         setSelected(current=>current.filter(id=>mergedIds.has(id)));
         if(editing){
           const edited=mergedItems.find(item=>item.id===editing);
-          if(!edited)setEditing(null);
-          else{draftRef.current=edited.text;setDraft(edited.text);}
+          const remoteEdited=expandDocumentInk(remote).find(item=>item.id===editing);
+          const previousText=previousAcknowledgedItems.find(item=>item.id===editing)?.text;
+          if(!edited||remoteEdited?.locked||(!remoteEdited&&previousText!==undefined)){
+            textEditSession.current=null;setEditing(null);
+          }else{
+            const session=textEditSession.current;
+            if(session?.id===editing&&remoteEdited)textEditSession.current=rebaseTextEdit(session,previousText,remoteEdited.text,edited.text);
+            draftRef.current=edited.text;setDraft(edited.text);
+          }
         }
         history.current=[eraserSession.current?.before??mergedItems];
         index.current=0;
@@ -8394,11 +8663,17 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             ? await selfhostReadDocument(boardSummary.id,controller.signal)
             : await getRemoteBoardDocument(boardSummary.id);
           if(cancelled)return;
-          if(!row)throw new Error("Серверный документ недоступен");
+          if(!row||row.board_id!==boardSummary.id||!Number.isSafeInteger(row.version)||
+             row.version<0||(!row.document&&row.version>0))
+            throw new Error("Серверный документ недоступен");
           if(row.document&&receiveRemote.current({
             board_id:row.board_id,version:row.version,document:row.document,
             updated_at:row.updated_at??"",updated_by:row.updated_by
           })===false)throw new Error("Серверная версия не применена");
+          // A deferred revision is not yet reconciled. Do not unlock input
+          // or flush queued local edits against a stale acknowledged version.
+          if(row.version>(remoteVersion.current??-1)&&!(row.version===0&&!row.document))
+            throw new Error("Ожидаем применения серверной версии");
         }
         boardResumePendingRef.current=false;
         setBoardResumePending(false);
@@ -8565,6 +8840,9 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
       }),
       !adminHidden,
       (mutation)=>{
+        // Versioned previews cannot overwrite a newer committed object or
+        // apply to a stale base. Legacy unversioned packets remain visual-only.
+        if(mutation.baseVersion!==undefined&&mutation.baseVersion!==(remoteVersion.current??0))return;
         const stored=getCurrentItemIndex(itemsRef.current).get(mutation.itemId);
         const liveLab=stored?.graphFigureId==="chem-experiment-free"&&!!stored.scienceLabBench;
         if(!stored||stored.locked||isInkItem(stored))return;
@@ -8638,6 +8916,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           return applied?next:current;
         });
       },
+      ()=>remoteVersion.current??0,
     );
     workChannel.current = channel;
     return () => {
@@ -8993,8 +9272,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
                 <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
-                {canEdit&&<><button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
-                <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button></>}
+                {canEdit&&<><button type="button" disabled={usePersonalUndo?!personalUndoAvailable():index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={usePersonalUndo?!personalRedoAvailable():index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button></>}
               </div>
               <div className="topbar-menu-section">
                 {canEdit&&!demoMode&&<button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>}
@@ -9023,7 +9302,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               if (!files.length) return;
               try {
                 for (let i = 0; i < files.length; i++) await addMediaFile(files[i], undefined, i * 24);
-                setNotice(files.length === 1 ? "Файл добавлен на доску" : `Добавлено файлов: ${files.length}`);
+                setNotice(isStudent?(files.length===1?"Вложение отправлено на согласование":`Отправлено на согласование: ${files.length}`):(files.length === 1 ? "Файл добавлен на доску" : `Добавлено файлов: ${files.length}`));
               } catch (error) {
                 setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
               }
@@ -9147,8 +9426,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
 
         {canEdit&&!presentation&&!objectEditorOpen&&<div className="mobile-undo-redo" role="group" aria-label="История изменений" onPointerDown={e=>e.stopPropagation()}>
           {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">{roleCapabilities.isGuestPreview||authUser.isGuest?"Гость · ученик":"Режим ученика"}</div>}
-          <button type="button" disabled={isStudent&&!isBoardOwner?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить" title={isStudent&&!isBoardOwner?"Отменить своё действие · Ctrl+Z":"Отменить · Ctrl+Z"}><Icon name="undo" size={19}/></button>
-          <button type="button" disabled={isStudent&&!isBoardOwner?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить" title={isStudent&&!isBoardOwner?"Повторить своё действие · Ctrl+Y":"Повторить · Ctrl+Y"}><Icon name="redo" size={19}/></button>
+          <button type="button" disabled={usePersonalUndo?!personalUndoAvailable():index.current === 0} onClick={() => undo(-1)} aria-label="Отменить" title={isStudent&&!isBoardOwner?"Отменить своё действие · Ctrl+Z":"Отменить · Ctrl+Z"}><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={usePersonalUndo?!personalRedoAvailable():index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить" title={isStudent&&!isBoardOwner?"Повторить своё действие · Ctrl+Y":"Повторить · Ctrl+Y"}><Icon name="redo" size={19}/></button>
         </div>}
         {presentation && (
           <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>
@@ -9386,14 +9665,13 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
             onCancel={()=>{setFractionEditorId(null);setPendingMathItem(null)}}
             onClose={draft=>{
               if(pendingMathItem?.id===fractionEditorId){setFractionEditorId(null);setPendingMathItem(null);return;}
-              commit(itemsRef.current.map(item=>item.id===fractionEditorId?{...item,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator}:item));
+              const origin=detachedEditorOrigin.current;
+              if(origin?.base.id===fractionEditorId)saveDetachedEditor(origin.base,{...origin.base,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator},false,["text","fractionMode","fractionNumerator","fractionDenominator"]);
               setFractionEditorId(null);
             }}
             onSave={draft=>{
-              commit((pendingMathItem?.kind==="fraction"&&pendingMathItem.id===fractionEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===fractionEditorId?{
-                ...item,text:draft.title.slice(0,100),fractionMode:draft.mode,
-                fractionNumerator:draft.numerator,fractionDenominator:draft.denominator
-              }:item));
+              const origin=detachedEditorOrigin.current;
+              if(origin?.base.id===fractionEditorId)saveDetachedEditor(origin.base,{...origin.base,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator},true,["text","fractionMode","fractionNumerator","fractionDenominator"]);
               setFractionEditorId(null);setPendingMathItem(null);
             }}
           />,document.body)}
@@ -9401,32 +9679,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {atomEditorItem&&<LektrusAtomEditor key={atomEditorItem.id} item={atomEditorItem}
           onCancel={()=>setAtomEditorItem(null)}
           onClose={next=>{
-            if(itemsRef.current.some(i=>i.id===next.id)){
-              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-              setNotice("Модель атома сохранена");
-            }
+            if(detachedEditorOrigin.current?.existing&&saveDetachedEditor(atomEditorItem,next,false,["text","scienceAtomModel","graphFigureId","graphPurpose","graphAxisMode","graphPoints","graphSegments","graphCircles","graphGrid"]))setNotice("Модель атома сохранена");
             setAtomEditorItem(null);
           }}
           onSave={next=>{
-            commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
-            setAtomEditorItem(null);setNotice("Модель атома добавлена");
+            if(saveDetachedEditor(atomEditorItem,next,true,["text","scienceAtomModel","graphFigureId","graphPurpose","graphAxisMode","graphPoints","graphSegments","graphCircles","graphGrid"]))setNotice("Модель атома сохранена");
+            setAtomEditorItem(null);
           }}/>}
         {periodicEditorItem&&<LektrusPeriodicTableEditor key={periodicEditorItem.id}
           item={periodicEditorItem}
           onCancel={()=>setPeriodicEditorItem(null)}
           onClose={next=>{
-            if(itemsRef.current.some(i=>i.id===next.id)){
-              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-              setNotice("Периодическая таблица обновлена");
-            }
+            if(detachedEditorOrigin.current?.existing&&saveDetachedEditor(periodicEditorItem,next,false,["text","sciencePeriodicHighlights","sciencePeriodicLayout","sciencePeriodicShowNames"]))setNotice("Периодическая таблица сохранена");
             setPeriodicEditorItem(null);
           }}
           onSave={next=>{
-            commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
+            if(saveDetachedEditor(periodicEditorItem,next,true,["text","sciencePeriodicHighlights","sciencePeriodicLayout","sciencePeriodicShowNames"]))setNotice("Периодическая таблица сохранена");
             setPeriodicEditorItem(null);
-            setNotice("Периодическая таблица добавлена на доску");
           }}/>}
         {circuitEditorItem&&<LektrusCircuitEditor key={circuitEditorItem.id}
           shared={items.some(x=>x.id===circuitEditorItem.id)}
@@ -9439,22 +9708,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
           item={remoteLiveItems[schoolEditorItem.id]??items.find(item=>item.id===schoolEditorItem.id)??schoolEditorItem}
           userId={authUser.id} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
-          existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
+          existing={detachedEditorOrigin.current?.base.id===schoolEditorItem.id&&detachedEditorOrigin.current.existing}
           onCancel={()=>setSchoolEditorItem(null)}
           onLiveChange={(before,next)=>{
             const latest=itemsRef.current.find(item=>item.id===schoolEditorItem.id);
-            if(!latest||latest.graphFigureId!=="contour-atlas"||
+            if(!canEdit||!latest||latest.graphFigureId!=="contour-atlas"||
               latest.schoolDiagram?.kind!=="atlas"||next.kind!=="atlas"||before.kind!=="atlas")return;
-            // Students can edit only their answers; never overwrite the
-            // teacher's assignment, territory, or permitted map layers.
-            const allowed=isStudent?new Set([
-              "contourMarks","contourStrokes","contourLegend","paintedCountries","contourCamera"
-            ]):null;
-            const submitted=allowed?{...before,...Object.fromEntries(
-              [...allowed].map(key=>[key,next[key as keyof typeof next]])
-            )}:next;
+            // Locking a contour worksheet protects placement, not its answer.
+            // Recheck edit permission and validate against the CURRENT source;
+            // a stale editor or realtime preview must not bypass the normal
+            // pupil response policy or send a malformed map to another client.
+            const submitted=isStudent?restrictStudentDiagramChange(before,next):next;
+            if(!submitted||submitted.kind!=="atlas")return;
             const merged=mergeEditedValue(before,submitted,latest.schoolDiagram);
-            const updated={...latest,schoolDiagram:merged,text:merged.title};
+            const allowed=isStudent?restrictStudentDiagramChange(latest.schoolDiagram,merged):merged;
+            if(!allowed||allowed.kind!=="atlas"||!isSchoolDiagram(allowed))return;
+            const updated={...latest,schoolDiagram:allowed,text:allowed.title};
+            if(JSON.stringify(updated)===JSON.stringify(latest))return;
             if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
             commit(itemsRef.current.map(item=>item.id===latest.id?updated:item) ,{publishLiveEdits:false});
             workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
@@ -9469,10 +9739,23 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {...saved,schoolDiagram:{...saved.schoolDiagram,
                 contourMarks:next.schoolDiagram.contourMarks,contourStrokes:next.schoolDiagram.contourStrokes,
                 contourLegend:next.schoolDiagram.contourLegend,paintedCountries:next.schoolDiagram.paintedCountries}}:next;
-            const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(updated),saved);
-            commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
-            setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
+            let merged=detachedEditorResult(schoolEditorItem,updated,true,["text","schoolDiagram"]);
+            if(merged?.schoolDiagram?.kind==="sentence-builder"&&saved?.schoolDiagram?.kind==="sentence-builder"&&
+               JSON.stringify(merged.schoolDiagram.parts)!==JSON.stringify(saved.schoolDiagram.parts)){
+              merged={...merged,schoolDiagram:{...merged.schoolDiagram,answerOrder:undefined,answerChecked:undefined}};
+            }
+            if(merged?.schoolDiagram?.kind==="geo-training"&&saved?.schoolDiagram?.kind==="geo-training"){
+              const a=merged.schoolDiagram,b=saved.schoolDiagram;
+              if(a.exercise!==b.exercise||a.relation!==b.relation||a.reverse!==b.reverse||JSON.stringify(a.countryCodes)!==JSON.stringify(b.countryCodes))
+                merged={...merged,schoolDiagram:{...a,practice:undefined}};
+            }
+            if(merged){
+              const fitted=fitLanguageFlashcardItem(fitGeoMatchingItem(merged),saved);
+              const current=itemsRef.current;
+              commit(saved?current.map(i=>i.id===next.id?fitted:i):[...current,fitted]);
+              setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
+            }else setNotice("Учебная схема удалена или заблокирована другим участником");
+            setSchoolEditorItem(null);
           }}/>}
         {subjectBoardSolution&&(()=>{
           const source=remoteLiveItems[subjectBoardSolution.boardId]??items.find(value=>value.id===subjectBoardSolution.boardId);
@@ -9481,7 +9764,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
           return <LektrusSubjectBoardSolutionEditor key={entry.id} tone={boardTone(source)} value={entry.workedSolution}
             initialGiven={entry.details?.given??entry.details?.expression??entry.details?.reaction??""}
             initialFind={entry.details?.find??""}
-            onChange={value=>patchSubjectBoardEntry(source.id,entry.id,{workedSolution:value})}
+            onChange={value=>patchSubjectBoardEntry(source.id,entry.id,{workedSolution:value},false,entry)}
             onClose={()=>setSubjectBoardSolution(null)}/>;
         })()}
         {subjectBoardEditor&&(()=>{
@@ -9499,10 +9782,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                 scienceReactionDomain:entry.domain??"inorganic"}}
               onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,{
                 steps:next.scienceReactionSteps??[],domain:next.scienceReactionDomain??"inorganic"
-              },true)} onSave={closeSubjectBoardEntry} onCancel={closeSubjectBoardEntry}/>;
+              },true,entry)} onSave={closeSubjectBoardEntry} onCancel={closeSubjectBoardEntry}/>;
           }
           return <LektrusSubjectBoardTaskEditor key={entry.id} tone={boardTone(boardItem)} entry={entry}
-            onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,next,true)}
+            onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,next,true,entry)}
             onDelete={()=>{removeSubjectBoardEntry(boardItem.id,entry.id);setSubjectBoardEditor(null)}}
             onClose={closeSubjectBoardEntry}/>;
         })()}
@@ -9548,8 +9831,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                  next.graphFigureId==="chem-experiment-free")
                 finalizePhysicalEditor(next,false);
               else{
-                commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-                setNotice("Изменения схемы сохранены");
+                if(saveDetachedEditor(scienceEditorItem,next,false,scienceEditorFields(scienceEditorItem,next)))setNotice("Изменения схемы сохранены");
               }
             }
             setScienceEditorItem(null);
@@ -9561,8 +9843,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               finalizePhysicalEditor(next,true);
               setNotice("Органическая структура синхронизирована");
             }else{
-              commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
-              setNotice("Предметная схема сохранена");
+              if(saveDetachedEditor(scienceEditorItem,next,true,scienceEditorFields(scienceEditorItem,next)))setNotice("Предметная схема сохранена");
             }
             setScienceEditorItem(null);
           }}/></Suspense>}</>}
@@ -9570,11 +9851,10 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
-            commit(itemsRef.current.some(x=>x.id===next.id)
-              ?itemsRef.current.map(x=>x.id===next.id?next:x)
-              :[...itemsRef.current,next]);
-            setSelected([next.id]);setChartEditorItem(null);setTool("select");
-            setNotice("Диаграмма сохранена");
+            if(saveDetachedEditor(chartEditorItem,next,true,["text","chartStyle","chartEntries"])){
+              setSelected([next.id]);setTool("select");setNotice("Диаграмма сохранена");
+            }
+            setChartEditorItem(null);
           }}/>,document.body)}
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
@@ -10034,7 +10314,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               // Equations have their own live chemical editor and independent
               // graph object. Keep the same editor for worksheet equations.
             }
-            const item=makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
+            const item=markDetachedEditor(makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId));
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
@@ -10062,7 +10342,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               setScienceEditorItem(item);
             }else{
               setPendingMathItem(item);
-              window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
+              window.setTimeout(()=>item.kind==="fraction"?openFractionEditor(item):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
             }
           }else{
             // Subject tools are never a shortcut to unrelated universal tools.
@@ -10705,20 +10985,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     setSelected([item.id]);
                     openFormulaEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "table") {
-                    setSelected([item.id]);
-                    setTableEditorId(item.id);
-                    setTableDraft({ rows: item.tableRows ?? 3, cols: item.tableCols ?? 3, cells: [...(item.tableCells ?? [])], header: item.tableHeader !== false, fontSize: item.fontSize ?? 13, align: item.tableAlign ?? "left", stripe: item.tableStripe === true, compact: item.tableCompact === true });
+                    openTableEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "checklist") {
                     setSelected([item.id]);
                     openChecklistEditor(item);
                   } else if ((tool === "select" || tool==="hand") && !space && item.kind==="graph" && item.graphFigureId==="contour-atlas") {
-                    setSelected([item.id]);setSchoolEditorItem(item);
+                    setSelected([item.id]);setSchoolEditorItem(markDetachedEditor(item));
 } else if (tool === "select" && !space && !item.locked && item.kind === "graph") {
                     setSelected([item.id]);
                     // Existing subject editors belong to collaborative pupils too.
                     // Do not require an undocumented geometry-only double-click.
                     openGraphEditor(item);
-                  } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); openFractionEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);
                     openQuizEditor(item);
@@ -10779,20 +11057,20 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   onAction={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     (mode,entryId)=>openSubjectBoardEntry(item,mode,entryId):undefined}
                   onAnswerChange={canEdit&&!item.locked&&!presentation?
-                    (entryId,answer)=>patchSubjectBoardEntry(item.id,entryId,{answer}):undefined}
+                    (entryId,answer)=>patchSubjectBoardEntry(item.id,entryId,{answer},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}
                   onReveal={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     entryId=>{const entry=item.subjectBoardEntries?.find(value=>value.id===entryId);
-                      if(entry)patchSubjectBoardEntry(item.id,entryId,{revealed:!entry.revealed},true);}:undefined}
+                      if(entry)patchSubjectBoardEntry(item.id,entryId,{revealed:!entry.revealed},true,entry);}:undefined}
                   onMove={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     (entryId,direction)=>moveSubjectBoardEntry(item.id,entryId,direction):undefined}
                   onEditSolution={canEdit&&!item.locked&&!presentation?
                     entryId=>openSubjectBoardSolution(item.id,entryId):undefined}
                   onWorkedSolutionChange={canEdit&&!item.locked&&!presentation?
-                    (entryId,solution)=>patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution}):undefined}
+                    (entryId,solution)=>patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}
                   onActivityAnswer={canEdit&&!item.locked&&!presentation?
-                    (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response}):undefined}
+                    (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}
                   onRussianWorkChange={canEdit&&!item.locked&&!presentation?
-                    (entryId,work)=>patchSubjectBoardEntry(item.id,entryId,{russianWork:work}):undefined}/>}
+                    (entryId,work)=>patchSubjectBoardEntry(item.id,entryId,{russianWork:work},false,item.subjectBoardEntries?.find(entry=>entry.id===entryId)):undefined}/>}
                 {item.kind==="graph"&&
                  (item.subjectBoardStandalone===true&&item.graphFigureId==="subject-board-chemistry"||
                   item.graphFigureId?.startsWith("chem-formula-"))&&
@@ -10812,10 +11090,12 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     item.graphFigureId==="chem-experiment-free"&&!!item.scienceLabBench&&tool==="select"?
                     (nextBench,simulationOnly=false)=>{
                       const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
-                      if(!latest||latest.locked)return;
+                      if(!canEdit||!latest||latest.locked||latest.graphFigureId!=="chem-experiment-free"||
+                         !latest.scienceLabBench||structurallyLockedForStudent(latest))return;
                       if(simulationOnly&&readLabBench(item).tableEpoch!==readLabBench(latest).tableEpoch)return;
                       const merged=mergeLabBench(readLabBench(item),nextBench,readLabBench(latest));
                       const updated={...latest,scienceLabBench:merged};
+                      if(JSON.stringify(merged)===JSON.stringify(latest.scienceLabBench))return;
                       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
                       commit(itemsRef.current.map(v=>v.id===latest.id?updated:v),
                         {labSimulation:simulationOnly,publishLiveEdits:false});
@@ -10844,7 +11124,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                   onMatchingSize={!isStudent&&canEdit&&!item.locked&&!presentation&&
                    item.graphFigureId==="geo-matching"?(width,height)=>{
                     const current=itemsRef.current.find(entry=>entry.id===item.id);
-                    if(!current||current.graphFigureId!=="geo-matching"||
+                    if(!canEdit||!current||current.locked||current.graphFigureId!=="geo-matching"||
                        current.schoolDiagram?.kind!=="geo-training"||current.schoolDiagram.exercise!=="matching")return;
                     const w=Math.round(width),h=Math.round(height);
                     if(!Number.isFinite(w)||!Number.isFinite(h)||w<300||w>1200||h<200||h>2200||
@@ -10885,9 +11165,18 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                     }:undefined}
                   onSchoolDiagramChange={canEdit&&!item.locked&&isSchoolDiagramId(item.graphFigureId)?(diagram)=>{
                     const before=itemsRef.current.find(candidate=>candidate.id===item.id);
-                    if(!before)return;
-                    const allowed=isStudent?restrictStudentDiagramChange(before.schoolDiagram,diagram):diagram;
-                    if(!allowed)return;
+                    if(!before||before.locked||before.graphFigureId!==item.graphFigureId||!before.schoolDiagram)return;
+                    const base=item.schoolDiagram;
+                    if(!base||base.kind!==diagram.kind||before.schoolDiagram.kind!==diagram.kind)return;
+                    // A response from a stale sentence must never change a new teacher assignment.
+                    if(diagram.kind==="sentence-builder"&&before.schoolDiagram.kind==="sentence-builder"&&
+                       JSON.stringify(diagram.parts)!==JSON.stringify(before.schoolDiagram.parts))return;
+                    if(diagram.kind==="geo-training"&&before.schoolDiagram.kind==="geo-training"&&
+                       (diagram.exercise!==before.schoolDiagram.exercise||diagram.relation!==before.schoolDiagram.relation||diagram.reverse!==before.schoolDiagram.reverse||
+                        JSON.stringify(diagram.countryCodes)!==JSON.stringify(before.schoolDiagram.countryCodes)))return;
+                    const merged=mergeEditedValue(base,diagram,before.schoolDiagram);
+                    const allowed=isStudent?restrictStudentDiagramChange(before.schoolDiagram,merged):merged;
+                    if(!allowed||!isSchoolDiagram(allowed))return;
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?
                       {...candidate,schoolDiagram:allowed}:candidate));
                   }:undefined}
@@ -10969,19 +11258,21 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
                       placeholder="Введите текст…"
                       onChange={(e) => {
                         draftRef.current = e.target.value;
+                        if(textEditSession.current?.id===item.id)
+                          textEditSession.current=updateTextEdit(textEditSession.current,e.target.value);
                         setDraft(e.target.value);
                         workChannel.current?.publishEdit(item.id,[{path:["text"],kind:"set",value:e.target.value}]);
                       }}
                       onPointerDown={(e) => e.stopPropagation()}
                       onPointerUp={(e) => e.stopPropagation()}
                       onDoubleClick={(e) => e.stopPropagation()}
-                      onBlur={finishEdit}
+                      onBlur={()=>finishEdit()}
                       onKeyDown={(e) => {
                         e.stopPropagation();
                         if (e.nativeEvent.isComposing) return;
                         if (e.code === "Escape") {
                           e.preventDefault();
-                          setEditing(null);
+                          finishEdit(true);
                         } else if (item.kind === "frame" && e.code === "Enter") {
                           e.preventDefault();
                           finishEdit();
@@ -11243,7 +11534,7 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
               {singleSelected?.kind === "cover" && !isStudent && !selectionLocked && (
                 <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
               )}
-              {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
+              {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>openFractionEditor(singleSelected)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
               {singleSelected?.kind==="graph"&&isSubjectBoard(singleSelected)&&
                 canEdit&&roleCapabilities.canUseTeacherTools&&!selectionLocked&&!singleSelected.locked&&(
                 <span className="graph-selection-controls lektrus-subject-board-controls">

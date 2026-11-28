@@ -101,14 +101,26 @@ const mobileGroupIds=groups.elements.flatMap(group=>{
   return id.text;
  });
 });
-const mobileDock=definition("mobileDockTools");
-assert.ok(ts.isArrayLiteralExpression(mobileDock));
-const shownIds=[...mobileGroupIds,...mobileDock.elements.map(x=>x.text),"hand"];
+// The dock now uses role-filtered, user-configurable pins, not a static list.
+const toolbar=read("src/lektrusBoardRolePreview.ts");
+const toolbarAst=ts.createSourceFile("toolbar.ts",toolbar,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+const defaultIds=name=>{
+ const declaration=toolbarAst.statements.flatMap(s=>ts.isVariableStatement(s)?[...s.declarationList.declarations]:[]).find(d=>ts.isIdentifier(d.name)&&d.name.text===name);
+ assert.ok(declaration?.initializer&&ts.isAsExpression(declaration.initializer));
+ const array=declaration.initializer.expression;
+ assert.ok(ts.isArrayLiteralExpression(array));
+ return array.elements.map(id=>{assert.ok(ts.isStringLiteral(id));return id.text;});
+};
+const touchDefaults=defaultIds("TOOLBAR_DEFAULT_TOUCH");
+const desktopDefaults=defaultIds("TOOLBAR_DEFAULT_DESKTOP");
+assert.match(app,/lectrisTouchDockTools=useMemo<Tool\[\]>\(\(\)=>\["select","lasso",\.\.\.lectrisPinned\]/);
+assert.match(app,/availablePinnedTools=useMemo<Tool\[\]>\(\(\)=>tools\.filter\(/);
+assert.match(app,/normalizeToolbarPins\(toolbarChoice.pinned,availablePinnedTools\)/);
+assert.match(app,/resolveToolbarPins\(saved,legacy,lectrisDefaultPinned,availablePinnedTools\)/);
+const shownIds=[...mobileGroupIds,...touchDefaults,...desktopDefaults,"select","lasso","hand"];
 for(const id of shownIds)assert.ok(registeredIds.includes(id),
  "The mobile dock would crash reading label for unregistered tool: "+id);
-const desktopSet=definition("primaryDesktopTools");
-assert.ok(ts.isNewExpression(desktopSet));
-assert.ok(!desktopSet.getText(parsed).includes('"hand"'),
+assert.ok(!desktopDefaults.includes("hand"),
  "Hand must remain touch-only, not a default PC toolbar tool");
 assert.ok(registeredIds.includes("hand")&&app.includes('case "hand": return'),
  "Hand must render its real icon, not just supply a label");

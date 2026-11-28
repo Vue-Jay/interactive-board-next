@@ -56,3 +56,11 @@ assert.ok(styles.includes(".lektrus-sentence-drag-preview"));
 assert.match(styles,/touch-action:none/,"Touch dragging must not turn into page scrolling");
 assert.match(styles,/cursor:grab/,"Use a drag affordance");
 console.log("Sentence reorder: mouse/touch pointer insertion slots, wrapped rows, duplicated labels, keyboard controls and drag styles: OK");
+
+const model={};
+new Function("exports",ts.transpileModule(read("src/lektrusLanguageSocialModel.ts"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(model);
+const sentence=model.newLanguageSocialDiagram("language-sentence-builder");
+const ids=sentence.parts.map(p=>p.id);
+assert.ok(model.validateLanguageSocialDiagram({...sentence,answerOrder:ids.slice().reverse(),answerChecked:true}));
+assert.ok(!model.validateLanguageSocialDiagram({...sentence,answerOrder:ids.map(()=>ids[0]),answerChecked:true}));
+assert.ok(!model.validateLanguageSocialDiagram({...sentence,answerOrder:ids,answerChecked:"true"}));

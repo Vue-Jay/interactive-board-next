@@ -85,3 +85,13 @@ export function mergeBoardDocumentEdits(
   ink:undefined,
  });
 }
+
+/** Detached editors may save only their own fields, and only explicitly new
+ * drafts can be inserted. Existing deleted objects must stay deleted. */
+export function mergeDetachedBoardItem(base:Item,edited:Item,latest:Item|undefined,allowCreate:boolean,fields:readonly (keyof Item)[]):Item|null{
+ if(base.id!==edited.id||base.kind!==edited.kind)return null;
+ if(!latest)return allowCreate?edited:null;
+ if(latest.id!==base.id||latest.kind!==base.kind||latest.locked)return null;
+ const patch=Object.fromEntries(fields.map(field=>[field,edited[field]]));
+ return mergeEditedValue(base,{...base,...patch},latest);
+}

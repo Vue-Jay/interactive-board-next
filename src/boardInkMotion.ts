@@ -40,6 +40,17 @@ function samePoints(a:Point[],b:Point[]):boolean{
   return a===b||a.length===b.length&&a.every((p,i)=>p.x===b[i].x&&p.y===b[i].y);
 }
 const round=(n:number)=>Math.round(n*100)/100;
+// Only drawing gestures grow the same permanent ID. Compare world points,
+// not the moving bounding box used by the normalized ink representation.
+function savedContainsDrawingPrefix(saved:MotionShape|undefined,preview:MotionShape|null):boolean{
+ if(!saved||!preview||saved.kind==="sticky"||preview.kind==="sticky"||saved.kind!==preview.kind||
+    saved.id!==preview.id||saved.color!==preview.color||saved.weight!==preview.weight||
+    (saved.rotation??0)!==(preview.rotation??0)||!!saved.hidden!==!!preview.hidden||
+    !!saved.locked!==!!preview.locked||saved.groupId!==preview.groupId||
+    saved.createdBy!==preview.createdBy||saved.points.length<=preview.points.length)return false;
+ return preview.points.every((p,i)=>round(p.x+preview.x)===round(saved.points[i].x+saved.x)&&
+   round(p.y+preview.y)===round(saved.points[i].y+saved.y));
+}
 function compact(old:MotionShape|undefined,next:MotionShape):MotionShape|Tail{
   if(!old||old.kind==="sticky"||next.kind==="sticky"||old.kind!==next.kind||
       old.color!==next.color||old.weight!==next.weight||old.rotation!==next.rotation||old.hidden!==next.hidden||
@@ -78,6 +89,22 @@ export function inkMotionChanges(before:Item[],after:Item[]):Omit<FullChange,"se
 export function createInkMotionSender(clientId:string,send:Send,enabled:()=>boolean,version:()=>number){
   let seq=0,lastSentAt=0,lastAck=0,lastGesture="",position:Point={x:0,y:0};
   let timer:ReturnType<typeof setTimeout>|undefined;
+  let ackTimer:ReturnType<typeof setTimeout>|undefined;
+  let quietReplay:ReturnType<typeof setTimeout>|undefined;
+  const cancelQuietReplay=()=>{clearTimeout(quietReplay);quietReplay=undefined;};
+  let pendingAck:InkMotionAck|undefined,ackFailures=0;
+  const flushAck=()=>{
+    clearTimeout(ackTimer);ackTimer=undefined;
+    if(!pendingAck||!enabled()){pendingAck=undefined;ackFailures=0;return;}
+    if(send(pendingAck)){
+      lastAck=Math.max(lastAck,pendingAck.seq);
+      pendingAck=undefined;ackFailures=0;return;
+    }
+    // A full socket buffer may reject the final watermark even though the
+    // durable revision succeeded. Retry without needing another user edit.
+    if(++ackFailures<=6)ackTimer=setTimeout(flushAck,Math.min(100*2**(ackFailures-1),1000));
+    else{pendingAck=undefined;ackFailures=0;}
+  };
   const queue=new Map<string,FullChange>(),wire=new Map<string,MotionShape>();
   const watermarks=new WeakMap<Item[],number>();
   let sends=0;
@@ -96,6 +123,17 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
       }
       while(wire.size>64)wire.delete(wire.keys().next().value!);
       sends++;
+      // A lost final motion packet has no subsequent pointer sample to repair
+      // it. On a quiet edge, replay the full (not tail-delta) state once. The
+      // envelope gets a fresh sequence, but each change keeps its original
+      // watermark: a durable ACK can still retire it, and stale base versions
+      // remain subject to the receiver\'s tombstone/conflict rules.
+      cancelQuietReplay();
+      const full={...packet,changes:all};
+      if(JSON.stringify(full).length<105000)quietReplay=setTimeout(()=>{
+        quietReplay=undefined;
+        if(enabled()&&!queue.size&&seq===packet.seq)send({...full,seq:++seq});
+      },90);
     }else wire.clear();
     queue.clear();lastSentAt=Date.now();
   };
@@ -111,6 +149,7 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
       if(queue.size&&lastGesture!==gesture)flush();
       const changes=inkMotionChanges(before,after);
       if(!changes.length){watermarks.set(after,seq);return false;}
+      cancelQuietReplay();
       seq++;lastGesture=gesture;position=cursor;
       for(const change of changes){queue.delete(change.id);queue.set(change.id,{...change,seq});}
       if(queue.size>MAX_CHANGES){queue.clear();wire.clear();return false;}
@@ -120,9 +159,12 @@ export function createInkMotionSender(clientId:string,send:Send,enabled:()=>bool
     ack(items:Item[],savedVersion:number){
       const watermark=watermarks.get(items)??0;
       if(watermark<=lastAck||!enabled())return;
-      if(send({type:"ink_motion_ack",client_id:clientId,seq:watermark,version:savedVersion}))lastAck=watermark;
+      if(pendingAck&&watermark<pendingAck.seq)return;
+      pendingAck={type:"ink_motion_ack",client_id:clientId,seq:watermark,version:savedVersion};
+      if(ackTimer===undefined)flushAck();
     },
-    reset(){clearTimeout(timer);timer=undefined;queue.clear();wire.clear();lastSentAt=0;},
+    reset(){clearTimeout(timer);clearTimeout(ackTimer);cancelQuietReplay();timer=undefined;ackTimer=undefined;
+      pendingAck=undefined;ackFailures=0;queue.clear();wire.clear();lastSentAt=0;},
   };
 }
 type Pending=FullChange&{gesture:string;base:number;order:number};
@@ -163,7 +205,8 @@ export function createInkMotionLedger(){
             if(entry.base>=nextVersion)continue;
             const old=authoritative.get(id),now=next.get(id);
             const oldShape=old?shape(old):undefined,newShape=now?shape(now):undefined;
-            if(entry.value&&same(entry.value,newShape)||!entry.value&&old&&!now){
+            if(entry.value&&same(entry.value,newShape)||!entry.value&&old&&!now||
+              entry.gesture===id&&savedContainsDrawingPrefix(newShape,entry.value)){
               peer.pending.delete(id);changed=true;continue;
             }
             // A competing authoritative deletion/edit wins over every
@@ -213,7 +256,8 @@ export function createInkMotionLedger(){
         }else peer.wire.delete(change.id);
         if(change.seq<=peer.ack)continue;
         const saved=authoritative.get(change.id);
-        if(value&&saved&&same(value,shape(saved))){
+        if(value&&saved&&(same(value,shape(saved))||
+          event.base_version<version&&event.gesture===change.id&&savedContainsDrawingPrefix(shape(saved),value))){
           if(peer.pending.delete(change.id))changed=true;
           continue;
         }

@@ -1,11 +1,11 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
-import { isSelfhostBackendEnabled, selfhostSubscribeBoard } from "./selfhostApi";
+import { isSelfhostBackendEnabled, selfhostSubscribeBoard, selfhostListAttachmentApprovals, type SelfhostLiveEvent } from "./selfhostApi";
 
 export type AttachmentApprovalRequest={
   requestId:string; studentId:string; studentName:string; assetId:string; name:string; mime:string;
-  kind:"image"|"pdf"; width:number; height:number; sentAt:number;
+  kind:"image"|"pdf"; width:number; height:number; sentAt:number; durable?:boolean;
 };
-export type AttachmentApprovalResult={requestId:string;studentId:string;approved:boolean;name:string};
+export type AttachmentApprovalResult={requestId:string;studentId:string;approved:boolean;name:string;durable?:boolean};
 
 export type AttachmentApprovalChannel={
   request:(payload:AttachmentApprovalRequest)=>void;
@@ -21,31 +21,86 @@ export function connectAttachmentApprovalChannel(
 ):AttachmentApprovalChannel{
  if(isSelfhostBackendEnabled()){
   let ready=false,stopped=false;
-  const queue:Array<{type:"attachment_request"|"attachment_result";payload:Record<string,unknown>}>= [];
-  const channel=selfhostSubscribeBoard(boardId,()=>{},status=>{
-   ready=status==="online";
-   if(ready)while(queue.length){
-    const next=queue.shift()!;
-    channel.sendEvent({type:next.type,...next.payload});
+  let retry:ReturnType<typeof setTimeout>|undefined;
+  type Queued={type:"attachment_request"|"attachment_result";payload:Record<string,unknown>};
+  // A periodic student retry is the same logical request, not another queue
+  // entry. Keep unsuccessful transport writes until a subsequent flush.
+  const queue=new Map<string,Queued>();
+  let lastSent=0;
+  const flush=()=>{
+   clearTimeout(retry);retry=undefined;
+   if(stopped||!ready||!queue.size)return;
+   // The server accepts at most eight attachment events per second. A
+   // backlog after reconnect must not trigger its abuse/disconnect limit.
+   const wait=160-(Date.now()-lastSent);
+   if(wait>0){retry=setTimeout(flush,wait);return;}
+   const [key,next]=queue.entries().next().value!;
+   if(!channel.sendEvent({type:next.type,...next.payload})){
+    retry=setTimeout(flush,500);return;
    }
-  },event=>{
+   lastSent=Date.now();
+   queue.delete(key);
+   if(queue.size)retry=setTimeout(flush,160);
+  };
+  let snapshotAbort:AbortController|undefined;
+  let snapshotRetry:ReturnType<typeof setTimeout>|undefined;
+  let snapshotFailures=0;
+  const stopRecovery=()=>{clearTimeout(snapshotRetry);snapshotRetry=undefined;snapshotAbort?.abort();snapshotFailures=0;};
+  const resolved=new Set<string>();
+  const handle=(event:SelfhostLiveEvent)=>{
    if(event.type==="attachment_request"){
+    if(resolved.has(event.request_id))return;
     onRequest({
      requestId:event.request_id,studentId:event.user_id,studentName:event.name,
      assetId:event.asset_id,name:event.attachment_name,mime:event.mime,
-     kind:event.kind,width:event.width,height:event.height,sentAt:event.sent_at,
+     kind:event.kind,width:event.width,height:event.height,sentAt:event.sent_at,durable:event.durable,
     });
-   }else if(event.type==="attachment_result"&&event.target_user_id===me.userId){
+   }else if(event.type==="attachment_result"&&(event.target_user_id===me.userId||event.durable===true)){
+    if(event.durable){
+     resolved.add(event.request_id);
+     if(resolved.size>1000){const first=resolved.values().next().value;if(first!==undefined)resolved.delete(first)}
+    }
     onResult({
      requestId:event.request_id,studentId:event.target_user_id,
-     approved:event.approved,name:event.attachment_name,
+     approved:event.approved,name:event.attachment_name,durable:event.durable,
     });
    }
-  });
+  };
+  const recover=()=>{
+   clearTimeout(snapshotRetry);snapshotRetry=undefined;
+   if(stopped||!ready)return;
+   snapshotAbort?.abort();
+   const controller=new AbortController();snapshotAbort=controller;
+   void selfhostListAttachmentApprovals(boardId,controller.signal).then(snapshot=>{
+    if(stopped||!ready||controller.signal.aborted)return;
+    snapshotFailures=0;
+    // Apply decisions first so an older pending snapshot cannot reopen one.
+    for(const result of snapshot.results)handle(result);
+    for(const request of snapshot.requests)handle(request);
+   }).catch((error:unknown)=>{
+    if(stopped||!ready||controller.signal.aborted)return;
+    const status=typeof error==="object"&&error!==null&&"status" in error?Number(error.status):0;
+    // Do not poll legacy endpoints or retry permanent permission/client errors.
+    if(status>=400&&status<500&&status!==408&&status!==425&&status!==429)return;
+    // A healthy socket does not imply a healthy HTTP request. A pending
+    // approval can outlive its sender, so recover the ledger independently.
+    const delay=Math.min(500*2**Math.min(snapshotFailures++,6),30000);
+    snapshotRetry=setTimeout(recover,delay);
+   });
+  };
+  const channel=selfhostSubscribeBoard(boardId,()=>{},status=>{
+   ready=status==="online";
+   if(ready){flush();recover();}
+   else{clearTimeout(retry);retry=undefined;stopRecovery();}
+  },handle);
   const send=(type:"attachment_request"|"attachment_result",payload:Record<string,unknown>)=>{
    if(stopped)return;
-   if(!ready){queue.push({type,payload});if(queue.length>20)queue.shift();return}
-   channel.sendEvent({type,...payload});
+   const key=type+":"+String(payload.request_id);
+   queue.set(key,{type,payload});
+   // The per-request application retry remains the authoritative recovery
+   // path when this bounded transport queue is full.
+   while(queue.size>200){const oldest=queue.keys().next().value;if(oldest===undefined)break;queue.delete(oldest)}
+   if(ready)flush();
   };
   return{
    request:p=>send("attachment_request",{
@@ -55,7 +110,7 @@ export function connectAttachmentApprovalChannel(
    result:p=>send("attachment_result",{
     request_id:p.requestId,target_user_id:p.studentId,approved:p.approved,name:p.name,
    }),
-   close:()=>{stopped=true;queue.length=0;channel()},
+   close:()=>{stopped=true;clearTimeout(retry);stopRecovery();queue.clear();channel()},
   };
  }
  if(!isRemoteBackendEnabled())return{request:()=>{},result:()=>{},close:()=>{}};

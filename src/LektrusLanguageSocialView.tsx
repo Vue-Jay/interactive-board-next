@@ -10,21 +10,32 @@ type WordGesture={
 };
 type WordPreview={id:string;left:number;top:number;width:number};
 
-function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-builder"}>}){
- const key=d.parts.map(p=>p.id+"="+p.text).join("|");
+type SentenceDiagram=Extract<LanguageSocialDiagram,{kind:"sentence-builder"}>;
+function SentenceBoard({d,onChange}:{d:SentenceDiagram;onChange?:(next:SentenceDiagram)=>void}){
+ const key=JSON.stringify(d.parts.map(p=>[p.id,p.text]));
  const initial=useMemo(()=>initialScramble(d.parts),[key]);
- const [order,setOrder]=useState<string[]>(initial);
- const [checked,setChecked]=useState(false);
+ const sharedKey=JSON.stringify(d.answerOrder??null);
+ const [order,setOrder]=useState<string[]>(d.answerOrder??initial);
+ const [checked,setChecked]=useState(d.answerChecked===true);
+ const orderRef=useRef(order);
+ const updateAnswer=useRef<(next:string[],complete:boolean)=>void>(()=>{});
+ updateAnswer.current=(next,complete)=>{
+  orderRef.current=next;setOrder(next);setChecked(complete);
+  onChange?.({...d,answerOrder:next,answerChecked:complete});
+ };
  const [preview,setPreview]=useState<WordPreview|null>(null);
  const partsRef=useRef<HTMLDivElement|null>(null);
  const gestureRef=useRef<WordGesture|null>(null);
  const dropSlotRef=useRef<number|null>(null);
  useEffect(()=>{
-  gestureRef.current=null;dropSlotRef.current=null;setOrder(initial);setChecked(false);setPreview(null);
+  gestureRef.current=null;dropSlotRef.current=null;setPreview(null);
  },[initial]);
+ useEffect(()=>{
+  const next=d.answerOrder??initial;orderRef.current=next;setOrder(next);setChecked(d.answerChecked===true);
+ },[initial,sharedKey,d.answerChecked]);
  const dictionary=new Map(d.parts.map(p=>[p.id,p]));
  const correct=d.parts.every((p,i)=>order[i]===p.id);
- const reset=()=>{gestureRef.current=null;dropSlotRef.current=null;setPreview(null);setOrder([...initial]);setChecked(false)};
+ const reset=()=>{gestureRef.current=null;dropSlotRef.current=null;setPreview(null);updateAnswer.current([...initial],false)};
  const stop=(event:SyntheticEvent)=>event.stopPropagation();
  const pattern=sentencePatternById(d.patternId);
 
@@ -43,7 +54,6 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
     .filter(element=>element.dataset.sentenceWord!==gesture.id);
    dropSlotRef.current=sentenceWordDropSlot(event.clientX,event.clientY,
     siblings.map(element=>element.getBoundingClientRect()));
-   setChecked(false);
   };
   const finish=(event:PointerEvent)=>{
    const gesture=gestureRef.current;
@@ -52,7 +62,7 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
    const slot=dropSlotRef.current;
    dropSlotRef.current=null;
    if(event.type==="pointerup"&&gesture.active&&slot!==null)
-    setOrder(moveSentenceWord(gesture.origin,gesture.id,slot));
+    updateAnswer.current(moveSentenceWord(orderRef.current,gesture.id,slot),false);
    setPreview(null);
   };
   window.addEventListener("pointermove",move,{capture:true,passive:false});
@@ -94,7 +104,6 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   // can dispatch lostpointercapture before pointerup. Keep the DOM stable
   // until release, then apply the insertion exactly once.
   dropSlotRef.current=slot;
-  setChecked(false);
  };
  const endDrag=(event:ReactPointerEvent<HTMLButtonElement>,cancel=false)=>{
   const gesture=gestureRef.current;
@@ -104,7 +113,7 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
   const slot=dropSlotRef.current;
   dropSlotRef.current=null;
   if(!cancel&&gesture.active&&slot!==null)
-   setOrder(moveSentenceWord(gesture.origin,gesture.id,slot));
+   updateAnswer.current(moveSentenceWord(orderRef.current,gesture.id,slot),false);
   setPreview(null);
   if(event.currentTarget.hasPointerCapture(event.pointerId))
    event.currentTarget.releasePointerCapture(event.pointerId);
@@ -121,8 +130,7 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
    event.key==="Home"?0:event.key==="End"?order.length-1:at;
   if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key)||at<0)return;
   event.preventDefault();event.stopPropagation();
-  setOrder(current=>moveSentenceWord(current,id,next));
-  setChecked(false);
+  updateAnswer.current(moveSentenceWord(orderRef.current,id,next),false);
  };
  return <>
   <div className="lektrus-sentence-on-board" role="group" aria-label={d.title} data-board-interactive="true"
@@ -145,12 +153,13 @@ function SentenceBoard({d}:{d:Extract<LanguageSocialDiagram,{kind:"sentence-buil
     </button>)}
    </div>
    <div className="lektrus-sentence-status" role="status" aria-live="polite">
-    {checked?(correct?"Правильно! Порядок совпадает с заданным преподавателем.":"Есть неточности. Попробуйте ещё раз."):
-     preview?"Переместите слово на нужное место и отпустите.":"Перетаскивайте слова, чтобы собрать предложение. Можно использовать стрелки клавиатуры."}
+    {preview?"Переместите слово на нужное место и отпустите.":
+     checked?(correct?"Правильно! Порядок совпадает с заданным преподавателем.":"Есть неточности. Попробуйте ещё раз."):
+     "Перетаскивайте слова, чтобы собрать предложение. Можно использовать стрелки клавиатуры."}
    </div>
    <div className="lektrus-sentence-actions">
     <button type="button" onClick={reset}>Заново</button>
-    <button type="button" onClick={()=>setChecked(true)}>Проверить</button>
+    <button type="button" onClick={()=>updateAnswer.current(orderRef.current,true)}>Проверить</button>
    </div>
    {d.showKey&&<div className="lektrus-sentence-key">
     <small>Ответ преподавателя:</small> {d.parts.map(p=>p.text).join(" ")}
@@ -220,6 +229,6 @@ function CivicsView({d}:{d:Extract<LanguageSocialDiagram,{kind:"state-structure"
   </text>
  </svg>;
 }
-export default function LektrusLanguageSocialView({diagram}:{diagram:LanguageSocialDiagram}){
- return diagram.kind==="sentence-builder"?<SentenceBoard d={diagram}/>:<CivicsView d={diagram}/>;
+export default function LektrusLanguageSocialView({diagram,onChange}:{diagram:LanguageSocialDiagram;onChange?:(next:LanguageSocialDiagram)=>void}){
+ return diagram.kind==="sentence-builder"?<SentenceBoard d={diagram} onChange={onChange}/>:<CivicsView d={diagram}/>;
 }

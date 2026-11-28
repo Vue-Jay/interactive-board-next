@@ -8,7 +8,25 @@ export type GeoRelation="flag-country"|"country-capital"|"outline-country";
 export type GeoDifficulty="easy"|"medium"|"hard";
 export type GeoSelectionDifficulty=GeoDifficulty|"custom";
 export type GeoTrainingDiagram={kind:"geo-training";title:string;exercise:GeoExercise;
- relation:GeoRelation;reverse:boolean;countryCodes:string[];difficulty?:GeoSelectionDifficulty};
+ relation:GeoRelation;reverse:boolean;countryCodes:string[];difficulty?:GeoSelectionDifficulty;practice?:GeoPractice};
+export type GeoPractice={order:string[];matched:string[];wrong:number;index:number;revealed:boolean;known:string[];selected:{side:"left"|"right";code:string}|null;feedback:""|"correct"|"wrong"};
+export function validGeoPractice(value:unknown,codes:readonly string[]):boolean{
+ if(value===undefined)return true;
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const p=value as Record<string,unknown>;
+ const keys=["order","matched","wrong","index","revealed","known","selected","feedback"];
+ if(Object.keys(p).length!==keys.length||Object.keys(p).some(k=>!keys.includes(k)))return false;
+ const subset=(v:unknown):v is string[]=>Array.isArray(v)&&new Set(v).size===v.length&&v.every(c=>typeof c==="string"&&codes.includes(c));
+ if(!subset(p.order)||p.order.length!==codes.length||!subset(p.matched)||!subset(p.known)||
+    typeof p.wrong!=="number"||!Number.isInteger(p.wrong)||p.wrong<0||p.wrong>10000||
+    typeof p.index!=="number"||!Number.isInteger(p.index)||p.index<0||p.index>=codes.length||
+    typeof p.revealed!=="boolean"||typeof p.feedback!=="string"||!["","correct","wrong"].includes(p.feedback))return false;
+ if(p.selected===null)return true;
+ if(!p.selected||typeof p.selected!=="object"||Array.isArray(p.selected))return false;
+ const selected=p.selected as Record<string,unknown>;
+ return Object.keys(selected).length===2&&(selected.side==="left"||selected.side==="right")&&
+   typeof selected.code==="string"&&codes.includes(selected.code)&&!p.matched.includes(selected.code);
+}
 export type GeoCountry={code:string;name:string;capital:string;region:GeoRegion;note?:string;difficulty:GeoDifficulty};
 const countryNames=regionDisplayNames("ru");
 const overrides:Record<string,string>={
@@ -306,5 +324,5 @@ export function validGeoTraining(value:unknown):value is GeoTrainingDiagram{
   typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
   d.countryCodes.length>=2&&d.countryCodes.length<=12&&
   d.countryCodes.every(code=>typeof code==="string"&&countryByIso.has(code))&&
-  new Set(d.countryCodes).size===d.countryCodes.length;
+  new Set(d.countryCodes).size===d.countryCodes.length&&validGeoPractice(d.practice,d.countryCodes as string[]);
 }

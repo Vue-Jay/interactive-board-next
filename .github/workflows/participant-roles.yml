@@ -24,7 +24,7 @@ permissions:
 jobs:
   browser:
     name: Participant roles and touch UI — round ${{ matrix.round }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -46,6 +46,7 @@ jobs:
       LEKTRUS_ALLOWED_ORIGINS: http://127.0.0.1:5173
       LEKTRUS_JWT_SECRET: CI-only-not-for-production-random-string-1234567890
       LEKTRUS_APPLY_SCHEMA: 'true'
+      LEKTRUS_ASSETS_DIR: /tmp/lektrus-participant-roles-assets
       VITE_LEKTRUS_BACKEND: selfhost
       VITE_LEKTRUS_API_ORIGIN: http://127.0.0.1:8000
     steps:
@@ -64,7 +65,7 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - name: Verify actual API and browser under all participant roles
         run: |
-          mkdir -p artifacts/participant-roles
+          mkdir -p artifacts/participant-roles "$LEKTRUS_ASSETS_DIR"
           python -m uvicorn app:app --app-dir server --host 127.0.0.1 --port 8000 > artifacts/participant-roles/api.log 2>&1 &
           API_PID=$!
           npm run dev -- --host 127.0.0.1 > artifacts/participant-roles/vite.log 2>&1 &
@@ -86,7 +87,7 @@ jobs:
 
   production-browser:
     name: Read-only live browser and API connectivity
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4

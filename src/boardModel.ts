@@ -1,3 +1,14 @@
+function validFlashcardResponse(value:unknown,count:number):boolean{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const r=value as Record<string,unknown>;
+ return Object.keys(r).length===2&&typeof r.index==="number"&&Number.isInteger(r.index)&&r.index>=0&&r.index<count&&typeof r.revealed==="boolean";
+}
+function validOrthographyResponse(value:unknown,questions:readonly {options:readonly unknown[]}[]):boolean{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const r=value as Record<string,unknown>;
+ return Object.keys(r).length===3&&typeof r.index==="number"&&Number.isInteger(r.index)&&r.index>=0&&r.index<questions.length&&typeof r.checked==="boolean"&&
+ (r.picked===null?!r.checked:typeof r.picked==="number"&&Number.isInteger(r.picked)&&r.picked>=0&&r.picked<questions[r.index].options.length);
+}
 /** Self-contained persisted circuit validation.
  * Keep this module import-free for whiteboard persistence and ink tests. */
 /** Validate persisted mechanics without importing any rendering modules. */
@@ -72,6 +83,23 @@ function validOpticsPayload(data:unknown):boolean{
  return true;
 }
 /** Import-free validation prevents corrupt school objects from breaking board loads. */
+function validGeoPractice(value:unknown,codes:readonly string[]):boolean{
+ if(value===undefined)return true;
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const p=value as Record<string,unknown>;
+ const keys=["order","matched","wrong","index","revealed","known","selected","feedback"];
+ if(Object.keys(p).length!==keys.length||Object.keys(p).some(k=>!keys.includes(k)))return false;
+ const subset=(v:unknown):v is string[]=>Array.isArray(v)&&new Set(v).size===v.length&&v.every(c=>typeof c==="string"&&codes.includes(c));
+ if(!subset(p.order)||p.order.length!==codes.length||!subset(p.matched)||!subset(p.known)||
+    typeof p.wrong!=="number"||!Number.isInteger(p.wrong)||p.wrong<0||p.wrong>10000||
+    typeof p.index!=="number"||!Number.isInteger(p.index)||p.index<0||p.index>=codes.length||
+    typeof p.revealed!=="boolean"||typeof p.feedback!=="string"||!["","correct","wrong"].includes(p.feedback))return false;
+ if(p.selected===null)return true;
+ if(!p.selected||typeof p.selected!=="object"||Array.isArray(p.selected))return false;
+ const selected=p.selected as Record<string,unknown>;
+ return Object.keys(selected).length===2&&(selected.side==="left"||selected.side==="right")&&
+   typeof selected.code==="string"&&codes.includes(selected.code)&&!p.matched.includes(selected.code);
+}
 function validSchoolTeachingDiagram(value:unknown):boolean{
  if(!value||typeof value!=="object")return false;
  const d=value as Record<string,unknown>;
@@ -140,7 +168,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
    d.countryCodes.length>=2&&d.countryCodes.length<=12&&
    d.countryCodes.every((code:unknown)=>typeof code==="string"&&/^[A-Z]{2}$/.test(code))&&
-   new Set(d.countryCodes).size===d.countryCodes.length;
+   new Set(d.countryCodes).size===d.countryCodes.length&&validGeoPractice(d.practice,d.countryCodes as string[]);
  }
  if(d.kind==="organs"){
   if(d.system!=="digestive"&&d.system!=="respiratory"||!Array.isArray(d.labels))return false;
@@ -211,7 +239,10 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    !Array.isArray(d.parts)||d.parts.length<2||d.parts.length>24)return false;
   const parts=d.parts as Record<string,unknown>[];
   return parts.every(p=>p&&typeof p==="object"&&field(p.id,64)&&field(p.text,65))&&
-   new Set(parts.map(p=>p.id)).size===parts.length;
+   new Set(parts.map(p=>p.id)).size===parts.length&&
+   (d.answerOrder===undefined||Array.isArray(d.answerOrder)&&d.answerOrder.length===parts.length&&
+    new Set(d.answerOrder).size===parts.length&&d.answerOrder.every(id=>typeof id==="string"&&parts.some(p=>p.id===id)))&&
+   (d.answerChecked===undefined||typeof d.answerChecked==="boolean");
  }
  if(d.kind==="state-structure"){
   if(typeof d.subtitle!=="string"||d.subtitle.length>160||
@@ -288,7 +319,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    new Set((q.options as string[]).filter(o=>o.trim()).map(o=>o.trim())).size===q.options.filter(o=>typeof o==="string"&&o.trim()).length&&
    Number.isInteger(q.correct)&&(q.correct as number)>=0&&(q.correct as number)<q.options.length&&
    typeof q.explanation==="string"&&q.explanation.length<=250)&&
-   new Set(questions.map(q=>q.id)).size===questions.length;
+   new Set(questions.map(q=>q.id)).size===questions.length&&(d.response===undefined||validOrthographyResponse(d.response,questions as {options:unknown[]}[]));
  }
  if(d.kind==="morphemes"){
   if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
@@ -342,7 +373,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
   const cards=d.cards as Record<string,unknown>[];
   return cards.every(c=>c&&typeof c==="object"&&field(c.id,64)&&field(c.term,65)&&
    field(c.translation,80)&&typeof c.transcription==="string"&&c.transcription.length<=75)&&
-   new Set(cards.map(c=>c.id)).size===cards.length;
+   new Set(cards.map(c=>c.id)).size===cards.length&&(d.response===undefined||validFlashcardResponse(d.response,cards.length));
  }
  if(d.kind==="cell"){
   const types=["plant","animal"];

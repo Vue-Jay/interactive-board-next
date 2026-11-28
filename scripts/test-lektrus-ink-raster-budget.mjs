@@ -137,3 +137,100 @@ for(const kind of ["pen","marker"]){
  assert.ok(changedInkBounds(original,undefined,1).right>=1000,"Deleted stroke clears all of its previous pixels");
 }
 console.log("Permanent raster: changed world-coordinate tail only; marker joins, translated bounds and deletion verified.");
+
+// Execute the actual motion sender with a rejected final acknowledgement.
+{
+ const motion={};
+ new Function("exports",ts.transpileModule(read("boardInkMotion.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(motion);
+ let failures=2,enabled=true;
+ const attempts=[],delivered=[];
+ const sender=motion.createInkMotionSender("test",packet=>{
+  if(packet.type==="ink_motion_ack"){
+   attempts.push(packet);
+   if(failures>0){failures--;return false;}
+  }
+  delivered.push(packet);return true;
+ },()=>enabled,()=>1);
+ const stroke={id:"ink",kind:"pen",text:"",x:0,y:0,width:10,height:10,points:[{x:0,y:0},{x:10,y:10}]};
+ const first=[stroke];
+ sender.publish([],first,"gesture",{x:10,y:10});
+ sender.ack(first,2);
+ const second=[{...stroke,width:20,points:[...stroke.points,{x:20,y:10}]}];
+ sender.publish(first,second,"gesture",{x:20,y:10});
+ sender.ack(second,3);
+ await new Promise(resolve=>setTimeout(resolve,450));
+ assert.equal(attempts.length,3);
+ const acknowledgements=delivered.filter(p=>p.type==="ink_motion_ack");
+ assert.deepEqual(acknowledgements.map(p=>[p.seq,p.version]),[[2,3]],
+  "A rejected watermark retries the newest durable acknowledgement without further input");
+ sender.ack(second,3);
+ assert.equal(attempts.length,3,"Never repeat an accepted watermark");
+ failures=5;
+ const third=[{...second[0],width:30,points:[...second[0].points,{x:30,y:10}]}];
+ sender.publish(second,third,"gesture",{x:30,y:10});
+ sender.ack(third,4);
+ const beforeReset=attempts.length;
+ sender.reset();enabled=false;
+ await new Promise(resolve=>setTimeout(resolve,250));
+ assert.equal(attempts.length,beforeReset,"Connection reset cancels old watermark retry");
+}
+const instrument=read("GeometryInstruments.tsx");
+assert.match(instrument,/if\(g\.mode==="move"\)\{[\s\S]*?onUpdate\(item\.id,\{x:next\.x,y:next\.y\}\)/,
+ "Instrument translation must not overwrite a concurrent remote angle");
+
+// A late short drawing frame must never shrink an already saved longer stroke,
+// even if its motion watermark was lost. Eraser gestures are not prefixes.
+{
+ const motion={};
+ new Function("exports",ts.transpileModule(read("boardInkMotion.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(motion);
+ const short={id:"stroke",kind:"pen",text:"",createdBy:"peer",x:10,y:10,width:20,height:10,color:"#000",weight:3,points:[{x:0,y:0},{x:20,y:10}]};
+ const long={...short,x:0,width:50,points:[{x:10,y:0},{x:30,y:10},{x:50,y:5}]};
+ const newer={...long,width:60,points:[...long.points,{x:60,y:5}]};
+ const frame=(seq,base,stroke,gesture="stroke")=>({type:"ink_motion",client_id:"peer-tab",user_id:"peer",name:"Peer",role:"editor",sent_at:0,gesture,base_version:base,seq,x:0,y:0,changes:[{id:"stroke",index:0,seq,value:stroke}]});
+ const ledger=motion.createInkMotionLedger();
+ ledger.reconcile([],1);
+ ledger.receive(frame(1,1,short));
+ assert.equal(ledger.project([])[0].points.length,2);
+ ledger.reconcile([long],2,"peer");
+ assert.deepEqual(ledger.project([long]),[long],"Longer saved drawing supersedes an older pending prefix without an ACK");
+ ledger.receive(frame(2,1,short));
+ assert.deepEqual(ledger.project([long]),[long],"Delayed motion cannot visibly shorten saved ink");
+ ledger.receive(frame(3,2,newer));
+ assert.equal(ledger.project([long])[0].points.length,4,"New drawing samples still render immediately");
+ const eraser=motion.createInkMotionLedger();
+ eraser.reconcile([long],2,"peer");
+ eraser.receive(frame(4,1,short,"erase:gesture"));
+ assert.equal(eraser.project([long])[0].points.length,2,"A competing eraser is not mistaken for an old drawing prefix");
+}
+
+// Quiet-edge repair carries a full state and the original change watermark.
+{
+ const motion={};
+ new Function("exports",ts.transpileModule(read("boardInkMotion.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(motion);
+ const packets=[];
+ const sender=motion.createInkMotionSender("quiet-test",p=>{packets.push(p);return true;},()=>true,()=>1);
+ const stroke={id:"quiet-stroke",kind:"pen",text:"",createdBy:"peer",x:0,y:0,width:20,height:10,points:[{x:0,y:0},{x:20,y:10}]};
+ const first=[stroke];sender.publish([],first,stroke.id,{x:20,y:10});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const frames=packets.filter(p=>p.type==="ink_motion");
+ assert.equal(frames.length,2,"Lost last sample must get one quiet-edge retry");
+ assert.ok(frames[1].seq>frames[0].seq);
+ assert.deepEqual(frames[1].changes,frames[0].changes,"Replay preserves original change watermark");
+ const ledger=motion.createInkMotionLedger();ledger.reconcile([],1);
+ const identity={user_id:"peer",name:"Peer",role:"editor",sent_at:0};
+ ledger.receive({...frames[1],...identity});
+ assert.equal(ledger.project([])[0].id,stroke.id,"Receiver recovers a lost last frame before durable revision");
+ sender.ack(first,2);
+ ledger.reconcile([stroke],2,"peer");
+ const ack=packets.find(p=>p.type==="ink_motion_ack");
+ assert.equal(ack.seq,frames[0].changes[0].seq);
+ ledger.receive({...ack,...identity});
+ assert.deepEqual(ledger.project([stroke]),[stroke]);
+ sender.reset();
+}

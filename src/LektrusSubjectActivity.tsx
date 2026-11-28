@@ -1,4 +1,4 @@
-import {useState,type SyntheticEvent} from "react";
+import {useEffect,useState,type SyntheticEvent} from "react";
 import type {SubjectTaskActivity,SubjectTaskActivityResponse} from "./boardModel";
 import type {SubjectTone} from "./lektrusSubjectAccent";
 
@@ -198,6 +198,8 @@ type RunnerProps={
 };
 export function LektrusSubjectActivityRunner({activity,response,onChange,compact=false,punctuation=false}:RunnerProps){
  const [activeLeft,setActiveLeft]=useState<number|null>(null);
+ const sourceKey=JSON.stringify(activity);
+ useEffect(()=>setActiveLeft(null),[sourceKey]);
  const data=response??{};
  const patch=(values:Partial<SubjectTaskActivityResponse>)=>onChange?.({...data,...values,checked:false});
  const complete=activityComplete(activity);
@@ -289,7 +291,7 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
      {order.map((original,j)=><button key={original} type="button" disabled={!onChange}
       className={data.matched?.includes(original)?"paired":""}
       onClick={()=>{
-       if(activeLeft===null)return;
+       if(activeLeft===null||activeLeft<0||activeLeft>=(activity.pairs?.length??0))return;
        const matched=(activity.pairs??[]).map((_,i)=>data.matched?.[i]??-1);
        matched.forEach((v,i)=>{if(v===original)matched[i]=-1;});
        matched[activeLeft]=original;
@@ -313,7 +315,7 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
    </div>
   </>}
   {onChange&&complete&&<div className="lektrus-activity-runner-footer">
-   <button type="button" className="lektrus-activity-reset" onClick={()=>onChange({})}>Сбросить</button>
+   <button type="button" className="lektrus-activity-reset" onClick={()=>{setActiveLeft(null);onChange({});}}>Сбросить</button>
    <button type="button" className="lektrus-activity-check" onClick={check}>Проверить</button>
   </div>}
   {result&&<p className={"lektrus-activity-result "+(result.correct===result.total?"all-correct":"some-errors")} role="status">

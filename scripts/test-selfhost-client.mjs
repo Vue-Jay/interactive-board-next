@@ -34,6 +34,7 @@ async function loadSelfhost(enabled, platform="web") {
   const record=[];
   let expires=900,refreshes=0,documentVersion=3,documentFailures=0,healthStatus=200,healthBody={ok:true,service:'lektrus-selfhost'};
   let refreshStatus=200,rotations=0,activeRefresh="refresh-first",rejectOldAccess=false,transientRefresh401=false;
+  let boardAccess=200,boardResponseOverride=null,writeAckOverride=null;
   let lockTail=Promise.resolve();
   const locks={request(_name,callback){
     const result=lockTail.then(callback);lockTail=result.catch(()=>{});return result;
@@ -209,10 +210,12 @@ async function loadSelfhost(enabled, platform="web") {
       assert.equal(u.searchParams.get("version_only"),"true");
       if(JSON.parse(options.body).expected_version!==3)
         return ok({detail:"Версия изменилась."},409);
-      return ok({version:4});
+      return ok(writeAckOverride??{version:4});
     }
     if(u.pathname==="/api/v1/boards/board-1/document"){
+      if(boardAccess!==200)return ok({detail:"Board temporarily unavailable"},boardAccess);
       if(u.searchParams.get("version_only")==="true")return ok({version:documentVersion});
+      if(boardResponseOverride)return ok(boardResponseOverride);
       if(documentFailures>0){
         documentFailures--;
         return ok({detail:"Temporary error"},503);
@@ -298,6 +301,7 @@ async function loadSelfhost(enabled, platform="web") {
   const broadcastContext=vm.createContext({exports:{},require:name=>name==="./selfhostApi"?api:{isRemoteBackendEnabled:()=>false},setTimeout,clearTimeout,Date,Math,Map,crypto:globalThis.crypto});
   vm.runInContext(ts.transpileModule(broadcastSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,broadcastContext);
   return {api,broadcast:broadcastContext.exports,records:record,storage:data,refreshCount:()=>refreshes,sockets,listeners,nav:context.navigator,sessionStorage,nativeRequests,setHealth:(status,body)=>{healthStatus=status;healthBody=body;},setNativeFailure:value=>{nativeFailure=value;},setClaimFailure:value=>{claimFailure=value;},setLoginFailure:value=>{loginFailure=value;},changeExpires:v=>{expires=v},changeDocument:(v,failures=0)=>{documentVersion=v;documentFailures=failures},
+    setBoardAccess:v=>{boardAccess=v},setBoardResponse:v=>{boardResponseOverride=v},setWriteAck:v=>{writeAckOverride=v},
     forkApi:(withLocks=true)=>{const tab=makeContext(withLocks);vm.runInContext(compiled,tab);return tab.exports},
     setRefreshStatus:v=>{refreshStatus=v},setTransientRefresh401:()=>{transientRefresh401=true},rejectOldAccess:()=>{rejectOldAccess=true},
     enablePointCapability:()=>{pointCapability=true},remoteNativeEdit:(delta,broken=false)=>{nativeDoc=JSON.parse(JSON.stringify(api.applySelfhostDocumentDelta(nativeDoc,delta)));nativeVersion++;nativeDelta=delta;brokenChain=broken}};
@@ -458,6 +462,13 @@ const nativeAsset=await api.selfhostDownloadAsset(nativeBoard.id,"asset_1");
 assert.equal(await nativeAsset.text(),"stored asset");
 const saved=await api.selfhostSaveDocument("board-1",3,{pilot_schema:1,items:[],ink:[],note:"hello"});
 assert.equal(saved.version,4);
+for(const badAck of [{version:3},{version:5},{version:4.5},{version:"4"},{}]){
+  env.setWriteAck(badAck);
+  const writesBefore=records.filter(r=>r.method==="PUT"||r.method==="PATCH").length;
+  await assert.rejects(api.selfhostSaveDocument("board-1",3,{items:[],ink:[],note:"uncertain"}),e=>e.status===409);
+  assert.equal(records.filter(r=>r.method==="PUT"||r.method==="PATCH").length,writesBefore+1,"Malformed ACK cannot cause an automatic replay");
+}
+env.setWriteAck(null);
 await assert.rejects(api.selfhostSaveDocument("board-1",2,{items:[],ink:[]}),e=>e.status===409);
 const expired=JSON.parse(storage.get("lektrus.selfhost.session.v1"));
 expired.expires_at=1;
@@ -697,6 +708,29 @@ recoverySocket.emit({type:"document_changed",version:11,base_version:10,
 await waitFor(()=>recoveredVersion===11);
 assert.ok(records.slice(readsBeforeInvalidPatch).some(x=>x.path==="/api/v1/boards/board-1/document"&&x.query==="?ink_point_deltas=true"),
   "An invalid socket delta must recover through a full snapshot, not the rejected chain");
+// The HTTP snapshot boundary must reject an unrelated board or malformed revision.
+for(const invalid of [
+ {board_id:"different-board",version:11,document:{items:[]}},
+ {board_id:"board-1",version:-1,document:{items:[]}},
+ {board_id:"board-1",version:12,document:[]},
+ {board_id:"board-1",version:12,document:null}
+]){
+ env.setBoardResponse(invalid);
+ await assert.rejects(api.selfhostReadDocument("board-1",undefined,false),/Invalid board snapshot/);
+}
+env.setBoardResponse(null);
+// Access can recover while the socket remains open. Permission failure must
+// never freeze the revision watcher for the rest of the lesson.
+env.setBoardAccess(403);
+env.changeDocument(12);
+recoverySocket.emit({type:"document_changed",version:12});
+await waitFor(()=>records.some(x=>x.path==="/api/v1/boards/board-1/document"&&x.method==="GET"&&x.query.includes("since_version=11")));
+await new Promise(resolve=>setTimeout(resolve,100));
+assert.equal(recoveredVersion,11,"Denied document has not been applied");
+env.setBoardAccess(200);
+for(let i=0;i<220&&recoveredVersion!==12;i++)await new Promise(resolve=>setTimeout(resolve,50));
+assert.equal(recoveredVersion,12,"Version watchdog recovers without socket reconnect");
+assert.equal(recoverySocket.readyState,1);
 recovery();
 await Promise.resolve();
 env.changeDocument(8);

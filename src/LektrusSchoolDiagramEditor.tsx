@@ -68,6 +68,14 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
  const [error,setError]=useState("");
  const [contourSettingsOpen,setContourSettingsOpen]=useState(false);
  const set=(data:SchoolDiagram)=>{
+  if(data.kind==="sentence-builder"&&draft.kind==="sentence-builder"&&JSON.stringify(data.parts)!==JSON.stringify(draft.parts)){
+   data={...data,answerOrder:undefined,answerChecked:undefined};
+  }
+  if(data.kind==="geo-training"&&draft.kind==="geo-training"&&(data.exercise!==draft.exercise||data.relation!==draft.relation||data.reverse!==draft.reverse||JSON.stringify(data.countryCodes)!==JSON.stringify(draft.countryCodes))){
+   data={...data,practice:undefined};
+  }
+  if(data.kind==="flashcards"&&draft.kind==="flashcards"&&(data.direction!==draft.direction||JSON.stringify(data.cards)!==JSON.stringify(draft.cards)))data={...data,response:undefined};
+  if(data.kind==="orthography"&&draft.kind==="orthography"&&JSON.stringify(data.questions)!==JSON.stringify(draft.questions))data={...data,response:undefined};
   setDraft(data);setError("");
   if(existing&&isContour&&onLiveChange)onLiveChange(draft,data);
  };

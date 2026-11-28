@@ -9,7 +9,7 @@ export type ApprovedSchoolDiagram=
  |{kind:"morphemes";title:string;segments:Morpheme[];zeroEnding:boolean;showMarks:boolean;showBase:boolean}
  |{kind:"family-tree";title:string;people:FamilyPerson[];showGenerations:boolean}
  |{kind:"flashcards";title:string;cards:LanguageCard[];showTranslation:boolean;
-   showTranscription:boolean;direction:"foreign-first"|"russian-first"};
+   showTranscription:boolean;direction:"foreign-first"|"russian-first";response?:{index:number;revealed:boolean}};
 export const approvedSchoolIds:ApprovedSchoolId[]=["ru-morphemes","history-family-tree","language-flashcards"];
 export const morphemeNames:Record<MorphemeRole,string>={
  prefix:"Приставка",root:"Корень",suffix:"Суффикс",ending:"Окончание",postfix:"Постфикс"
@@ -88,7 +88,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
   const cards=d.cards as LanguageCard[];
   return cards.every(c=>c&&okString(c.id,64)&&okString(c.term,65)&&
    okString(c.translation,80)&&okString(c.transcription,75,true))&&
-   new Set(cards.map(c=>c.id)).size===cards.length;
+   new Set(cards.map(c=>c.id)).size===cards.length&&(d.response===undefined||validFlashcardResponse(d.response,cards.length));
  }
  return false;
 }
@@ -103,4 +103,10 @@ export function familyGenerations(people:FamilyPerson[]){
  };
  for(const person of people)depth(person.id);
  return memo;
+}
+
+function validFlashcardResponse(value:unknown,count:number):boolean{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const r=value as Record<string,unknown>;
+ return Object.keys(r).length===2&&typeof r.index==="number"&&Number.isInteger(r.index)&&r.index>=0&&r.index<count&&typeof r.revealed==="boolean";
 }

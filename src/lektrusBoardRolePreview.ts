@@ -122,10 +122,32 @@ export function restrictStudentDiagramChange(
   if(typeof next.digits!=="string"||!pattern.test(next.digits))return null;
   return {...current,digits:next.digits};
  }
- // Morphology/phonetics currently store the teacher's source word and
- // annotations, not separate student answer fields. Treat them as read-only
- // until independent pupil-response storage exists. Orthography answers and
- // foreign-language sentence ordering already use local per-user state.
+ if(current.kind==="sentence-builder"&&next.kind==="sentence-builder"){
+  if(JSON.stringify(current.parts)!==JSON.stringify(next.parts))return null;
+  const order=next.answerOrder;
+  if(!Array.isArray(order)||order.length!==current.parts.length||new Set(order).size!==order.length||
+    order.some(id=>!current.parts.some(p=>p.id===id))||typeof next.answerChecked!=="boolean")return null;
+  return {...current,answerOrder:[...order],answerChecked:next.answerChecked};
+ }
+ if(current.kind==="geo-training"&&next.kind==="geo-training"){
+  if(current.exercise!==next.exercise||current.relation!==next.relation||current.reverse!==next.reverse||
+     JSON.stringify(current.countryCodes)!==JSON.stringify(next.countryCodes)||!next.practice)return null;
+  return {...current,practice:next.practice}; // Full schema validated at commit and server.
+ }
+ if(current.kind==="flashcards"&&next.kind==="flashcards"){
+  const r=next.response;
+  if(current.direction!==next.direction||JSON.stringify(current.cards)!==JSON.stringify(next.cards)||!r||
+    Object.keys(r).length!==2||!Number.isInteger(r.index)||r.index<0||r.index>=current.cards.length||typeof r.revealed!=="boolean")return null;
+  return {...current,response:{index:r.index,revealed:r.revealed}};
+ }
+ if(current.kind==="orthography"&&next.kind==="orthography"){
+  const r=next.response;
+  if(JSON.stringify(current.questions)!==JSON.stringify(next.questions)||!r||
+    Object.keys(r).length!==3||!Number.isInteger(r.index)||r.index<0||r.index>=current.questions.length||typeof r.checked!=="boolean"||
+    (r.picked===null?r.checked:!Number.isInteger(r.picked)||r.picked<0||r.picked>=current.questions[r.index].options.length))return null;
+  return {...current,response:{index:r.index,picked:r.picked,checked:r.checked}};
+ }
+ // Morphology and phonetics source annotations remain teacher-only.
  return null;
 }
 

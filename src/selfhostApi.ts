@@ -56,13 +56,13 @@ export type SelfhostLiveEvent=
   | {type:"presence_state";users:SelfhostPresenceUser[]}
   | {type:"presence_diff";joins:SelfhostPresenceUser[];leaves:SelfhostPresenceUser[]}
   | {type:"work_state";user_id:string;name:string;role:SelfhostBoardRole;selected_ids:string[];editing_id:string|null;sent_at:number}
-  | {type:"editor_mutation";user_id:string;name:string;role:SelfhostBoardRole;id:string;item_id:string;client_id:string;ops:Array<Record<string,unknown>>;sent_at:number}
+  | {type:"editor_mutation";user_id:string;name:string;role:SelfhostBoardRole;id:string;item_id:string;client_id:string;ops:Array<Record<string,unknown>>;sent_at:number;base_version?:number}
   | {type:"object_transform";user_id:string;name:string;role:SelfhostBoardRole;client_id:string;seq:number;finished:boolean;items:Array<Record<string,unknown>>;sent_at:number}
   | {type:"focus_view";user_id:string;name:string;role:SelfhostBoardRole;target_user_id:string;center_x:number;center_y:number;zoom:number;sent_at:number}
   | {type:"teacher_view";user_id:string;name:string;role:SelfhostBoardRole;center_x:number;center_y:number;zoom:number;sent_at:number}
   | {type:"guided_follow";user_id:string;name:string;role:SelfhostBoardRole;enabled:boolean;sent_at:number}
-  | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number}
-  | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number}
+  | {type:"attachment_request";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;asset_id:string;attachment_name:string;mime:string;kind:"image"|"pdf";width:number;height:number;sent_at:number;durable?:boolean}
+  | {type:"attachment_result";user_id:string;name:string;role:SelfhostBoardRole;request_id:string;target_user_id:string;approved:boolean;attachment_name:string;sent_at:number;durable?:boolean}
   | {type:"ink_ack";client_id:string;stroke_id:string;offset:number;finished:boolean}
   | {type:"idle_timeout"}
   | {type:"comments_changed"}
@@ -777,6 +777,7 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
   const base=incremental&&documentBase?.boardId===boardId&&documentBase.userId===userId?documentBase:null;
   const path=documentPath(boardId);
   let row=await selfhostRequest<DeltaResponse>(path+"?ink_point_deltas=true"+(base?"&since_version="+base.version:""),{signal});
+  if(!jsonObject(row))throw new Error("Invalid board response");
   if(row.patches!==undefined){
     try{
       if(!base||row.board_id!==boardId||row.base_version!==base.version||!Number.isSafeInteger(row.version)||!Array.isArray(row.patches)||row.patches.length!==row.version-base.version||row.patches.length>8)throw new Error("Invalid delta chain");
@@ -786,6 +787,12 @@ export async function selfhostReadDocument(boardId:string,signal?:AbortSignal,in
       row=await selfhostRequest<DeltaResponse>(path+"?ink_point_deltas=true",{signal});
     }
   }
+  // Do not poison the delta cache with an unrelated board, an invalid
+  // revision, a malformed full snapshot or a response from a previous login.
+  if(!jsonObject(row)||row.board_id!==boardId||!Number.isSafeInteger(row.version)||row.version<0||
+     !(jsonObject(row.document)||row.version===0&&row.document===null)||
+     (userId!==undefined&&loadSession()?.user.id!==userId)||signal?.aborted)
+    throw new Error("Invalid board snapshot");
   pointDeltasSupported=row.ink_point_deltas===true;
   rememberDocument(boardId,userId,row.version,row.document);
   return row;
@@ -932,6 +939,10 @@ export async function selfhostSaveDocument(boardId:string,expectedVersion:number
     }
   }
   result??=await selfhostRequest<{version:number}>(path,{method:"PUT",body:fullBody??JSON.stringify({expected_version:expectedVersion,document:next})});
+  // A successful write advances exactly one revision. Never associate a local
+  // snapshot with an impossible ACK or replay a write whose outcome is unknown.
+  if(!result||!Number.isSafeInteger(result.version)||result.version!==expectedVersion+1)
+    throw new SelfhostHttpError(409,"Некорректное подтверждение сохранения. Сверяем версию доски.");
   rememberDocument(boardId,userId,result.version,next);
   if(inkCursor&&!sentOverSocket)selfhostBoardSockets.get(boardId)?.sendCursor(inkCursor);
   return result;
@@ -943,6 +954,15 @@ export type SelfhostObjectPreview={
 export type SelfhostRemoteObjectPreview=SelfhostObjectPreview&{
   user_id:string;name:string;role:SelfhostBoardRole;sent_at:number;
 };
+export type SelfhostAttachmentRequestEvent=Extract<SelfhostLiveEvent,{type:"attachment_request"}>;
+export type SelfhostAttachmentResultEvent=Extract<SelfhostLiveEvent,{type:"attachment_result"}>;
+export const selfhostListAttachmentApprovals=(boardId:string,signal?:AbortSignal)=>
+  selfhostRequest<{requests:SelfhostAttachmentRequestEvent[];results:SelfhostAttachmentResultEvent[]}>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/attachment-requests",{signal});
+export const selfhostDecideAttachment=(boardId:string,requestId:string,approved:boolean,position?:{x:number;y:number})=>
+  selfhostRequest<{result:SelfhostAttachmentResultEvent;inserted_item?:Record<string,unknown>;version?:number}>(
+    "/api/v1/boards/"+encodeURIComponent(boardId)+"/attachment-requests/"+encodeURIComponent(requestId)+"/decision",
+    {method:"POST",body:JSON.stringify({approved,...position})});
 export const selfhostAccess=(boardId:string)=>selfhostRequest<SelfhostAccess>(
   "/api/v1/boards/"+encodeURIComponent(boardId)+"/access"
 );
@@ -1690,6 +1710,7 @@ export function selfhostWatchDocument(
   let failures=0;
   let status:SelfhostRealtimeStatus="reconnecting";
   let pollTimer:ReturnType<typeof setTimeout>|undefined;
+  let polling=false;
   let accessDenied=false;
   let forceFullRead=false;
   const committedCursors=new Map<string,{version:number;cursor:SelfhostCommittedCursor}>();
@@ -1711,7 +1732,7 @@ export function selfhostWatchDocument(
     reading=true;
     try{
       const row=await selfhostReadDocument(boardId,controller.signal,!forceFullRead);
-      if(controller.signal.aborted)return;
+      if(controller.signal.aborted||accessDenied)return;
       if(row.version>Math.max(currentVersion(),delivered)){
         if(!row.document||onDocument(attachCursors(row))===false){
           selfhostLogBoardSync(boardId,{event:"revision_rejected",version:row.version,transport:"http"});
@@ -1742,20 +1763,26 @@ export function selfhostWatchDocument(
       schedule();
     }
   };
-  // A healthy socket can still miss a revision notice. Probe just the version
-  // during quiet periods; continuous collaboration resets this watchdog.
-  // Never fetch a full document unless the server is actually ahead.
+  // A healthy socket can still miss a revision notice. A fixed lightweight
+  // watchdog cannot be postponed indefinitely by a stream of notifications.
+  // Keep at most one probe in flight, even while a full read is running.
   const schedulePoll=()=>{
-    clearTimeout(pollTimer);pollTimer=undefined;
-    if(controller.signal.aborted||accessDenied)return;
+    if(controller.signal.aborted||polling||pollTimer!==undefined)return;
     pollTimer=setTimeout(async()=>{
       pollTimer=undefined;
-      if(controller.signal.aborted||accessDenied)return;
+      if(controller.signal.aborted)return;
+      polling=true;
       try{
         const row=await selfhostReadDocumentVersion(boardId,controller.signal);
         if(controller.signal.aborted)return;
         if(Number.isSafeInteger(row.version)&&row.version>=0){
+          const restored=accessDenied;
+          accessDenied=false;
           target=Math.max(target,row.version);
+          if(restored){
+            failures=0;
+            if(row.version<=currentVersion())onStatus(status);
+          }
           // A revision may have been queued by an active gesture or rejected
           // during its later application. Retry from a fresh full snapshot
           // rather than treating delivery as acknowledgement forever.
@@ -1769,8 +1796,8 @@ export function selfhostWatchDocument(
         if(error instanceof SelfhostHttpError&&[401,403,404].includes(error.status)){
           forceFullRead=true;accessDenied=true;onStatus("offline");
         }
-      }finally{schedulePoll()}
-    },typeof document!=="undefined"&&document.hidden?15000:status==="online"?5000:2500);
+      }finally{polling=false;schedulePoll()}
+    },typeof document!=="undefined"&&document.hidden?15000:accessDenied?5000:status==="online"?5000:2500);
   };
   const socket=selfhostSubscribeBoard(boardId,(version,patch)=>{
     target=Math.max(target,version);
@@ -1814,7 +1841,7 @@ export function selfhostWatchDocument(
       clearTimeout(timer);timer=undefined;
       schedule();
     }
-    onStatus(next);
+    onStatus(accessDenied?"offline":next);
     schedulePoll();
   });
   schedulePoll();

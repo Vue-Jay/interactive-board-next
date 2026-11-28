@@ -148,7 +148,9 @@ function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>})
   </text>
  </svg>;
 }
-const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
+const stop=(e:React.SyntheticEvent)=>{
+ if((e.target as Element).closest("button,input,select,textarea,[role='button']"))e.stopPropagation();
+};
 const panelStyle:React.CSSProperties={display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",
  padding:6,background:"#f5f9ff",borderBottom:"1px solid #d8e5f2",fontSize:12};
 const entryStyle:React.CSSProperties={fontSize:12,padding:"5px 7px",minWidth:0,border:"1px solid #c9dced",borderRadius:6};
@@ -177,7 +179,7 @@ export default function LektrusNextSchoolView({diagram:d,onChange,studentMode=fa
  return <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column"}}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   {onChange&&<div style={panelStyle}>
-   {studentMode?<span>Основание: {d.base}</span>:<label>Основание <select style={entryStyle} value={d.base}
+   {studentMode?<span>Основание: {d.base}</span>:<label>Основание <select aria-label="Основание" style={entryStyle} value={d.base}
     onChange={e=>onChange({...d,base:Number(e.target.value) as 2|8|10|16,digits:""})}>
     {[2,8,10,16].map(v=><option value={v} key={v}>{v}</option>)}</select></label>}
    <label>Число <input style={entryStyle} value={d.digits} maxLength={10}

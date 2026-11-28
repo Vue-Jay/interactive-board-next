@@ -3,6 +3,11 @@ import asyncio
 import json
 from functools import lru_cache
 import os
+import sys
+import struct
+import time
+import traceback
+import zlib
 import re
 from pathlib import Path
 from uuid import uuid4
@@ -11,8 +16,8 @@ import bcrypt
 import httpx
 from playwright.sync_api import sync_playwright, expect
 
-BASE="http://127.0.0.1:5173"
-API="http://127.0.0.1:8000"
+BASE=os.getenv("LEKTRUS_QA_BASE","http://127.0.0.1:5173")
+API=os.getenv("LEKTRUS_QA_API","http://127.0.0.1:8000")
 PASSWORD="Roles-test-password-123"
 OUT=Path("artifacts/participant-roles"); OUT.mkdir(parents=True,exist_ok=True)
 
@@ -20,9 +25,11 @@ async def seed():
     conn=await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
         hashed=bcrypt.hashpw(PASSWORD.encode(),bcrypt.gensalt(rounds=4)).decode()
+        owner_id=uuid4()
         for name,role in [("owner","teacher"),("learner","student"),("colleague","teacher"),("observer","student")]:
             await conn.execute("""INSERT INTO account_users(id,email,password_hash,display_name,account_role,teacher_status,email_confirmed_at)
-                VALUES($1,$2,$3,$4,$5,$6,now())""",uuid4(),name+"@roles.example",hashed,name,role,"approved" if role=="teacher" else "none")
+                VALUES($1,$2,$3,$4,$5,$6,now())""",owner_id if name=="owner" else uuid4(),name+"@roles.example",hashed,name,role,"approved" if role=="teacher" else "none")
+        return str(owner_id)
     finally:
         await conn.close()
 
@@ -325,7 +332,7 @@ def check_shared_eraser_sync(browser):
     teacher,pupil=[ctx.new_page() for ctx in contexts]
     # Intercept the actual durable websocket path as well as legacy HTTP.
     # Never simulate loss by disabling the new protocol under test.
-    controls={page:{"hold":None,"hold_all":False,"held":[],"commits":[],"motion":[]} for page in (teacher,pupil)}
+    controls={page:{"hold":None,"hold_all":False,"held":[],"commits":[],"motion":[],"revisions":[],"impair":False,"delayed":[],"dropped":0,"motion_seen":0,"revision_seen":0} for page in (teacher,pupil)}
     for page,control in controls.items():
         def route_ws(route,control=control):
             upstream=route.connect_to_server()
@@ -341,7 +348,22 @@ def check_shared_eraser_sync(browser):
                     if control["hold"] and any(i.get("id")==control["hold"] for i in changes.get("upsert",[])+changes.get("point_edits",[])):
                         control["held"].append((upstream,message));return
                 upstream.send(message)
+            def incoming(message):
+                event=json.loads(message)
+                if event.get("type")=="document_changed":control["revisions"].append(event["version"])
+                if control["impair"] and event.get("type") in ("ink_motion","document_changed"):
+                    key="motion_seen" if event["type"]=="ink_motion" else "revision_seen"
+                    control[key]+=1
+                    # Discard a deterministic subset of live frames and
+                    # revision notices, delay the rest by 120 ms. Never
+                    # discard authoritative commit acknowledgements.
+                    divisor=5 if key=="motion_seen" else 4
+                    if control[key]%divisor==0:
+                        control["dropped"]+=1;return
+                    control["delayed"].append((time.monotonic()+.12,route,message));return
+                route.send(message)
             route.on_message(outgoing)
+            upstream.on_message(incoming)
         page.route_web_socket(re.compile(r"/api/v1/boards/[^/]+/events"),route_ws)
     try:
         login(teacher,"owner")
@@ -394,6 +416,43 @@ def check_shared_eraser_sync(browser):
         finally:
             same.close()
         live_drag(teacher,pupil,ruler)
+        # A peer revision arrives DURING a real object drag. On release the
+        # pupil must save against that revision, not provoke an avoidable 409.
+        pupil.locator('[data-interface-control="select"]:visible').first.click()
+        commit_start=len(controls[pupil]["commits"])
+        http_writes=[]
+        def record_write(route):
+            if route.request.method in ("PUT","PATCH"):
+                http_writes.append(route.request.post_data_json["expected_version"])
+            route.continue_()
+        pupil.route(pattern,record_write)
+        with httpx.Client(base_url=API,headers=headers("owner")) as api:
+            row=api.get(url).json()
+            old=next(i for i in row["document"]["items"] if i["id"]=="live-qa-shape")
+            target=pupil.locator(shape).bounding_box()
+            x=target["x"]+target["width"]/2;y=target["y"]+target["height"]/2
+            pupil.mouse.move(x,y);pupil.mouse.down()
+            try:
+                pupil.mouse.move(x+65,y+22,steps=9)
+                added={"id":"live-qa-during-drag","kind":"text","x":40,"y":30,"width":120,"height":50,"text":"Peer revision"}
+                response=api.patch(url,json={"expected_version":row["version"],"delta":{"items":{"upsert":[added]}}})
+                response.raise_for_status();peer_version=response.json()["version"]
+                for _ in range(60):
+                    if peer_version in controls[pupil]["revisions"]:break
+                    pupil.wait_for_timeout(100)
+                assert peer_version in controls[pupil]["revisions"],"Peer revision did not reach the held drag"
+                pupil.wait_for_timeout(250)
+            finally:pupil.mouse.up()
+            for _ in range(100):
+                current=api.get(url).json()["document"]["items"]
+                moved=next(i for i in current if i["id"]==old["id"])
+                if abs(moved["x"]-old["x"])>25 and any(i["id"]==added["id"] for i in current):break
+                pupil.wait_for_timeout(100)
+            else:raise AssertionError("Drag and independent peer insertion failed to converge")
+            versions=http_writes+[f["expected_version"] for f in controls[pupil]["commits"][commit_start:]]
+            assert versions and min(versions)>=peer_version,("Stale write after deferred revision",versions,peer_version)
+        pupil.unroute(pattern,record_write)
+        print("Held object drag reconciled peer revision before first durable write.")
         teacher.locator(words).dblclick()
         field=teacher.locator(words+" textarea")
         expect(field).to_be_visible()
@@ -482,6 +541,7 @@ def check_shared_eraser_sync(browser):
                     }));
                 }""",points)
             held_http=[]
+            observed_pixel_ms=[]
             def hold_durable_http(route):
                 if route.request.method in ("PUT","PATCH"):held_http.append(route)
                 else:route.continue_()
@@ -505,20 +565,24 @@ def check_shared_eraser_sync(browser):
                 try:
                     writer.mouse.move(x,y);writer.mouse.down()
                     writer.mouse.move(x+140,y,steps=14)
+                    observed_start=time.monotonic()
                     for _ in range(60):
                         writer.wait_for_timeout(25)
                         if control["motion"] and (control["held"] or held_http):
                             frame=control["motion"][-1]
                             if ink_pixels(eraser,[{"x":frame["x"],"y":frame["y"]}])==[True]:break
                     else:raise AssertionError("Peer pixels absent while all durable writes are blocked")
+                    observed_pixel_ms.append((kind+" initial",round((time.monotonic()-observed_start)*1000,1)))
                     assert {i["id"] for i in inks(read())}==original
                     first=control["motion"][-1]
                     writer.mouse.move(x+220,y,steps=10)
+                    observed_start=time.monotonic()
                     for _ in range(60):
                         writer.wait_for_timeout(25)
                         frame=control["motion"][-1]
                         if frame["seq"]>first["seq"] and ink_pixels(eraser,[{"x":frame["x"],"y":frame["y"]}])==[True]:break
                     else:raise AssertionError("Growing stroke stopped while database ACK was blocked")
+                    observed_pixel_ms.append((kind+" extension",round((time.monotonic()-observed_start)*1000,1)))
                     assert eraser.locator(".remote-live-ink-layer").count()==0
                     writer.mouse.up()
                 finally:
@@ -540,10 +604,12 @@ def check_shared_eraser_sync(browser):
                 try:
                     assert ink_pixels(writer,[center])==[True]
                     eraser.mouse.move(target["x"],target["y"]);eraser.mouse.down()
+                    observed_start=time.monotonic()
                     for _ in range(60):
                         eraser.wait_for_timeout(25)
                         if control["motion"] and (control["held"] or held_http) and ink_pixels(writer,[center])==[False]:break
                     else:raise AssertionError(f"Peer {mode} eraser did not clear pixels before its database ACK")
+                    observed_pixel_ms.append((mode+" erase",round((time.monotonic()-observed_start)*1000,1)))
                     assert any(i["id"]==stroke["id"] for i in inks(read()))
                     eraser.mouse.up()
                 finally:
@@ -562,6 +628,7 @@ def check_shared_eraser_sync(browser):
                         if item["id"] not in original:
                             for page in (writer,eraser):stored(page,item["id"],False)
                 print(f"Fast {kind} and {mode} eraser rendered actual pixels while all durable writes were blocked.")
+            print("Post-input to observed peer pixels (ms; includes polling, excludes mouse dispatch):",json.dumps(observed_pixel_ms))
             for writer,eraser,mode,kind in ((pupil,teacher,"stroke","pen"),(teacher,pupil,"partial","marker")):
                 writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
                 eraser.locator('[data-interface-control="eraser"]:visible').first.click()
@@ -661,6 +728,104 @@ def check_shared_eraser_sync(browser):
                         try: route.abort()
                         except Exception: pass
                     writer.unroute(pattern,delay_write)
+
+            # Sustained real two-UI collaboration under controlled incoming
+            # packet impairment. Sample from before pointer dispatch through
+            # the receiver's actual canvas raster, not transport completion.
+            row=read()
+            doc={**row["document"],"items":[],"ink":[]}
+            client.put(url,json={"expected_version":row["version"],"document":doc}).raise_for_status()
+            for page in (teacher,pupil):
+                page.wait_for_function("""ident=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    return !!raw&&JSON.parse(raw).items.length===0;
+                }""",arg=ident,timeout=20000)
+            relay_lateness=[]
+            def pump_impairment(force=False):
+                now=time.monotonic()
+                for state in controls.values():
+                    pending=state["delayed"];state["delayed"]=[]
+                    for due,route,message in pending:
+                        if force or due<=now:
+                            relay_lateness.append(max(0,(time.monotonic()-due)*1000))
+                            route.send(message)
+                        else:state["delayed"].append((due,route,message))
+            samples=[];dispatch_samples=[];post_dispatch_samples=[];expected_ids=set()
+            for state in controls.values():state["impair"]=True
+            started=time.monotonic()
+            try:
+                for round_index in range(24):
+                    for side,(writer,receiver,kind) in enumerate(((teacher,pupil,"pen"),(pupil,teacher,"marker"))):
+                        writer.locator(f'[data-interface-control="{kind}"]:visible').first.click()
+                        box=writer.locator("section.board").bounding_box()
+                        x=box["x"]+box["width"]*(.30+.28*side)
+                        y=box["y"]+box["height"]*(.16+.027*round_index)
+                        point=writer.evaluate("""({x,y})=>{
+                            const w=document.querySelector('.world'),r=w.getBoundingClientRect();
+                            const s=new DOMMatrix(getComputedStyle(w).transform).a;
+                            return {x:(x-r.left)/s,y:(y-r.top)/s};
+                        }""",{"x":x+50,"y":y})
+                        assert ink_pixels(receiver,[point])==[False],("Test location already painted",round_index,side)
+                        writer.mouse.move(x,y)
+                        pointer_start=time.monotonic()
+                        writer.mouse.down()
+                        try:
+                            # Measure a single extension event to the chosen
+                            # pixel rather than ten serial automation round trips.
+                            writer.mouse.move(x+100,y)
+                            dispatched=time.monotonic()
+                            dispatch_samples.append(round((dispatched-pointer_start)*1000,1))
+                            deadline=pointer_start+5
+                            while time.monotonic()<deadline:
+                                pump_impairment()
+                                if ink_pixels(receiver,[point])==[True]:break
+                                writer.wait_for_timeout(15)
+                            else:raise AssertionError(("Sustained peer raster deadline exceeded",round_index,side))
+                            observed=time.monotonic()
+                            samples.append(round((observed-pointer_start)*1000,1))
+                            post_dispatch_samples.append(round((observed-dispatched)*1000,1))
+                        finally:writer.mouse.up()
+                        deadline=time.monotonic()+12
+                        while time.monotonic()<deadline:
+                            pump_impairment()
+                            saved=inks(read())
+                            added=[i for i in saved if i["id"] not in expected_ids and i["kind"]==kind and i.get("width",0)>70]
+                            if added:break
+                            writer.wait_for_timeout(50)
+                        else:raise AssertionError(("Sustained stroke not durably saved",round_index,side))
+                        assert len(added)==1,("Duplicate sustained stroke",round_index,side)
+                        expected_ids.add(added[0]["id"])
+                    # Maintain impaired collaboration over five real minutes.
+                    while time.monotonic()<started+(round_index+1)*12.5:
+                        pump_impairment()
+                        teacher.wait_for_timeout(50)
+            finally:
+                for state in controls.values():state["impair"]=False
+                pump_impairment(True)
+            assert len(samples)==48 and len(expected_ids)==48
+            assert time.monotonic()-started>=300
+            assert {i["id"] for i in inks(read())}==expected_ids
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,ids})=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    if(!raw)return false;
+                    const doc=JSON.parse(raw),items=doc.items.filter(i=>i.kind==="pen"||i.kind==="marker");
+                    return items.length===ids.length&&ids.every(id=>items.some(i=>i.id===id));
+                }""",arg={"ident":ident,"ids":list(expected_ids)},timeout=30000)
+            drops=sum(s["dropped"] for s in controls.values())
+            assert drops>0,"Impairment was never exercised"
+            ordered=sorted(samples)
+            # A controlled-network acceptance budget, including the artificial
+            # router and automation. It is not a physical-device latency SLA.
+            assert ordered[45]<1000 and ordered[-1]<1500,("Impaired peer raster tail regression",ordered[45],ordered[-1])
+            print("Sustained real UI input-dispatch-to-peer-raster (ms):",json.dumps({
+                "seconds":round(time.monotonic()-started,2),"strokes":len(samples),"drops":drops,
+                "injected_delay_ms":120,"median":round((ordered[23]+ordered[24])/2,1),
+                "p95":ordered[45],"max":ordered[-1],"samples":samples,
+                "dispatch_median_ms":round((sorted(dispatch_samples)[23]+sorted(dispatch_samples)[24])/2,1),
+                "post_dispatch_median_ms":round((sorted(post_dispatch_samples)[23]+sorted(post_dispatch_samples)[24])/2,1),
+                "proxy_extra_delay_p95_ms":round(sorted(relay_lateness)[int((len(relay_lateness)-1)*.95)],1)
+            }))
     finally:
         for ctx in contexts: ctx.close()
     print("Durable ink: visible before release; concurrent eraser defeats delayed extensions in both directions.")
@@ -1010,8 +1175,1251 @@ def check_billing_and_finance(browser):
     finally:
         for ctx in contexts:ctx.close()
 
+def check_undo_reconnect_sync(browser):
+    """Two actual accounts, personal inverse history, network loss and durable convergence."""
+    ident=setup_board()
+    url=f"/api/v1/boards/{ident}/document"
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
+    teacher,pupil=[ctx.new_page() for ctx in contexts]
+    pupil_sockets=[]
+    pupil_lifecycle=[]
+    drop_results={"enabled":False,"count":0}
+    def pupil_socket(route):
+        upstream=route.connect_to_server()
+        pupil_sockets.append((route,upstream))
+        index=len(pupil_sockets)
+        def outgoing(message):
+            event=json.loads(message)
+            if event.get("type") in ("auth","activity"):
+                pupil_lifecycle.append((index,event["type"],event.get("background"),event.get("idle_age_ms")))
+            upstream.send(message)
+        route.on_message(outgoing)
+        def incoming(message):
+            event=json.loads(message)
+            if drop_results["enabled"] and event.get("type")=="attachment_result":
+                drop_results["count"]+=1
+                return
+            route.send(message)
+        upstream.on_message(incoming)
+    pupil.route_web_socket(re.compile(r"/api/v1/boards/[^/]+/events"),pupil_socket)
+    try:
+        login(teacher,"owner")
+        login(pupil,"learner")
+        assert_board(teacher,ident,True,True)
+        assert_board(pupil,ident,False,False)
+        with httpx.Client(base_url=API,headers=headers("owner")) as client:
+            def read():
+                r=client.get(url);r.raise_for_status()
+                return r.json()["document"]
+            def ids(doc):
+                return {i["id"] for i in doc["items"] if i["kind"] in ("pen","marker")}
+            def wait_api(page,predicate,label):
+                for _ in range(120):
+                    doc=read()
+                    if predicate(doc):return doc
+                    page.wait_for_timeout(100)
+                raise AssertionError(f"{label}; server items={[(i.get('id'),i.get('kind'),i.get('createdBy')) for i in doc['items']]}; page={page.locator('body').inner_text()[-1000:]}")
+            def stored(page,stroke_id,present=True):
+                page.wait_for_function("""({ident,id,present})=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    return !!raw&&JSON.parse(raw).items.some(i=>i.id===id)===present;
+                }""",arg={"ident":ident,"id":stroke_id,"present":present},timeout=30000)
+            def draw(page,kind,fraction):
+                before=ids(read())
+                page.locator(f'[data-interface-control="{kind}"]:visible').first.click()
+                box=page.locator("section.board").bounding_box()
+                x=box["x"]+box["width"]*.70
+                y=box["y"]+box["height"]*fraction
+                page.mouse.move(x,y);page.mouse.down()
+                page.mouse.move(x+110,y+8,steps=12);page.mouse.up()
+                doc=wait_api(page,lambda d:any(i["kind"]==kind and i["id"] not in before and i.get("width",0)>70 for i in d["items"]),f"{kind} not persisted")
+                return next(i["id"] for i in doc["items"] if i["kind"]==kind and i["id"] not in before)
+            def both(stroke_id,present=True):
+                for page in (teacher,pupil):stored(page,stroke_id,present)
+            first=draw(teacher,"pen",.58);both(first)
+            second=draw(pupil,"marker",.74);both(second)
+            for actor,mine,peer in ((teacher,first,second),(pupil,second,first)):
+                undo=actor.locator(".mobile-undo-redo").get_by_role("button",name="Отменить",exact=True)
+                redo=actor.locator(".mobile-undo-redo").get_by_role("button",name="Повторить",exact=True)
+                expect(undo).to_be_enabled(timeout=10000);undo.click()
+                wait_api(actor,lambda d:mine not in ids(d) and peer in ids(d),f"{'teacher' if actor is teacher else 'student'} undo failed: remove {mine}, preserve {peer}")
+                both(mine,False);both(peer)
+                expect(redo).to_be_enabled(timeout=10000);redo.click()
+                wait_api(actor,lambda d:{mine,peer}<=ids(d),"Redo did not converge")
+                both(mine);both(peer)
+            # Actual browser offline state and transport close, not synthetic
+            # revision injection. A missed server update must arrive on wake.
+            pupil.context.set_offline(True)
+            for route,upstream in list(pupil_sockets):
+                for socket in (route,upstream):
+                    try:socket.close(code=4000,reason="QA network loss")
+                    except Exception:pass
+            pupil.wait_for_function("navigator.onLine===false")
+            third=draw(teacher,"marker",.40)
+            stored(teacher,third)
+            pupil.context.set_offline(False)
+            pupil.wait_for_function("navigator.onLine===true")
+            both(third)
+            pupil.reload()
+            expect(pupil.locator("section.board")).to_be_visible(timeout=90000)
+            for stroke in (first,second,third):stored(pupil,stroke)
+            assert {first,second,third}<=ids(read())
+            print("Real dual-session undo/redo for both roles, network loss and reload passed.")
+
+            # Multiple separate outages in the same live lesson, alternating
+            # authors after every recovery. No reload or reconnect button is used.
+            outage_strokes=[]
+            for index in range(3):
+                pupil.context.set_offline(True)
+                for route,upstream in list(pupil_sockets):
+                    for socket in (route,upstream):
+                        try:socket.close(code=4000,reason="QA repeated outage")
+                        except Exception:pass
+                pupil.wait_for_function("navigator.onLine===false")
+                missed=draw(teacher,"pen",.31+index*.08)
+                stored(teacher,missed)
+                pupil.context.set_offline(False)
+                pupil.wait_for_function("navigator.onLine===true")
+                both(missed)
+                recovered=draw(pupil,"marker",.51+index*.08)
+                both(recovered)
+                outage_strokes.extend((missed,recovered))
+                assert set(outage_strokes)<=ids(read()),"Repeated outage lost an earlier durable stroke"
+            print("Three repeated real transport outages and bidirectional post-reconnect writes converged.")
+
+            # Text is durably checkpointed while the textarea is focused.
+            # A pupil revision during that session must not destroy the
+            # teacher's personal text undo action or cancel the editor.
+            row=client.get(url).json()
+            author=next(i["createdBy"] for i in row["document"]["items"] if i["id"]==first)
+            text_id="qa-checkpoint-text"
+            item={"id":text_id,"kind":"text","x":200,"y":160,"width":240,"height":90,
+                  "text":"Initial text","createdBy":author,"color":"#202124"}
+            client.put(url,json={"expected_version":row["version"],"document":{**row["document"],"items":[*row["document"]["items"],item]}}).raise_for_status()
+            selector=f'.board-object[data-object="{text_id}"]'
+            both(text_id)
+            teacher.locator('[data-interface-control="select"]:visible').first.click()
+            teacher.locator(selector).dblclick()
+            field=teacher.locator(selector+" textarea")
+            expect(field).to_be_visible(timeout=10000)
+            field.fill("Checkpointed text")
+            wait_api(teacher,lambda d:any(i["id"]==text_id and i["text"]=="Checkpointed text" for i in d["items"]),"Typing checkpoint not saved")
+            unrelated=draw(pupil,"pen",.84)
+            both(unrelated)
+            expect(field).to_have_value("Checkpointed text")
+            field.press("Control+Enter")
+            expect(field).to_have_count(0)
+            undo=teacher.locator(".mobile-undo-redo").get_by_role("button",name="Отменить",exact=True)
+            redo=teacher.locator(".mobile-undo-redo").get_by_role("button",name="Повторить",exact=True)
+            expect(undo).to_be_enabled();undo.click()
+            wait_api(teacher,lambda d:unrelated in ids(d) and any(i["id"]==text_id and i["text"]=="Initial text" for i in d["items"]),"Text checkpoint undo reverted wrong action")
+            expect(pupil.locator(selector)).to_contain_text("Initial text")
+            expect(redo).to_be_enabled();redo.click()
+            wait_api(teacher,lambda d:unrelated in ids(d) and any(i["id"]==text_id and i["text"]=="Checkpointed text" for i in d["items"]),"Text checkpoint redo failed")
+            expect(pupil.locator(selector)).to_contain_text("Checkpointed text")
+            teacher.locator(selector).dblclick()
+            expect(field).to_be_visible()
+            field.fill("Cancelled text")
+            wait_api(teacher,lambda d:any(i["id"]==text_id and i["text"]=="Cancelled text" for i in d["items"]),"Cancel scenario did not checkpoint")
+            field.press("Escape")
+            wait_api(teacher,lambda d:any(i["id"]==text_id and i["text"]=="Checkpointed text" for i in d["items"]),"Escape failed to revert checkpoint")
+            expect(pupil.locator(selector)).to_contain_text("Checkpointed text")
+            print("Real checkpointed text undo/redo/cancel after a peer revision passed.")
+
+            # A real uploaded file must survive loss of the approval message
+            # without duplicate board objects, and a pending request survives
+            # the pupil's page reload.
+            def chunk(tag,data):
+                return struct.pack(">I",len(data))+tag+data+struct.pack(">I",zlib.crc32(tag+data)&0xffffffff)
+            png=b"\x89PNG\r\n\x1a\n"+chunk(b"IHDR",struct.pack(">IIBBBBB",24,16,8,2,0,0,0))+chunk(b"IDAT",zlib.compress((b"\0"+b"\x15\x66\xbb"*24)*16))+chunk(b"IEND",b"")
+            def upload(name):
+                pupil.locator('input[aria-label="Добавить фото или PDF"]').set_input_files({"name":name,"mimeType":"image/png","buffer":png})
+                expect(pupil.locator(".student-media-pending")).to_be_visible(timeout=30000)
+                expect(teacher.locator(".teacher-media-request-head")).to_contain_text(name,timeout=30000)
+            upload("sync-approval.png")
+            assert not any(i["kind"]=="image" for i in read()["items"])
+            pupil.reload()
+            expect(pupil.locator("section.board")).to_be_visible(timeout=90000)
+            expect(pupil.locator(".student-media-pending")).to_be_visible(timeout=30000)
+            drop_results["enabled"]=True
+            teacher.locator(".teacher-media-request-actions button.approve").click()
+            added=wait_api(teacher,lambda d:any(i["kind"]=="image" and i.get("name")=="sync-approval.png" for i in d["items"]),"Approved image never committed")
+            item=next(i for i in added["items"] if i["kind"]=="image" and i.get("name")=="sync-approval.png")
+            both(item["id"])
+            expect(pupil.locator(".student-media-pending")).to_have_count(0,timeout=30000)
+            pupil.wait_for_timeout(4500)
+            assert sum(i.get("assetId")==item["assetId"] for i in read()["items"])==1
+            expect(teacher.locator(".teacher-media-request-head")).to_have_count(0,timeout=10000)
+            # A rejected upload has no board object to acknowledge it. The
+            # teacher must replay the decision after the result is lost/reload.
+            upload("sync-rejection.png")
+            teacher.locator(".teacher-media-request-actions button.reject").click()
+            expect(teacher.locator(".teacher-media-request-head")).to_have_count(0,timeout=10000)
+            expect(pupil.locator(".student-media-pending")).to_be_visible()
+            teacher.reload()
+            expect(teacher.locator("section.board")).to_be_visible(timeout=90000)
+            drop_results["enabled"]=False
+            expect(pupil.locator(".student-media-pending")).to_have_count(0,timeout=30000)
+            assert not any(i.get("name")=="sync-rejection.png" for i in read()["items"])
+            print("Real attachment request reload, lost approval, duplicate protection and rejected-result replay passed.")
+
+            # Load all six protected assignment families through the real
+            # document API. The pupil may position them but cannot delete or
+            # change their construction, regardless of input method.
+            row=client.get(url).json()
+            author=next(i["createdBy"] for i in row["document"]["items"] if i["id"]==first)
+            payloads={
+                "frame":{},
+                "checklist":{"checklistItems":["Task"],"checklistDone":[False]},
+                "quiz":{"quizOptions":["A","B"],"quizCorrect":0},
+                "flashcard":{"flashcardBack":"Answer"},
+                "cover":{"coverOpen":False,"coverOpacity":1},
+                "linkmedia":{"mediaUrl":"https://example.test/video","mediaTitle":"Video"},
+            }
+            lesson_items=[{"id":"qa-protected-"+kind,"kind":kind,"x":100+(n%3)*380,"y":100+(n//3)*280,
+                           "width":260,"height":180,"text":"QA "+kind,"createdBy":author,**fields}
+                          for n,(kind,fields) in enumerate(payloads.items())]
+            base_positions={i["id"]:i["x"] for i in lesson_items}
+            document={**row["document"],"items":lesson_items}
+            client.put(url,json={"expected_version":row["version"],"document":document}).raise_for_status()
+            for obj in lesson_items:
+                both(obj["id"])
+            def geometry_synced(page,expected):
+                page.wait_for_function("""({ident,expected})=>{
+                    const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                    if(!raw)return false;
+                    const map=new Map(JSON.parse(raw).items.map(i=>[i.id,i]));
+                    return expected.every(i=>{const a=map.get(i.id);return a&&Math.abs(a.x-i.x)<0.01&&Math.abs(a.y-i.y)<0.01&&Math.abs(a.width-i.width)<0.01&&Math.abs(a.height-i.height)<0.01&&(a.rotation||0)===(i.rotation||0)});
+                }""",arg={"ident":ident,"expected":expected},timeout=30000)
+            pupil.locator('[data-interface-control="select"]:visible').first.click()
+            pupil.keyboard.press("Control+a")
+            pupil.keyboard.press("Shift+ArrowRight")
+            moved=wait_api(pupil,lambda d:len(d["items"])==len(lesson_items) and all(
+                abs(i["x"]-base_positions[i["id"]]-10)<0.01 for i in d["items"]),"Protected lesson keyboard move rejected")
+            for page in (teacher,pupil):geometry_synced(page,moved["items"])
+            pupil.keyboard.press("Alt+ArrowRight")
+            rotated=wait_api(pupil,lambda d:len(d["items"])==len(lesson_items) and all(
+                i.get("rotation")==90 for i in d["items"]),"Protected lesson keyboard rotation rejected")
+            for page in (teacher,pupil):geometry_synced(page,rotated["items"])
+            pupil.keyboard.press("Delete")
+            pupil.wait_for_timeout(1000)
+            assert {i["id"] for i in read()["items"]}==set(base_positions),"Pupil deleted protected assignment"
+            # A teacher lock blocks keyboard transforms too.
+            row=client.get(url).json()
+            locked={**row["document"],"items":[{**i,"locked":True} for i in row["document"]["items"]]}
+            client.put(url,json={"expected_version":row["version"],"document":locked}).raise_for_status()
+            pupil.wait_for_function("""ident=>{
+                const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                return !!raw&&JSON.parse(raw).items.length===6&&JSON.parse(raw).items.every(i=>i.locked);
+            }""",arg=ident,timeout=30000)
+            pupil.keyboard.press("Control+a")
+            pupil.keyboard.press("Shift+ArrowRight")
+            pupil.keyboard.press("Alt+ArrowRight")
+            pupil.wait_for_timeout(1000)
+            assert read()["items"]==locked["items"],"Keyboard transformed locked assignment"
+            print("All six protected assignment kinds: pupil keyboard translation/rotation, peer convergence, deletion and lock denial passed.")
+
+            def replace_items(items):
+                row=client.get(url).json()
+                client.put(url,json={"expected_version":row["version"],"document":{**row["document"],"items":items}}).raise_for_status()
+                for page in (teacher,pupil):
+                    page.wait_for_function("""({ident,ids})=>{
+                        const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                        return !!raw&&JSON.stringify(JSON.parse(raw).items.map(i=>i.id))===JSON.stringify(ids);
+                    }""",arg={"ident":ident,"ids":[i["id"] for i in items]},timeout=30000)
+            def select_all(page):
+                page.locator('[data-interface-control="select"]:visible').first.click()
+                page.keyboard.press("Control+a")
+            def peer_move(obj):
+                select_all(pupil)
+                pupil.keyboard.press("Shift+ArrowRight")
+                changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"]-10)<0.01 for i in d["items"]),"Peer transform did not save")
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                return next(i for i in changed["items"] if i["id"]==obj["id"])
+            def peer_resize_rotate(obj):
+                select_all(pupil)
+                handle=pupil.locator('.screen-transform-overlay [data-transform-handle="se"]:visible').first
+                expect(handle).to_be_visible(timeout=10000)
+                pos=handle.bounding_box()
+                x=pos["x"]+pos["width"]/2;y=pos["y"]+pos["height"]/2
+                pupil.mouse.move(x,y);pupil.mouse.down()
+                try:pupil.mouse.move(x+35,y+25,steps=5)
+                finally:pupil.mouse.up()
+                changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and (abs(i["width"]-obj["width"])>2 or abs(i["height"]-obj["height"])>2) for i in d["items"]),"Peer resize not saved: "+obj["kind"])
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                current=next(i for i in changed["items"] if i["id"]==obj["id"])
+                pupil.keyboard.press("Alt+ArrowRight")
+                rotated=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and (i.get("rotation",0)-current.get("rotation",0))%360==90 for i in d["items"]),"Peer rotation not saved: "+obj["kind"])
+                for page in (teacher,pupil):geometry_synced(page,rotated["items"])
+                return next(i for i in rotated["items"] if i["id"]==obj["id"])
+            # Uploaded image is the real asset from the approval scenario.
+            replace_items([item])
+            moved_image=peer_move(item)
+            peer_resize_rotate(moved_image)
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(item["id"],False)
+            print("Real uploaded image move, rotation and deletion converged.")
+            def open_existing(obj,dialog):
+                teacher.locator('[data-interface-control="select"]:visible').first.click()
+                # Embedded subject widgets deliberately stop double-click propagation.
+                # Select the object using the board keyboard, then use its public settings control.
+                if obj["kind"]=="graph":
+                    teacher.keyboard.press("Control+a")
+                    teacher.get_by_role("button",name="Настроить учебный объект",exact=True).click()
+                else:
+                    teacher.locator(f'.board-object[data-object="{obj["id"]}"]').dblclick(position={"x":12,"y":12})
+                expect(teacher.locator(dialog)).to_be_visible(timeout=15000)
+                return teacher.locator(dialog)
+
+            # Real chart/fraction/periodic/atom editors must preserve geometry
+            # changed by the pupil while a detached draft is still open.
+            subject_cases=[
+                ("chart",{"kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}]},
+                 ".lektrus-data-chart-dialog",'input[placeholder="Название диаграммы"]',".primary"),
+                ("fraction",{"kind":"fraction","fractionMode":"circle","fractionNumerator":1,"fractionDenominator":4},
+                 ".lektrus-fraction-dialog",'.lektrus-fraction-fields > label:first-child input',".primary"),
+                ("periodic",{"kind":"graph","graphFigureId":"chem-periodic","graphPurpose":"geometry","graphAxisMode":"none","sciencePeriodicHighlights":[8],"sciencePeriodicLayout":"school","sciencePeriodicShowNames":True},
+                 ".lektrus-periodic-dialog",'.lektrus-periodic-panel label:first-child input',".primary"),
+                ("atom",{"kind":"graph","graphFigureId":"chem-atom","graphPurpose":"geometry","graphAxisMode":"none","scienceAtomModel":{"atomicNumber":8,"mode":"shell","labelX":0,"labelY":0,"showElectronConfiguration":True}},
+                 ".lektrus-atom-dialog",'.lektrus-atom-controls label:first-child input',".primary"),
+            ]
+            for name,fields,dialog,field,save in subject_cases:
+                obj={"id":"qa-detached-"+name,"x":220,"y":160,"width":520,"height":360,"text":"Initial "+name,"createdBy":author,**fields}
+                replace_items([obj])
+                editor=open_existing(obj,dialog)
+                editor.locator(field).fill("Edited "+name)
+                moved=peer_move(obj)
+                editor.locator(save).click()
+                expect(editor).to_have_count(0,timeout=15000)
+                changed=wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i["text"]=="Edited "+name and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),name+" stale editor overwrote peer geometry")
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                print(name+" real modal + pupil transform passed")
+                replace_items([])
+
+            # Live physics editors commit actual controls before closing.
+            # A peer transform between two nested changes must survive.
+            physics_cases=[
+                ("mechanics","physics-forces","scienceMechanics",{"version":1,"bodies":[],"supports":[],"forces":[],"grid":True,"labels":True},".lektrus-mechanics-layout","Названия и величины"),
+                ("optics","physics-optics","scienceOptics",{"version":1,"elements":[],"rays":[],"grid":True,"labels":True,"normals":True},".lektrus-optics-layout","Подписи"),
+            ]
+            for name,figure,field,model,dialog,label in physics_cases:
+                obj={"id":"qa-live-"+name,"kind":"graph","graphFigureId":figure,"graphPurpose":"geometry","graphAxisMode":"none","x":220,"y":160,"width":520,"height":360,"text":"QA "+name,"createdBy":author,field:model}
+                replace_items([obj])
+                editor=open_existing(obj,dialog)
+                editor.get_by_label("Точки сетки",exact=True).uncheck()
+                wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i.get(field,{}).get("grid") is False for i in d["items"]),name+" live grid change not saved")
+                moved=peer_move(obj)
+                editor.get_by_label(label,exact=True).uncheck()
+                changed=wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i.get(field,{}).get("grid") is False and i.get(field,{}).get("labels") is False and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),name+" live nested edit lost previous state or geometry")
+                for page in (teacher,pupil):
+                    page.wait_for_function("""({ident,id,field})=>{
+                        const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                        const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                        return item?.[field]?.grid===false&&item[field].labels===false;
+                    }""",arg={"ident":ident,"id":obj["id"],"field":field},timeout=15000)
+                teacher.get_by_role("button",name="Закрыть редактор",exact=True).click()
+                expect(editor).to_have_count(0,timeout=15000)
+                for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                print(name+" real live nested controls, peer transform and close converged.")
+                replace_items([])
+
+            # Electrical circuit editor: its two nested settings must remain
+            # independent of a pupil's concurrent change of the board pose.
+            circuit={"id":"qa-live-circuit","kind":"graph","graphFigureId":"physics-circuit-free","graphPurpose":"geometry","graphAxisMode":"none","x":220,"y":160,"width":520,"height":360,"text":"QA circuit","createdBy":author,
+                     "scienceCircuit":{"version":1,"components":[],"junctions":[],"wires":[],"showGrid":True,"snap":True}}
+            replace_items([circuit])
+            editor=open_existing(circuit,".lektrus-circuit-editor")
+            editor.get_by_label("Сетка",exact=True).uncheck()
+            wait_api(teacher,lambda d:any(i["id"]==circuit["id"] and i.get("scienceCircuit",{}).get("showGrid") is False for i in d["items"]),"Circuit grid not saved live")
+            moved=peer_move(circuit)
+            editor.get_by_label("Привязка",exact=True).uncheck()
+            changed=wait_api(teacher,lambda d:any(i["id"]==circuit["id"] and i.get("scienceCircuit",{}).get("showGrid") is False and i["scienceCircuit"].get("snap") is False and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),"Circuit nested settings lost peer geometry")
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                    return item?.scienceCircuit?.showGrid===false&&item.scienceCircuit.snap===false;
+                }""",arg={"ident":ident,"id":circuit["id"]},timeout=15000)
+            editor.get_by_role("button",name="Закрыть редактор",exact=True).click()
+            expect(editor).to_have_count(0,timeout=15000)
+            for page in (teacher,pupil):geometry_synced(page,changed["items"])
+            print("Circuit real nested settings and concurrent pupil geometry converged.")
+            replace_items([])
+
+            # Live motion-graph editor: settings and point values must survive
+            # an intervening move of the entire graph by the other role.
+            motion_graph={"id":"qa-live-motion","kind":"graph","graphFigureId":"physics-motion","graphPurpose":"coordinates","graphAxisMode":"both","graphGrid":True,"graphSnap":True,"graphConnectPoints":True,"graphShowLabels":True,"graphXMin":0,"graphXMax":10,"graphYMin":0,"graphYMax":10,"graphPoints":[{"id":"qa-p1","x":1,"y":2,"label":"A"},{"id":"qa-p2","x":3,"y":4,"label":"B"}],"x":220,"y":160,"width":520,"height":360,"text":"QA motion","createdBy":author}
+            replace_items([motion_graph])
+            editor=open_existing(motion_graph,".lektrus-motion-editor")
+            editor.get_by_label("Сетка",exact=True).uncheck()
+            wait_api(teacher,lambda d:any(i["id"]==motion_graph["id"] and i.get("graphGrid") is False for i in d["items"]),"Motion graph grid not saved")
+            moved=peer_move(motion_graph)
+            editor.get_by_label("Значение точки 1",exact=True).fill("5")
+            changed=wait_api(teacher,lambda d:any(i["id"]==motion_graph["id"] and i.get("graphGrid") is False and any(p["y"]==5 for p in i.get("graphPoints",[])) and abs(i["x"]-moved["x"])<0.01 for i in d["items"]),"Motion graph edit lost peer geometry")
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                    return item?.graphGrid===false&&item.graphPoints.some(p=>p.y===5);
+                }""",arg={"ident":ident,"id":motion_graph["id"]},timeout=15000)
+            editor.get_by_role("button",name="Закрыть редактор",exact=True).click()
+            expect(editor).to_have_count(0,timeout=15000)
+            for page in (teacher,pupil):geometry_synced(page,changed["items"])
+            print("Physical motion graph real point edit and peer geometry converged.")
+            replace_items([])
+
+            # Foreign-language order was formerly local-only. Now keyboard,
+            # drag and check/reset must converge on the teacher and student.
+            sentence={"id":"qa-shared-sentence","kind":"graph","graphFigureId":"language-sentence-builder","graphPurpose":"geometry","graphAxisMode":"none","x":220,"y":160,"width":620,"height":340,"text":"QA sentence","createdBy":author,
+                      "schoolDiagram":{"kind":"sentence-builder","title":"QA sentence","instructions":"Arrange the words","parts":[{"id":"word-a","text":"I"},{"id":"word-b","text":"read"},{"id":"word-c","text":"books"}],"showKey":False,"showHint":False,"patternId":""}}
+            replace_items([sentence])
+            def word_order(page):
+                return page.locator("[data-sentence-word]").evaluate_all("els=>els.map(e=>e.dataset.sentenceWord)")
+            def expect_order(page,order):
+                page.wait_for_function("order=>JSON.stringify(Array.from(document.querySelectorAll('[data-sentence-word]'),e=>e.dataset.sentenceWord))===JSON.stringify(order)",arg=order,timeout=15000)
+            expect(pupil.locator("[data-sentence-word]").first).to_be_visible()
+            initial=word_order(pupil)
+            pupil.locator("[data-sentence-word]").first.press("End")
+            arranged=initial[1:]+initial[:1]
+            wait_api(pupil,lambda d:any(i["id"]==sentence["id"] and i.get("schoolDiagram",{}).get("answerOrder")==arranged for i in d["items"]),"Student word order not saved")
+            expect_order(teacher,arranged);expect_order(pupil,arranged)
+            pupil.get_by_role("button",name="Проверить",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==sentence["id"] and i.get("schoolDiagram",{}).get("answerChecked") is True for i in d["items"]),"Student word check not saved")
+            expect(teacher.locator(".lektrus-sentence-status")).to_contain_text(re.compile("Правильно|Есть неточности"),timeout=15000)
+            # Try forging both the source text and an invalid duplicate order.
+            row=client.get(url).json()
+            for mutation in ("source","duplicates"):
+                forged=json.loads(json.dumps(row["document"]))
+                d=forged["items"][0]["schoolDiagram"]
+                if mutation=="source":d["parts"][0]["text"]="forged"
+                else:d["answerOrder"]=["word-a","word-a","word-c"]
+                with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                    rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                    assert rejected.status_code==403,(mutation,rejected.status_code,rejected.text)
+            teacher.get_by_role("button",name="Заново",exact=True).click()
+            expect_order(pupil,initial)
+            wait_api(teacher,lambda d:any(i["id"]==sentence["id"] and i.get("schoolDiagram",{}).get("answerOrder")==initial and i["schoolDiagram"].get("answerChecked") is False for i in d["items"]),"Sentence reset not saved")
+            print("Shared sentence keyboard order, check, reset and forged student structure denied.")
+            replace_items([])
+
+            # Shared geography, capitals avoid external image dependencies.
+            geo={"id":"qa-shared-geo","kind":"graph","graphFigureId":"geo-matching","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":680,"height":320,"text":"QA geography","createdBy":author,
+                 "schoolDiagram":{"kind":"geo-training","title":"QA geography","exercise":"matching","relation":"country-capital","reverse":False,"countryCodes":["FR","RU"]}}
+            replace_items([geo])
+            expect(pupil.locator(".lektrus-geo-match-item").first).to_be_visible()
+            pupil.locator(".lektrus-geo-match-grid section").nth(0).get_by_role("button").first.click()
+            expect(teacher.locator(".lektrus-geo-match-grid section").nth(0).get_by_role("button").first).to_have_attribute("aria-pressed","true",timeout=15000)
+            pupil.locator(".lektrus-geo-match-grid section").nth(1).get_by_role("button").nth(1).click()
+            wait_api(pupil,lambda d:any(i["id"]==geo["id"] and i.get("schoolDiagram",{}).get("practice",{}).get("matched")==["FR"] for i in d["items"]),"Geography pair not saved")
+            expect(teacher.locator(".lektrus-geo-game-progress")).to_contain_text("1 / 2",timeout=15000)
+            teacher.get_by_role("button",name="↻ Заново",exact=True).click()
+            expect(pupil.locator(".lektrus-geo-game-progress")).to_contain_text("0 / 2",timeout=15000)
+            replace_items([])
+            geo={**geo,"id":"qa-shared-geo-cards","graphFigureId":"geo-question-cards","schoolDiagram":{**geo["schoolDiagram"],"exercise":"cards"}}
+            replace_items([geo])
+            pupil.get_by_role("button",name="Показать ответ",exact=True).click()
+            expect(teacher.get_by_role("button",name="Скрыть ответ",exact=True)).to_be_visible(timeout=15000)
+            pupil.get_by_role("button",name="✓ Знаю",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==geo["id"] and i.get("schoolDiagram",{}).get("practice",{}).get("known")==["RU"] for i in d["items"]),"Geography card rating not saved")
+            expect(teacher.locator(".lektrus-geo-game-progress")).to_contain_text("1 / 2",timeout=15000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["practice"]["known"]=["US"]
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            print("Shared geography matching selection/pair/reset and card reveal/rating converged; forged answer denied.")
+            replace_items([])
+
+            # Standalone vocabulary and spelling must also converge.
+            vocab={"id":"qa-vocabulary","kind":"graph","graphFigureId":"language-flashcards","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA vocabulary","createdBy":author,
+                   "schoolDiagram":{"kind":"flashcards","title":"QA vocabulary","cards":[{"id":"one","term":"Hello","translation":"Привет","transcription":""},{"id":"two","term":"Book","translation":"Книга","transcription":""}],"showTranslation":False,"showTranscription":False,"direction":"foreign-first"}}
+            replace_items([vocab])
+            pupil.get_by_role("button",name="Перевернуть карточку",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==vocab["id"] and i.get("schoolDiagram",{}).get("response")=={"index":0,"revealed":True} for i in d["items"]),"Vocabulary response not saved")
+            expect(teacher.locator(".lektrus-flashcard-word")).to_have_text("Привет",timeout=15000)
+            teacher.get_by_role("button",name="Следующая карточка",exact=True).click()
+            expect(pupil.locator(".lektrus-flashcard-word")).to_have_text("Book",timeout=15000)
+            replace_items([])
+            spelling={"id":"qa-spelling","kind":"graph","graphFigureId":"ru-orthography","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA spelling","createdBy":author,
+                      "schoolDiagram":{"kind":"orthography","title":"QA spelling","questions":[{"id":"one","prompt":"л□с","options":["е","и"],"correct":0,"explanation":"Лес"},{"id":"two","prompt":"м□р","options":["и","е"],"correct":0,"explanation":""}],"showExplanation":True}}
+            replace_items([spelling])
+            pupil.locator(".lektrus-orthography-answers").get_by_role("button",name="е",exact=True).click()
+            expect(teacher.locator(".lektrus-orthography-gap")).to_have_text("е",timeout=15000)
+            pupil.get_by_role("button",name="Проверить",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==spelling["id"] and i.get("schoolDiagram",{}).get("response")=={"index":0,"picked":0,"checked":True} for i in d["items"]),"Orthography response not saved")
+            expect(teacher.locator(".lektrus-orthography-feedback")).to_contain_text("Верно!",timeout=15000)
+            row=client.get(url).json()
+            for mutation in ("source","index","picked"):
+                forged=json.loads(json.dumps(row["document"]))
+                diagram=forged["items"][0]["schoolDiagram"]
+                if mutation=="source":diagram["questions"][0]["correct"]=1
+                elif mutation=="index":diagram["response"]["index"]=9
+                else:diagram["response"]["picked"]=9
+                with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                    rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                    assert rejected.status_code==403,(mutation,rejected.status_code,rejected.text)
+            teacher.get_by_role("button",name="Дальше →",exact=True).click()
+            expect(pupil.locator(".lektrus-orthography-count")).to_have_text("Задание 2 из 2",timeout=15000)
+            print("Shared vocabulary and orthography responses, navigation and forged response denial passed.")
+            replace_items([])
+
+            # Syntax annotations and number-base answers share the same board.
+            syntax={"id":"qa-syntax","kind":"graph","graphFigureId":"ru-syntax","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA syntax","createdBy":author,
+                    "schoolDiagram":{"kind":"syntax","title":"QA syntax","showMarks":True,"words":[{"id":"a","text":"Мама","role":"none"},{"id":"b","text":"читает","role":"none"}]}}
+            replace_items([syntax])
+            pupil.get_by_role("button",name="Мама: Не отмечать",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==syntax["id"] and i.get("schoolDiagram",{}).get("words",[{}])[0].get("role")=="subject" for i in d["items"]),"Syntax mark not saved")
+            expect(teacher.get_by_role("button",name="Мама: Подлежащее",exact=True)).to_be_visible(timeout=15000)
+            teacher.get_by_label("Выберите член предложения",exact=True).select_option("predicate")
+            teacher.get_by_role("button",name="читает: Не отмечать",exact=True).click()
+            expect(pupil.get_by_role("button",name="читает: Сказуемое",exact=True)).to_be_visible(timeout=15000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["words"][0]["text"]="Подмена"
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            replace_items([])
+            place={"id":"qa-place-value","kind":"graph","graphFigureId":"info-place-value","graphPurpose":"geometry","graphAxisMode":"none","x":160,"y":100,"width":620,"height":340,"text":"QA base","createdBy":author,
+                   "schoolDiagram":{"kind":"place-value","title":"QA base","base":2,"digits":"","showPowers":True}}
+            replace_items([place])
+            pupil.get_by_placeholder("Введите число",exact=True).fill("101")
+            wait_api(pupil,lambda d:any(i["id"]==place["id"] and i.get("schoolDiagram",{}).get("digits")=="101" for i in d["items"]),"Place-value response not saved")
+            expect(teacher.get_by_placeholder("Введите число",exact=True)).to_have_value("101",timeout=15000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["base"]=16
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            teacher.get_by_label("Основание",exact=True).select_option("10")
+            expect(pupil.get_by_placeholder("Введите число",exact=True)).to_have_value("",timeout=15000)
+            expect(pupil.get_by_text("Основание: 10",exact=True)).to_be_visible(timeout=15000)
+            pupil.get_by_placeholder("Введите число",exact=True).fill("98")
+            expect(teacher.get_by_placeholder("Введите число",exact=True)).to_have_value("98",timeout=15000)
+            print("Shared syntax marks, place-value input, teacher base replacement and forged source denial passed.")
+            replace_items([])
+
+            # Teacher's historical period selection is a shared document edit.
+            # A pupil may explore locally but must not rewrite the teacher's atlas.
+            atlas_source={"kind":"atlas","scope":"history","title":"Исторический атлас","mode":"historical","year":1914,
+                          "showLabels":True,"showGrid":False,"showEvents":False,"markers":[],"regionId":"world","borderView":"russian"}
+            history={"id":"qa-history-atlas","kind":"graph","graphFigureId":"history-atlas","graphPurpose":"geometry","graphAxisMode":"none",
+                     "x":150,"y":80,"width":800,"height":460,"text":"Исторический атлас","createdBy":author,"schoolDiagram":atlas_source}
+            replace_items([history])
+            period="Выбрать год исторической карты"
+            teacher.get_by_label(period,exact=True).select_option("2000")
+            wait_api(teacher,lambda d:any(i["id"]==history["id"] and i.get("schoolDiagram",{}).get("year")==2000 for i in d["items"]),"Atlas year not persisted")
+            expect(pupil.get_by_label(period,exact=True)).to_have_value("2000",timeout=30000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["year"]=1914
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            print("Historical atlas teacher period convergence and pupil source denial passed.")
+            replace_items([])
+
+            # Two open contour editors: independent keyboard changes are
+            # delivered to both participants and persisted without reopening.
+            contour={"id":"qa-contour","kind":"graph","graphFigureId":"contour-atlas","graphPurpose":"geometry","graphAxisMode":"none",
+                     "x":150,"y":80,"width":800,"height":460,"text":"Контурная карта","createdBy":author,
+                     "schoolDiagram":{**atlas_source,"scope":"geography","title":"Контурная карта","mode":"contour","contourTask":"Переместите обозначения",
+                       "contourMarks":[{"id":"qa-a","lat":30,"lon":20,"text":"QA A","kind":"point","color":"#334455"},
+                                       {"id":"qa-b","lat":40,"lon":40,"text":"QA B","kind":"point","color":"#334455"}],
+                       "contourStrokes":[],"paintedCountries":{}}}
+            replace_items([contour])
+            editor_selector=".lektrus-contour-editor-fullscreen"
+            for page in (teacher,pupil):
+                select_all(page)
+                page.get_by_role("button",name="Настроить учебный объект",exact=True).click()
+                expect(page.locator(editor_selector)).to_be_visible(timeout=30000)
+            ta=teacher.locator(editor_selector).get_by_role("button",name="Передвинуть обозначение: QA A",exact=True)
+            pb=pupil.locator(editor_selector).get_by_role("button",name="Передвинуть обозначение: QA B",exact=True)
+            expect(ta).to_be_visible(timeout=30000)
+            expect(pb).to_be_visible(timeout=30000)
+            ta.press("ArrowRight")
+            pb.press("ArrowLeft")
+            contour_saved=wait_api(teacher,lambda d:any(i["id"]==contour["id"] and any(m["id"]=="qa-a" and m["lon"]>20 for m in i.get("schoolDiagram",{}).get("contourMarks",[])) and any(m["id"]=="qa-b" and m["lon"]<40 for m in i.get("schoolDiagram",{}).get("contourMarks",[])) for i in d["items"]),"Independent contour marks not saved")
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const marks=raw&&JSON.parse(raw).items.find(i=>i.id===id)?.schoolDiagram?.contourMarks;
+                    return marks?.some(m=>m.id==="qa-a"&&m.lon>20)&&marks?.some(m=>m.id==="qa-b"&&m.lon<40);
+                }""",arg={"ident":ident,"id":contour["id"]},timeout=30000)
+            row=client.get(url).json()
+            forged=json.loads(json.dumps(row["document"]))
+            forged["items"][0]["schoolDiagram"]["contourTask"]="Подмена задания"
+            with httpx.Client(base_url=API,headers=headers("learner")) as learner:
+                rejected=learner.put(url,json={"expected_version":row["version"],"document":forged})
+                assert rejected.status_code==403,(rejected.status_code,rejected.text)
+            for page in (teacher,pupil):
+                page.locator(editor_selector).get_by_role("button",name="Закрыть общий редактор",exact=True).click()
+                expect(page.locator(editor_selector)).to_have_count(0)
+            print("Contour map two open editors, independent marks and protected assignment passed.")
+            replace_items([])
+
+            # Laboratory mode is persisted in the same board object, not a
+            # private fullscreen setting. Use a paused, empty beaker fixture.
+            lab={"id":"qa-lab","kind":"graph","graphFigureId":"chem-experiment-free","graphPurpose":"geometry","graphAxisMode":"none",
+                 "x":100,"y":70,"width":960,"height":580,"text":"Химическая лаборатория","createdBy":author,
+                 "scienceLabBench":{"vessels":[{"id":"v1","kind":"beaker","x":48,"y":70,"reagents":[],"environment":"aqueous","observed":False}],
+                                    "selectedId":"v1","event":0,"mode":"reactions","simulationPaused":True}}
+            replace_items([lab])
+            for page in (teacher,pupil):
+                page.locator('[data-interface-control="select"]:visible').first.click()
+            lab_mode="Режим химической лаборатории"
+            teacher.get_by_label(lab_mode,exact=True).select_option("titration")
+            wait_api(teacher,lambda d:any(i["id"]==lab["id"] and i.get("scienceLabBench",{}).get("mode")=="titration" for i in d["items"]),"Lab mode not saved")
+            expect(pupil.get_by_label(lab_mode,exact=True)).to_have_value("titration",timeout=30000)
+            pupil.get_by_label(lab_mode,exact=True).select_option("reactions")
+            wait_api(pupil,lambda d:any(i["id"]==lab["id"] and i.get("scienceLabBench",{}).get("mode")=="reactions" for i in d["items"]),"Pupil lab mode not saved")
+            expect(teacher.get_by_label(lab_mode,exact=True)).to_have_value("reactions",timeout=30000)
+            print("Chemical laboratory bidirectional mode and durable state passed.")
+            replace_items([])
+
+            # Subject-board entry responses are shared and must follow an
+            # entry's identity even when the teacher changes its position.
+            task_a={"id":"qa-task-a","kind":"task","subject":"mathematics","format":"interactive","title":"QA task A","prompt":"Choose A","answer":"","solution":"","revealed":False,
+                    "activity":{"mode":"choice","options":["QA one","QA two"],"correctIndex":0}}
+            task_b={"id":"qa-task-b","kind":"task","subject":"mathematics","format":"interactive","title":"QA task B","prompt":"Choose B","answer":"","solution":"","revealed":False,
+                    "activity":{"mode":"choice","options":["QA three","QA four"],"correctIndex":1}}
+            worksheet={"id":"qa-worksheet","kind":"graph","graphFigureId":"subject-board-mathematics","graphPurpose":"geometry","graphAxisMode":"none","x":120,"y":80,"width":820,"height":600,
+                       "text":"QA worksheet","createdBy":author,"subjectBoardEntries":[task_a,task_b]}
+            replace_items([worksheet])
+            pupil.get_by_role("button",name="А QA one",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==worksheet["id"] and any(e["id"]==task_a["id"] and e.get("activityResponse",{}).get("selected")==0 for e in i.get("subjectBoardEntries",[])) for i in d["items"]),"Worksheet response not saved")
+            expect(teacher.get_by_role("button",name="А QA one",exact=True)).to_have_attribute("aria-pressed","true",timeout=15000)
+            row=client.get(url).json()
+            reordered=json.loads(json.dumps(row["document"]))
+            reordered["items"][0]["subjectBoardEntries"].reverse()
+            client.put(url,json={"expected_version":row["version"],"document":reordered}).raise_for_status()
+            for page in (teacher,pupil):
+                page.wait_for_function("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    const entries=raw&&JSON.parse(raw).items.find(i=>i.id===id)?.subjectBoardEntries;
+                    return entries?.[0]?.id==="qa-task-b"&&entries?.[1]?.activityResponse?.selected===0;
+                }""",arg={"ident":ident,"id":worksheet["id"]},timeout=30000)
+            pupil.get_by_role("button",name="Б QA four",exact=True).click()
+            wait_api(pupil,lambda d:any(i["id"]==worksheet["id"] and i["subjectBoardEntries"][0].get("activityResponse",{}).get("selected")==1 and i["subjectBoardEntries"][1].get("activityResponse",{}).get("selected")==0 for i in d["items"]),"Reordered worksheet answers did not stay on their entries")
+            expect(teacher.get_by_role("button",name="Б QA four",exact=True)).to_have_attribute("aria-pressed","true",timeout=15000)
+            print("Subject-board shared answers preserved across task reordering.")
+            replace_items([])
+
+            # Actual foreign-language authoring: replacing the source must
+            # clear the previous answer on both sides, not merely hide it.
+            grammar={"id":"qa-language-task","kind":"task","subject":"languages","format":"grammar","title":"QA grammar","prompt":"Transform","answer":"","solution":"","revealed":False,
+                     "details":{"material":"I read.\nWe write.","instruction":"Past tense"}}
+            language={**worksheet,"id":"qa-language-board","graphFigureId":"subject-board-languages","text":"QA language","subjectBoardEntries":[grammar]}
+            replace_items([language])
+            first_answer="Преобразованное предложение 1"
+            second_answer="Преобразованное предложение 2"
+            pupil.get_by_label(first_answer,exact=True).fill("I read yesterday.")
+            wait_api(pupil,lambda d:any(i["id"]==language["id"] and i["subjectBoardEntries"][0]["answer"].startswith("I read yesterday.") for i in d["items"]),"Written answer not saved")
+            expect(teacher.get_by_label(first_answer,exact=True)).to_have_value("I read yesterday.",timeout=15000)
+            teacher.get_by_label(second_answer,exact=True).fill("We wrote.")
+            wait_api(teacher,lambda d:any(i["id"]==language["id"] and i["subjectBoardEntries"][0]["answer"]=="I read yesterday.\nWe wrote." for i in d["items"]),"Independent written answer not saved")
+            expect(pupil.get_by_label(second_answer,exact=True)).to_have_value("We wrote.",timeout=15000)
+            teacher.locator(".lektrus-subject-board-entry").get_by_role("button",name="Изменить",exact=True).click()
+            dialog=teacher.get_by_role("dialog",name="Создание задания",exact=True)
+            expect(dialog).to_be_visible(timeout=15000)
+            dialog.get_by_label("Предложение 1",exact=True).fill("They play.")
+            wait_api(teacher,lambda d:any(i["id"]==language["id"] and i["subjectBoardEntries"][0].get("details",{}).get("material","").startswith("They play.") and i["subjectBoardEntries"][0]["answer"]=="" for i in d["items"]),"Replacement source retained obsolete answer")
+            expect(pupil.get_by_label(first_answer,exact=True)).to_have_value("",timeout=15000)
+            expect(pupil.get_by_label(second_answer,exact=True)).to_have_value("",timeout=15000)
+            teacher.keyboard.press("Escape")
+            expect(dialog).to_have_count(0)
+            print("Foreign-language written responses and teacher source replacement converged.")
+            replace_items([])
+
+            # Save on an open chart after a co-teacher deletes it: do not
+            # reinterpret the absent existing object as a new draft.
+            chart={"id":"qa-deleted-chart","kind":"graph","graphFigureId":"lektrus-chart","chartStyle":"bar","chartEntries":[{"label":"A","value":1}],
+                   "x":220,"y":160,"width":520,"height":360,"text":"Delete race","createdBy":author}
+            replace_items([chart])
+            editor=open_existing(chart,".lektrus-data-chart-dialog")
+            editor.locator('input[placeholder="Название диаграммы"]').fill("Must not reappear")
+            row=client.get(url).json()
+            with httpx.Client(base_url=API,headers=headers("colleague")) as other:
+                other.patch(url,json={"expected_version":row["version"],"delta":{"items":{"remove":[chart["id"]]}}}).raise_for_status()
+            both(chart["id"],False)
+            editor.locator(".primary").click()
+            teacher.wait_for_timeout(1000)
+            assert not any(i["id"]==chart["id"] for i in read()["items"]),"Deleted chart resurrected on Save"
+            print("Detached subject editor save-after-delete denied in real browser.")
+
+            # Real teacher-side creation, peer display, student answers and
+            # teacher deletion, rather than just sending a JSON fixture.
+            for shortcut,kind in (("f","frame"),("b","table"),("x","formula"),("k","checklist"),
+                                  ("g","quiz"),("j","flashcard"),("u","cover"),("l","linkmedia"),("c","connector"),("y","graph")):
+                replace_items([])
+                teacher.locator('[data-interface-control="select"]:visible').first.click()
+                teacher.keyboard.press(shortcut)
+                expect(teacher.locator("section.board")).to_have_class(re.compile(r"\bboard-tool-"+kind+r"\b"))
+                box=teacher.locator("section.board").bounding_box()
+                x=box["x"]+box["width"]*.58;y=box["y"]+box["height"]*.48
+                if kind=="connector":
+                    teacher.mouse.move(x-100,y);teacher.mouse.down();teacher.mouse.move(x+100,y+40,steps=12);teacher.mouse.up()
+                else:teacher.mouse.click(x,y)
+                if kind=="frame":
+                    field=teacher.locator('textarea[aria-label="Текст объекта"]');expect(field).to_be_visible();field.fill("QA frame");field.press("Control+Enter")
+                elif kind=="table":
+                    dialog=teacher.locator(".table-editor-modal");expect(dialog).to_be_visible()
+                    dialog.locator(".table-editor-grid textarea").first.fill("First live cell")
+                    row=wait_api(teacher,lambda d:any(i["kind"]=="table" for i in d["items"]),"Table creation not saved")
+                    table=next(i for i in row["items"] if i["kind"]=="table")
+                    target=pupil.locator(f'.board-object[data-object="{table["id"]}"]')
+                    expect(target).to_contain_text("First live cell",timeout=15000)
+                    peer_move(table)
+                    dialog.locator(".table-editor-grid textarea").nth(1).fill("Second live cell")
+                    expect(target).to_contain_text("First live cell",timeout=15000)
+                    expect(target).to_contain_text("Second live cell",timeout=15000)
+                    dialog.locator(".table-editor-footer .primary").click()
+                elif kind=="formula":
+                    teacher.locator("#formula-source").fill("x^2+1")
+                    teacher.locator(".formula-editor-footer .primary").click()
+                elif kind=="checklist":
+                    dialog=teacher.locator(".checklist-editor-modal");dialog.locator(".checklist-title-input input").fill("QA checklist")
+                    dialog.locator('.checklist-editor-row input[placeholder="Пункт 1"]').fill("QA task")
+                    dialog.locator(".checklist-editor-footer .primary").click()
+                elif kind=="quiz":
+                    dialog=teacher.locator(".quiz-editor-modal");dialog.locator('textarea[placeholder="Введите вопрос…"]').fill("QA quiz")
+                    dialog.locator('input[placeholder="Вариант A"]').fill("A");dialog.locator('input[placeholder="Вариант B"]').fill("B")
+                    dialog.locator(".quiz-editor-footer .primary").click()
+                elif kind=="flashcard":
+                    dialog=teacher.locator(".flashcard-editor-modal");dialog.locator("textarea").nth(0).fill("QA front");dialog.locator("textarea").nth(1).fill("QA back")
+                    dialog.locator(".flashcard-editor-footer .primary").click()
+                elif kind=="linkmedia":
+                    teacher.locator(".link-media-dialog input").first.fill("https://example.test/video")
+                    teacher.locator(".link-media-dialog input").nth(1).fill("QA link")
+                    teacher.locator(".link-media-dialog .boards-create").click()
+                elif kind=="graph":
+                    teacher.locator(".lektrus-graph-footer .primary").click()
+                row=wait_api(teacher,lambda d:any(i["kind"]==kind for i in d["items"]),kind+" UI creation not saved")
+                obj=next(i for i in row["items"] if i["kind"]==kind)
+                selector=f'.board-object[data-object="{obj["id"]}"]'
+                expect(pupil.locator(selector)).to_be_visible(timeout=15000)
+                if kind in ("checklist","quiz","flashcard","cover"):
+                    control,field,value={
+                        "checklist":(".checklist-box","checklistDone",[True]),
+                        "quiz":(".quiz-option","quizSelected",0),
+                        "flashcard":(".flashcard-flip-button","flashcardFlipped",True),
+                        "cover":(".cover-toggle","coverOpen",True)
+                    }[kind]
+                    # The cover toggle is intentionally teacher-only in the UI.
+                    actor,receiver=(teacher,pupil) if kind=="cover" else (pupil,teacher)
+                    actor.locator(selector+" "+control).first.click()
+                    wait_api(actor,lambda d:any(i["id"]==obj["id"] and i.get(field)==value for i in d["items"]),kind+" response did not synchronize")
+                    receiver.wait_for_function("""({ident,id,field,value})=>{
+                        const raw=localStorage.getItem('lesson-board.document.v1.board.'+ident);
+                        const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                        return !!item&&JSON.stringify(item[field])===JSON.stringify(value);
+                    }""",arg={"ident":ident,"id":obj["id"],"field":field,"value":value},timeout=15000)
+                # Reopen existing structural editors, not just initial creation.
+                # Hold a draft while the pupil moves the same object.
+                edit_cases={
+                    "formula":("Редактировать формулу","#formula-source",".formula-editor-footer .primary","x^3+2","text"),
+                    "checklist":("Редактировать чек-лист",".checklist-title-input input",".checklist-editor-footer .primary","Edited checklist","text"),
+                    "quiz":("Редактировать мини-тест",'textarea[placeholder="Введите вопрос…"]',".quiz-editor-footer .primary","Edited quiz","text"),
+                    "flashcard":("Редактировать карточку",".flashcard-editor-modal textarea:first-of-type",".flashcard-editor-footer .primary","Edited front","text"),
+                    "linkmedia":("Изменить ссылку",".link-media-dialog input:nth-of-type(1)",".link-media-dialog .boards-create","https://example.test/changed","mediaUrl"),
+                }
+                if kind in edit_cases:
+                    title,field,save,value,key=edit_cases[kind]
+                    select_all(teacher)
+                    teacher.locator(f'button[title="{title}"]:visible').first.click()
+                    control=teacher.locator(field).first
+                    expect(control).to_be_visible()
+                    control.fill(value)
+                    current=next(i for i in read()["items"] if i["id"]==obj["id"])
+                    moved=peer_move(current)
+                    teacher.locator(save).click()
+                    edited=wait_api(teacher,lambda d:any(i["id"]==obj["id"] and i.get(key)==value and abs(i["x"]-moved["x"])<.01 for i in d["items"]),kind+" existing draft lost content or peer geometry")
+                    for page in (teacher,pupil):
+                        geometry_synced(page,edited["items"])
+                        page.wait_for_function("""({ident,id,key,value})=>{
+                            const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                            const item=raw&&JSON.parse(raw).items.find(i=>i.id===id);
+                            return item?.[key]===value;
+                        }""",arg={"ident":ident,"id":obj["id"],"key":key,"value":value},timeout=15000)
+                    obj=next(i for i in edited["items"] if i["id"]==obj["id"])
+                    print(kind+" existing editor save preserved peer geometry.")
+                # Exercise allowed positioning, resize and rotation in the opposite role.
+                moved_obj=peer_move(obj)
+                if kind!="connector":peer_resize_rotate(moved_obj)
+                else:
+                    select_all(pupil)
+                    endpoint=pupil.locator("[data-connector-endpoint=end]:visible").first
+                    expect(endpoint).to_be_visible(timeout=10000)
+                    rect=endpoint.bounding_box();x=rect["x"]+rect["width"]/2;y=rect["y"]+rect["height"]/2
+                    pupil.mouse.move(x,y);pupil.mouse.down()
+                    try:pupil.mouse.move(x+30,y+20,steps=5)
+                    finally:pupil.mouse.up()
+                    changed=wait_api(pupil,lambda d:any(i["id"]==obj["id"] and (abs(i["width"]-moved_obj["width"])>2 or abs(i["height"]-moved_obj["height"])>2) for i in d["items"]),"Connector endpoint not saved")
+                    for page in (teacher,pupil):geometry_synced(page,changed["items"])
+                select_all(teacher);teacher.keyboard.press("Delete")
+                wait_api(teacher,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" UI deletion not saved")
+                expect(pupil.locator(selector)).to_have_count(0,timeout=15000)
+                print(kind+" real UI create/peer display/allowed response/peer move/delete passed.")
+
+            # Create the fraction via the actual subject catalogue, not only
+            # the previously seeded detached-editor fixture.
+            replace_items([])
+            teacher.locator('button[aria-label="Предметные инструменты"]:visible').first.click()
+            subject=teacher.get_by_role("combobox",name="Предмет доски для набора инструментов")
+            math_option=subject.locator("option").filter(has_text=re.compile(r"^математика$",re.I)).first
+            subject.select_option(value=math_option.get_attribute("value"))
+            teacher.get_by_role("button",name="Дроби",exact=True).click()
+            fraction_dialog=teacher.locator(".lektrus-fraction-dialog")
+            expect(fraction_dialog).to_be_visible()
+            fraction_dialog.locator(".lektrus-fraction-fields > label:first-child input").fill("QA fraction")
+            fraction_dialog.locator(".primary").click()
+            fraction_row=wait_api(teacher,lambda d:any(i["kind"]=="fraction" and i["text"]=="QA fraction" for i in d["items"]),"Fraction UI creation not saved")
+            fraction=next(i for i in fraction_row["items"] if i["kind"]=="fraction")
+            both(fraction["id"])
+            expect(pupil.locator(f'.board-object[data-object="{fraction["id"]}"]')).to_contain_text("QA fraction")
+            select_all(teacher)
+            teacher.locator('button[title="Редактировать дробь"]:visible').first.click()
+            fraction_dialog.get_by_label("Знаменатель",exact=True).fill("8")
+            moved=peer_move(fraction)
+            fraction_dialog.locator(".primary").click()
+            edited=wait_api(teacher,lambda d:any(i["id"]==fraction["id"] and i.get("fractionDenominator")==8 and abs(i["x"]-moved["x"])<.01 for i in d["items"]),"Fraction denominator or peer movement lost")
+            fraction=next(i for i in edited["items"] if i["id"]==fraction["id"])
+            peer_resize_rotate(peer_move(fraction))
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(fraction["id"],False)
+            print("Fraction created through subject catalogue, peer movement and deletion passed.")
+
+            # Comments are a legacy persisted item kind: creation tool was
+            # intentionally removed, but old comments must remain editable.
+            comment={"id":"qa-legacy-comment","kind":"comment","x":220,"y":160,"width":300,"height":150,"text":"Legacy comment","createdBy":author,"resolved":False}
+            replace_items([comment])
+            selector='.board-object[data-object="qa-legacy-comment"]'
+            teacher.locator('[data-interface-control="select"]:visible').first.click()
+            teacher.locator(selector).dblclick()
+            field=teacher.locator('textarea[aria-label="Текст объекта"]')
+            expect(field).to_be_visible();field.fill("Edited legacy comment");field.press("Control+Enter")
+            wait_api(teacher,lambda d:any(i["id"]==comment["id"] and i["text"]=="Edited legacy comment" for i in d["items"]),"Legacy comment edit not saved")
+            expect(pupil.locator(selector)).to_contain_text("Edited legacy comment")
+            select_all(teacher)
+            teacher.locator('button[title="Отметить комментарий решённым"]:visible').first.click()
+            wait_api(teacher,lambda d:any(i["id"]==comment["id"] and i.get("resolved") is True for i in d["items"]),"Legacy comment resolution not saved")
+            expect(pupil.locator(selector)).to_contain_text("Решено")
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(comment["id"],False)
+            print("Legacy persisted comment edit, resolve and deletion converged.")
+
+            # Actual ruler, set square and protractor creation, live move,
+            # scale adjustment and deletion by both editing roles.
+            for actor,receiver in ((teacher,pupil),(pupil,teacher)):
+                for label,kind in (("Линейка","ruler"),("Угольник","triangle"),("Транспортир","protractor")):
+                    replace_items([])
+                    actor.locator('button[aria-label="Добавить измерительный инструмент"]:visible').first.click()
+                    actor.get_by_role("button",name="Добавить: "+label,exact=True).click()
+                    row=wait_api(actor,lambda d:any(i["kind"]=="instrument" and i.get("instrumentType")==kind for i in d["items"]),kind+" instrument missing")
+                    obj=next(i for i in row["items"] if i["kind"]=="instrument")
+                    selector=f'[data-shared-instrument="{obj["id"]}"]'
+                    body=selector+" .geometry-instrument-body"
+                    # The portal anchor intentionally has zero area. Its transformed
+                    # body is the actual visible and interactive instrument.
+                    for page in (actor,receiver):expect(page.locator(body)).to_be_visible(timeout=15000)
+                    target=actor.locator(body)
+                    box=target.bounding_box()
+                    before=receiver.locator(body).bounding_box()
+                    x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
+                    actor.mouse.move(x,y);actor.mouse.down()
+                    try:
+                        actor.mouse.move(x+70,y+30,steps=8)
+                        receiver.wait_for_function("""({selector,x,y})=>{
+                            const e=document.querySelector(selector);if(!e)return false;
+                            const b=e.getBoundingClientRect();return Math.hypot(b.x-x,b.y-y)>20;
+                        }""",arg={"selector":body,"x":before["x"],"y":before["y"]},timeout=5000)
+                    finally:actor.mouse.up()
+                    moved=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i["x"]-obj["x"])>20 for i in d["items"]),kind+" move not saved")
+                    for page in (actor,receiver):geometry_synced(page,moved["items"])
+                    def rendered_scale(page):
+                        return page.locator(body).evaluate("e=>{const m=new DOMMatrix(getComputedStyle(e).transform);return Math.hypot(m.a,m.b)}")
+                    initial_scales=[rendered_scale(page) for page in (actor,receiver)]
+                    actor.locator(selector+' button[aria-label="Уменьшить инструмент"]').click()
+                    scaled=wait_api(actor,lambda d:any(i["id"]==obj["id"] and i["instrumentScale"]<obj["instrumentScale"] for i in d["items"]),kind+" scale not saved")
+                    expected_scale=next(i["instrumentScale"] for i in scaled["items"] if i["id"]==obj["id"])
+                    for page,initial_scale in zip((actor,receiver),initial_scales):
+                        page.wait_for_function("""({body,target})=>{
+                            const e=document.querySelector(body);if(!e)return false;
+                            const m=new DOMMatrix(getComputedStyle(e).transform);
+                            return Math.abs(Math.hypot(m.a,m.b)-target)<0.02;
+                        }""",arg={"body":body,"target":initial_scale*expected_scale/obj["instrumentScale"]},timeout=15000)
+                        page.wait_for_function("""({ident,id,scale})=>{
+                            const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                            return !!raw&&JSON.parse(raw).items.some(i=>i.id===id&&Math.abs(i.instrumentScale-scale)<0.001);
+                        }""",arg={"ident":ident,"id":obj["id"],"scale":expected_scale},timeout=15000)
+                    # Rotate through the actual instrument-specific control, then reset.
+                    rotation=actor.locator(selector+' button[aria-label="Повернуть инструмент"]')
+                    rect=rotation.bounding_box();x=rect["x"]+rect["width"]/2;y=rect["y"]+rect["height"]/2
+                    actor.mouse.move(x,y);actor.mouse.down()
+                    try:actor.mouse.move(x+60,y+30,steps=6)
+                    finally:actor.mouse.up()
+                    rotated=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i.get("rotation",0))>5 for i in d["items"]),kind+" instrument rotation not saved")
+                    for page in (actor,receiver):geometry_synced(page,rotated["items"])
+                    actor.locator(selector+' button[aria-label="Сбросить угол"]').click()
+                    reset=wait_api(actor,lambda d:any(i["id"]==obj["id"] and abs(i.get("rotation",0))<.01 for i in d["items"]),kind+" instrument reset not saved")
+                    for page in (actor,receiver):geometry_synced(page,reset["items"])
+                    actor.locator(selector+' button[aria-label="Убрать инструмент"]').click()
+                    wait_api(actor,lambda d:not any(i["id"]==obj["id"] for i in d["items"]),kind+" instrument deletion not saved")
+                    expect(receiver.locator(selector)).to_have_count(0,timeout=15000)
+                    print(kind+" creation/motion/scale/deletion by "+("teacher" if actor is teacher else "student")+" passed")
+
+            # Minimal valid two-page PDF with real xref and different colored
+            # page content. No external files or network are needed.
+            def make_pdf():
+                streams=[b"0.1 0.4 0.8 rg 10 10 180 180 re f",b"0.8 0.2 0.1 rg 10 10 180 180 re f"]
+                objects=[b"<< /Type /Catalog /Pages 2 0 R >>",
+                         b"<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+                         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> /Contents 5 0 R >>",
+                         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> /Contents 6 0 R >>"]
+                objects += [b"<< /Length "+str(len(stream)).encode()+b" >>\nstream\n"+stream+b"\nendstream" for stream in streams]
+                out=b"%PDF-1.4\n";offsets=[0]
+                for index,obj in enumerate(objects,1):
+                    offsets.append(len(out));out+=str(index).encode()+b" 0 obj\n"+obj+b"\nendobj\n"
+                xref=len(out)
+                out+=b"xref\n0 "+str(len(offsets)).encode()+b"\n0000000000 65535 f \n"
+                out+=b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets[1:])
+                return out+b"trailer\n<< /Size "+str(len(offsets)).encode()+b" /Root 1 0 R >>\nstartxref\n"+str(xref).encode()+b"\n%%EOF\n"
+            replace_items([])
+            pupil.locator('input[aria-label="Добавить фото или PDF"]').set_input_files({"name":"qa-two-pages.pdf","mimeType":"application/pdf","buffer":make_pdf()})
+            expect(pupil.locator(".student-media-pending")).to_be_visible(timeout=30000)
+            expect(teacher.locator(".teacher-media-request-head")).to_contain_text("qa-two-pages.pdf",timeout=30000)
+            teacher.locator(".teacher-media-request-actions button.approve").click()
+            row=wait_api(teacher,lambda d:any(i["kind"]=="pdf" and i.get("name")=="qa-two-pages.pdf" for i in d["items"]),"Approved PDF never committed")
+            pdf=next(i for i in row["items"] if i["kind"]=="pdf")
+            both(pdf["id"])
+            for page in (teacher,pupil):expect(page.locator(f'.board-object[data-object="{pdf["id"]}"]')).to_be_visible(timeout=30000)
+            select_all(pupil)
+            next_page=pupil.get_by_role("button",name="Следующая страница PDF",exact=True)
+            expect(next_page).to_be_enabled(timeout=30000);next_page.click()
+            wait_api(pupil,lambda d:any(i["id"]==pdf["id"] and i.get("pdfPage")==2 for i in d["items"]),"PDF page change not saved")
+            select_all(teacher)
+            expect(teacher.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("2",timeout=30000)
+            teacher.get_by_role("button",name="Предыдущая страница PDF",exact=True).click()
+            wait_api(teacher,lambda d:any(i["id"]==pdf["id"] and i.get("pdfPage")==1 for i in d["items"]),"Teacher PDF page change not saved")
+            expect(pupil.get_by_role("spinbutton",name="Номер страницы PDF")).to_have_value("1",timeout=30000)
+            moved_pdf=peer_move(pdf)
+            peer_resize_rotate(moved_pdf)
+            select_all(teacher)
+            teacher.get_by_role("button",name="Добавить следующую страницу PDF рядом",exact=True).click()
+            copies=wait_api(teacher,lambda d:len([i for i in d["items"] if i["kind"]=="pdf"])==2,"PDF page copy not saved")
+            copy=next(i for i in copies["items"] if i["id"]!=pdf["id"])
+            assert copy["assetId"]==pdf["assetId"] and copy["pdfPage"]==2
+            both(copy["id"])
+            for page in (teacher,pupil):geometry_synced(page,copies["items"])
+            select_all(teacher);teacher.keyboard.press("Delete")
+            both(pdf["id"],False);both(copy["id"],False)
+            print("Real two-page PDF upload, durable teacher approval, bidirectional pagination, movement and deletion passed.")
+
+            # Change only the wall-clock read, not Chromium timers. Installing
+            # a fake timer scheduler after the board mounted can invalidate
+            # existing heartbeat/expiry timers. Actual socket and API remain real.
+            replace_items([])
+            pupil.bring_to_front()
+            pupil.evaluate("""()=>{
+                window.__qaRealNow=Date.now;
+                window.__qaClockOffset=0;
+                Date.now=()=>window.__qaRealNow()+window.__qaClockOffset;
+            }""")
+            def visibility(hidden):
+                pupil.evaluate("""hidden=>{
+                    Object.defineProperty(document,"hidden",{configurable:true,get:()=>hidden});
+                    Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>hidden?"hidden":"visible"});
+                    document.dispatchEvent(new Event("visibilitychange"));
+                }""",hidden)
+            indicator=pupil.locator(".lektrus-board-idle-indicator")
+            try:
+                expect(indicator).to_have_count(0,timeout=15000)
+                pupil.wait_for_timeout(500)
+                initial_sockets=len(pupil_sockets)
+                assert initial_sockets>0
+                visibility(True)
+                # Advance wall time but not timers: like an OS suspending a
+                # WebView for just under ten minutes.
+                pupil.evaluate("window.__qaClockOffset=590000")
+                visibility(False)
+                pupil.evaluate("window.__qaClockOffset=0")
+                expect(indicator).to_have_count(0,timeout=10000)
+                assert len(pupil_sockets)==initial_sockets,("Short background visit unnecessarily replaced the board socket",pupil_lifecycle[-12:])
+                assert any(n==initial_sockets and t=="activity" and bg is True and age is not None and age<1000 for n,t,bg,age in pupil_lifecycle),"Short visit did not notify server of background"
+                first_after_short=draw(pupil,"pen",.65)
+                both(first_after_short)
+                assert len(pupil_sockets)==initial_sockets,"First input after short background visit reconnected the socket"
+                print("Browser background below 10 minutes: same socket, immediate first stroke, both copies converged.")
+
+                visibility(True)
+                # Advance browser wall time beyond the limit. Negotiate a
+                # near-expired real server lease through the test proxy, so
+                # the actual 4410 close arrives without a ten-minute wait.
+                # This tests the browser on the server-driven idle path.
+                pupil.evaluate("window.__qaClockOffset=601000")
+                pupil_sockets[-1][1].send(json.dumps({"type":"activity","idle_age_ms":599000,"background":True}))
+                expect(indicator).to_contain_text("Соединение приостановлено",timeout=15000)
+                asleep_sockets=len(pupil_sockets)
+                missed=draw(teacher,"marker",.37)
+                stored(teacher,missed)
+                assert not pupil.evaluate("""({ident,id})=>{
+                    const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                    return !!raw&&JSON.parse(raw).items.some(i=>i.id===id);
+                }""",{"ident":ident,"id":missed}),"Suspended board unexpectedly received a durable revision"
+                assert len(pupil_sockets)==asleep_sockets,"Suspended board opened a new socket"
+                visibility(False)
+                pupil.evaluate("window.__qaClockOffset=0")
+                # No click or reload: foreground alone must recover the missed revision.
+                expect(indicator).to_have_count(0,timeout=30000)
+                both(missed)
+                first_after_long=draw(pupil,"pen",.77)
+                both(first_after_long)
+                assert len(pupil_sockets)>asleep_sockets,"Expired background lease did not establish a fresh socket"
+                print("Browser background above 10 minutes: suspended, missed revision recovered on foreground, first new stroke converged.")
+            finally:
+                pupil.evaluate("""()=>{delete document.hidden;delete document.visibilityState;
+                    Date.now=window.__qaRealNow;delete window.__qaRealNow;delete window.__qaClockOffset;}""")
+
+            # Real authenticated Chromium touch events through the landscape
+            # phone/tablet board iframe, not JS calls to React handlers.
+            replace_items([])
+            touch_contexts=[]
+            try:
+                mobile_pages=[]
+                for source,size,can_author in ((pupil,{"width":844,"height":390},False),(teacher,{"width":1024,"height":768},True)):
+                    mobile=browser.new_context(storage_state=source.context.storage_state(),viewport=size,has_touch=True,is_mobile=True,service_workers="block")
+                    touch_contexts.append(mobile)
+                    phone=mobile.new_page()
+                    scope=assert_board(phone,ident,can_author,can_author,embedded=True)
+                    assert_role_toolbar(scope,True,can_author,touch=True)
+                    mobile_pages.append((mobile,phone,scope))
+                def touch_draw(entry,kind,vertical):
+                    mobile,page,scope=entry
+                    scope.locator(f'[data-interface-control="{kind}"]:visible').first.tap()
+                    box=scope.locator("section.board").bounding_box()
+                    x=box["x"]+box["width"]*.52;y=box["y"]+box["height"]*vertical
+                    before=ids(read())
+                    cdp=mobile.new_cdp_session(page)
+                    def event(kind,points):
+                        cdp.send("Input.dispatchTouchEvent",{"type":kind,"touchPoints":points})
+                    event("touchStart",[{"x":x,"y":y}])
+                    try:
+                        for n in range(1,9):event("touchMove",[{"x":x+n*8,"y":y+3}])
+                        saved=wait_api(page,lambda d:any(i["id"] not in before and i["kind"]==kind and i.get("width",0)>25 for i in d["items"]),"Touch ink not saved while held")
+                        stroke=next(i for i in saved["items"] if i["id"] not in before and i["kind"]==kind)
+                    finally:
+                        event("touchEnd",[]);cdp.detach()
+                    for _,peer,peer_scope in mobile_pages:
+                        peer_scope.locator("section.board").evaluate("""(el,{ident,id})=>new Promise((resolve,reject)=>{
+                            const deadline=Date.now()+15000;
+                            const check=()=>{const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                                if(raw&&JSON.parse(raw).items.some(i=>i.id===id)){resolve(true);return}
+                                if(Date.now()>deadline){reject(Error("Touch peer did not receive stroke"));return}
+                                setTimeout(check,100)};check()
+                        })""",{"ident":ident,"id":stroke["id"]})
+                    both(stroke["id"])
+                    return stroke["id"]
+                a=touch_draw(mobile_pages[0],"pen",.43)
+                b=touch_draw(mobile_pages[1],"marker",.63)
+                desktop_id=draw(teacher,"pen",.79)
+                for _,peer,scope in mobile_pages:
+                    scope.locator("section.board").evaluate("""(el,{ident,ids})=>new Promise((resolve,reject)=>{
+                        const deadline=Date.now()+15000;const check=()=>{
+                            const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                            if(raw&&ids.every(id=>JSON.parse(raw).items.some(i=>i.id===id))){resolve(true);return}
+                            if(Date.now()>deadline){reject(Error("Cross device revision missing"));return}
+                            setTimeout(check,100)};check()
+                    })""",{"ident":ident,"ids":[a,b,desktop_id]})
+                both(desktop_id)
+                assert {a,b,desktop_id}<=ids(read())
+                print("Phone and tablet emulated touch ink before release, desktop and both mobile copies converged.")
+            finally:
+                for mobile in touch_contexts:mobile.close()
+    finally:
+        for ctx in contexts:ctx.close()
+
+
+def check_final_subject_gestures(browser,author):
+    """Finite final subject gate: shared sentence pointer/cancel, contour undo/ink, lab vessel movement."""
+    ident=setup_board()
+    url=f"/api/v1/boards/{ident}/document"
+    contexts=[browser.new_context(viewport={"width":1440,"height":900},service_workers="block") for _ in range(2)]
+    teacher,pupil=[ctx.new_page() for ctx in contexts]
+    try:
+        login(teacher,"owner")
+        login(pupil,"learner")
+        assert_board(teacher,ident,True,True)
+        assert_board(pupil,ident,False,False)
+        with httpx.Client(base_url=API,headers=headers("owner")) as client:
+            def read():
+                r=client.get(url);r.raise_for_status()
+                return r.json()
+            def wait(predicate,label):
+                for _ in range(160):
+                    row=read()
+                    if predicate(row["document"]["items"]):return row
+                    teacher.wait_for_timeout(100)
+                raise AssertionError(label)
+            def replace(obj):
+                row=read()
+                client.put(url,json={"expected_version":row["version"],"document":{**row["document"],"items":[obj]}}).raise_for_status()
+                for page in (teacher,pupil):
+                    page.wait_for_function("""({ident,id})=>{
+                        const raw=localStorage.getItem("lesson-board.document.v1.board."+ident);
+                        return raw&&JSON.parse(raw).items.length===1&&JSON.parse(raw).items[0].id===id;
+                    }""",arg={"ident":ident,"id":obj["id"]},timeout=30000)
+                    page.locator('[data-interface-control="select"]:visible').first.click()
+            base={"kind":"graph","graphPurpose":"geometry","graphAxisMode":"none","x":120,"y":100,"width":820,"height":500,"createdBy":author}
+            failures=[]
+            try:
+                sentence={**base,"id":"qa-final-sentence","graphFigureId":"language-sentence-builder","text":"Final sentence",
+                          "schoolDiagram":{"kind":"sentence-builder","title":"Final sentence","instructions":"Arrange","parts":[{"id":"a","text":"I"},{"id":"b","text":"read"},{"id":"c","text":"books"}],"showKey":False,"showHint":False,"patternId":""}}
+                replace(sentence)
+                pupil.get_by_role("button",name="Проверить",exact=True).click()
+                checked=wait(lambda items:items[0]["schoolDiagram"].get("answerChecked") is True,"Sentence check not persisted")
+                status=re.compile("Правильно|Есть неточности")
+                expect(teacher.locator(".lektrus-sentence-status")).to_contain_text(status,timeout=15000)
+                words=pupil.locator("[data-sentence-word]")
+                expect(words).to_have_count(3)
+                expect(words.first).to_be_visible()
+                cdp=pupil.context.new_cdp_session(pupil)
+                def word_center(word):
+                    word.scroll_into_view_if_needed()
+                    box=word.bounding_box()
+                    assert box,"Sentence word has no bounds"
+                    x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
+                    hit=pupil.evaluate("""({x,y})=>document.elementFromPoint(x,y)?.closest('[data-sentence-word]')?.dataset.sentenceWord""",{"x":x,"y":y})
+                    assert hit==word.get_attribute("data-sentence-word"),("Unexpected pointer target",hit,x,y)
+                    return x,y
+                # The real board reacts to coarse-pointer changes (toolbar and
+                # viewport layout). Measure after enabling touch, not before.
+                pupil.evaluate("""()=>{window.__qaSentenceEvents=[];for(const type of ['pointerdown','pointermove','pointercancel','pointerup'])window.addEventListener(type,e=>window.__qaSentenceEvents.push({type:e.type,pointer:e.pointerType,x:e.clientX,y:e.clientY,target:e.target?.closest?.('[data-sentence-word]')?.dataset.sentenceWord}),true)}""")
+                try:
+                    cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":True,"maxTouchPoints":1})
+                    pupil.wait_for_timeout(500)
+                    x,y=word_center(words.first)
+                    assert words.first.evaluate("e=>getComputedStyle(e).touchAction")=="none","Workspace CSS must not enable native panning on draggable words"
+                    cdp.send("Input.dispatchTouchEvent",{"type":"touchStart","touchPoints":[{"x":x,"y":y,"id":1}]})
+                    for offset in (12,24,36):
+                        cdp.send("Input.dispatchTouchEvent",{"type":"touchMove","touchPoints":[{"x":x+offset,"y":y,"id":1}]})
+                    expect(pupil.locator(".lektrus-sentence-drag-preview")).to_be_visible()
+                    cdp.send("Input.dispatchTouchEvent",{"type":"touchCancel","touchPoints":[]})
+                    expect(pupil.locator(".lektrus-sentence-drag-preview")).to_have_count(0)
+                    expect(pupil.locator(".lektrus-sentence-status")).to_contain_text(status)
+                except Exception:
+                    print("Sentence pointer trace:",pupil.evaluate("window.__qaSentenceEvents"),flush=True)
+                    raise
+                finally:
+                    cdp.send("Emulation.setTouchEmulationEnabled",{"enabled":False})
+                    pupil.wait_for_timeout(500)
+                # Unrelated autosizing/presence revisions may advance the board
+                # version; verify the exact answer fields rather than that counter.
+                pupil.wait_for_timeout(700)
+                after_cancel=read()["document"]["items"][0]["schoolDiagram"]
+                before_cancel=checked["document"]["items"][0]["schoolDiagram"]
+                assert after_cancel.get("answerOrder")==before_cancel.get("answerOrder") and after_cancel.get("answerChecked") is True,"Cancelled drag must not persist an answer change"
+                order=words.evaluate_all("els=>els.map(e=>e.dataset.sentenceWord)")
+                x,y=word_center(words.first)
+                last=words.last.bounding_box()
+                pupil.mouse.move(x,y);pupil.mouse.down()
+                pupil.mouse.move(last["x"]+last["width"]+12,last["y"]+last["height"]/2,steps=8);pupil.mouse.up()
+                moved=wait(lambda items:items[0]["schoolDiagram"].get("answerOrder")==order[1:]+order[:1] and items[0]["schoolDiagram"].get("answerChecked") is False,"Sentence mouse move not persisted")
+                teacher.wait_for_function("order=>JSON.stringify(Array.from(document.querySelectorAll('[data-sentence-word]'),e=>e.dataset.sentenceWord))===JSON.stringify(order)",arg=moved["document"]["items"][0]["schoolDiagram"]["answerOrder"],timeout=15000)
+                print("Final shared sentence: cancelled touch preserves checked result, real mouse reorder converges.")
+            except Exception as error:
+                failures.append("sentence: "+str(error))
+                traceback.print_exc()
+                for page in (teacher,pupil):
+                    page.screenshot(path=str(OUT/("sentence-"+("teacher" if page==teacher else "pupil")+"-failure.png")))
+            try:
+                contour={**base,"id":"qa-final-contour","graphFigureId":"contour-atlas","text":"Контурная карта",
+                         "schoolDiagram":{"kind":"atlas","scope":"geography","title":"Контурная карта","mode":"contour","year":1914,"showLabels":True,"showGrid":False,"showEvents":False,"markers":[],"regionId":"world","borderView":"russian","contourTask":"Обозначьте точку",
+                         "contourMarks":[{"id":"qa-a","lat":30,"lon":20,"text":"QA A","kind":"point","color":"#334455"}],"contourStrokes":[],"paintedCountries":{}}}
+                replace(contour)
+                editor=".lektrus-contour-editor-fullscreen"
+                for page in (teacher,pupil):
+                    page.keyboard.press("Control+a")
+                    page.get_by_role("button",name="Настроить учебный объект",exact=True).click()
+                    expect(page.locator(editor)).to_be_visible(timeout=30000)
+                mark="Передвинуть обозначение: QA A"
+                ta=teacher.locator(editor).get_by_role("button",name=mark,exact=True)
+                pa=pupil.locator(editor).get_by_role("button",name=mark,exact=True)
+                def lon(items):return items[0]["schoolDiagram"]["contourMarks"][0]["lon"]
+                expect(ta).to_be_visible(timeout=30000)
+                expect(pa).to_be_visible(timeout=30000)
+                ta.press("ArrowRight")
+                first_move=wait(lambda items:lon(items)>20,"First contour move missing")
+                first_lon=lon(first_move["document"]["items"])
+                pupil.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":first_lon},timeout=30000)
+                pa.press("ArrowRight")
+                second=wait(lambda items:lon(items)>first_lon,"Peer contour move missing")
+                second_lon=lon(second["document"]["items"])
+                teacher.wait_for_function("""({ident,lon})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourMarks[0].lon===lon""",arg={"ident":ident,"lon":second_lon},timeout=30000)
+                teacher.locator(editor).get_by_role("button",name="Отменить",exact=True).click()
+                teacher.wait_for_timeout(1200)
+                assert lon(read()["document"]["items"])==second_lon,"Contour Undo overwrote peer's later move"
+                for page in (teacher,pupil):
+                    page.locator(editor).get_by_role("button",name="Карандаш",exact=True).click()
+                    svg=page.locator(editor+" svg[data-contour-brush=pen]")
+                    expect(svg).to_be_visible()
+                    box=svg.bounding_box();x=box["x"]+box["width"]*.45;y=box["y"]+box["height"]*(.45 if page==teacher else .60)
+                    count=len(read()["document"]["items"][0]["schoolDiagram"]["contourStrokes"])
+                    page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+35,y+8,steps=8);page.mouse.up()
+                    wait(lambda items:len(items[0]["schoolDiagram"]["contourStrokes"])>count,"Contour ink not persisted")
+                for page in (teacher,pupil):
+                    page.wait_for_function("""ident=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].schoolDiagram.contourStrokes.length===2""",arg=ident,timeout=30000)
+                    page.locator(editor).get_by_role("button",name="Закрыть общий редактор",exact=True).click()
+                print("Final contour: conflicting Undo preserves peer mark and two real ink gestures converge.")
+            except Exception as error:
+                failures.append("contour: "+str(error))
+                traceback.print_exc()
+                for page in (teacher,pupil):
+                    page.screenshot(path=str(OUT/("contour-"+("teacher" if page==teacher else "pupil")+"-failure.png")))
+                for page in (teacher,pupil):
+                    close=page.locator(".lektrus-contour-editor-fullscreen").get_by_role("button",name="Закрыть общий редактор",exact=True)
+                    if close.count():close.click()
+            try:
+                lab={**base,"id":"qa-final-lab","graphFigureId":"chem-experiment-free","width":960,"height":580,"text":"Химическая лаборатория",
+                     "scienceLabBench":{"vessels":[{"id":"v1","kind":"beaker","x":48,"y":70,"reagents":[],"environment":"aqueous","observed":False}],"selectedId":"v1","event":0,"mode":"reactions","simulationPaused":True}}
+                replace(lab)
+                vessel=pupil.locator('[data-lab-vessel-id="v1"]')
+                expect(vessel).to_be_visible(timeout=15000)
+                box=vessel.bounding_box();x=box["x"]+box["width"]/2;y=box["y"]+box["height"]/2
+                pupil.mouse.move(x,y);pupil.mouse.down();pupil.mouse.move(x+38,y,steps=10);pupil.mouse.up()
+                saved=wait(lambda items:abs(items[0]["scienceLabBench"]["vessels"][0]["x"]-48)>0.5,"Lab vessel drag not persisted")
+                px=saved["document"]["items"][0]["scienceLabBench"]["vessels"][0]["x"]
+                teacher.wait_for_function("""({ident,x})=>JSON.parse(localStorage.getItem("lesson-board.document.v1.board."+ident)).items[0].scienceLabBench.vessels[0].x===x""",arg={"ident":ident,"x":px},timeout=30000)
+                print("Final lab: pupil vessel motion persists and converges.")
+            except Exception as error:
+                failures.append("lab: "+str(error))
+                traceback.print_exc()
+                for page in (teacher,pupil):
+                    page.screenshot(path=str(OUT/("lab-"+("teacher" if page==teacher else "pupil")+"-failure.png")))
+            assert not failures,"Focused subject scenarios failed: "+"; ".join(failures)
+
+    finally:
+        for ctx in contexts:ctx.close()
+
 def main():
-    asyncio.run(seed())
+    seed_owner=asyncio.run(seed())
+    if "--subject-final-only" in sys.argv:
+        with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True)
+            try:check_final_subject_gestures(browser,seed_owner)
+            finally:browser.close()
+        return
+    if "--sync-only" in sys.argv:
+        with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True)
+            try:
+                check_shared_eraser_sync(browser)
+                check_undo_reconnect_sync(browser)
+                check_final_subject_gestures(browser,seed_owner)
+            finally:
+                browser.close()
+        return
     ident=setup_board()
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True)
@@ -1084,6 +2492,7 @@ def main():
             assert not errors, f"{name}: browser exceptions {errors}"
             context.close()
         check_shared_eraser_sync(browser)
+        check_undo_reconnect_sync(browser)
         check_guest_and_registration(browser,ident)
         check_maintenance(browser,ident)
         check_billing_and_finance(browser)

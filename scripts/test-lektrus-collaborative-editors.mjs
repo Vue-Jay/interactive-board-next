@@ -153,8 +153,8 @@ const app=read("src/BoardApp.tsx");
 const school=read("src/LektrusSchoolDiagramEditor.tsx");
 const ws=read("src/boardWorkSync.ts");
 const atlasMap=read("src/LektrusMapAtlas.tsx");
-assert.match(atlasMap,/mergeEditedValue\(after,last.before,currentContour\(\)\)/,
- "contour undo rebases its inverse on the latest shared markings");
+assert.match(atlasMap,/undoCollaborativeValue\(after,last.before,currentContour\(\)\)/,
+ "contour undo applies the conflict-aware personal inverse to the latest shared markings");
 assert.match(atlasMap,/contourMarks:typeof contourMarks;contourStrokes:typeof contourStrokes/,
  "undo wrapper must preserve canonical ID-collection names");
 assert.match(atlasMap,/contourMarks:restored\.contourMarks/,
@@ -224,4 +224,185 @@ for(const key of ["contourMarks","contourStrokes","bodies","supports","forces",
  let a=0,b=1;for(let i=0;i<20;i++){a={nested:a};b={nested:b};}
  assert.deepEqual(editorDiff({deep:a,text:"old"},{deep:b,text:"new"}),[],
   "A deep partial edit must fall back to the complete durable revision");
+}
+
+
+// Execute the self-hosted work-channel batching logic with a controlled socket.
+{
+ const work={};
+ let status,receive,revision=7;
+ const frames=[],received=[];
+ const channel=Object.assign(()=>{}, {sendEvent:frame=>{frames.push(frame);return true}});
+ const mock={isSelfhostBackendEnabled:()=>true,selfhostSubscribeBoard:(_board,_revision,onStatus,onEvent)=>{
+  status=onStatus;receive=onEvent;return channel;
+ }};
+ const compiled=ts.transpileModule(ws,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ new Function("exports","require",compiled.outputText)(work,name=>name==="./selfhostApi"?mock:{});
+ const connection=work.connectBoardWorkChannel("board",{userId:"me",name:"Me",role:"owner"},()=>{},()=>{},true,m=>received.push(m),undefined,()=>revision);
+ try{
+  status("online");
+  const ops=(n,start)=>Array.from({length:n},(_,i)=>({path:["tableCells",start+i],kind:"set",value:"cell-"+i}));
+  connection.publishEdit("table",ops(1,0));
+  connection.publishEdit("table",ops(180,1));
+  connection.publishEdit("table",ops(150,181));
+  revision=8;
+  connection.publishEdit("table",ops(2,400));
+  await new Promise(resolve=>setTimeout(resolve,220));
+  const edits=frames.filter(f=>f.type==="editor_mutation");
+  assert.deepEqual(edits.map(f=>[f.base_version,f.ops.length]),[[7,1],[7,180],[7,150],[8,2]],
+   "Complete editor packets must never be split at 300 operations or combined across revisions");
+  receive({type:"editor_mutation",id:"peer:1",item_id:"table",client_id:"peer",user_id:"other",base_version:7,ops:ops(1,0)});
+  assert.equal(received[0].baseVersion,7);
+  assert.match(app,/mutation\.baseVersion!==undefined&&mutation\.baseVersion!==\(remoteVersion\.current\?\?0\)/);
+ }finally{connection.close()}
+}
+
+{
+ const compiled=ts.transpileModule(read("src/boardLiveObjectEdits.ts"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ const live={};new Function("exports","require",compiled.outputText)(live,()=>exports);
+ const base={id:"table",kind:"table",x:1,y:2,width:100,height:50,text:"",tableCells:["old","B"],tableHeader:true};
+ const draft={...base,tableCells:["edited","B"],tableHeader:false};
+ const peer={...base,x:99};
+ const next={...peer,tableCells:["edited","second"],tableHeader:false};
+ const ops=live.boardModalDraftOps(peer,draft,next,["tableCells","tableHeader"]);
+ assert.deepEqual(applyEditorOps(peer,ops),next,"New revision receives every unsaved field, not only latest input");
+ assert.deepEqual(applyEditorOps(next,ops),next,"Repeating draft is idempotent");
+ const reset={...next,tableHeader:true};
+ assert.deepEqual(applyEditorOps(next,live.boardModalDraftOps(peer,next,reset,["tableCells","tableHeader"])),reset,"Reverted fields reset preview");
+ // The receiver missed the reset packet while another field remained dirty.
+ const refresh=live.boardModalDraftOps(peer,undefined,reset,["tableCells","tableHeader","fontSize"],["tableCells","tableHeader"]);
+ assert.deepEqual(applyEditorOps(next,refresh),reset,"Periodic refresh repairs a lost reset even when it equals the committed value");
+ assert.ok(!refresh.some(op=>op.path[0]==="fontSize"),"Never reset untouched modal fields");
+ const rollback=live.boardModalDraftOps(peer,reset,peer,["tableCells","tableHeader"],["tableCells","tableHeader"]);
+ assert.deepEqual(applyEditorOps(next,rollback),peer,"Closing a modal repairs a previously missed reset");
+ const withOptional={...peer,fontSize:18};
+ const remove=live.boardModalDraftOps(peer,undefined,peer,["fontSize"],["fontSize"]);
+ const cleared=applyEditorOps(withOptional,remove);
+ assert.equal(cleared.fontSize,undefined,"Previously published optional fields can be explicitly cleared");
+ assert.deepEqual(JSON.parse(JSON.stringify(cleared)),peer,"A cleared optional field is absent on the document wire");
+ assert.match(app,/boardModalDraftOps\(stored,undefined,mergeModalPatch\(stored,patch\),fields,\[\.\.\.lastModalLiveTouched\.current\]\)/);
+}
+{
+ const work={};let status,failures=2;const frames=[];
+ const channel=Object.assign(()=>{},{sendEvent:frame=>{
+  if(failures>0){failures--;return false;}
+  frames.push(frame);return true;
+ }});
+ const mock={isSelfhostBackendEnabled:()=>true,selfhostSubscribeBoard:(_b,_r,onStatus)=>{status=onStatus;return channel;}};
+ const compiled=ts.transpileModule(ws,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+ new Function("exports","require",compiled.outputText)(work,name=>name==="./selfhostApi"?mock:{});
+ const connection=work.connectBoardWorkChannel("board",{userId:"me",name:"Me",role:"owner"},()=>{},()=>{},true,undefined,undefined,()=>8);
+ try{
+  status("online");
+  connection.publishEdit("item",[{path:["text"],kind:"set",value:"new"}]);
+  await new Promise(resolve=>setTimeout(resolve,650));
+  assert.equal(frames.filter(f=>f.type==="editor_mutation").length,1,"Failed transport send retries whole edit packet");
+  assert.equal(frames.filter(f=>f.type==="work_state").length,1,"Failed transport send retries work state");
+ }finally{connection.close()}
+}
+
+// Stale toolbar props cannot clone deleted, locked or replaced PDF assets.
+{
+ const pdf={};
+ new Function("exports",ts.transpileModule(read("src/boardPdfActions.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+ }).outputText)(pdf);
+ const item={id:"pdf",kind:"pdf",assetId:"asset",pdfPage:1,x:0,y:0};
+ const latest={...item,pdfPage:3,x:25};
+ assert.equal(pdf.resolvePdfAction([latest],item,true,8),latest);
+ assert.equal(pdf.nextPdfPage(latest.pdfPage+1,8),4);
+ assert.equal(pdf.resolvePdfAction([],item,true,8),undefined);
+ assert.equal(pdf.resolvePdfAction([{...latest,locked:true}],item,true,8),undefined);
+ assert.equal(pdf.resolvePdfAction([{...latest,assetId:"replacement"}],item,true,8),undefined);
+ assert.equal(pdf.resolvePdfAction([latest],item,false,8),undefined);
+ assert.equal(pdf.resolvePdfAction([latest],item,true,null),undefined);
+ assert.equal(pdf.resolvePdfAction([latest],item,true,0),undefined);
+}
+
+// Durable rebase of a queued answer must not attach it to a new assignment.
+{
+ const base={kind:"sentence-builder",title:"Sentence",parts:[{id:"a",text:"I"},{id:"b",text:"read"}],answerOrder:["a","b"],answerChecked:true};
+ const local={...base,answerOrder:["b","a"],answerChecked:false};
+ const replacement={kind:"sentence-builder",title:"New",parts:[{id:"a",text:"We"},{id:"b",text:"write"}]};
+ assert.deepEqual(mergeEditedValue(base,local,replacement),replacement,"Stale sentence answer cannot cross source changes");
+ assert.deepEqual(mergeEditedValue(base,replacement,local),replacement,"Teacher source replacement clears concurrent old answers");
+ const check={...base,answerChecked:false};
+ const reorder={...base,answerOrder:["b","a"]};
+ assert.deepEqual(mergeEditedValue(base,check,reorder),check,"Check state and order are an atomic pair");
+ const whole={id:"graph",x:1,schoolDiagram:base};
+ assert.deepEqual(mergeEditedValue(whole,{...whole,schoolDiagram:local},{...whole,x:99,schoolDiagram:replacement}),
+  {...whole,x:99,schoolDiagram:replacement},"Board rebase preserves peer placement and replacement source");
+ const practice={order:["RU","FR"],matched:["FR"],wrong:0,index:0,revealed:false,known:[],selected:null,feedback:"correct"};
+ const geo={kind:"geo-training",title:"Geo",exercise:"matching",relation:"country-capital",reverse:false,countryCodes:["FR","RU"]};
+ const answered={...geo,practice};
+ for(const newer of [{...geo,reverse:true},{...geo,relation:"flag-country"},{...geo,exercise:"cards"},{...geo,countryCodes:["DE","RU"]}]){
+  assert.deepEqual(mergeEditedValue(geo,answered,newer),newer,"Old geography answers never cross replacement assignment");
+  assert.deepEqual(mergeEditedValue(geo,newer,answered),newer,"New geography source clears concurrent old response");
+ }
+ assert.deepEqual(mergeEditedValue(geo,answered,{...geo,title:"Renamed"}),{...answered,title:"Renamed"},"Unrelated rename does not erase responses");
+}
+
+for(const [base,source,response] of [
+ [{kind:"flashcards",cards:[{id:"a",term:"Hello"}],direction:"foreign-first"},{direction:"russian-first"},{index:0,revealed:true}],
+ [{kind:"orthography",questions:[{id:"a",prompt:"л□с",options:["е","и"]}]},{questions:[{id:"a",prompt:"м□р",options:["и","е"]}]},{index:0,picked:0,checked:true}]
+]){
+ const answered={...base,response},updated={...base,...source};
+ assert.deepEqual(mergeEditedValue(base,answered,updated),updated);
+ assert.deepEqual(mergeEditedValue(base,updated,answered),updated);
+ assert.deepEqual(mergeEditedValue(base,answered,{...base,title:"Rename"}),{...answered,title:"Rename"});
+}
+
+{
+ const syntax={kind:"syntax",title:"Sentence",showMarks:true,words:[{id:"a",text:"Мама",role:"none"},{id:"b",text:"читает",role:"none"}]};
+ const local={...syntax,words:[{...syntax.words[0],role:"subject"},syntax.words[1]]};
+ const remote={...syntax,words:[syntax.words[0],{...syntax.words[1],role:"predicate"}]};
+ assert.deepEqual(mergeEditedValue(syntax,local,remote).words,[local.words[0],remote.words[1]]);
+ const replacement={...syntax,words:[{id:"a",text:"Папа",role:"none"},syntax.words[1]]};
+ assert.deepEqual(mergeEditedValue(syntax,local,replacement),replacement,"Stale marks must not annotate a replacement word");
+ assert.deepEqual(mergeEditedValue(syntax,replacement,remote).words,[replacement.words[0],remote.words[1]],"Teacher change preserves independent marking of an unchanged word");
+ const place={kind:"place-value",title:"Number",base:2,digits:"",showPowers:true};
+ const answer={...place,digits:"101"},newBase={...place,base:10,digits:""};
+ assert.deepEqual(mergeEditedValue(place,answer,newBase),newBase);
+ assert.deepEqual(mergeEditedValue(place,newBase,answer),newBase);
+ assert.deepEqual(mergeEditedValue(place,answer,{...place,title:"Rename"}),{...answer,title:"Rename"});
+}
+
+{
+ const a={id:"a",kind:"task",format:"interactive",activity:{mode:"choice",options:["one","two"],correctIndex:0},answer:""};
+ const b={...a,id:"b",title:"B"},c={...a,id:"c",title:"C"};
+ const base={subjectBoardEntries:[a,b]},answer={...a,activityResponse:{selected:1,checked:true}};
+ const local={subjectBoardEntries:[answer,b]},remote={subjectBoardEntries:[b,c]};
+ assert.deepEqual(mergeEditedValue(base,local,remote),remote,"Deleted task cannot be revived by an answer");
+ const reordered={subjectBoardEntries:[b,a,c]};
+ assert.deepEqual(mergeEditedValue(base,local,reordered),{subjectBoardEntries:[b,answer,c]},"Answer follows stable ID across reorder");
+ assert.deepEqual(mergeEditedValue(base,{subjectBoardEntries:[b,a]},local),{subjectBoardEntries:[b,answer]},"Reorder preserves concurrent answers");
+ const replacement={...a,activity:{mode:"choice",options:["three","four"],correctIndex:1}};
+ assert.deepEqual(mergeEditedValue(base,local,{subjectBoardEntries:[replacement,b]}),{subjectBoardEntries:[replacement,b]});
+ assert.deepEqual(mergeEditedValue(base,{subjectBoardEntries:[replacement,b]},local),{subjectBoardEntries:[replacement,b]});
+ assert.deepEqual(applyEditorOps({subjectBoardEntries:[replacement,b]},editorDiff(base,local)),{subjectBoardEntries:[replacement,b]},"Delayed preview cannot answer replaced task");
+ assert.deepEqual(applyEditorOps(remote,editorDiff(base,local)),remote,"Delayed preview cannot recreate deleted task");
+ assert.deepEqual(editorDiff(base,{subjectBoardEntries:[b,a]}),[],"Reorder uses durable revision");
+}
+
+{
+ const task={id:"language",kind:"task",subject:"languages",format:"grammar",prompt:"Transform",details:{material:"I read.\nWe write.",instruction:"Past"},answer:""};
+ const first={...task,answer:"I read yesterday.\n"},second={...task,answer:"\nWe wrote."};
+ const combined=mergeEditedValue(task,first,second,"subjectBoardEntries");
+ assert.equal(combined.answer,"I read yesterday.\nWe wrote.","Independent written rows survive");
+ const revised={...task,details:{...task.details,material:"They play.\nShe walks."}};
+ assert.deepEqual(mergeEditedValue(task,first,revised,"subjectBoardEntries"),revised,"Old written response cannot cross changed source");
+ assert.deepEqual(mergeEditedValue(task,revised,first,"subjectBoardEntries"),revised,"Teacher replacement clears stale response");
+ const renamed={...task,title:"Renamed"};
+ assert.equal(mergeEditedValue(task,first,renamed,"subjectBoardEntries").answer,first.answer);
+ const reorderedKeys={...task,details:{instruction:"Past",material:task.details.material}};
+ assert.equal(mergeEditedValue(task,first,reorderedKeys,"subjectBoardEntries").answer,first.answer,"JSONB key order is not source replacement");
+ const ru={id:"r",kind:"task",subject:"russian",format:"syntax",prompt:"Mark",details:{material:"Мама читает"},answer:""};
+ const marked={...ru,russianWork:{source:"Мама читает",syntaxRoles:["subject","none"]}};
+ const changed={...ru,details:{material:"Папа пишет"}};
+ assert.deepEqual(mergeEditedValue(ru,marked,changed,"subjectBoardEntries"),changed);
+ assert.deepEqual(mergeEditedValue(ru,changed,marked,"subjectBoardEntries"),changed);
+ const math={id:"m",kind:"task",format:"problem",prompt:"2+3",details:{},answer:""};
+ const given={...math,workedSolution:{given:"2 and 3"}},work={...math,workedSolution:{work:"2+3=5"}};
+ assert.deepEqual(mergeEditedValue(math,given,work,"subjectBoardEntries").workedSolution,{work:"2+3=5",given:"2 and 3"});
+ assert.equal(mergeEditedValue(math,{...math,prompt:"3+4"},work,"subjectBoardEntries").workedSolution,undefined);
 }

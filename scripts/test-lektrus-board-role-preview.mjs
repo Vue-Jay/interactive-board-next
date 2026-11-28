@@ -239,19 +239,24 @@ assert.match(nextView,/\{studentMode\?<span>Основание:/,
  "a pupil cannot change a teacher's number base");
 assert.match(russianView,/const inline=onChange&&!studentMode&&/,
  "teacher source-word and phonetic editor does not appear to pupil");
-assert.match(foreignView,/const \[order,setOrder\]=useState<string\[\]>\(initial\)/,
- "foreign-language rearrangement uses local answer state");
-assert.doesNotMatch(foreignView,/onChange\s*\(/,
- "foreign-language puzzle cannot rewrite teacher's board JSON");
+assert.match(foreignView,/onChange\?\.\(\{\.\.\.d,answerOrder:next,answerChecked:complete\}\)/,
+ "foreign-language rearrangement publishes a shared answer");
+const sharedSentence={kind:"sentence-builder",title:"Phrase",parts:[{id:"a",text:"I"},{id:"b",text:"read"}]};
+assert.deepEqual(restrictStudentDiagramChange(sharedSentence,{...sharedSentence,title:"forged",answerOrder:["b","a"],answerChecked:true}),
+ {...sharedSentence,answerOrder:["b","a"],answerChecked:true});
+assert.equal(restrictStudentDiagramChange(sharedSentence,{...sharedSentence,answerOrder:["a","a"],answerChecked:true}),null);
 const approvedView=read("src/LektrusApprovedSchoolView.tsx");
-assert.match(approvedView,/const \[index,setIndex\]=useState\(0\),\[revealed,setRevealed\]=useState\(false\)/,
- "foreign vocabulary flashcards flip locally without overwriting teacher data");
-assert.doesNotMatch(approvedView,/onChange\s*\(/,
- "foreign flashcard interactions must not save over a teacher's cards");
-assert.match(russianView,/const \[picked,setPicked\]=useState/,
- "spelling puzzle answers remain local to the learner");
-assert.match(app,/restrictStudentDiagramChange\(before.schoolDiagram,diagram\)/,
- "students cannot rewrite a teacher's assignment");
+assert.match(approvedView,/onChange\?\.\(\{\.\.\.d,response:next\}\)/,"Vocabulary publishes only its response");
+assert.match(russianView,/onChange\?\.\(\{\.\.\.d,response:next\}\)/,"Orthography publishes only its response");
+const vocab={kind:"flashcards",title:"Cards",direction:"foreign-first",cards:[{id:"a",term:"Hello",translation:"Привет",transcription:""}]};
+assert.deepEqual(restrictStudentDiagramChange(vocab,{...vocab,title:"forged",response:{index:0,revealed:true}}),{...vocab,response:{index:0,revealed:true}});
+assert.equal(restrictStudentDiagramChange(vocab,{...vocab,response:{index:1,revealed:true}}),null);
+const spelling={kind:"orthography",title:"Spell",questions:[{id:"a",prompt:"л□с",options:["е","и"],correct:0,explanation:""}]};
+assert.deepEqual(restrictStudentDiagramChange(spelling,{...spelling,title:"forged",response:{index:0,picked:0,checked:true}}),{...spelling,response:{index:0,picked:0,checked:true}});
+assert.equal(restrictStudentDiagramChange(spelling,{...spelling,response:{index:0,picked:null,checked:true}}),null);
+assert.equal(restrictStudentDiagramChange(spelling,{...spelling,response:{index:0,picked:2,checked:false}}),null);
+assert.match(app,/const merged=mergeEditedValue\(base,diagram,before.schoolDiagram\);\s*const allowed=isStudent\?restrictStudentDiagramChange\(before.schoolDiagram,merged\):merged;\s*if\(!allowed\|\|!isSchoolDiagram\(allowed\)\)return;/,
+ "student edits are merged against the current assignment, restricted and validated before commit");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,
  "only actual board owner can change the subject");
 assert.match(app,/if\(!canCreateAssignments\)\{setNotice\("Создавать задания может только преподаватель/,
@@ -329,3 +334,8 @@ console.log("Board-local participant roles: explicit role matrix passed");
  assert.equal(allowed([graph],[{...graph,graphPoints:[{x:1,y:2}]}],"student").length,0);
  assert.equal(allowed([{...graph,subjectBoardEntries:[]}],[{...graph,subjectBoardEntries:[],graphPoints:[{x:1,y:2}]}],"student").length,1);
 }
+
+// Open contour editors must recheck current permission and validate the merged map.
+assert.match(app,/if\(!canEdit\|\|!latest\|\|latest.graphFigureId!=="contour-atlas"\|\|/);
+assert.match(app,/const allowed=isStudent\?restrictStudentDiagramChange\(latest.schoolDiagram,merged\):merged;\s*if\(!allowed\|\|allowed.kind!=="atlas"\|\|!isSchoolDiagram\(allowed\)\)return;/);
+assert.match(app,/if\(!canEdit\|\|!current\|\|current.locked\|\|current.graphFigureId!=="geo-matching"/);

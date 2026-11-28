@@ -11,7 +11,7 @@ export type RussianSchoolDiagram=
    rows:MorphologyRow[];showAnalysis:boolean}
  |{kind:"phonetics";title:string;word:string;letters:PhoneticLetter[];
    showSounds:boolean;showCharacteristics:boolean}
- |{kind:"orthography";title:string;questions:OrthographyQuestion[];showExplanation:boolean};
+ |{kind:"orthography";title:string;questions:OrthographyQuestion[];showExplanation:boolean;response?:{index:number;picked:number|null;checked:boolean}};
 export const russianToolIds:RussianToolId[]=["ru-morphology","ru-phonetics","ru-orthography"];
 export const posNames:Record<RussianPartOfSpeech,string>={
  noun:"Имя существительное",adjective:"Имя прилагательное",verb:"Глагол",
@@ -92,7 +92,7 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
    q.options.every(s=>text(s,24,true))&&
    new Set(q.options.filter(s=>s.trim()).map(s=>s.trim())).size===q.options.filter(s=>s.trim()).length&&
    Number.isInteger(q.correct)&&q.correct>=0&&q.correct<q.options.length&&
-   text(q.explanation,250,true));
+   text(q.explanation,250,true))&&(v.response===undefined||validOrthographyResponse(v.response,questions));
  }
  return false;
 }
@@ -121,3 +121,10 @@ export function synchronizePhoneticLetters(word:string,existing:PhoneticLetter[]
 export const phoneticWordValid=(word:string)=>
  word.length<=24&&/^[\p{L}\p{M}ёЁъЪьЬ-]*$/u.test(word);
 export const totalSounds=(letters:PhoneticLetter[])=>letters.reduce((n,l)=>n+l.sounds.length,0);
+
+function validOrthographyResponse(value:unknown,questions:readonly {options:readonly unknown[]}[]):boolean{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const r=value as Record<string,unknown>;
+ return Object.keys(r).length===3&&typeof r.index==="number"&&Number.isInteger(r.index)&&r.index>=0&&r.index<questions.length&&typeof r.checked==="boolean"&&
+ (r.picked===null?!r.checked:typeof r.picked==="number"&&Number.isInteger(r.picked)&&r.picked>=0&&r.picked<questions[r.index].options.length);
+}

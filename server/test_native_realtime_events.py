@@ -40,6 +40,11 @@ def test_editor_mutations_reject_unsafe_paths_and_payloads():
     result=accept(frame)
     assert result["ops"]==frame["ops"]
     assert result["user_id"]=="trusted-user"
+    assert "base_version" not in result  # old native clients are compatible
+    assert accept({**frame,"base_version":7})["base_version"]==7
+    for invalid in (-1,True,1.5,None,9007199254740992,"7"):
+        with pytest.raises(InvalidLiveEvent,match="invalid_editor_base_version"):
+            accept({**frame,"base_version":invalid})
     with pytest.raises(InvalidLiveEvent,match="read_only"):
         accept(frame,role="viewer")
     for bad in [

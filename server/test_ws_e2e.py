@@ -5,6 +5,8 @@ from contextlib import AsyncExitStack
 import gc
 import json
 import os
+import signal
+import sys
 from pathlib import Path
 from time import perf_counter
 from uuid import UUID, uuid4
@@ -24,8 +26,9 @@ from test_api import TEACHER, STUDENT, PASSWORD
 
 
 @pytest.mark.asyncio
-async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
-    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru")
+async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch,tmp_path):
+    monkeypatch.setenv("LEKTRUS_ASSETS_DIR",str(tmp_path/"private-assets"))
+    monkeypatch.setenv("LEKTRUS_DEPLOYMENT_ORIGINS","https://lektrus.ru,https://lectrus.ru,http://127.0.0.1:5173")
     _login_attempts.clear()
     conn=await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
@@ -135,7 +138,30 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     peer=(await http.get(url,headers=student)).json()["document"]
                     kinds=("sticky","text","shape","pen","marker","image","pdf","frame","connector","comment",
                            "table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument")
-                    objects=[{"id":"sync-"+kind,"kind":kind,"x":0,"y":0,"text":"","createdBy":str(TEACHER)} for kind in kinds]
+                    # Use complete, parser-compatible object payloads rather than
+                    # just a kind and ID; the wire matrix must carry real content.
+                    extras={
+                        "pen":{"points":[{"x":1,"y":2},{"x":20,"y":10}],"weight":2,"color":"#123456"},
+                        "marker":{"points":[{"x":1,"y":2},{"x":20,"y":10}],"weight":12,"color":"#123456"},
+                        "sticky":{"color":"#ffeeaa","stickerInk":[{"id":"attached","kind":"pen","color":"#123456","weight":2,"points":[{"x":1,"y":1}]}]},
+                        "shape":{"shapeType":"rectangle","color":"#123456"},
+                        "image":{"assetId":"matrix-image","name":"photo.png","mime":"image/png","imageSourceAspect":2},
+                        "pdf":{"assetId":"matrix-pdf","name":"file.pdf","mime":"application/pdf","pdfPage":1},
+                        "connector":{"connectorStart":{"x":0,"y":0},"connectorEnd":{"x":100,"y":50}},
+                        "table":{"tableRows":1,"tableCols":2,"tableCells":["A","B"]},
+                        "graph":{"graphPurpose":"coordinates","graphPoints":[{"id":"a","x":1,"y":2,"label":"A"}]},
+                        "fraction":{"fractionNumerator":1,"fractionDenominator":2},
+                        "checklist":{"checklistItems":["Task"],"checklistDone":[False]},
+                        "quiz":{"quizOptions":["A","B"],"quizCorrect":0},
+                        "flashcard":{"flashcardBack":"Answer"},
+                        "cover":{"coverOpen":False,"coverOpacity":1},
+                        "linkmedia":{"mediaUrl":"https://example.test/video","mediaTitle":"Video"},
+                        "instrument":{"instrumentType":"ruler","instrumentScale":1},
+                    }
+                    def object_fixture(prefix,kind,author):
+                        return {"id":prefix+kind,"kind":kind,"x":0,"y":0,"width":100,"height":50,
+                                "text":"","createdBy":str(author),**extras.get(kind,{})}
+                    objects=[object_fixture("sync-",kind,TEACHER) for kind in kinds]
                     moved=[{**item,"x":100,"y":50} for item in objects]
                     edited=[{**item,"text":"updated"} for item in moved]
                     for revision,delta in enumerate((
@@ -160,11 +186,12 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                     assert peer["items"]==[]
                     async with app.state.pool.acquire() as db:
                         await db.execute("UPDATE board_members SET participant_role='student' WHERE board_id=$1 AND user_id=$2",UUID(native),STUDENT)
-                    pupil_objects=[{"id":"pupil-"+kind,"kind":kind,"createdBy":str(STUDENT),"x":1,"y":2,"text":""}
-                                   for kind in ("sticky","text","shape","image","pdf","connector","comment","fraction","instrument")]
+                    pupil_objects=[object_fixture("pupil-",kind,STUDENT)
+                                   for kind in ("sticky","text","shape","image","pdf","connector","comment","fraction","instrument","pen","marker")]
                     current_version=5
                     for idx,delta in enumerate(({"items":{"upsert":pupil_objects}},
                             {"items":{"upsert":[{**item,"x":15,"y":20} for item in pupil_objects]}},
+                            {"items":{"upsert":[{**item,"x":15,"y":20,"text":"pupil edit"} for item in pupil_objects]}},
                             {"items":{"remove":[item["id"] for item in pupil_objects]}})):
                         request_id=f"pupil-object-{idx}"
                         await second.send(json.dumps({"type":"ink_commit","request_id":request_id,"expected_version":current_version,"delta":delta}))
@@ -311,10 +338,83 @@ async def test_two_live_sockets_receive_revision_then_revoke(monkeypatch):
                 await asyncio.sleep(1.7)
                 await resumed.send(json.dumps({"type":"ping"}))
                 assert json.loads(await asyncio.wait_for(resumed.recv(),3))["type"]=="pong"
+            # The current client negotiates a background-only lease, unlike
+            # legacy inactivity leases above. Foreground age must never expire
+            # a session, and resuming before the deadline cancels it.
+            async with websockets.connect(native_uri,origin="https://lektrus.ru") as foreground:
+                await foreground.send(json.dumps({"type":"auth","token":owner_session["access_token"],
+                    "presence":True,"visible":True,"idle_age_ms":0,"background_idle":True,"background":False}))
+                ready=json.loads(await asyncio.wait_for(foreground.recv(),3))
+                assert ready["idle_lease"] is True and ready["background_idle"] is True
+                assert json.loads(await asyncio.wait_for(foreground.recv(),3))["type"]=="presence_state"
+                await foreground.send(json.dumps({"type":"activity","idle_age_ms":598500,"background":True}))
+                await foreground.send(json.dumps({"type":"activity","idle_age_ms":0,"background":False}))
+                await asyncio.sleep(1.7)
+                await foreground.send(json.dumps({"type":"ping"}))
+                assert json.loads(await asyncio.wait_for(foreground.recv(),3))["type"]=="pong"
+                await foreground.send(json.dumps({"type":"activity","idle_age_ms":598500,"background":True}))
+                with pytest.raises(ConnectionClosed) as expired_background:
+                    await asyncio.wait_for(foreground.recv(),4)
+                assert expired_background.value.code==4410
             with pytest.raises(websockets.exceptions.InvalidStatusCode) as blocked:
                 async with websockets.connect(native_uri,origin="https://untrusted.example"):
                     pass
             assert blocked.value.status_code==403
+
+            # Reuse the existing Playwright acceptance harness with genuine
+            # UI login, separate browser contexts, and the running disposable API.
+            if os.getenv("LEKTRUS_RUN_BROWSER_SYNC") == "1":
+                # CORSMiddleware captures configured origins when the API module
+                # is imported. A late monkeypatch alone cannot open browser access.
+                browser_origin="http://127.0.0.1:5173"
+                preflight=await http.options("/api/v1/auth/login",headers={
+                    "Origin":browser_origin,"Access-Control-Request-Method":"POST",
+                    "Access-Control-Request-Headers":"content-type",
+                })
+                assert preflight.status_code==200,preflight.text
+                assert preflight.headers.get("access-control-allow-origin")==browser_origin
+                health=await http.get("/api/v1/health",headers={"Origin":browser_origin})
+                assert health.status_code==200 and health.json()["ok"],health.text
+                assert health.headers.get("access-control-allow-origin")==browser_origin
+                root=Path(__file__).resolve().parents[1]
+                artifacts=root/"artifacts"/"participant-roles"
+                artifacts.mkdir(parents=True,exist_ok=True)
+                env={**os.environ,"VITE_LEKTRUS_BACKEND":"selfhost",
+                     "VITE_LEKTRUS_API_ORIGIN":"http://127.0.0.1:18762",
+                     "LEKTRUS_QA_BASE":"http://127.0.0.1:5173",
+                     "LEKTRUS_QA_API":"http://127.0.0.1:18762"}
+                with (artifacts/"sync-vite.log").open("wb") as log:
+                    vite=await asyncio.create_subprocess_exec(
+                        "npm","run","dev","--","--host","127.0.0.1","--port","5173","--strictPort",
+                        cwd=root,env=env,stdout=log,stderr=asyncio.subprocess.STDOUT,start_new_session=True)
+                    try:
+                        for _ in range(120):
+                            if vite.returncode is not None:
+                                raise AssertionError("Vite exited before browser tests")
+                            try:
+                                probe=await http.get("http://127.0.0.1:5173/app",timeout=2)
+                                if probe.status_code==200:break
+                            except httpx.HTTPError:pass
+                            await asyncio.sleep(.5)
+                        else:raise AssertionError("Vite did not start")
+                        browser=await asyncio.create_subprocess_exec(
+                            sys.executable,"tests/participant-roles-browser.py","--sync-only",cwd=root,env=env,
+                            stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT,start_new_session=True)
+                        try:
+                            output,_=await asyncio.wait_for(browser.communicate(),timeout=900)
+                        except asyncio.TimeoutError:
+                            os.killpg(browser.pid,signal.SIGKILL)
+                            await browser.wait()
+                            raise
+                        assert browser.returncode==0,output.decode("utf-8",errors="replace")
+                        print(output.decode("utf-8",errors="replace"))
+                    finally:
+                        if vite.returncode is None:
+                            os.killpg(vite.pid,signal.SIGTERM)
+                            try:await asyncio.wait_for(vite.wait(),timeout=5)
+                            except asyncio.TimeoutError:
+                                os.killpg(vite.pid,signal.SIGKILL)
+                                await vite.wait()
 
             uri="ws://127.0.0.1:18762/api/v1/boards/"+board+"/events"
             async with websockets.connect(uri,origin="https://lektrus.ru") as ws_owner:
