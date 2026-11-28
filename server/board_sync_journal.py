@@ -13,7 +13,7 @@ class SyncJournalEvent(BaseModel):
     event: Literal["object_change","save_ack","save_error","revision_applied","revision_deferred",
                    "revision_rejected","socket_online","socket_offline","socket_reconnecting",
                    "session_start","session_end","visibility_changed","state_checkpoint",
-                   "revision_waiting","revision_settled","ink_save_sample"]
+                   "revision_waiting","revision_settled","ink_save_sample","live_dispatch_sample","socket_rtt"]
     version: int | None = Field(None, ge=0, le=2**63-1)
     expected_version: int | None = Field(None, ge=0, le=2**63-1)
     status: int | None = Field(None, ge=0, le=599)
@@ -38,6 +38,14 @@ class SyncJournalEvent(BaseModel):
     role: Literal["owner","co_teacher","student","observer"] | None = None
     visibility: Literal["visible","hidden"] | None = None
     ink: bool | None = None
+    dirty: bool | None = None
+    first_version: int | None = Field(None, ge=0, le=2**63-1)
+    sequence_end: int | None = Field(None, ge=1, le=2**53-1)
+    last_occurred_at_ms: int | None = Field(None, ge=0, le=2**53-1)
+    event_count: int | None = Field(None, ge=1, le=10000)
+    live_type: Literal["cursor","ink_motion","ink_motion_ack","live_ink","live_erase","object_transform","object_preview","editor_mutation"] | None = None
+    max_ms: int | None = Field(None, ge=0, le=86400000)
+    window_ms: int | None = Field(None, ge=0, le=86400000)
 
 class SyncJournalBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")

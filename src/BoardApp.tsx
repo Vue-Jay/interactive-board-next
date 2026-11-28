@@ -8541,7 +8541,8 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
     };
     // Stale/own echoes cannot occupy the deferred slot during a gesture.
     const preliminary = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, false);
-    if (preliminary === "ignore"){publishCommittedCursors();journalSettleRevision();return;}
+    journalSettleRevision();
+    if (preliminary === "ignore"){publishCommittedCursors();return;}
     // Real ink may reconcile while drawing or erasing; other gesture geometry
     // still depends on its initial snapshot and must wait until release.
     const gestureDefers=gesture.current&&["drag","resize","rotate","connector","connector-end","hand-smart","erase"].includes(gesture.current.mode);
@@ -8727,12 +8728,14 @@ export default function BoardApp({ authUser, boardSummary, accountRole, isAppAdm
   // No polling, additional document reads, or raw lesson content.
   const journalSnapshot=useRef<()=>void>(()=>{});
   journalSnapshot.current=()=>{
-    const data=snapshot.current,version=remoteVersion.current;
-    if(!data||version===null||gesture.current||eraserSession.current||labSimulationOnly.current)return;
+    const version=remoteVersion.current;
+    if(!snapshot.current||version===null||gesture.current||eraserSession.current||labSimulationOnly.current)return;
+    const data=currentDocument();
     const local=documentFingerprint(data),ack=acknowledgedSharedContent.current;
     selfhostLogBoardSync(boardSummary.id,{event:"state_checkpoint",version,
       fingerprint:ack??undefined,local_fingerprint:local,count:data.items.length+(data.ink?.length??0),
-      pending:remoteSaveInFlight.current||!!queuedRemoteSnapshot.current||local!==ack,
+      pending:remoteSaveInFlight.current||!!queuedRemoteSnapshot.current||!!saveTimer.current||!!pendingRemote.current||!!deferredRemote.current,
+      dirty:local!==ack,
       deferred_version:deferredRemote.current?.version,visibility:document.hidden?"hidden":"visible"});
   };
   useEffect(()=>{

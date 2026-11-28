@@ -327,13 +327,16 @@ assert.equal(env.nativeRequests.length,0,"The regular browser must keep its own 
 const journalBoard="00000000-0000-4000-8000-000000000004";
 const endJournal=api.selfhostStartBoardJournal(journalBoard,"owner");
 api.selfhostLogBoardSync(journalBoard,{event:"revision_waiting",version:8,reason:"gesture"});
+api.selfhostLogBoardSync(journalBoard,{event:"revision_deferred",version:8,transport:"socket"});
+api.selfhostLogBoardSync(journalBoard,{event:"revision_deferred",version:9,transport:"socket"});
 api.selfhostLogBoardSync(journalBoard,{event:"revision_settled",version:9,expected_version:8,elapsed_ms:42});
 endJournal();
 await api.selfhostExportBoardSync(journalBoard);
 const journalRows=records.find(r=>r.path.endsWith("/sync-journal")&&r.method==="POST").body.events;
-assert.deepEqual(journalRows.map(r=>r.event),["session_start","revision_waiting","revision_settled","session_end"]);
+assert.deepEqual(journalRows.map(r=>r.event),["session_start","revision_waiting","revision_deferred","revision_settled","session_end"]);
 assert.equal(new Set(journalRows.map(r=>r.session_id)).size,1);
-assert.deepEqual(journalRows.map(r=>r.sequence),[1,2,3,4]);
+assert.deepEqual(journalRows.map(r=>r.sequence),[1,2,3,5,6]);
+assert.equal(journalRows[2].first_version,8);assert.equal(journalRows[2].version,9);assert.equal(journalRows[2].sequence_end,4);assert.equal(journalRows[2].event_count,2);
 assert.ok(journalRows.every(r=>r.occurred_at_ms>0&&r.build_id==="journal-test-build"&&r.platform==="web"));
 
 
